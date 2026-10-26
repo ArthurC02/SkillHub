@@ -14,10 +14,10 @@ DISC-005 的七項允收各有具名測試，對照見[需求 ID × 測試對照
 
 - 題目：[`queries.json`](../../tools/goldenset/queries.json)，30 題中文任務、18 題英文任務，中英文各 6 題干擾查詢；正解採 `gold_primary` 與 `gold_acceptable` 聯集。
 - 語料：同一批 31 份 Skill 的 [`corpus_enriched`](../../tools/goldenset/corpus_enriched/) 與 [`corpus_enriched_v7`](../../tools/goldenset/corpus_enriched_v7/)，分開量測，不混算。前者 JSON 實際記錄 `enrich-skill/v1`，不能僅憑歷史結果檔的 v2 名稱推定提示版本。
-- 查詢分析：[`intent_analysis_v2.json`](../../tools/goldenset/intent_analysis_v2.json)，`search-intent/v2`、`gpt-5.6-luna` 一次固定取樣。60 筆合法結構，無呼叫失敗或成本缺漏，Gateway 回報合計 US$0.0181568，單筆最長 4.511 秒。這不是人工理解品質評分或 p95 延遲允收。
+- 查詢分析：[`intent_analysis_v2.json`](../../tools/goldenset/intent_analysis_v2.json)，`search-intent/v2`、`gpt-5.6-luna` 一次固定取樣。60 筆合法結構，無呼叫失敗或成本缺漏。這不是人工理解品質評分或 p95 延遲允收。
 - 投毒對照：既有 [`poison`](mvp/m5/creation-measure/injection/poison/) 與 [`poison-enriched`](mvp/m5/creation-measure/injection/poison-enriched/) 的三份樣本；刻意模擬已進目錄的內容，不宣稱測過人工策展的辨識能力。
 
-模型取樣使用獨立、只允許 Luna、24 小時有效、US$1 預算上限的 Virtual Key，每題最多一次、不自動重試；結束後撤銷成功。重播不使用金鑰、不呼叫模型。不得把服務提供的合法 JSON 當成語意正確的證據。
+重新取樣須使用只允許該模型、短效且有預算上限的獨立 Virtual Key，每題最多一次、不自動重試，結束後撤銷。重播不使用金鑰、不呼叫模型。不得把服務提供的合法 JSON 當成語意正確的證據。
 
 ## 執行方式與判讀
 
@@ -48,9 +48,9 @@ go -C apps/platform test ./internal/entrypoint/api/apiserver -run TestGoldenHybr
 | 中文 | 28／30 | 30／30 | 6／6 | 0.9074 |
 | 英文 | 16／18 | 18／18 | 6／6 | 0.8681 |
 
-上表是原始增強語料、未加入投毒的原句基準；不能用混合搜尋的中文命中率宣稱詞法下界達標。強制產品改走詞法降級後，測試在首題因 `degraded=true` 失敗；還原後重跑通過。
+上表是原始增強語料、未加入投毒的原句基準；不能用混合搜尋的中文命中率宣稱詞法下界達標。
 
-歷史快取實際有 207 筆，涵蓋 60 個原句與 31 份原始增強索引文字；另將 v2 改寫查詢 60 筆、v7 索引 31 筆與投毒索引 3 筆補齊，保存於 [`intent_embeddings_v2.json`](../../tools/goldenset/intent_embeddings_v2.json)。這 94 份向量由現行 Python embedding 函式經 Gateway 分六批取回，Gateway 回報 US$0.00055458；使用只允許該 embedding 模型、24 小時有效、US$1 額度的獨立金鑰，無 SDK 重試，完成後撤銷成功。新快取與歷史快取不覆蓋彼此；模型別名相同不保證跨時間的供應商快照相同，這是跨批比較的限制。
+向量快取由 [`intent_embeddings_v2.json`](../../tools/goldenset/intent_embeddings_v2.json) 補齊 v2 改寫查詢、v7 索引與投毒索引的向量，與歷史快取不互相覆蓋；模型別名相同不保證跨時間的供應商快照相同，這是跨批比較的限制。
 
 ### 原句與 v2 改寫的混合配對
 
@@ -81,11 +81,11 @@ go -C apps/platform test ./internal/entrypoint/api/apiserver -run TestGoldenHybr
 
 兩版固定語料重播的乾淨品質、干擾拒答及投毒結果均回到原句基準：原始增強中文／英文 Top-1 為 28／30、16／18，v7 為 29／30、17／18，干擾均 12／12；投毒 Top-3 原始增強為中文 25、英文 10，v7 為中文 24、英文 11。這只表示消除了本次改寫造成的額外退步，**既有投毒紅線仍未通過**。
 
-`TestModelKeywordsDoNotReplaceTaskEmbeddingOrGrantCoveragePriority` 以原句任務與模型建議的 `spreadsheet` 建立反例：向量仍須收到原句，僅符合該關鍵詞且向量距離過遠的文件不得進結果。暫改回關鍵詞 embedding 時，測試因輸入錯誤失敗；暫改用關鍵詞判定 bigram 覆蓋時，測試因多出不該准入的結果失敗。還原後此測試、使用者修正及改寫失敗降級測試通過。
+`TestModelKeywordsDoNotReplaceTaskEmbeddingOrGrantCoveragePriority` 以原句任務與模型建議的 `spreadsheet` 建立反例：向量仍須收到原句，僅符合該關鍵字且向量距離過遠的文件不得進結果。
 
-`TestAnalyzedSearchPreservesExactNamesAndUserTokenCoverage` 在改寫成功且模型關鍵詞不同於原句時，驗證精確名稱優先於較近的覆蓋結果、中文完整詞組優先於向量結果，以及部分覆蓋不得豁免距離。分別把名稱判斷改看模型關鍵詞、bigram 改看模型關鍵詞、完整覆蓋 AND 改為 OR，對應案例均失敗；還原後與既有覆蓋測試合跑通過。測試使用專屬查詢詞並在結束時撤銷自己工作區的目錄標記，避免污染其他公開搜尋案例。
+`TestAnalyzedSearchPreservesExactNamesAndUserTokenCoverage` 在改寫成功且模型關鍵字不同於原句時，驗證精確名稱優先於較近的覆蓋結果、中文完整詞組優先於向量結果，以及部分覆蓋不得豁免距離。測試使用專屬查詢詞並在結束時撤銷自己工作區的目錄標記，避免污染其他公開搜尋案例。
 
-`TestModelKeywordsExpandCandidatesBeyondTheVectorWindow` 補足小型 golden 語料無法證明的候選擴充：建立 50 筆更近的向量結果與一筆符合模型關鍵詞、距離仍合法的較遠結果。分析失敗時只有前 50 筆；分析成功後第 51 筆經 FTS 找回，仍依距離排在最後。把 FTS 輸入改回原句，測試因結果僅有 50 筆而失敗；還原後通過。這證明模型關鍵詞確實參與檢索，不代表關鍵詞的理解品質已通過人工評估。
+`TestModelKeywordsExpandCandidatesBeyondTheVectorWindow` 補足小型 golden 語料無法證明的候選擴充：50 筆更近的向量結果加一筆符合模型關鍵字、距離仍合法的較遠結果。分析失敗時只有前 50 筆；分析成功後第 51 筆經 FTS 找回，仍依距離排在最後。這證明模型關鍵字確實參與檢索，不代表關鍵字的理解品質已通過人工評估。
 
 ### 下界的歷史基準
 
@@ -128,17 +128,17 @@ DISC-005 ⑤的「中文 20%」可追溯至 [`results.txt` 的語言分組](../.
 
 相同 1／4 門檻作用於原句時，無投毒的原始增強／v7 為 23／30、25／30，干擾皆 6／6；因此也不能宣稱改寫與 embedding 同時失敗時的兩版語料都達到下界。英文路徑沒有決定採用此規則，不能把這批中文結果當成英文非回歸證據。
 
-部署可行性已做最小確認：自架 PostgreSQL 與現有 PGlite 套件均可載入 `pg_trgm` 1.6；PGlite 的記憶體資料庫實測 `similarity('報告 美化', '報告 整理')` 為 0.33333334，執行後關閉，未更動現行 harness 或新增依賴。PostgreSQL 探測均在交易中建立擴充後回滾，查證沒有留下擴充。函式的字元切分與相似度語意見 [PostgreSQL 官方說明](https://www.postgresql.org/docs/current/pgtrgm.html)。
+部署可行性：自架 PostgreSQL 與現有 PGlite 套件均可載入 `pg_trgm` 1.6，PGlite 上 `similarity('報告 美化', '報告 整理')` 為 0.33333334。函式的字元切分與相似度語意見 [PostgreSQL 官方說明](https://www.postgresql.org/docs/current/pgtrgm.html)。
 
 此候選首次達到**改寫後、無投毒**的中文固定下界，但未通過投毒紅線，也尚未經正式 Handler、完整篩選／分頁、實際效能與混合搜尋回歸驗證；不能據此選型結案或宣稱抗投毒。既有人工策展邊界不變，正式程式未採用此候選。
 
 ### 已否決的替代探測
 
-自架測試庫的可用擴充清單包含 `pg_trgm` 1.6，不包含 `pg_bigm` 或 `pgroonga`。在交易內安裝、以實際投影探測、隨後回滾，已確認沒有留下擴充或修改正式查詢。未設拒答門檻時，對完整索引文字使用 `word_similarity`／`similarity`，原始增強語料的中文 Top-1 最佳為 22／30，v7 最佳為 18／30；改成逐條任務例句取最大值也未達標。這只能否決本次具體用法，不能推論所有 trigram 或其他擴充都無效。
+自架測試庫的可用擴充清單包含 `pg_trgm` 1.6，不包含 `pg_bigm` 或 `pgroonga`。未設拒答門檻時，對完整索引文字使用 `word_similarity`／`similarity`，原始增強語料的中文 Top-1 最佳為 22／30，v7 最佳為 18／30；改成逐條任務例句取最大值也未達標。這只能否決本次具體用法，不能推論所有 trigram 或其他擴充都無效。
 
 逐關鍵詞計算 `word_similarity` 的探測也未達標：平均分數在原始增強／v7 的中文 Top-1 為 21／30、16／30，取最弱關鍵詞分數則為 13／30、8／30。此探測沿用固定 v2 快照、真實投影與交易回滾，不呼叫模型；未設拒答門檻，亦未重跑投毒，因此不能採用為正式檢索或宣稱品質驗收通過。
 
-另以 `search-intent/v3-experiment` 只把關鍵詞改為英文，五欄仍要求引用原句；正式提示沒有變更。相同 60 題的一次取樣有 58 題合法、2 題由現有驗證拒絕，Gateway 回報 US$0.0229604，獨立限額金鑰已撤銷。現行詞法路徑的中文 Top-1 為原始增強 1／30、v7 3／30，中英干擾題仍各拒答 6／6；加入投毒後兩份語料皆有中文 5 題、英文 4 題出現投毒 Top-3。這個提示變體未採用。
+另以 `search-intent/v3-experiment` 只把關鍵詞改為英文，五欄仍要求引用原句；正式提示沒有變更。相同 60 題的一次取樣有 58 題合法、2 題由現有驗證拒絕。現行詞法路徑的中文 Top-1 為原始增強 1／30、v7 3／30，中英干擾題仍各拒答 6／6；加入投毒後兩份語料皆有中文 5 題、英文 4 題出現投毒 Top-3。這個提示變體未採用。
 
 **這些候選合起來就是 (a) 被否決的理由**，`02:DISC-005` ⑤ 據此裁定 (b)。裁定沒有關閉 (a)：`pg_bigm` 或 `pgroonga` 進得了自架映像，或有人提出同時過得了 24／30 下界與投毒紅線的詞法規則時，要重開。下一個候選必須同時重跑固定品質與投毒對照，並確認名稱／特定詞與混合向量搜尋沒有回歸。v2 的「不要按任務主題擅加分類」已在這 60 題取樣中維持空篩選，但仍需含明確篩選要求的正例、重複取樣及人工意圖欄位判讀；不能推論為所有輸入都正確。
 

@@ -1,6 +1,6 @@
 # Skill Hub MVP：工作項目列表
 
-> 本文件較早完成紀錄中把 `symlink-entry` 寫成 warning／只在匯出時排除的敘述，已被目前較嚴格的入口契約取代。現在符號連結會以 `symlink-entry` error 拒絕，其他非普通檔案會以 `unsupported-entry-type` error 拒絕；反斜線路徑亦在入口直接拒絕。歷史段落保留原貌只作當時證據，不代表現行行為。
+> 現行入口契約：符號連結以 `symlink-entry` error 拒絕，其他非普通檔案以 `unsupported-entry-type` error 拒絕，反斜線路徑在入口直接拒絕。較早完成紀錄中把 `symlink-entry` 寫成 warning 或只在匯出時排除的敘述是當時證據，不代表現行行為。
 
 ## 使用方式
 
@@ -24,19 +24,17 @@
 
 ## 1. 待完成的產品決策（M0）
 
-> 本節是 AGENTS.md 指向的「目前所有未決議題」入口之一，M2 期間有多項被後續 ADR 或實作回答，但**沒有一項取得負責人的逐項定案紀錄**（[m0/README.md](mvp/m0/README.md) 仍記「PDM-004~010 未逐項定案」，[m0/pdm-proposals.md](mvp/m0/pdm-proposals.md) §定案檢查清單各列仍為 `[ ]`）。因此下方**一個勾選都不改**，改為逐項標註「實質狀態」與「還缺什麼才能勾」——把「值已經定了」與「決策已經被追認」分開記，是這份清單唯一有用的地方。
->
-> M2 殘項清單的「乙、待負責人決策」另有一份互補的視角（那份記的是阻擋實作的決策，本節記的是產品參數的決策），見 [04-backlog-and-handoffs.md](04-backlog-and-handoffs.md)。
+> 本節記產品參數；阻擋實作的現行決策見 [`04`](04-backlog-and-handoffs.md)。R-1a／R-1b 已追認提案值；未勾項目只保留尚缺的實作或真人證據。
 
 - [x] PDM-001 選定 MVP 首批三個 Skill 類別。
 - [x] PDM-002 確認首批 Skill 來源與精選標準。
 - [x] PDM-003 選定主要 Agent Runtime 與模型。
-- [x] PDM-004 決定 SelfHostedProvider 首批支援的 Runtime 語言與版本。（**實質已定，缺追認**：Runtime Image `2026.08-2` 為 Node 22 ＋ Agent SDK **0.3.233**（釘 digest ＋ lockfile）＋ `python3.11` 與 45 個目錄 Skill 宣告的 9 個 Python 依賴（[m2/README.md 乙-6](mvp/m2/README.md) 裁定「加」）。**還缺**：①上述組合寫成 PDM-004 的定案紀錄（現在只散在 Dockerfile、`infra/images/README.md` 與 M2 殘項清單裡）；②`runsc` 上跑通完整 Run 生命週期的實測——那是 m0 提案自訂的定案條件之一，屬部署期（`SEC-009` 測項 T4））
-- [x] PDM-005 決定 Dataset 大小、檔案類型與單次 Run 資源上限。（**值大部分已強制，缺追認**：`02:TEST-002` 與 `02:RUN-003` 已把 §5.1／§5.2／§5.2a 的值回寫為可判定準則，六項資源上限、Artifact 上限、Workspace 並行 2、**Token 300K／60K**（`03` SBX-013）皆已有強制點。
-- [x] PDM-006 決定 Run、Dataset、Trace 與 Artifact 的保存期限。（各類都有值：Dataset 由 `TEST-004` 的 `expires_at` 強制、Trace 分割表按月切、SEC-009 的證據保存另有下界（見[Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全)），其餘由部署設定帶入（`TRACE_RETENTION`、`DOWNLOAD_ARTIFACT_RETENTION`、`ANALYTICS_RETENTION`）與 `trial/execution` 的 Run Artifact 常數。數字**之間**的下界約束是 `02:NFR-002a`，由 `automation-check` 的 `retention-floor` 逐條對帳）
+- [x] PDM-004 決定 SelfHostedProvider 首批支援的 Runtime 語言與版本。（已追認；現行映像定義見 `SKILLHUB_SANDBOX_IMAGE` 與 [UPGRADES.md](../../infra/images/runtime-agent-sdk/UPGRADES.md)。真實 `runsc` 完整生命週期證據由 `SEC-009` T4 驗收。）
+- [x] PDM-005 決定 Dataset 大小、檔案類型與單次 Run 資源上限。（已追認；強制點見 `02:TEST-002`、`02:RUN-003` 與 `SBX-013`。）
+- [x] PDM-006 決定 Run、Dataset、Trace 與 Artifact 的保存期限。（已定值；下界由 `02:NFR-002a` 與 `automation-check` 的 `retention-floor` 對帳。）
 - [ ] PDM-007 決定 Local Runner 首批支援的作業系統。（後 MVP）
 - [x] PDM-008 決定首批目標 Agent 打包 Profile。
-- [ ] PDM-009 決定封閉測試人數、招募方式與成功門檻。（→ [m4/pdm-009-beta-proposal.md](mvp/m4/pdm-009-beta-proposal.md)。此前**連提案都沒有**——`m0/pdm-proposals.md` 沒有 PDM-009 這一節，而兩份既有文件各自假設了一個數字（該檔 §8.2 用 30 人、`m0/cost-estimation.md` 用 20 人），**互斥且都沒有依據**。提案內容：12 人（三層各 4）、三條門檻（完整旅程完成率／漏斗無一段低於 50%／整層失效或同一問題撞到 4 人即否決）、招募與報酬全數重用 `gate-test/recruit.md`、測試期 14 天、**先閘門再封測**。**未追認前 `BETA-001`／`BETA-005`／`RELEASE-009` 全部不可判定**）
+- [ ] PDM-009 決定封閉測試人數、招募方式與成功門檻。（參數與報酬已裁定，見 [`05`](05-pending-rulings.md) R-2；仍缺法務重新確認、受測者簽署與實際封測，見 [`04` 乙-16](04-backlog-and-handoffs.md)。）
 - [x] PDM-010 決定免費 Run 額度及是否支援使用者自備模型 API Key。
 - [x] PDM-011 完成意圖搜尋品質 Spike：以首批精選 Skill 驗證意圖比對與符合原因生成的可行性，結果回寫 M1 搜尋作法。
 
@@ -53,17 +51,7 @@
 
 ## 3. 資訊架構與體驗設計（M0–M4）
 
-> **本節 13 項自 M0 起零勾選，根因不是進度**：**本專案沒有產出過設計交付物，UI 是直接依 `02` 的允收準則實作的。** 要改變這個狀態需要的是一個「這個專案要不要有設計交付物」的決定，不是某個里程碑的收尾動作。
->
-> **裁定：`DESIGN-001`～`011` 標為「不再追蹤」並逐項指向已落地的畫面；`DESIGN-012`／`013` 保留為 M4 的實作項**（前者有真正的新畫面＝下載頁，後者有可判定的準則＝`QA-009` 已寫出的無障礙判準）。章節里程碑標記因此由 `M0–M3` 改為 **`M0–M4`**（[m4/README.md §7 差-1](mvp/m4/README.md)）。
->
-> **三件必須一起被讀到的事**：
->
-> 1. **「不再追蹤」不是「已完成」，所以一律維持 `- [ ]`。** 這些項目描述的設計交付物確實從未產出，勾選它們是說謊；刪掉整節則會讓 [評估判定與 Judge 信任邊界](../adr/README.md#評估判定與-judge-信任邊界)的待決策與差-1 的兩項失去承接者（m4/README §8.5 的選項 (b) 因此被否決）。**不刪文、不改判定、只加理由與落點**。
-> 2. **不補做 13 份設計交付物**（選項 (c)）：M0～M3 的 UI 已經照允收準則落地，事後補一份沒有人會照著改程式的設計文件，只會產生第二份真相。
-> 3. **殘留的缺口必須有具名落點，不得因為本節收斂而消失。** 兩處：`DESIGN-007` 的 preflight 版本選擇器；`DESIGN-010`／`011` 承接的[評估判定與 Judge 信任邊界](../adr/README.md#評估判定與-judge-信任邊界)待決策——實質已由既有畫面回答，剩下的是呈現。
->
-> 代價寫明：本裁定等同承認 `01`／`02` 隱含的「先設計後實作」流程在本專案沒有發生過。這是紀錄真實發生的事，不是為了讓帳好看。
+> `DESIGN-001`～`011` 沒有先行設計交付物，維持未勾；各列只保留已落地的畫面或尚未承接的缺口。`DESIGN-012`／`013` 是 M4 實作項，依 `02` 與 `QA-009` 驗收。
 
 - [ ] DESIGN-001 建立全站資訊架構與導覽模型。（**不再追蹤**——落點：`apps/web` 的 `router.tsx` 與頁首導覽，路由與導覽模型隨各功能項逐次成形，沒有一份先行的架構文件）
 - [ ] DESIGN-002 設計首頁與自然語言意圖搜尋流程。（**不再追蹤**——落點：`DISC-001`／`DISC-005` 已落地的首頁、搜尋與「無結果＋改寫建議」流程）
@@ -76,10 +64,10 @@
 - [ ] DESIGN-009 設計 Run 進度的一般模式與進階 Trace 模式。（**不再追蹤**——落點：`TRACE-006`／`TRACE-007` 的 `/runs/$runId`，含一般／進階切換與 `complete: false` 的誠實標示）
 - [ ] DESIGN-010 設計驗收條件、評估報告與改善建議流程。（**不再追蹤**——落點：`EVAL-003`～`EVAL-009` 的 `RunEvaluation.tsx`。**[評估判定與 Judge 信任邊界](../adr/README.md#評估判定與-judge-信任邊界)待決策（兩列狀態的文案與版面）的實質內容已由這個畫面回答**：執行狀態與任務判定永遠兩列、任務判定排在前、沒有評估的一邊顯示「未評估（不是通過）」，具名測試在 `eval.test.tsx`。剩餘缺口是 ——UI 分不出「引用回驗失敗」與「模型自己說不知道」，由 M4 的 UI 批承接）
 - [ ] DESIGN-011 設計重新試跑與版本／結果比較流程。（**不再追蹤**——落點：`EVAL-011`／`EVAL-012` 的 `RunCompare.page.tsx` 與 `AppliedResult` 的 preflight 交接。[評估判定與 Judge 信任邊界](../adr/README.md#評估判定與-judge-信任邊界)的兩列狀態在比較畫面同樣成立，見 `DESIGN-010`）
-- [x] DESIGN-012 設計打包下載、安裝及驗證說明。**（M4 實作項，保留追蹤）**（本項與 `DESIGN-001`～`011` 不同：M4 有真正的新畫面。範圍＝下載頁與安裝說明的呈現面，對應 `PACK-006`／`PACK-007`／`PACK-008` 與 `02:PACK-002` 的三條允收準則；三層相容性分開呈現、未驗證必須顯示未驗證、到期日顯示絕對日期不顯示相對天數。排入 M4 第 6 批）
-- [x] DESIGN-013 完成鍵盤操作、文字標籤與錯誤訊息的無障礙檢查。**（M4 實作項，保留追蹤）**（判準取自 `02:NFR-007`：主要流程可鍵盤完成、表單具標籤與清楚驗證訊息、狀態不只依賴顏色。**與 `QA-009` 逐字重疊**（[m4/README.md §7 差-1](mvp/m4/README.md)）：兩者以**同一份檢查結果**判定，不做兩次也不各記一份帳——本項是檢查的執行，`QA-009` 是發佈檢查表上的同一格，勾選時互相引用。排入 M4 第 6 批）
+- [x] DESIGN-012 設計打包下載、安裝及驗證說明。（下載頁與安裝說明符合 `PACK-006`～`008` 與 `02:PACK-002`。）
+- [x] DESIGN-013 完成鍵盤操作、文字標籤與錯誤訊息的無障礙檢查。（與 `QA-009` 共用 `02:NFR-007` 的驗收證據。）
 - [x] DESIGN-015 打包頁乾淨掃描的判定行帶「這不等於安全」，折疊裡的同一句拿掉，整頁只講一次（`02:NFR-001` 第 6 條）。
-- [x] DESIGN-014 把畫面上的名詞換成日常用語。（**新增，`05` R-56 裁定 (a)、[設計系統、信任訊號與畫面用語](../adr/README.md#設計系統信任訊號與畫面用語)**。對照表在該 ADR 決策 1，已定死：`Skill`→小工具、`Run`→試跑／試跑紀錄、`Test Case`→測試題、`Fork`→複製一份，**`Workspace` 不改**。範圍：`apps/web/src` 的使用者可見字串 **382 處／31 個檔案**（無 i18n 集中層）＋ 2 個 Go 常數（`creator/workspace/http.go` 的 `deletionScope`、`entrypoint/api/apiserver/creation.go` 的 422 文字）＋ 10 份 `__outlines__` 標題快照。契約、資料庫、識別字、ADR 內文與需求 ID 一個字都不動。**不做括號並列、不做開關、不做逐頁分批**——三者都會讓同一個東西有兩個名字。**前置（寫死）：apps/web 的版面批合併之後**，理由是單一 Writer——兩個代理同時改同一批檔案是 AGENTS.md 直接禁止的。**必須單獨成一個 commit**，不與任何行為改動混在一起，否則 382 處的機械變動會把 review 淹掉。做完才結。允收：`02:NFR-001`、[設計系統、信任訊號與畫面用語](../adr/README.md#設計系統信任訊號與畫面用語)的相關決策）
+- [x] DESIGN-014 把畫面上的名詞換成日常用語。（對照與允收見 [設計系統、信任訊號與畫面用語](../adr/README.md#設計系統信任訊號與畫面用語)與 `02:NFR-001`。）
 
 ## 4. Skill 內容與供應（M1）
 
@@ -96,8 +84,8 @@
 - [x] CONTENT-007 對精選 Skill 建立範例資料、Prompt 與驗收條件。**（M2：依賴 Test Case 與 Sandbox）**。
 - [x] CONTENT-008 對精選 Skill 完成至少一次基準試跑。**（M2：依賴 Test Case 與 Sandbox）**。
 - [x] CONTENT-009 建立內容更新、失效、下架與來源變更流程。（允收：`02` §4.7）
-- [ ] CONTENT-010 於 Runtime Image `2026.08-3` 重跑 45 筆基準，回填 `skill_runtime_compatibility` 的 (Skill Version × `2026.08-3`) 一軸。（見 [m2/content-baseline-report.md §14](mvp/m2/content-baseline-report.md)：45 筆全量發動，**41 筆完成量測**（符合 39、未產出 2）、**4 筆授權受限如實跳過**（`docx`／`pdf`／`pptx`／`xlsx`，`POST /runs` 回 422 `license-review`，未繞過）；41 筆判定與 `2026.08-2` **完全一致**，`ModuleNotFoundError` 由 4 筆歸零、輸入 token −16%。回填寫入 **41 列**（`activated`／`native`），舊映像 90 列 md5 前後相同。**四筆 restricted 在 `2026.08-3` 無列**，目錄仍顯示其 `2026.08-2` 舊值並附映像標籤，解除後須補跑——連同「office 三件套 validator 未被執行過」一併列為後續（§14.9）。閘道實付 $2.0038。**原始工作說明保留於下**：由 SBX-002 的 `2026.08-3` 升版產生：0022 以 (Skill Version × Runtime Image) 為鍵，`2026.08-3` 目前 **0 列**，目錄仍顯示 `2026.08-2` 的結論並附映像標籤。依賴集**只增不減**使結論極可能不變，但 0022 的鍵不接受「極可能」——[Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全)的四項行為重驗已在新 digest 上實跑通過（[UPGRADES.md](../../infra/images/runtime-agent-sdk/UPGRADES.md)），那管**行為回歸**；本項管**目錄事實**，兩者不互相取代。成本以 [m2/content-baseline-report.md §13.6](mvp/m2/content-baseline-report.md) 實測推估約 **$2.2**。回填走 `tools/content/backfill-agent-compatibility.sql`，須帶 `-v image=` 與 `-v since=` 的時間窗，否則會把新量測貼上舊映像標籤）
-- [ ] CONTENT-011 重跑 CONTENT-005 增強，使被拒收依賴造成的能力缺口進入「限制」欄。（**不得就地改寫**：`02:CONTENT-005` 規定 `需修改` 的處置是調整 prompt 或標記人工覆寫後**重跑增強與重新索引**，因此 `2026.08-3` 這批**只記錄建議、不執行**。對象三筆與應涵蓋內容：`pdf`——渲染／OCR 支路（`reportlab`／`pypdfium2`／`pdf2image`／`pytesseract`）與 Node 支路皆不可用，可用的是 `pypdf`＋`pdfplumber`＋`pillow` 的讀取／抽取／合併；`pii-flag`——`presidio-*` 偵測引擎不可用，可用的是模型判讀＋`phonenumbers`／`python-stdnum` 格式驗證，**NFR-001 的措辭紀律因此更吃重**；`document-format-skills`——`pywin32`／COM 的 `.doc`／`.wps` 轉檔在 Linux 沙箱上永久不可能，`.docx` 路徑可用。另 `pyarrow` 遭拒使 `add-iso3166`／`add-data-dictionary`／`data-comparability`／`data-cleanliness-scan` 四筆的 Parquet 格式支援不可用，亦應揭露。理由與逐項對照見 [infra/images/README.md](../../infra/images/README.md)「拒收」表。
+- [ ] CONTENT-010 對目前部署的 Runtime Image 重跑 45 筆基準，回填 `skill_runtime_compatibility` 的 (Skill Version × 該映像) 一軸。（缺口：目錄事實以 (Skill Version × Runtime Image) 為鍵，換映像後該映像沒有列，目錄仍顯示舊映像的結論並附映像標籤（讀取端不比對，見 `02:DISC-002`）。已有證據：[m2/content-baseline-report.md §14](mvp/m2/content-baseline-report.md) 在較早映像上全量重跑，41 筆完成量測（符合 39、未產出 2），判定與前一映像完全一致；**4 筆授權受限如實跳過**（`docx`／`pdf`／`pptx`／`xlsx`，`POST /runs` 回 422 `license-review`，未繞過），解除後須補跑，連同「office 三件套 validator 未被執行過」見該報告 §14.9。依賴集只增不減使結論極可能不變，但該鍵不接受「極可能」——[Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全)的四項行為重驗已在新 digest 上實跑通過（[UPGRADES.md](../../infra/images/runtime-agent-sdk/UPGRADES.md)），那管**行為回歸**；本項管**目錄事實**，兩者不互相取代。成本以 [m2/content-baseline-report.md §13.6](mvp/m2/content-baseline-report.md) 實測推估約 **$2.2**。回填走 `tools/content/backfill-agent-compatibility.sql`，須帶 `-v image=` 與 `-v since=` 的時間窗，否則會把新量測貼上舊映像標籤）
+- [ ] CONTENT-011 重跑 CONTENT-005 增強，使被拒收依賴造成的能力缺口進入「限制」欄。（**不得就地改寫**：`02:CONTENT-005` 規定 `需修改` 的處置是調整 prompt 或標記人工覆寫後**重跑增強與重新索引**，因此本項**只記錄建議、不執行**。對象三筆與應涵蓋內容：`pdf`——渲染／OCR 支路（`reportlab`／`pypdfium2`／`pdf2image`／`pytesseract`）與 Node 支路皆不可用，可用的是 `pypdf`＋`pdfplumber`＋`pillow` 的讀取／抽取／合併；`pii-flag`——`presidio-*` 偵測引擎不可用，可用的是模型判讀＋`phonenumbers`／`python-stdnum` 格式驗證，**NFR-001 的措辭紀律因此更吃重**；`document-format-skills`——`pywin32`／COM 的 `.doc`／`.wps` 轉檔在 Linux 沙箱上永久不可能，`.docx` 路徑可用。另 `pyarrow` 遭拒使 `add-iso3166`／`add-data-dictionary`／`data-comparability`／`data-cleanliness-scan` 四筆的 Parquet 格式支援不可用，亦應揭露。理由與逐項對照見 [infra/images/README.md](../../infra/images/README.md)「拒收」表。
 - [x] CONTENT-012 同步 [content/curated-skill-list.md](mvp/content/curated-skill-list.md) §2 三張表的「依賴」欄與 `tools/content/seed-skills.json`，並依負責人裁定更正檢查 ⑥。
 - [x] CONTENT-013 為已索引層補「依賴」欄或等價揭露。（由 CONTENT-012 發現：[content/curated-skill-list.md](mvp/content/curated-skill-list.md) §4.1／4.2／4.3 三張已索引表**只有 License 與 Tier，沒有依賴欄**，所以 `deps` 的修正在該層**沒有可同步的欄位**——12 筆已索引 Skill 的依賴更正只存在於 `seed-skills.json` 與 §3 腳註 7。已索引層依 PDM-002 不要求九項全過，故非阻擋，但「使用者看得到的依賴揭露」最終仍應由 DISC-003 的詳情頁承接而非本文件；先記錄缺口，實作歸屬待定）
 - [x] CONTENT-014 來源失效的判準：未滿七天「暫時無法取得」、滿七天「來源已失效」，由平台判定並回在詳情頁的來源區，只標示不下架（`02:CONTENT-009`、`02:SEC-007`）。
@@ -132,7 +120,7 @@
 - [x] INGEST-016 大小拒絕要說得出數字，並且被計數。
 - [x] INGEST-014 實作匯入抓取器的 SSRF 與內部網路防護：scheme 白名單、解析後逐一比對位址封鎖清單、DNS Rebinding 防護（解析與連線綁同一位址、每跳重驗）、redirect 上限 3 跳且跨主機不帶憑證、回應體 10 MB 邊讀邊中止、連線 10 秒／整體 60 秒逾時、fail-closed、錯誤訊息不洩漏內部位址。
 
-- [x] INGEST-017 匯入認得三種來源形狀並展開成多個 Skill Version：根目錄 `plugin.json` 的 `skills/` 直接子目錄（不遞迴）、單一 Skill、以及走訪整棵樹找 `SKILL.md`；找不到任何 `SKILL.md` 時訊息列出找過的位置（`02:SKILL-006`）。今天的 `PackageRoot` 只認「根有 `SKILL.md`」或「單一頂層目錄」兩種，而 GitHub repo 的壓縮檔永遠是後者——指著一個真實 repo 的人一律收到「缺少 `SKILL.md`」。
+- [x] INGEST-017 匯入接受 Agent Plugin、單一 Skill 與多 Skill 目錄樹，逐筆建立版本；找不到 `SKILL.md` 時列出搜尋位置。（允收：`02:SKILL-006`）
 - [x] INGEST-018 Skill 以外的元件只揭露不匯入、也不執行：`mcp.json` 與反向網域命名空間的頂層目錄進排除揭露並可辨識為 Plugin 元件；沙箱只安裝該 Skill 自己的目錄，其餘位元組不被安裝、也不留在沙箱檔案系統（整包仍以一份物件送入，這是「一個 Plugin 一份套件」的代價）（`02:SKILL-006`、實作鐵律 1）。**MCP server 與 hook 的定義本身就是執行指令**，這一項守的是「匯入不得替使用者決定要執行什麼」。命名空間目錄不逐一列舉宿主名稱——規格把那一層劃給宿主，列舉等於替每一家維護一份清單。
 - [x] INGEST-019 plugin manifest 的驗證與來源事實：宣告別份規格者為 info 並改走整棵樹、宣告公規卻 `name` 不合才是阻擋錯誤並指名是哪一項、`extensions` 連值都不驗、其餘未知欄位為 info；每個 Skill Version 記下 plugin `name`／`version`／`repository` 與相對路徑；一個 Plugin 只存一份套件物件（整包），各 Skill Version 共用它、內容雜湊取各自子目錄；單次匯入超過 50 個 Skill 即整批拒絕並說出兩個數字（`02:SKILL-006`）。
 - [x] INGEST-020 來源事實的讀取面：Skill 詳情頁揭露它來自哪個 Plugin（`name`／`version`／`repository`）、它在已存套件內的路徑，以及同一份已存套件帶進來的其他 Skill（可連過去，已刪除與已下架者不列），並說出「屬於一個 Plugin」在這裡代表什麼（只安裝自己的目錄、其他元件不匯入不執行、下載只有單一 Skill）；同批修掉匯入頁與契約裡那句「下載其中任一 Skill 拿到的是整包 Plugin」——平台從不交出已存套件物件（`02:SKILL-006`）。同伴的判準是**同一份已存套件物件**，不是 `skill_sources` 的列：一次匯入為每個 Skill 各建一列來源，共用的是那一份物件。
@@ -141,11 +129,11 @@
 
 ## 7. Skill Explorer（M1，結束時通過驗證閘門才進 M2）
 
-> 稽核指出「不通過不進 M2」三處原文未改而 M2～M6 已蓋了四層、九場一場沒跑，並建議二擇一：跑完它，或新增一份 ADR 明文取代它。**負責人選了第一條**（[`05` R-5](05-pending-rulings.md) 關閉，排程見 [gate-test/README](mvp/gate-test/README.md)）：**本節標題、`AGENTS.md` 與 `01` §10 的規則句都不動，也不需要新的 ADR**——這道門會真的被走一次。閘門與 M2～M6 並行是既成事實（`01` §10 有那句處置），所以本節標題讀作「這道門排定了」，不讀作「這道門擋住了後面」。
+> M1 驗證閘門的 D 日已依 [`05` R-5](05-pending-rulings.md) 宣告；排程不代表驗收通過，仍須收齊 G1～G4 真人讀數。封測另須完成 [`04`](04-backlog-and-handoffs.md) 的部署驗收與同意書確認。
 
 - [x] DISC-001 實作自然語言意圖搜尋。
 - [x] DISC-002 產生候選 Skill 與符合原因。
-- [x] DISC-003 實作類別、來源、Agent、Script、MCP 與驗證狀態篩選。**（依 `02:DISC-002`「篩選維度的允收階段」勾選：M1 階段的兩個維度「是否包含 Script」與「驗證狀態」已實作並有逐筆資料；其餘四個維度未達允收階段，依同節新增準則以停用控制項＋理由呈現，API 回 400 並附理由，皆有具名測試。類別／來源層級待 CONTENT-003 策展資料、Agent 相容待 M2 Sandbox、MCP 待後 MVP。證據與解除條件見 [m1/m1-work-items-audit.md §5.3](mvp/m1/m1-work-items-audit.md)。）**。
+- [x] DISC-003 實作結果篩選與不可用維度的停用理由；類別、來源層級、Agent 執行環境、Script 與驗證狀態已啟用，MCP 隨後 MVP 啟動。（允收階段：`02:DISC-002`）
 - [x] DISC-004 實作可解釋的排序規則。
 - [x] DISC-005 實作無結果、低信心及查詢補充流程。
 - [x] DISC-006 實作 Skill 一般詳情頁。
@@ -167,19 +155,7 @@
 
 ## 9. Test Case 與執行設定（M2）
 
-> **§9 的允收範圍**：本節的允收準則**含 UI**，但**含不含 UI 是逐條判定，不是逐節判定**——判準取自 `02` 各條允收準則自己的主詞與動詞：
->
-> | 準則的主詞／動詞 | 要在哪個平面滿足 | 例 |
-> | --- | --- | --- |
-> | 「系統必須…」「每個 Run 必須…」 | 系統平面，API ＋ 契約 ＋ 強制點即成立 | `02:TEST-001` 第 1、4 條 |
-> | 「系統依…自動建議…為可選強化」 | 同上 | `02:TEST-001` 第 2 條後半 |
-> | 「**使用者可**…」「**顯示**…」 | 使用者碰得到的平面，**沒有介面就是沒有達成** | `02:TEST-001` 第 2 條前半、第 3 條；`02:TEST-002` 第 2 條 |
->
-> 這把尺可以逐條判定，不需要先回答「§4.3 是在描述系統能力還是端到端可用性」——**條文自己已經用主詞回答了**。TEST-004 因「顯示」被退回、補上 `/lab/datasets` 後重新勾選，是同一把尺的第一次套用；本次套用結果為 **TEST-003 退回、TEST-001／002 維持**，逐條理由見 [m2/m2-work-items-audit.md §12](mvp/m2/m2-work-items-audit.md)。
->
-> **TEST-012 完成、TEST-003 依同一把尺補回勾選**。退回時寫的解除條件（「缺的**只有**顯示與操作面，補上即可依允收重新勾選」）已經達成，介面在 `apps/web/src/features/lab/test-cases/`。對帳見 [m3/audit.md](mvp/m3/audit.md)——本節的帳因此在 M2 完結後被動了兩次，兩次都在本節就地記錄，`m2/` 目錄內的那份對帳維持凍結不改。
->
-> 選 (a) 而不選 (b)（把 §9 界定在 API＋契約層）的理由：`02` §4.3 的條文是既有的產品承諾，把它改寫成「API 層即可」等於為了讓帳好看而降低承諾——而 MVP 的 Persona 明確是**非技術使用者**（`01` §2.1），一個只能用 `curl` 達成的「使用者可」不是這份文件在說的事。介面本身由 `DESIGN-007`（設計）與新增的 **TEST-012**（實作）承接。
+> 允收逐條依 `02` 的主詞判定：系統要求以 API、契約與強制點驗證；「使用者可」或「顯示」需有使用者可到達的介面。`TEST-001`～`004` 與 `TEST-012` 的證據見 [m2-work-items-audit.md §12](mvp/m2/m2-work-items-audit.md) 與 [m3/audit.md](mvp/m3/audit.md)。
 
 - [x] TEST-001 實作 User Prompt 輸入與驗證。（Test Case CRUD 綁 Workspace 內 Skill；非空白與長度驗證在 Service 與 0004／0017 的 CHECK 雙重把關；使用者輸入與編輯畫面已由 `TEST-012` 的 `TestCases.page.tsx` 提供）
 - [x] TEST-002 實作驗收條件自動建議。（`POST /test-cases/{id}/criteria/suggest`：Go 讀 Skill 名稱／摘要、User Prompt 與 Dataset **欄位名＋推斷型別**，經內部 HTTP 呼叫 `apps/llm` 的 `POST /suggest-criteria`（mini 級 `gpt-5.4-mini`、`json_schema` strict、經 LiteLLM 閘道）。**Dataset 的資料列不出境**：請求 schema 只有欄位名與型別兩個欄位，型別由第一列在 Go 程序內推斷後即丟棄（鐵律 11，具名整合測試以真實列值反證）。寫入時標 `source='suggested'` 且未確認；使用者改寫文字即轉為 `source='user'`。LLM 未設定或失敗回 503 並保留手動路徑，`02:TEST-001` 的「可選強化」語意成立。
@@ -192,7 +168,7 @@
 - [x] TEST-009 實作權限異動後重新確認。（migration **0020** `run_permission_confirmations` 記錄「誰、在何時、同意了哪個摘要 hash」；`POST /skills/{id}/runs/preflight/confirm` 寫入，`internal/run/service.go` 的 `Create` 入口重算當下摘要 hash 並要求兩件事同時成立：請求帶的 hash 等於重算值、且該 hash 有確認紀錄。任一不成立回 **422 且不建 Run**——這是 **SEC-002 閘門 B**「使用者未確認或未重新確認執行前權限摘要」那一項。舊確認因 hash 為查詢鍵而自然失效，不需另作撤銷掃描；換／刪 Dataset 皆有具名整合測試。使用者拒絕＝不呼叫確認端點，沒有紀錄就起不了 Run）
 - [x] TEST-011 在執行前權限摘要加上**預估成本區間**（區間非單值）。（`PermissionSummary.EstimatedCost`、公開 OpenAPI 契約與 `RunPreflight` 均已落地；$0.01／常見 $0.06／$0.30 取自 M2 的 45 筆閘道實付分布，`basis` 明示為估計而非報價。成本不進權限 `summary_hash`，避免估值校準使既有權限確認失效；`TestCostEstimateIsOutsideTheConfirmedHash` 驗證此邊界）（允收：`02:TEST-005`）
 - [x] TEST-012 實作 Test Lab 的 Test Case 與驗收條件介面：建立 Test Case、輸入與編輯 User Prompt、驗收條件的新增／編輯／刪除／確認、Dataset 列表與刪除。
-- [ ] TEST-013 一個 Skill 可以有幾個 Test Case，沒有任何上限。**這不是有人忘了做，是三份東西宣稱它已經有了。** `testlab.go` 的 `page()` 當時的註解逐字寫著這份清單「already bounded by the per-skill test case count」，`packaging.go` 引用同一句，而**全 repo 沒有任何地方界過那個數**——PDM-005 §5.1 界的是**單一** Test Case 的檔案（20 檔／單檔 25 MiB／合計 100 MiB），§5.2 界的是 **Run 資源**，兩者都不是這件事。<br>**它是 `PACK-012` 推導停住的直接原因**：產出上限的算式是「匯入上限 ＋ 打包能加的量」，而打包能加的量 ＝ 每個 Test Case 的大小 × **數量**，數量無界則算式無界。`MaxProducedZipBytes` 因此只能寫成「約 48 個純文字 Test Case 打滿」，**而 48 是沒有來源的那一半**。<br>**兩條路徑各自受影響，程度不同**：①**讀取面**——`ListTestCasesForSkill` 沒有 `LIMIT`，`page()` 在 Go 裡切片，所以每一次列表都把全部列**先實體化**；今天沒事只是因為還沒有人建很多。**不在 query 上加 `LIMIT`**，因為同一條語句餵給打包，而打包合法地需要全部（`PACK-005`）——在那裡加 `LIMIT` 會**無聲截斷**一份下載的測試案例。②**打包面**——`excluded_test_cases` 已經是「這一筆不隨套件走，理由是 X」的既有機制，數量上限的排除**應該用它**，不另造。<br>**這一項要的是一個數字，而那個數字不是實作者能挑的**（同 PDM-005 其餘各項）。程式面能先做的是把界**放在建立當下**而不是列表當下——但沒有值就不該先寫強制點，否則就是另一種形狀的同一個問題（一個沒有人裁定過的上限）。<br>**同批記一個不擋本項的既有行為**：catalog 工作區的打包會**把資料集位元組本身**夾帶進去（`testcase.go` 的 `ws.IsCatalog` 分支），單筆上界是 `testlab.MaxTestCaseBytes` = 100 MiB，而 `PackageFS` 的單條目上限是 10 MB ⇒ 這種套件會在 `PACK-009` 的重開步驟被擋成「the produced package could not be re-opened」。**底層 error 其實說得出原因**（`%w` 包著），**但那一句沒有被翻成使用者看得懂的拒絕**。屬打包錯誤分類的問題，不在本項範圍。
+- [ ] TEST-013 限制每個 Skill 的 Test Case 數量。（現無上限，導致列表全量實體化且 `PACK-012` 無法推導產出上限；需先裁定數值，再於建立時強制並以既有 `excluded_test_cases` 表示打包排除。PDM-005 的單一 Test Case／Run 上限不涵蓋本項。）
 - [x] TEST-010 保存實際執行使用的 Test Case 快照。（`testlab.CreateSnapshot` 為唯一實作，由 `internal/run` 於建立 Run 的同一交易呼叫；快照涵蓋 Prompt、驗收條件與 Dataset 參照並以單一 content hash 固定，不可變由 0005 trigger 保證；已刪除的 Test Case 不可起 Run）
 
 ## 10. Run Orchestrator 與 Provider 契約（M2）
@@ -212,10 +188,10 @@
 實作位於 `apps/sandbox/`（獨立 Go module，見[Repo 結構、CI 與驗證層](../adr/README.md#repo-結構ci-與驗證層)、鐵律 2），部署與 dev／prod 差異見 [apps/sandbox/README.md](../../apps/sandbox/README.md)。允收準則來源為 `02:RUN-003` 與威脅模型 SEC-002 的 46 項基線（本節以 `C-xx`／`N-xx`／`D-xx`／`I-xx`／`X-xx` 引用）。
 
 - [x] SBX-001 決定自建 Sandbox 的隔離技術與執行節點拓撲。（[Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全)已 Accepted：gVisor 基線＋專用 VM 池、不進 Kubernetes；DockerProvider 以 `SKILLHUB_SANDBOX_RUNTIME=runsc` 落實該選擇，宣告的隔離強度跟著實際設定走，跑 runc 的機器只會宣告 `weak`。**在部署平台上實跑 `runsc` 屬部署期驗收**，[Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全)的定案紀錄已將其列為實作期前提，不影響本項的「決定」性質）
-- [ ] SBX-002 建立經審核的 Runtime Image。**部分完成**：審核流水線已接上——[`.github/workflows/runtime-image.yml`](../../.github/workflows/runtime-image.yml)（path filter 只在 `infra/images/**` 變更時觸發）做 digest 斷言 → build → syft 產 SPDX SBOM → grype 掃描 → 門檻閘門，SBOM 與報告以 `if: always()` 上傳為 artifact，掃描失敗也留證據。I-02 已落地（`FROM` 帶 `@sha256:`，CI 以 grep 斷言）。掃描實跑結果與豁免清單見 [infra/images/README.md](../../infra/images/README.md)：可修的 Critical／High 原有 6 件、全在 base image 自帶的 npm 依賴，已於 Dockerfile 移除 npm／corepack（執行期不載入，沙箱亦無網路），現為 **0**；其餘 7 Critical／17 High 皆為 Debian bookworm 無上游修復項，逐項具名列入豁免清單並訂複審日，不靜默放行。**門檻已定案**：[Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全)採納本流水線的兩項提案值並補上批准與時效——I-06 為「可修的 Critical／High 阻擋且**無豁免路徑**，不可修者具名豁免、複審日 ＝ **`first_exempted_at`（該 CVE 首次被豁免的日期，跨重掃保留）**＋90 天、逾期即依 I-04 判為過期」——錨定在首次而非最近一次掃描日是刻意的，否則每 30 天的例行重掃都會把複審日往後推 90 天，人工複審永遠不會到期，I-04 為「有效期 **30 天**，到期前 7 天告警，到期即不得被新 Run 引用」。 SBOM 與掃描結果（含機器可讀的 `scanned_at`）已成為隨 GHCR digest 的 attestation，`rescan` job 每週重掃已發佈的 digest，**流水線側四項檢查 I-02／I-03／I-04／I-06 已全部可自動化判定**。<br>**SBX-002 仍不勾的唯一原因**：閘門 A 的節點准入探針要**在真實節點上**查得到這兩份 attestation，屬部署批（SEC-009 前置條件①）。
+- [ ] SBX-002 建立經審核的 Runtime Image。**部分完成**：審核流水線已接上——[`.github/workflows/runtime-image.yml`](../../.github/workflows/runtime-image.yml)（只在 `infra/images/**` 變更時觸發）做 digest 斷言 → build → syft 產 SPDX SBOM → grype 掃描 → 門檻閘門，SBOM 與報告以 `if: always()` 上傳為 artifact；I-02 已落地（`FROM` 帶 `@sha256:`，CI 以 grep 斷言）。掃描結果與豁免清單見 [infra/images/README.md](../../infra/images/README.md)：無上游修復項逐項具名列入豁免清單並訂複審日，不靜默放行。門檻見[Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全)：I-06 可修的 Critical／High 阻擋且**無豁免路徑**，不可修者具名豁免、複審日 ＝ `first_exempted_at`（該 CVE 首次被豁免的日期，跨重掃保留）＋90 天、逾期即依 I-04 判為過期；I-04 有效期 30 天，到期前 7 天告警，到期即不得被新 Run 引用。SBOM 與掃描結果（含機器可讀的 `scanned_at`）作為 attestation 隨 GHCR digest，`rescan` job 每週重掃已發佈的 digest，流水線側 I-02／I-03／I-04／I-06 皆可自動化判定。<br>**SBX-002 仍不勾的唯一原因**：閘門 A 的節點准入探針要**在真實節點上**查得到這兩份 attestation，屬部署批（SEC-009 前置條件①）。
 - [x] SBX-003 實作每個 Run 的獨立環境與暫存空間。（每個 attempt 一個專屬容器，`/work`＋`/out` 為該容器獨有的 tmpfs，不與任何其他 Run 共用可寫路徑；C-01）
 - [x] SBX-004 實作非 root、非特權及唯讀基礎檔案系統政策。（`User=65532:65532`、`no-new-privileges:true`、`CapDrop=ALL`、`Privileged=false`、`ReadonlyRootfs=true`；C-02／C-03／C-06／C-08。以真實容器驗證，非僅設定斷言）
-- [ ] SBX-005 阻擋容器管理 Socket、主機敏感路徑與內部服務存取。`C-01` 的**執行期半邊**——「每個 Run 使用獨立環境與獨立暫存工作區，**不與其他 Run 共用可寫路徑**」的後半句——由本項的整合測試判定，不再由閘門 A 的探針判。理由是那半句是一個關於**兩個並行 Run** 的敘述，而閘門 A 拍的是一台閒置節點的照片；探針原本照 fail-closed 把它報成 `unknown`，於是**一台設定完全正確的節點也會 exit 2**，而一個永遠紅的閘門會被值班的人關掉——那比沒有閘門更糟，因為關掉之後沒有人記得它曾經該擋什麼。**後半句沒有被刪，它換了一個判得到它的地方**（探針現在印 `ELSEWHERE` 並在那一列點名本項）。**部分完成**：容器管理 Socket 與主機路徑已擋——`Binds`／`Mounts` 恆空，沙箱內 `/var/run/docker.sock` 不存在，namespace 全為 private（C-04／C-05／C-07，具名整合測試）。**「內部服務存取」未成立**：dev 已由網路面隔離——無出口需求時 `--network none`，有出口需求時只接上 `internal: true` 且只有模型閘道在上面的網路，核心資料庫與物件儲存都不在該網路上（SBX-007）。但生產的網路政策隔離與 P-02「Sandbox → 核心資料庫連線嘗試被實際阻擋」的**常駐探針**屬部署期，未實作——該探針的驗收形式見[Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全)第三部分**測項 T10**（自 T8 的宣告式稽核獨立出來：其餘 P 區項目拍一次照即可，P-02 明文要求常駐，塞在 T8 裡會讓一次性稽核冒充常駐監控）；節點入池前跑一次且入池後常駐。<br>**不勾的理由有兩條，都不是接線**：①**探針從未在一台生產節點上跑過**，而它量的正是那台機器的網路政策——今天所有讀數都來自 fake 或 dev Docker；②**本項的另一半「生產的網路政策隔離」仍未成立**（見 SBX-007 與 `04` 甲-3）。**一個寫出來就會全面隱形的缺陷記在這裡**：第一版用 `d.tail` 讀探針輸出，而那個函式會把 handle 加上 `skillhub-run-` 前綴，於是它會去查一個不存在的容器、拿到錯誤、回空字串——而**空字串在判定裡等於「什麼都碰不到」**，所以那個版本會**每一輪都報 `pass`**。已改成以容器 ID 讀，且讀不到就是錯誤（→ `unknown`），不是 pass。具名測試：`TestP02ProbeDistinguishesAHoleFromTheAbsenceOfEvidence`、`TestANodeThatHasTakenNoReadingIsUnknown`、`TestABreachTerminatesEveryLiveRunAndRefusesNewOnes`、`TestCapabilityReportsTheProbeAndTakesTheNodeOutOfRotation`
+- [ ] SBX-005 阻擋容器管理 Socket、主機敏感路徑與內部服務存取。`C-01` 的**執行期半邊**——「每個 Run 使用獨立環境與獨立暫存工作區，**不與其他 Run 共用可寫路徑**」的後半句——由本項的整合測試判定，不再由閘門 A 的探針判。理由是那半句是一個關於**兩個並行 Run** 的敘述，而閘門 A 拍的是一台閒置節點的照片；探針原本照 fail-closed 把它報成 `unknown`，於是**一台設定完全正確的節點也會 exit 2**，而一個永遠紅的閘門會被值班的人關掉——那比沒有閘門更糟，因為關掉之後沒有人記得它曾經該擋什麼。**後半句沒有被刪，它換了一個判得到它的地方**（探針現在印 `ELSEWHERE` 並在那一列點名本項）。**部分完成**：容器管理 Socket 與主機路徑已擋——`Binds`／`Mounts` 恆空，沙箱內 `/var/run/docker.sock` 不存在，namespace 全為 private（C-04／C-05／C-07，具名整合測試）。**「內部服務存取」未成立**：dev 已由網路面隔離——無出口需求時 `--network none`，有出口需求時只接上 `internal: true` 且只有模型閘道在上面的網路，核心資料庫與物件儲存都不在該網路上（SBX-007）。但生產的網路政策隔離與 P-02「Sandbox → 核心資料庫連線嘗試被實際阻擋」的**常駐探針**屬部署期，未實作——該探針的驗收形式見[Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全)第三部分**測項 T10**（自 T8 的宣告式稽核獨立出來：其餘 P 區項目拍一次照即可，P-02 明文要求常駐，塞在 T8 裡會讓一次性稽核冒充常駐監控）；節點入池前跑一次且入池後常駐。<br>**不勾的理由有兩條，都不是接線**：①**探針從未在一台生產節點上跑過**，而它量的正是那台機器的網路政策——今天所有讀數都來自 fake 或 dev Docker；②**本項的另一半「生產的網路政策隔離」仍未成立**（見 SBX-007 與 `04` 甲-3）。**判定紀律**：探針輸出讀不到是錯誤（→ `unknown`），空字串不得判成 pass。具名測試：`TestP02ProbeDistinguishesAHoleFromTheAbsenceOfEvidence`、`TestANodeThatHasTakenNoReadingIsUnknown`、`TestABreachTerminatesEveryLiveRunAndRefusesNewOnes`、`TestCapabilityReportsTheProbeAndTakesTheNodeOutOfRotation`
 - [x] SBX-006 實作 CPU、記憶體、磁碟、程序數與時間限制。（`NanoCPUs`／`Memory`＋`MemorySwap`（不給 swap）／tmpfs size 依 PDM-005 5.2 切 `/work` 3:1 `/out`／`PidsLimit`／`nofile` ulimit／soft 與 hard wall clock；C-10～C-15。逾時強停與 pids 上限以真實容器驗證）
 - [ ] SBX-007 實作預設封鎖的網路出口政策及允許清單。**部分完成**：出口路徑已通——沙箱**僅在 `RunRequest.egress.allow` 含 `model_gateway` 時**接上 `internal: true` 的 Docker network，該網路上只有 LiteLLM 閘道可達（允許清單只有一項的最小強制形式）；`allow` 為空維持 `--network none`。方向只有一個：無出口路由的節點只宣告 `egress_modes: ["none"]`，且 `accept()` 會拒絕帶允許清單的請求，不以較弱模式頂替較強請求。物件儲存**刻意不在**該網路上（dev 的匿名／預簽語意會被破壞），位元組由 sandboxd 代搬。**設計已定案**：[Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全)決定沙箱層採 **nftables default-deny ＋節點固定 DNS 解析器**（不部署 Squid／Envoy——MVP 的沙箱層允許清單在 SBX-008／TRACE-002 之後只剩 LiteLLM 閘道一項且為平台自有服務，L7 Proxy 買不到對應的政策需求，且看不見被拒絕的非 HTTP 嘗試），允許清單存於 `infra/egress/allowlist.yaml`（含變更 PR 流程、產品負責人核准、必須連帶更新威脅模型的 CI 斷言、90 天複審、N-07 供應商網域 deny-list），目的地記錄保存 90 天。**已隨[Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全)落地的兩件**：①允許清單骨架 `infra/egress/allowlist.yaml`（兩層 `tier`）；②CI 斷言 `.github/workflows/egress-allowlist.yml`＋`check_egress_allowlist.py`——`tier: sandbox` 條目必須恰為一筆 `model_gateway`（否則 fail 並附上訊息指出對應決策的重評條件已觸發）、N-07 供應商網域 deny-list、`pinned_ip` 的 tier 規則、以及「動 `infra/egress/` 必須同 PR 更新威脅模型」。**仍未完成（故不勾）**：生產節點上的 nftables／dnsmasq 本體（強制點在**主機側 `forward`／`DOCKER-USER` 鏈或 Run netns 內**，不是容器內的 `output` 鏈——後者能被逃逸後改掉）、每 Run 網路命名空間與東西向阻擋、目的地記錄管線（N-01～N-07），以及 sandboxd 在 `accept()` 比對 `egress.allow` 與節點已渲染清單、不符即 `capability_mismatch` 拒絕（見[Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全)），皆屬部署期。**另**：LiteLLM 閘道必須有沙箱面專屬位址、不得是控制平面節點（見[Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全)的強制條件；成本 $10.38，由成本試算既有的 Egress Proxy 預算行承載）。**⚠️ [Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全)另指出 dev 的既有缺口**：同一張 `skillhub_egress` 上的 sandbox 可互相連通，是不需逃逸的跨 Run 橫向路徑，生產形態必須關掉（SEC-009 測項 T5-4）。<br>**套用與記錄兩條已落地**：`infra/deploy/sandbox/bin/skillhub-bootstrap` 驗規則、安裝 `/etc/nftables.conf`、起 `nftables.service`；N-06 的目的地記錄有完整鏈路——節點側兩支 service 收 conntrack 與 drop 記錄、`sandboxd egress-record` 解析、journal 上送控制平面、`skillhub-egress-retention.timer` 每日刪 90 天前的。<br>**仍未完成（故仍不勾），逐條**：①**那份套用腳本從未在真實節點上跑過**；②**每 Run netns 與東西向阻擋**——dev 的 `skillhub_egress` 上 sandbox 仍可互連（T5-4）；③Q2 強制條件 6（LiteLLM 移到沙箱面專屬節點）——專屬節點的 IaC 已在 `infra/deploy/gateway/`，缺的是實際部署；④`pinned_ip` 填實際位址（現為 `unset`，不渲染任何 accept 規則）。**①②④ 要那台節點，③ 是部署動作**<br>**東西向那一項被實驗室量得更清楚**：它依賴 `net.bridge.bridge-nf-call-iptables=1`，而那個值現在由 `skillhub-bootstrap` 寫進 `/etc/sysctl.d/`、並由 `skillhub-preflight` 在它不是 1 時拒絕開機；但 `dockerdrv` 至今只設 `NetworkMode`、不建 namespace——**所以 dev 的橫向路徑不是「規則還沒套用」，是沒有東西會套用它**。<br>**另一個要記的量測**：T5-5 的節點 loopback 那一項**在結構上留不下 nftables 紀錄**（封包在路由層就沒了，`prerouting` 的 raw 計數實測為 0），而 T5 的判準是「沒有記錄 ＝ N-06 未成立」——**節點版判定表要為它寫具名例外，否則它會永遠停在 `unknown`**
 - [x] SBX-008 實作 Dataset、Skill、Secrets 與 Artifact 的短效傳遞。
@@ -256,7 +232,7 @@
 
 ## 14. 評估與改善（M3）
 
-> 本節逐項對照 `02:EVAL-001`／`002`／`003`／`013` 的允收準則與實作現況，逐項證據見 [m3/audit.md](mvp/m3/audit.md)。判定尺沿用 §9 的既有裁定（準則的主詞是「使用者可」就要有使用者碰得到的平面），本次套用結果為 **EVAL-011 不勾、其餘十一項勾選**。
+> 本節逐項對照 `02:EVAL-001`／`002`／`003`／`013` 的允收準則與實作現況，逐項證據見 [m3/audit.md](mvp/m3/audit.md)。判定尺沿用 §9 的既有裁定（準則的主詞是「使用者可」就要有使用者碰得到的平面），現狀：本節各項皆已勾選。
 
 - [x] EVAL-001 將驗收條件轉換為可執行或可判斷的檢查。（**「可執行」的界線見 `02:EVAL-001` 的那條準則**：平台內建的確定性檢查，**不執行使用者提供的檢查腳本**）
 - [x] EVAL-002 實作規格、啟用、執行、效果、相容與成本分類。
@@ -274,7 +250,7 @@
 
 ## 15. 打包與下載（M4）
 
-> 本節九項逐項對照 `02:PACK-001`／`02:PACK-002` 的允收準則與實作現況，逐項證據見 [m4/audit.md](mvp/m4/audit.md)。判定尺沿用 §9／§14 的既有裁定（準則的主詞是「使用者可」或「顯示」就要有使用者碰得到的平面；宣稱大於實作即不勾）。本次套用結果為 **六項勾選、三項誠實不勾**（`PACK-003`／`PACK-007`／`PACK-009`）。<br>`PACK-003` 的兩個缺口補上後改判勾選，本節現為 **七項勾選、兩項不勾**（`PACK-007`／`PACK-009`）。兩項各自關閉了哪一半、還缺哪一半，逐項寫在自己的行內。
+> 本節九項逐項對照 `02:PACK-001`／`02:PACK-002` 的允收準則與實作現況，逐項證據見 [m4/audit.md](mvp/m4/audit.md)。判定尺沿用 §9／§14 的既有裁定（準則的主詞是「使用者可」或「顯示」就要有使用者碰得到的平面；宣稱大於實作即不勾）。現狀：九項已全數勾選；`PACK-003`、`PACK-007`、`PACK-009` 各自的判斷依據寫在行內。
 
 - [x] PACK-001 建立標準 Agent Skill 打包流程。
 - [x] PACK-002 打包前重新執行規格驗證。
@@ -284,7 +260,7 @@
 - [x] PACK-006 建立首批目標 Agent 安裝 Profile。
 - [x] PACK-007 產生安裝位置、依賴、環境變數與驗證步驟。
 - [x] PACK-008 對未驗證 Agent 顯示清楚限制。
-> **`PACK-010` 這個編號從未存在。** 本節是 `PACK-001`～`009`，§19 有 `PACK-011`／`PACK-012`，**中間跳過一號**。稽核指出「一個消失的工作項與一個從未存在的號碼在文件上長得一模一樣」，而本專案有過「一個工作項寫在別的檔案裡所以沒人找得到」的前例。**本次結論是跳號**：全 repo 對 `PACK-010` 零命中，`02` 的 `PACK-*` 允收也沒有對應條目；`PACK-011`／`012` 新增時編號從 011 起跳，沒有回填 010。**不補號、不改既有編號**——編號在這份文件裡是歷史，改它會讓所有既有引用失準；這一句就是那個號碼的墓碑。
+> **`PACK-010` 這個編號不存在。** 本節是 `PACK-001`～`009`，§19 有 `PACK-011`／`PACK-012`；全 repo 對 `PACK-010` 零命中，`02` 的 `PACK-*` 允收也沒有對應條目。不補號、不改既有編號。
 
 - [x] PACK-009 驗證下載套件可被解壓、重新驗證與依說明安裝。
 
@@ -309,7 +285,7 @@
 
 ## 17. 品質保證與封閉測試（M4）
 
-> 本節十四項逐項對照實作現況，逐項證據見 [m4/audit.md](mvp/m4/audit.md)。**判定尺與 §15 不同，必須先說明**：`02` **沒有 QA-\* 需求 ID**（同 SEC 在 §6 補上之前的狀況），所以 `QA-001`～`009` 只能以**工作項自己的字面**判定——「建立……測試」＝ 該類測試存在且具名且跑得起來。若某一項的字面已被別的允收準則接住（`QA-009` ＝ `02:NFR-007`、`QA-007` ＝ `02:PACK-001`），以該準則為準。<br>**`BETA-001`～`005` 的判定尺是另一把**：它們量的是一次**真實發生過的封測**，程式面完成不等於這幾項完成——`BETA-001`／`BETA-005` 另有 PDM-009 未追認的硬前提。<br>本次套用結果為 **四項勾選（`QA-002`／`003`／`004`／`005`）、十項誠實不勾**。<br>`QA-001` 與 `QA-007` 的不勾理由各自關閉後改判勾選，本節現為 **六項勾選、八項不勾**。**上方那一行是對帳當下的帳，不改寫**。<br>`QA-009` 的第三個不勾理由關閉後改判勾選，本節現為 **七項勾選、七項不勾**（同批的 `DESIGN-013` 在 §3）。**`QA-008` 仍不勾**，但不勾的理由縮成一個——只剩 OS 矩陣，路線決策見[Repo 結構、CI 與驗證層](../adr/README.md#repo-結構ci-與驗證層)。**先前幾行的帳一律不改寫。**
+> `QA-001`～`009` 以工作項字面或其承接的 `02` 準則驗收，證據見 [m4/audit.md](mvp/m4/audit.md)。`BETA-001`～`005` 量的是實際封測；程式面完成不等於真人證據。現況：QA 已勾選，封測未開始；仍缺法務重新確認、受測者簽署、部署期安全驗收與實際招募，見 [`04`](04-backlog-and-handoffs.md)。
 
 - [x] QA-001 建立核心旅程端到端測試。
 - [x] QA-002 建立 Agent Skills 規格驗證測試資料集。
@@ -343,7 +319,7 @@
 >
 >
 
-- [ ] BETA-003 蒐集評估報告與改善建議的質性回饋。（<br>**已有**：逐次評估的有幫助／無幫助＋文字（`EVAL-006` 的 `PUT /runs/{id}/evaluation/feedback`，**已有 UI**）；`POST /feedback` 端點與 `feedback_reports` 表（`0029`，`kind` 兩值、2000 字上限與契約一致、`page_path` 帶 query string 一律丟棄不拒絕、他人的 `run_id` 丟棄不拒絕——**寧可少一個 context 欄位也不要弄丟整份回報**）。測試 `TestFeedbackIsRecordedWithWorkspaceScope`／`TestFeedbackRejectsWhatTheContractRejects`。<br>**缺的兩件**：①**`apps/web` 全樹沒有任何呼叫 `/feedback` 的程式碼**——[beta-design.md §5](mvp/m4/beta-design.md) 要求的「全站可及的入口」在畫面上不存在，端點目前只有 curl 到得了（見 `BETA-004`）；②**沒有任何一筆質性回饋被蒐集過**，本項的動詞是「蒐集」不是「建管道」）<br>入口是 `FeedbackEntry.tsx`，掛在 `router.tsx` 的版面**頁尾**、每一頁都在（`<details>` 收合）。**放頁尾不是版面偏好而是鍵盤順序**：它是一個裝著整張表單的收合區塊，放在 `<main>` 之前會卡在每一頁與該頁第一個控制項之間。**只送使用者看得到的東西**：`kind` 由使用者自己選（`blocking_issue`／`need_signal` 兩種問的是不同的事，平台從外面分不出來）、`page_path` **去掉 query string**（beta-design §4.2 界線 2；`feedbackRunID` 也先去掉再比對，否則帶 `?tab=` 的網址會安靜地丟掉 Run context）、`run_id` 只在網址本身指名某個 Run 時帶上，**三者都印在表單旁邊**——沒有截圖、沒有 console、沒有自動抓畫面。204 沒有 id，所以確認文案明講「沒有回覆機制、沒有查詢頁面」。送不出去時**內容留在框裡**並說下一步。測試 `feedback.test.tsx` 六支）
+- [ ] BETA-003 蒐集評估報告與改善建議的質性回饋。逐次評估回饋與全站頁尾 `FeedbackEntry.tsx` 已提供管道；僅送出使用者可見的類型、去除 query string 的頁面路徑及合法 Run 關聯，不自動擷取畫面或 console。送出失敗保留輸入；仍待真人封測回饋，管道存在不等於蒐集完成。（證據：`feedback.test.tsx`；程序見 [beta-design.md §5](mvp/m4/beta-design.md)）
 - [ ] BETA-004 記錄所有阻斷首次成功旅程的問題。（[beta-design.md §5](mvp/m4/beta-design.md) 的判定是「使用者在該段停下且沒有自行繞過」，不能從一次造訪或沒有後續事件推定。）`session_started` 與 `sh_analytics` cookie 已存在，保留為此用途的預備資料，**目前沒有自動消費端**；回報也沒有分析 session 欄位，不能自動串接或以相近時間猜測同一人。是否新增回報關聯仍由丙-78 承接隱私決策，不能用本項的需求代替授權。此事件不參與第七段 Workspace 留存計算；用途文件對齊不代表真人問題已收齊，本項保持未勾選。
 - [ ] BETA-005 依封閉測試結果完成 MVP 範圍及優先級複審。（<br>前置為 `BETA-001`～`004` 全數完成 ＋ PDM-009 的三條門檻判定（[m4/pdm-009-beta-proposal.md §4](mvp/m4/pdm-009-beta-proposal.md)：B1 完整旅程完成率 ≥ 8／12、B2 漏斗前六段無一段低於 50%、B3 整層失效或同一問題撞到 ≥ 4 人即否決）。**不通過的處置決策樹已備妥**（該文件 §4.4，分類軸 ＝ 漏斗哪一段斷掉），**重測上限建議一次**——事後定門檻等於沒有門檻，事後才想「不通過怎麼辦」也一樣。<br>需求訊號的蒐集管道與 `BETA-003` 共用同一個表單（`kind = need_signal`），這是 `PDM-010` §8.1 的既有設計）
 
@@ -353,30 +329,28 @@
 >
 > **逐項的「誰做什麼驗什麼」與執行順序見 [m4/release-checklist.md](mvp/m4/release-checklist.md)**；那份是說明與順序，**勾選狀態的唯一事實來源仍是本節與 [04-backlog-and-handoffs.md](04-backlog-and-handoffs.md)**。
 >
-> **共同的三個阻擋**（不逐項重複）：①**甲類四項未到期**（`SEC-009` **46 項**全 pass 0 unknown、`SBX-010`、`SBX-005`／`007` 生產網路面、`SBX-002` 閘門 A 探針）——依 [m4/README.md §4](mvp/m4/README.md) 的裁定它們在 M4 是封測的阻擋項；②**六項 PDM 未逐項追認**（`03` §1）；③**M1 驗證閘門的 D 日未宣告**——[m4/README.md §5.3](mvp/m4/README.md) 已寫明「**在一個未結案的閘門上宣告 MVP 完成，是把兩個相反的結論同時寫進同一份文件**」。
+> **共同阻擋**（不逐項重複）：M1 閘門的 G1～G4 真人讀數、真實 Linux 節點上的 `SEC-009`／`SBX-002`／`SBX-005`／`SBX-007` 驗收、法務重新確認與受測者簽署，以及實際封測資料。PDM 提案已追認；D 日已宣告不等於閘門通過。現行缺口以 [`04`](04-backlog-and-handoffs.md) 為準。
 
-- [ ] RELEASE-001 所有 MVP 必要需求都有對應測試與結果。（**不勾**：交付物[需求 ID × 測試對照表](requirement-test-matrix.md)已存在並由 `requirement-test-matrix` 逐列對帳，93 個 MVP 必要 ID 全數在表上；但本項要的是「**都**有對應測試」，而表上 `DISC-005` 與 `SKILL-006` 是**未實作**、`NFR-004` 與 `SEC-009` 待真機、`SEC-001` 與 `CONTENT-005` 待真人，另有十四項只有部分準則被證明。**現在缺的不再是那份表，而是表上那些列**）
+- [ ] RELEASE-001 所有 MVP 必要需求都有對應測試與結果。（**不勾**：交付物[需求 ID × 測試對照表](requirement-test-matrix.md)已存在並由 `requirement-test-matrix` 逐列對帳，每個 MVP 必要 ID 都在表上；但本項要的是「**都**有對應測試」，而表上 `GEN-013` 是**未實作**、`NFR-004`／`NFR-008`／`SEC-009` 待真機、`SEC-001`／`CONTENT-005` 待真人，其餘標「部分」的列只有部分準則被證明（缺口欄逐列寫明）。**現在缺的不再是那份表，而是表上那些列**）
 - [ ] RELEASE-002 完整核心旅程通過端到端驗證。（**不勾**：**只剩真人那一半**。走完全程的那支測試存在並會過——`TestTheCoreJourneyRunsFromIntentSearchToADownloadedPackage` 用同一個 client 依序打過搜尋、詳情、Fork、Test Case 與驗收條件、preflight 確認、Run 到終態、評估、打包 preview 與 create、下載內容與紀錄，最後開啟下載到的套件驗 manifest 溯源回目錄那一筆（`QA-001` 已據此勾選）。**唯一沒被 HTTP 走過的接縫**是「Run 的真實 trace 自動產生評語」：測試等到自動評估發布後，另外寫入最終輸出並直接呼叫評估服務，斷言的判定來自後者。剩下的是真機部署上由**一位真人**走一次（`02` §7 DoD 第 1 條的主詞是「一位新使用者」），那屬封測）
-- [ ] RELEASE-003 精選 Skill 內容、來源、License 與驗證狀態完成檢查。（**不勾**：`CONTENT-003`／`CONTENT-004` 仍未勾，卡在 `anthropics/skills` source-available 的**法務終判**。**打包上線讓這一項多了一個新的可驗證條件**：[beta-design.md §8](mvp/m4/beta-design.md) 第 11 項要求「至少一個 `documents` 類精選 Skill **可下載**」——那四筆 source-available 正是該類最好的樣本，而 PDM-002 早已要求補 2–3 個 OSI 授權的替代品，**那是 `documents` 類的必要條件不是加分項**）
+- [ ] RELEASE-003 精選 Skill 內容、來源、License 與驗證狀態完成檢查。`CONTENT-003` 候選清單已建立；仍待 `CONTENT-004` 的授權判定，並須確認至少一個 `documents` 類精選 Skill 可下載。（允收見 [beta-design.md §8](mvp/m4/beta-design.md)）
 - [ ] RELEASE-004 Sandbox 與 Secrets 安全檢查完成（MCP、Local Runner 隨後 MVP 啟動時補檢）。（**不勾**：`SEC-003` 與 `SEC-001` 都已勾（隨 [`05` R-13](05-pending-rulings.md)、R-14）；**仍未勾的是 `SEC-002`**（要節點），`SEC-009` 的十個測項沒有一個被記為通過（甲-1）。原文寫「十個測項一個都沒跑」，而 T1、T2 與 T8 的映像半都跑過了，證據在 [`m4/sec-009-acceptance/`](mvp/m4/sec-009-acceptance/)——**「跑過」與「記為通過」不是同一件事**，那份判定表逐列寫的是有沒有證據（17／4／25），不是 pass／fail。**無例外流程**——`02:SEC-009` 明文基線全數 pass 且 0 unknown 才放行，任一 fail 或 unknown 即不得開放外部使用者提交 Skill 執行；**基線是 46 項**)
 - [ ] RELEASE-005 資料保存、使用者刪除與稽核流程通過驗證。（**不勾**：這一格是三個條件的 AND。稽核（`CORE-008`）與刪除流程（`CORE-007`）都已勾，保存期限也都有值且由 `retention-floor` 守住下界；缺的是保存與刪除政策這一項本身——`SEC-006` 仍未勾）
 - [ ] RELEASE-006 Provider 故障、Run 逾時與清理失敗有可操作處理方式。（**不勾**：機制與測試面已相當完整（`QA-003` 已勾、`SEC-012` 的停派送開關已落地、`O11Y-002`／`003` 已勾），缺的是**「可操作」的那一半**——`SEC-010` 的 runbook（`docs/runbooks/p1-dispatch-halt.md`）與一鍵停用流程本體（`0030_dispatch_halts.sql`、`GET /admin/dispatch`、`PUT`／`DELETE /admin/dispatch/halt`）都已產出，**Alertmanager 的設定與通知路由也已在 repo**：`infra/deploy/control-plane/alertmanager.yml.tmpl`（`critical` 每小時重寄、其餘四小時、`send_resolved`）、`bin/skillhub-alert` 讓 systemd 計時器把失敗推成告警、`tools/ci/deploy-config-check.sh` 以釘選 digest 的 `amtool check-config` 驗過。**缺的是值與一台部署好的控制平面**——`SKILLHUB_ALERT_EMAIL` 與四個 SMTP 設定不在 repo（見[控制平面 runbook](../runbooks/control-plane.md)），而單人團隊裡送不到人的最高級告警等於沒有告警。silence 政策與 Grafana dashboard 仍未做）
 - [x] RELEASE-007 使用者可理解執行權限、評估依據與相容性限制。（權限（`TEST-008`／`009`／`011`；`TEST-005` 是後 MVP，不是本項條件）與相容性（[打包、授權溯源與散布](../adr/README.md#打包授權溯源與散布)三層、`0022` 的量測列）已落地。**評估依據那一項的破口已補**：`artifact` 型引用只拿得到 `not_checked`，而 `verdict.VerifiedQuote` 不接受它，所以帶 `evidence_required` 的條目會被降成 `undetermined` 並帶 `evidence_unverifiable:` 前綴；引用本身仍留著，畫面標「未回驗引文」並說明它只證明檔案存在。引文比對接受正規化，但短於下限的引文只接受逐字）
 - [x] RELEASE-008 下載套件可安裝且不包含受保護資料。（後半由 `PACK-004` 成立並對匯出位元組斷言。前半三個條件都到齊：每個 target 打出來的套件平台自己收得回去、同一份輸入打兩次得同一個內容雜湊、授權與作者與溯源三個檔在每個 target 的套件裡都在，三者各有具名測試；`claude-code` 的一次本機安裝由 H-9 完成）
-- [ ] RELEASE-009 完成封閉測試成功門檻並處理阻斷問題。（**不勾**：封測未開始。**PDM-009 未追認前本項結構上不可判定**——三條門檻（B1／B2／B3）與否決條款是它定的。「處理阻斷問題」另需 `BETA-004` 的紀錄，而那需要漏斗事件與阻斷回報能用同一個 session 串起來）
+- [ ] RELEASE-009 完成封閉測試成功門檻並處理阻斷問題。（封測尚未開始；需完成 `BETA-001`～`005`，並依 `BETA-004` 的阻斷紀錄與既定 B1／B2／B3 門檻判定。）
 - [ ] RELEASE-010 發佈決策、已知限制與下一階段範圍完成記錄。（**不勾**：純負責人動作，且前置是 `BETA-005` 的範圍複審。**「已知限制」的素材已經齊備且不必等封測**——[m4/audit.md](mvp/m4/audit.md) 的不勾清單、[`04`](04-backlog-and-handoffs.md) 的三類殘項、各 ADR 的「待決策」章節三者合起來就是它；缺的是把它們收斂成一份對外的限制清單，以及發佈與否的那個決定）
 
 ## 19. Skill 生成與互動創作（M5）
 
-**目前範圍：單次生成基礎已完成，互動創作規劃已同意、尚未實作。** 完成數見 §19.1；下列帶日期的舊狀態只描述當時的單次生成範圍。實作放行與曝光邊界只依 `01` §10。
+**目前範圍：單次生成基礎已完成；互動創作已接線，完整允收證據待收齊。** 契約見 `public.yaml` 的 `/creation-sessions`；曝光邊界只依 `01` §10。
 
 > 依據[從描述生成 Skill](../adr/README.md#從描述生成-skill)，允收準則見 [`02` §4.9](02-specifications-and-acceptance-criteria.md)（`GEN-001`～`004`）。本節**不在 MVP 的完成度計算內**——與 §12「Local Runner Beta（後 MVP）」同一種收納方式。<br>**本節另有兩個非 M5 的工作項**（`PACK-011`、`EVAL-014`，夾在 `GEN-007` 與 `GEN-008` 之間），它們是跨里程碑項目，**不計入本節的勾選數**。
 >
-> **啟動條件三項（封測結束、漏斗第一段有讀數、生成品質基線）已由[從描述生成 Skill](../adr/README.md#從描述生成-skill)暫時放行，`GEN-001`～`011` 全部可做。** **放行它的是授權不是證據**——[ask-5.md](mvp/m5/ask-5.md) 一次都沒執行，那三項的事實一件都沒有變。
+> `GEN-001`～`011` 已獲開工授權；[ask-5.md](mvp/m5/ask-5.md) 與封測／漏斗讀數仍是 M5 曝光前的真人證據。
 >
->
->
-> **⛔ 放行沒有授權曝光，這是本節的第二條硬邊界。** `GEN-008` 的生成入口**不得對封測使用者出現**，直到條件②的讀數存在為止；旗標預設為關。封測使用者一旦看得到「搜不到 → 生成一個」，`01` §11.2 第一段量到的就不再是搜尋好不好，而**那個數字只有一次機會、封測只有 12 個人**。
+> **⛔ `GEN-008` 的生成入口不得對封測使用者出現**，直到 `01` §11.2 要求的漏斗讀數存在；旗標預設關閉。
 >
 > **本節刻意不重複既有機制的工作項。** 生成物一旦寫成版本，`SKILL-002`／`SKILL-003`／`WS-001`／`WS-002`／`TEST-*`／`RUN-*`／`EVAL-*`／`PACK-*` 對它一體適用；本節只列「生成那一步」新增的東西。
 
@@ -404,9 +378,9 @@
 - [x] GEN-014。
 - [x] GEN-015。
 
-### 19.1 互動式創作規劃（尚未實作）
+### 19.1 互動式創作（已接線，完整允收待收齊）
 
-依賴順序：GEN-016 先定 public／internal 契約與 Go 資料 owner，並在建立任何新 package 前完成context map登記；GEN-017～020 依此接會話與 UI，GEN-021～022 接驗證及精確保存，GEN-023 收齊跨流程測量。預算／刪除機制須與各 producer 同批落地，不能等串接完成後才補。規劃 ID 不是已存在的程式符號。
+依賴順序：GEN-016 先定 public／internal 契約與 Go 資料 owner，並在建立任何新 package 前完成 context map 登記；GEN-017～020 依此接會話與 UI，GEN-021～022 接驗證及精確保存，GEN-023 收齊跨流程測量。預算／刪除機制須與各 producer 同批落地，不能等串接完成後才補。規劃 ID 不是已存在的程式符號。
 
 - [ ] GEN-016 設計會話契約與 Go／Postgres 版本化快照、事件、CAS、outbox、idempotency。（對應 `02:GEN-007`、`GEN-011`；依[互動創作](../adr/README.md#互動創作)）
 - [ ] GEN-017 實作 LangGraph 固定 workflow 與有界 ReAct 編排，從 Go 快照重建每個 Job。（對應 `02:GEN-007`、`GEN-011`）
@@ -417,7 +391,7 @@
 - [ ] GEN-022 實作 revision／雜湊綁定的最終保存、取消恢復與重送冪等。（對應 `02:GEN-010`、`GEN-011`）
 - [ ] GEN-023 完成會話預算、費用揭露、工具提權確認、帳號刪除／共享 write fence 的跨流程驗收與上線前量測（各強制點隨 GEN-016～022 的 producer 同批實作）。（對應 `02:GEN-011`、`GEN-012`；依 GEN-016～022）
 
-**目前狀態：15 項已勾、13 項 ◐**（含 §19.2 的五項 GEN）。本批已依 `01` §10 的實作授權接上 Python LangGraph、Go 會話／Worker／候選保存與 Web 三入口；免費證據見 [開發手冊](../development/interactive-creation.md)。GEN-016～023 八項仍待完整允收證據，M5 曝光與付費實測另行核准。各項完成需同時提交對應 `02` Given／When／Then 的成功與拒絕證據；GEN-016／022／023 必須驗證重啟、過期確認、重複工具結果、預算耗盡與刪除競態，GEN-018～021 須覆蓋三種輸入的使用者更正與草稿比較；mock、真實模型及人類採用結果分開列示。
+**目前狀態：15 項已勾、13 項 ◐**（含 §19.2 的五項 GEN）。Python LangGraph、Go 會話／Worker／候選保存與 Web 三入口已接線；免費證據見 [開發手冊](../development/interactive-creation.md)。GEN-016～023 八項仍待完整允收證據，M5 曝光與付費實測另行核准。各項完成需同時提交對應 `02` Given／When／Then 的成功與拒絕證據；GEN-016／022／023 必須驗證重啟、過期確認、重複工具結果、預算耗盡與刪除競態，GEN-018～021 須覆蓋三種輸入的使用者更正與草稿比較；mock、真實模型及人類採用結果分開列示。
 
 ### 19.2 補 Context 與能力評估集
 
@@ -438,11 +412,11 @@ GEN-024 已能讓 Run 以一組問題結束、回答後開接續的 Run、輪數
 
 > 依據[淨測試模式](../adr/README.md#淨測試模式)，允收準則見 [`02` §4.10](02-specifications-and-acceptance-criteria.md)（`PORT-001`～`010`），計畫與邊界見 [m6/README.md](mvp/m6/README.md)，前期量測見 [m6/report-inmemory-postgres.md](mvp/m6/report-inmemory-postgres.md)。本節**不在 MVP 的完成度計算內**（同 M5 先例，`01` §7.3），惟該判定本身待裁定。
 >
-> **觸發它的是一個部署環境的事實，不是一個願望**：Pitch 在金融機構環境進行，那台機器只能執行白名單內的程式、不能安裝軟體、對外網路只保證得到模型供應商。今天的系統在那台機器上一行都跑不起來。
+> 此模式回應受限環境的 demo：機器只能執行白名單程式、不能安裝軟體，且外網僅保證模型供應商可達。
 >
 > **⛔ 一條邊界**：這個模式**要自己在畫面上說出它不是什麼**（`PORT-003`）——**三條軸各一句**：沙箱沒有隔離、物件儲存不驗 presigned URL、資料庫只有一條連線。形式與 `02:GEN-004` 對生成物的要求同源，理由也一樣——一個看起來像產品的東西，如果不說自己是什麼，就會被當成產品，而這一次的觀眾是金融機構。<br>**注意這不是「Adapter 不是產品」那句舊話**：淨測試模式跑的是**真的 Go 後端**，授權、政策、狀態機與評估判定全部都在，要揭露的只有上面那三項。
 >
-> **⛔ 判準一（不可協商）**：任何取代 PostgreSQL 的候選，**必須能讓 `UPDATE skill_versions` 失敗**。那是鐵律 4 由資料庫強制的形式，也是最便宜的真偽測試。手寫的假資料層與 SQLite 都過不了這一關，而它們會**照樣全綠**。
+> **⛔ 任何取代 PostgreSQL 的候選必須拒絕 `UPDATE skill_versions`**；以此保留不可變性保證。
 >
 > **這一節的優先序取決於一個本節之外的東西**：`01` §11 的成功指標到今天一個數字都沒有，而 Pitch 一定會被問「有人要嗎」。[ask-5](mvp/m5/ask-5.md) 與 M1 閘門加起來不到兩天，**M6 讓 demo 跑得起來，但它不產生任何一個那樣的數字。**
 
@@ -472,11 +446,11 @@ hello in-process s3
 - [x] PORT-010c 操作者具名放行一個未策展版本的開關。（允收：`02` §4.10 `PORT-010` 第 5 條的四條）
 - [x] PORT-008 確認未引入第二份資料層。（允收：`02` §4.10）這是一條**禁令而非交付物**，勾選的形式是一次逐項核對：沒有第二個實作 `db/gen` 那批查詢方法的型別、沒有第二套 schema 定義。依據是 `coder/coder` 於 2024-11 移除 `dbmem` 的紀錄（PR #15291）。
 
-## 21. Credit 計價與消費控制（M5，新功能凍結期間第十次放行）
+## 21. Credit 計價與消費控制（M5）
 
-> 依據[Credit 計量與扣款](../adr/README.md#credit-計量與扣款)（承接負責人本輪五點裁定：Credit 是這個系統唯一計價單位、餘額可能為負但下限 −50、餘額低於門檻可在開始前擋下、創作與搜尋的實際費用都要記錄並在特定時機與固定時間統計），允收準則見 [`02` §4.11](02-specifications-and-acceptance-criteria.md)（`CRED-001`～`009`）。**這是新功能**，放行依據記在 [`01` §10](01-goals-and-plan.md) 第十批；凍結期間三條 ⛔ 曝光邊界不變——Credit 的三道消費閘與生成入口的曝光旗標是兩件事，不互相取代。
+> 依據[Credit 計量與扣款](../adr/README.md#credit-計量與扣款)（承接負責人本輪五點裁定：Credit 是這個系統唯一計價單位、餘額可能為負但下限 −50、餘額低於門檻可在開始前擋下、創作與搜尋的實際費用都要記錄並在特定時機與固定時間統計），允收準則見 [`02` §4.11](02-specifications-and-acceptance-criteria.md)（`CRED-001`～`009`）。Credit 的三道消費閘與生成入口的曝光旗標是兩件事，不互相取代；三條 ⛔ 曝光邊界不變。
 
-> **狀態：schema、套件與掛勾已寫，端到端尚未接通，以下全部未勾。** `db/migrations/0060_credit_ledger.sql` 建了 `cost_events`／`credit_accounts`／`credit_entries`／`cost_statistics` 四表；`apps/platform/internal/creator/credit` 套件（`Service.Charge`／`CanStart`／`CanAffordStep`／`Grant`／`RecomputeStatistics`／`PurgeUser`，`money.go` 的無條件進位換算）對著一個假 `Store` 寫了完整單元測試；`creator/creation` 的 `CreationBilling.CanStart`／`Reserve`／`Settle` 三個 nil-able 掛勾已接進 `creation.go`／`job.go`（`credit_hooks_test.go` 守）；`apiserver/credits.go` 的 `GET /me/credits`／operator 授予 handler 已寫且有測試；Web `core/session/credits.service.ts`／`CreationSession.tsx` 已接畫面。**但沒有一段真正被組裝起來**——詳細缺口與逐項責任見 [`04` 丙-185](04-backlog-and-handoffs.md)，這裡不重複。**程式面收斂不等於完成**（AGENTS.md）：下列八項在對應缺口補齊、走完 `02` 的 Given／When／Then 之前一律不勾。
+> 程式面已組裝：`db/migrations/0060_credit_ledger.sql` 建立 `cost_events`／`credit_accounts`／`credit_entries`／`cost_statistics` 四表，`creator/credit` 套件由 `wiring.NewCreditService` 建立並接進 `creator/creation` 的三個計費掛勾（`CanStart`／`Reserve`／`Settle`），`GET /me/credits`／`GET /me/credits/entries`／operator 授予端點與 Web 帳號頁已接線。尚缺的只有金流（沒有自行充值的路徑），見 [`04` 丙-185](04-backlog-and-handoffs.md)。程式面收斂不等於完成（AGENTS.md），各項勾選以對應 `02` 的 Given／When／Then 證據為準。
 
 - [x] CRED-001 對 `credit.sql`／`cost.sql` 跑 `task gen:sql`（主 Agent 序列化），寫出 `credit.Store` 的真實 Postgres adapter，並在 `apiserver.NewApp`／`entrypoint/worker` 兩個組裝根建立 `credit.Service`。（對應 `02:CRED-001`）
 - [x] CRED-002 把組裝出的 `credit.Service` 接進 `creation.Service` 的 `CreationBilling.CanStart`／`Reserve`／`Settle` 三個操作，使三道消費閘在生產環境真正生效（今天恆為 `nil`＝不檢查）。**接線時必須在組裝根明確做 Workspace → User 的轉換**——三個操作今天傳的是 `WorkspaceID`，`credit.Service` 的簽章收的是 `userID`；MVP 雖然一人一個工作區，但沒有任何程式碼保證兩個 id 相同，不得在呼叫端直接把 `WorkspaceID` 當 `userID` 傳入。（對應 `02:CRED-002`、`CRED-003`；依 CRED-001）
@@ -530,7 +504,7 @@ hello in-process s3
 
 ## 25. 非功能性需求補強
 
-> 目標：`02` 第 5 節七條 NFR 的每一條允收準則，都有實作、而且有一條測試或機器檢查在它退化時變紅。逐條對照程式之後，七條都有設計、沒有一條完全沒做；缺的是**寫了卻沒人守**、**量了卻沒人看**，以及幾個真實的漏洞。下列每一項都要附「把修正還原會變紅」的證明（根 `AGENTS.md`〈開發自動化〉第 9 條）。規格沒定義、要先拍板的四類（資料復原目標、平台花費上限、全域容量與公平、外部即時搜尋是否存在）在 [`05`](05-pending-rulings.md) R-95～R-99，裁定後才補進 `02`。
+> 目標是讓 `02` 第 5 節每條 NFR 都有退化時會變紅的測試或機器檢查。未定值的復原目標、平台花費、全域容量／公平與外部即時搜尋，見 [`05`](05-pending-rulings.md) R-95～R-99。
 
 **先做：漏洞與寫了沒人守的**
 

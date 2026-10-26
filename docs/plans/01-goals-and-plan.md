@@ -68,7 +68,7 @@ MVP 承諾：
 2. 證據優先：品質判斷以來源、試跑與驗收證據為主。**全域評分與排行榜永久不做**——名次要求可比較，而本產品的證據天生不可比較，A 的驗收條件不是 B 的驗收條件（[設計系統、信任訊號與畫面用語](../adr/README.md#設計系統信任訊號與畫面用語)）。替代品是帶分母、非預設排序、有 k 門檻的試跑證據彙總，見 §7.3。
 3. 權限透明：執行前說明預計使用的資料、工具、MCP 與網路權限。
 4. 可解釋改善：每項建議都需指出原因、位置與可能影響。
-5. 可攜但不過度承諾：分開呈現規格有效、能力相容與**執行環境相容**。第三軸是一條規則的結論——「這個映像有沒有提供套件腳本宣告的執行環境」——不是一次觀察；平台不查那次 Run 裡腳本有沒有真的執行成功。「已測試」這個語意由[打包、授權溯源與散布](../adr/README.md#打包授權溯源與散布)三層相容性的第三層承擔，它的鍵是 (Skill Version × Runtime Image)，換映像即回未驗證。
+5. 可攜但不過度承諾：分開呈現規格有效、能力相容與**執行環境相容**。第三軸是一條規則的結論——「這個映像有沒有提供套件腳本宣告的執行環境」——不是一次觀察；平台不查那次 Run 裡腳本有沒有真的執行成功。「已測試」這個語意由[打包、授權溯源與散布](../adr/README.md#打包授權溯源與散布)三層相容性的第三層承擔，它的鍵是 (Skill Version × Runtime Image)。**預期規則**：換映像後回到未驗證。**現況**：寫入端以該鍵分開保存，讀取端只標註量測映像、不與現行部署映像比對，所以換映像不會自動失效（缺口與兩條處置選項見 `02:DISC-002`）。
 6. 使用者可帶走成果：Skill、測試案例與必要安裝資訊可被匯出。**評估的正文刻意匯不出去**：套件 manifest 只帶建議的類別與目標路徑，`problem`／`proposed_content`／`expected_impact` 與證據摘錄是引用某次 Run 私有輸入的模型文字，依實作鐵律 11 不可表達。評估只在站上可讀。
 7. 漸進式揭露：一般模式提供白話資訊，進階模式提供檔案、Trace 與技術細節。
 
@@ -210,10 +210,10 @@ MVP 先提供：
 | 里程碑 | 程式面 | 還缺什麼 |
 | --- | --- | --- |
 | M0 產品與安全基線 | 已完結 | — 見 [m0/README.md](mvp/m0/README.md) |
-| M1 Skill Explorer | 已收斂（[m1 對帳](mvp/m1/m1-work-items-audit.md)） | **驗證閘門的結果尚未寫進本表。** D 日定為 2026-09-11，排程為 1 場 pilot ＋ 9 場正式 ＋ 分析（[gate-test/README](mvp/gate-test/README.md)）；材料備妥、同意書法務已清。**本表最後一次更新閘門狀態時 9 場尚未開始、G1～G4 沒有任何一個數**——要由跑過的人回填，不由讀者推定 |
+| M1 Skill Explorer | 已收斂（[m1 對帳](mvp/m1/m1-work-items-audit.md)） | 驗證閘門仍待真人結果；沒有 G1～G4 讀數前，不以排程已過或程式狀態推定通過 |
 | M2 Skill Lab | 已完結（[m2 對帳](mvp/m2/m2-work-items-audit.md)） | — |
 | M3 評估與改善 | 已收斂（[m3 對帳](mvp/m3/audit.md)） | — |
-| M4 打包與封閉測試 | 已收斂（[m4 對帳](mvp/m4/audit.md)）。打包批沒有新增 ADR，三份決策在文件批就寫完、程式批只是兌現；QA 批新增了[Repo 結構、CI 與驗證層](../adr/README.md#repo-結構ci-與驗證層)的真實瀏覽器驗證層 | **封測未開始。** 三個共同阻擋：甲類四項部署期驗收未到期、PDM-009 的受測者簽署（報酬金額已定）、M1 閘門 D 日。逐項見 [release-checklist](mvp/m4/release-checklist.md) |
+| M4 打包與封閉測試 | 已收斂（[m4 對帳](mvp/m4/audit.md)） | **封測未開始。** 前置為甲類部署期驗收、受測者簽署，以及 M1 閘門的真人結果；逐項見 [release-checklist](mvp/m4/release-checklist.md) |
 | M5 Skill 生成與互動創作 | 單次生成基礎已收斂；互動創作已接線，完整驗收待收齊（[互動創作](../adr/README.md#互動創作)、`03` §19.1、[開發手冊](../development/interactive-creation.md)）。交出的是一條從任務描述到工作區裡一個不可變版本的完整路徑，**加上兩個開關，而兩個開關的預設方向相反**：`GENERATE_SKILL_EXPOSED` 未設＝不曝光（只認字面值 `on`）；`GENERATE_QUOTA` 未設＝強制（只有字面值 `off` 關得掉）。出貨設定把後者關著（`.env.example` 寫 `GENERATE_QUOTA=off`），那是設定不是程式預設 | **「程式面收斂」不等於這條路成立。** 所有「通過」都只到 `skillpkg.Validate`，那是語法門不是品質門；`GEN-009` 的試跑後評估判定分布與人工保留率已各有一次量測，有效範圍逐條在 [報告 §10.3](mvp/m5/report-generate-baseline.md)（其中「這不是盲測」那一條會影響任何想外推的人）。**「使用者搜不到會想要生成一個」這個假設的證據量仍然是零**（[ask-5.md](mvp/m5/ask-5.md) 一次都沒執行）——解除投入上限的是授權不是證據 |
 | M6 受限環境下的可攜執行 | 已收束（[m6/README](mvp/m6/README.md)）。淨測試模式是**同一套產品程式以旗標切換三個實作**（資料庫、檔案、沙箱），旗標未設時行為與今天完全相同；讓它成立的是單行程 ＋ River poll-only。資料庫那一軸由 PGlite（真 PostgreSQL 編為 WASM）承載，**主版本必須與 CI 同一個 major，而這個對齊沒有任何機器在守** | **不計入 MVP 完成度**（§7.3）。**Demo 前一件負責人動作**：真 trace 事件是 0 列，而那是合規狀態（畫面依 `DISC-002` 誠實顯示「尚未試跑」，本專案禁止拿合成樣本充當既有 Run 的 trace）；要展示真 trace 或跨語言搜尋，需在旁邊起一個本機 LiteLLM 並真的跑一次 Run，**會產生模型費用**。**受限環境內的 Go 測試那一半刻意不給時程**：它等的是一個要向 IT 取得的事實（Node 與 Go 在不在白名單上），不是一段程式 |
 | M7 產品化：發佈與組合散布 | **五個分期都已落地**，曝光審核的已知範圍邊界見 [`04`](04-backlog-and-handoffs.md) 丙-237。三個前提已裁定（[`05` R-92～94](05-pending-rulings.md)），架構寫在[發佈、發佈者與組合散布](../adr/README.md#發佈發佈者與組合散布)：發佈是作者發起、可撤回、可稽核的動作；曝光與發佈分離，曝光的權威是營運者對精確 Release 的審核紀錄；發佈者名稱全站唯一，對外識別字 `publisher/name`；Bundle 是釘住成員版本的發佈物，匯出形狀是只含 Agent Skill 的 Agent Plugin；信任取最壞；未受邀者能否下載是部署設定、預設關 | 需求 [`02` §4.13](02-specifications-and-acceptance-criteria.md)（`PACK-003`～`006`、`DISC-007`，後 MVP），工作項 [`03` §24](03-work-items.md)。分期：①來源揭露②發佈者、發佈與公開位址③取得④Bundle 與 Plugin 匯出⑤曝光審核 |
@@ -223,51 +223,6 @@ MVP 先提供：
 1. **放行不含曝光**（[從描述生成 Skill](../adr/README.md#從描述生成-skill)）。**生成入口不得對封測使用者出現**，直到漏斗第一段有讀數為止——否則那個讀數量到的就不再是「搜尋好不好」。實作形狀是 `GET /me` 的 `generate_skill` 旗標，見[資訊架構 §2.4](../design/information-architecture.md)；旗標關著時整張卡不存在，`ia.test.ts` 的 `FLAG_OFF_ASSERTED` 名冊與 `rendered.spec.ts` 守的都是它。<br>**「也不得變得更顯眼」這後半句只適用於「旗標開著、且正在量漏斗的部署」**（[`05` R-57](05-pending-rulings.md)）；Demo 與淨測試模式不受它約束。它擋掉過的是生成那一卡的實心主按鈕，以及清單頁頂端常駐的「＋建立新工具」。
 2. **M5 不在 MVP 完成度內**（§7.3）。「M4∥M5」不等於「MVP 進度 ＝ 兩者平均」。
 3. **閘門與封測不可並行**（[m4/README §5.3](mvp/m4/README.md)）。這一點與 M1～M3 不同：打包批可以並行，封測不行。M1 的驗證閘門與 M2 開發曾並行，所以「M2 完結」不代表 M1 閘門已通過；閘門未過時的處置依 M1 節——先修正搜尋與內容，不進入 M2。
-
-### 10.3 生效中的時程與環境事實
-
-- **D 日 ＝ 2026-09-11**（M1 驗證閘門）。閘門 10 天排程從這一天起算；`CONTENT-003`／`004` 與 M1 閘門的結案路徑隨之打開。**這是 §11 第一個數字的來源。**
-- **Demo 在 2026 年 9 月中下旬。** 行政路徑的前置時間不由我們決定。
-- **Demo 環境的網路事實**：防火牆無法多開網域，但前後端所需套件都取得得到、模型供應商 API 打得通、網頁搜尋大部分可達（部分站台不允許）。兩個後果：離線 bundle 的重要性下降（它解的是「拿不到套件」，而那個問題不存在），以及本機起一個模型閘道是可能的。**怎麼做仍未決定**，見 [m6/README](mvp/m6/README.md)。
-
-**三份逐項對帳橫向只有一句話：零項退回。** M2、M3、M4 三份對帳沒有任何一項是被打回重做的——不勾的每一項都在 `03` 的行內寫下不勾的理由，那與「做壞了退回」是兩件事。
-
-### M0：產品與安全基線
-
-- 完成核心旅程、資訊架構與需求基準。
-- 確認首批內容類別、主要 Agent Runtime 及資料保存政策。
-- 完成意圖搜尋品質 Spike：以首批精選 Skill 驗證意圖比對與符合原因的可行性，結果決定 M1 搜尋作法。
-- 完成威脅模型與 Sandbox 最低安全政策。
-
-### M1：Skill Explorer
-
-- 建立內容匯入、來源追蹤、規格驗證與搜尋。
-- 首頁在尚未輸入任務時直接瀏覽公開目錄，沿用搜尋的五個篩選（`script`／`validation`／`agent`／`tier`／`category`）與結果卡片，並顯示精確總數及截斷狀態（[`02:DISC-006`](02-specifications-and-acceptance-criteria.md)、[`03:DISC-012`](03-work-items.md)）。參數表的來源是 `contracts/openapi/public.yaml` 的 `GET /api/skills/catalog`。
-- 完成首頁、結果列表、詳情與 Fork 流程。
-- 建立第一批精選 Skill。M1 的內容範圍是收錄、來源與 License 檢查、白話摘要與靜態掃描；範例資料／Prompt／驗收條件與基準試跑列 M2（`03:CONTENT-007`／`008`，兩者依賴 M2 的 Test Case 與 Sandbox）。
-- **驗證閘門**：測試使用者以自然語言能找到相關 Skill 並理解符合原因，否則先修正搜尋與內容，不進入 M2。
-
-### M2：Skill Lab
-
-四項目標全數達成：
-
-- Cloud Sandbox、Dataset、Prompt 與 Run Trace 完成，經 45 個真實 Skill 端到端驗證。Test Case 的建立、Prompt 與驗收條件編輯介面在 `apps/web/src/features/lab/test-cases/`，路由 `/lab/test-cases` 與 `/lab/test-cases/$testCaseId`；preflight 也會列出工作區可見的 Skill Version，網址帶入的版本是可重新選擇的預設值。
-- 權限確認、逾時、取消及清理完成（`03:TEST-008`／`009`、`RUN-006`／`007`、`SBX-009`）。
-- 精選 Skill 的範例資料、Prompt、驗收條件與基準試跑完成（`03:CONTENT-007`／`008`）；`writing` 的 rubric 內容、資料層、產品路徑、編輯介面與回歸 harness 在 M3 內補齊。
-- 搜尋的 Agent 相容篩選維度依 Sandbox 實測結果啟用（`02:DISC-002`）：建表、實測值回填、`?agent=` 篩選與 UI 控制項上線。
-
-殘項見 [04-backlog-and-handoffs.md](04-backlog-and-handoffs.md)。
-
-### M3：評估與改善
-
-- 完成驗收條件、評估報告、改善建議及重新試跑比較。
-- 讓非技術使用者可理解結果，進階使用者可檢查 Trace。
-
-### M4：打包與封閉測試
-
-- 完成標準 Skill Package、來源與 License 保留、安裝說明。
-- 進行封閉測試，觀察完整漏斗與使用者回饋。
-- 依測試結果決定公開 Beta 的範圍。
 
 ## 11. 成功指標
 
@@ -323,17 +278,4 @@ MVP 先提供：
 
 **現在要簽什麼，只看 [`05-pending-rulings.md`](05-pending-rulings.md)**——活文件，逐項寫了要決定什麼、已查到的事實、建議，以及不決定的代價。**這份文件不維護第二份待決策清單**：兩份清單裡過期的那一份會被相信。
 
-原本列在本節的十項，今天沒有一項還在等人想清楚，去向如下：
-
-| 原待決策項 | 現在在哪裡 |
-| --- | --- |
-| 首批三個 Skill 類別 | PDM-001：`documents`／`writing`／`data`（§8） |
-| 首批來源清單與精選標準 | PDM-002（白名單、四步回溯准入、九項精選檢查）；判準見 [`02` §4.7](02-specifications-and-acceptance-criteria.md) `CONTENT-001`～`009` |
-| MVP 主要 Agent Runtime 與模型 | [Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全)（digest ＋ lockfile 釘選）＋ PDM-003（試跑預設 mini；Judge 層模型分離） |
-| Dataset 大小、執行時間與資源上限 | PDM-005，已回寫 [`02`](02-specifications-and-acceptance-criteria.md) 為可判定形式 |
-| Run 輸入／輸出／Artifact 保存期限 | PDM-006，三個保存窗口已追認（[`05` R-1a](05-pending-rulings.md)）；數字之間的關係已寫成規則，見 `02` |
-| 目標 Agent 打包 Profile 首批範圍 | M4 交付三個目標，見 [m4/README.md](mvp/m4/README.md) |
-| 封閉測試人數、招募方式與成功門檻 | 人數與門檻依 PDM-009；報酬為一次性 20,000 credit 的非條件式授予、不另付現金（[`05` R-2](05-pending-rulings.md)）。**受測者簽署仍未定** → [`04`](04-backlog-and-handoffs.md) |
-| 免費 Run 額度、是否支援自備 API Key | [身分、Workspace、准入與額度](../adr/README.md#身分workspace准入與額度) ＋ PDM-010：**封測不套用免費額度**。四個值已追認（首窗 20／每窗 30／每日 5／窗長 30 天，[`05` R-1b](05-pending-rulings.md)），解除的是顯示禁令不是開關——`RUN_QUOTA=off` 沒有變，封測畫面上仍然沒有額度可顯示。BYO Key 不做 |
-| SelfHostedProvider 第一版支援的 Runtime 語言 | PDM-004：Runtime Image ＝ Node ＋ Agent SDK ＋ `python3.11` 與 45 個目錄 Skill 宣告的 9 個依賴。**今天跑的是哪一版，唯一來源是 `apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設值與 [`UPGRADES.md`](../../infra/images/runtime-agent-sdk/UPGRADES.md) 最新一節**，本列不覆述版本號。追認不涵蓋兩件實測：`runsc` 上的完整 Run 生命週期（`SEC-009` T4，部署期），與 CLI 內建 Skill／內建工具的裁減幅度。<br>**「換映像即回未驗證」這半句今天在讀取路徑上是假的**：相容性事實由 `GetLiveSkillListingFacts` 取出、由 `discovery/projection.go` 原樣寫進 `search_documents`，沒有任何一處拿它與現行部署映像比對，換映像之後畫面繼續顯示舊映像的結論。逐條與兩條處置選項見 [`02:DISC-002`](02-specifications-and-acceptance-criteria.md) |
-| Local Runner 首批支援的作業系統 | **刻意不決**：Local Runner 已移出 MVP 首發（§7.3），依需求訊號啟動時再決 |
+現行待裁定、已裁定結論與允收來源分別以 [`05`](05-pending-rulings.md) 與 [`02`](02-specifications-and-acceptance-criteria.md) 為準；本節不維護平行清單。
