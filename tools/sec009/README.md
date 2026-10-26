@@ -4,20 +4,7 @@
 
 `02:SEC-009` 要求 SelfHostedProvider 驗收的 46 項全數通過，可執行的測項清單、通過判準與證據要求由[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)給出（10 個測項、46 項覆蓋核對、全數 pass 且 0 unknown 才放行，證據存 `docs/plans/mvp/m4/sec-009-acceptance/`）。
 
-那 10 個測項曾經**一行可執行的東西都沒有**，而擋住它的一直被記成「要一台 Linux 機器」。
-
-## 已經查明的事實
-
-**gVisor 在這台開發機上跑得起來，而且是真的 gVisor。** 不需要 WSL 發行版——`wsl --list` 上只有 Docker Desktop 自用的 `docker-desktop`，沒有 Ubuntu。走的是 Docker：
-
-| 位置 | 核心 |
-| --- | --- |
-| 宿主容器 | `6.6.87.2-microsoft-standard-WSL2` |
-| 沙箱內 | **`4.19.0-gvisor`** |
-
-`dmesg` 是 gVisor 自己的開機訊息、`--network=none` 下零個網路介面、沙箱內 PID 1 是被沙箱的那個 process。`runsc release-20260817.0`，下載後對過 sha512。
-
-跑法：`tools/sec009/gvisor-smoke.sh`
+這些程序讓各測項可以先以受控環境驗證腳本與判定邏輯；它們不取代節點准入或部署驗收。快速檢查使用 `tools/sec009/gvisor-smoke.sh`。
 
 ## 這裡**不是**什麼
 
@@ -28,9 +15,9 @@
 
 AGENTS.md 第 7 條同一件事的另一種說法：Dev Container 不取代真實 Linux／gVisor 部署驗收。
 
-## 一個要進部署 runbook 的發現
+## 部署 runbook 注意事項
 
-privileged 容器裡第一次跑 runsc 會失敗在：
+在 privileged 容器裡啟動 runsc 可能失敗在：
 
 ```
 cannot set up cgroup for root: configuring cgroup: write /sys/fs/cgroup/cgroup.subtree_control: device or resource busy
@@ -44,7 +31,7 @@ cannot set up cgroup for root: configuring cgroup: write /sys/fs/cgroup/cgroup.s
 
 ## 下一步
 
-把[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)的 10 個測項逐條寫成腳本，在這裡 dry run。**跑得過的記成「程序可執行」，不記成測項通過**；真的驗收要一台獨立 Linux 節點，而 `infra/nodes/gvisor-baseline.txt` 已釘 `release-20260921.0` 與兩個架構的 sha512，但還沒有任何沙箱節點被開出來。
+把[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)的 10 個測項逐條寫成腳本，在這裡 dry run。**跑得過的記成「程序可執行」，不記成測項通過**；真的驗收要一台獨立 Linux 節點。`infra/nodes/gvisor-baseline.txt` 釘選目前基線 `release-20261012.0` 與兩個架構的 sha512；節點仍須以實際安裝版本產生驗收證據。
 
 ---
 
@@ -63,7 +50,7 @@ SEC009_NO_SANDBOX=1 tools/sec009/t1-escape-attempts.sh  # 無沙箱,期望至少
 
 **一個不管有沒有沙箱都會綠的探針組，量的是零。** 負對照把期望反過來:沒有沙箱時至少要有一項成功，否則腳本自己判失敗。實跑結果——無沙箱下三項逃得出去:`core_pattern` 寫得進去、`/dev/mem` 讀得到、而 `mount` 掛上來的 proc **報的是宿主核心 `6.6.87.2-microsoft-standard-WSL2`**。加上沙箱之後這三項全部 REFUSED。
 
-### 第一次跑抓到的三件事，全部是這支腳本自己的問題
+### 探針的必要保護
 
 | # | 症狀 | 真相 |
 | --- | --- | --- |
@@ -71,7 +58,7 @@ SEC009_NO_SANDBOX=1 tools/sec009/t1-escape-attempts.sh  # 無沙箱,期望至少
 | 2 | 找到 unix socket | 那是 `runsc do` 自己的控制通道 `/tmp/runsc-do*/runsc-*.sock`。**生產不走 `do`**(sandboxd 走 Docker runtime)，所以那是**探針量到自己**；現以路徑窄範圍排除 |
 | 3 | 全部通過而且**什麼都沒跑** | `bash -s` 從 stdin 讀腳本，而 `docker run` 少了 `-i` 時 stdin 什麼都沒有——容器跑了一個空腳本，**exit 0**。一個從沒執行過的測試給出綠燈，正是這個目錄存在的理由 |
 
-**這三件全都會在部署日當天發生**，差別是那天有時間壓力、有一台剛建好沒人除錯過的機器，而且第 3 件會讓人以為驗收過了。
+這些保護避免探針把未執行、量錯對象或誤讀控制通道當成驗收證據。
 
 ### 它仍然不是 SEC-009 的驗收
 
@@ -110,19 +97,13 @@ SKILLHUB_SANDBOX_IMAGE=<repo:tag@digest> python tools/sec009/t8-image-audit.py  
 
 **它是 Suite 1 裡唯一一項從映像發佈那天起就跑得了的**：查的是 GHCR 上公開的東西，不需要節點、不需要 Linux、不需要任何憑證。而在今天之前沒有人跑過。
 
-### 第一次實測的結果
+### 輸出與證據
 
 | | |
 | --- | --- |
-| 映像 | `ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-3` |
-| digest | `sha256:6a99b373bf04…` |
-| I-01 版本化映像已發佈 | **PASS** |
-| I-02 base 以 digest 釘選 | **PASS** |
-| I-03 SBOM attestation | **PASS**（SPDX 2.3） |
-| I-04 掃描 attestation 在有效期內 | **PASS**（`2026-08-21T10:57:21Z`，2 天，2026-09-20 到期） |
-| I-06 可修的 Critical／High | **PASS**（0；總計 320 筆 finding） |
+執行 `t8-image-audit.py` 時，應以節點實際使用的 `SKILLHUB_SANDBOX_IMAGE=<repo:tag@digest>` 查詢，並保存 `--json` 輸出。報告中的版本、subject digest、SBOM、掃描有效期與 I-06 結果都必須以該次查詢的 attestation 為準；README 不保存某次 image 的 PASS 結果。
 
-**46 項基線裡有 5 項因此第一次有了機器可查的證據。**
+這支探針只提供 Suite 1 中可由 registry 查證的部分；整體 SEC-009 仍須完成 46 項基線。
 
 ### 三個前置條件裡，只有第一個是成立的
 
@@ -130,8 +111,8 @@ SKILLHUB_SANDBOX_IMAGE=<repo:tag@digest> python tools/sec009/t8-image-audit.py  
 
 | # | 現況 |
 | --- | --- |
-| ① 映像已發佈至 GHCR 且附 SBOM 與掃描 attestation | **PASS**——本次實測確認，而在此之前它的狀態是「沒人查過」 |
-| ② `infra/nodes/gvisor-baseline.txt` 已填實際版本 | PASS，`release-20260921.0` |
+| ① 映像已發佈至 GHCR 且附 SBOM 與掃描 attestation | 依指定 digest 的 attestation 判定 |
+| ② `infra/nodes/gvisor-baseline.txt` 已填部署基線 | 基線為 `release-20261012.0`；節點實際版本仍須由准入探針驗證 |
 | ③ `infra/egress/allowlist.yaml` 的 `pinned_ip` 已填 | **FAIL**，仍是 `unset` |
 
 **②③ 兩項都要等第一台節點**（②是那台機器上 `runsc --version` 的值，③是閘道的沙箱面位址）。所以這支腳本的結論是一句很具體的話：**SEC-009 目前缺的不是十個測項，是一台機器**——而它同時證明了第①項不在那台機器的等待清單上。
@@ -146,13 +127,13 @@ SKILLHUB_SANDBOX_IMAGE=<repo:tag@digest> python tools/sec009/t8-image-audit.py  
 ### 兩件實作上的坑（部署日會再遇到）
 
 1. **GHCR 不支援 OCI referrers API。** 對一個確實帶著 attestation 的 digest 打 `/v2/<repo>/referrers/<digest>`，回的是空集合——**一個會產生假 FAIL 的正確答案**。`actions/attest` 走的是 tag `sha256-<digest>`，腳本照那條路查。
-2. **GHCR 走 HTTP/2，header 名稱是小寫的。** `dict(resp.headers)["Docker-Content-Digest"]` 取不到值。第一次跑就是這樣掛的——它報了 `UNKNOWN` 而不是 PASS，**判定是對的但理由是錯的**，這正是 `unknown` 不等於 pass 這條規矩擋下來的東西。
+2. **GHCR 走 HTTP/2，header 名稱是小寫的。** `dict(resp.headers)["Docker-Content-Digest"]` 取不到值；探針必須保留 `UNKNOWN` 與 `FAIL` 的區別，並對照 attestation subject digest。
 
 ### 它有一個離線自檢，理由和 T1 的負對照一樣
 
 `--self-check` 拿六組時間戳去驗 I-04 的判定：新鮮的、警告窗外的、警告窗內的、過期的、沒有時間戳的、時間戳解析不了的。
 
-**因為接下來一個月內的每一次實測都會舒服地落在有效期內**，比較式寫反了也看不出來——這條規則只在它真的該擋的那一天才會被行使一次，而那一天沒有人在旁邊看。
+`--self-check` 應覆蓋新鮮、警告窗內、過期、缺少時間戳與無法解析時間戳等狀態，避免只在新鮮掃描結果上驗證有效期邏輯。
 
 ### 它仍然不是 SEC-009 的驗收
 
@@ -173,17 +154,11 @@ SEC009_FUZZ_SECONDS=1800 tools/sec009/t2-syscall-fuzz.sh   # 通過判準的 4 �
 
 T2 的判準有三半，腳本三半都判：Sentry 沒掛（沙箱撐完全程）、宿主核心沒有 oops（節點側 `dmesg` 前後比對）、沒有取得非預期權限（uid／gid 前後比對，**外加把 T1 的三個不變量在壓力之後重驗一次**——只在 30 分鐘之後才出現的權限正是 T2 該抓的，只比 uid 的檢查看不到它）。
 
-### 第一次完整實測（4 × 60s）
+### 程序試跑與正式判準
 
 | | |
 | --- | --- |
-| syscall 數 | **211,222**（4/4 worker 都回報） |
-| 相異 errno | 26 |
-| 子程序切片 | 219 個，其中 **48 個死於訊號** |
-| Sentry | 撐完 61s |
-| uid／gid | 未變 |
-| T1 三個不變量 | 壓力後仍成立 |
-| 節點 `dmesg` | 無新增 |
+程序試跑只驗證腳本可執行；只有 `SEC009_FUZZ_SECONDS=1800` 的完整執行，並同時取得 Sentry、宿主核心與權限觀測，才可作為 T2 的候選證據。結果必須保存於 SEC-009 證據目錄，不能由 README 的歷史數字代替。
 
 ### 為什麼是「一個監督者 ＋ 一串短命子程序」
 
@@ -216,7 +191,7 @@ T1 的 `plant a file on the node` **每一次都判 ESCAPED**，而同一次執�
 
 ---
 
-## 2026-08-26 的兩次執行，兩支腳本都被自己抓到
+## 歷史證據索引：巢狀開發容器執行
 
 證據落在 [`docs/plans/mvp/m4/sec-009-acceptance/2026-08-26-nested-dev-container/`](../../docs/plans/mvp/m4/sec-009-acceptance/2026-08-26-nested-dev-container/)。
 
@@ -250,7 +225,7 @@ python tools/sec009/_syscall_fuzz.py --self-check   # 需要 Linux
 
 自檢**製造**那個 hang 而不是等它出現:子程序照隨機 `rt_sigprocmask` 的方式擋掉 SIGALRM 再睡十分鐘，`reap` 必須在預算內收掉它；反方向也驗(正常結束的子程序要被 reap 不是被殺)，免得「reap 殺掉所有東西」冒充成修好了。把 `reap` 還原成原本的 `waitpid`，自檢會掛到 `timeout` 把它殺掉(rc=124)。
 
-## 2026-09-05 重跑：T1 抓到自己第四個同型 bug，T2 四項官方判準全過
+## 歷史證據索引：後續重跑
 
 起因是 [`05` R-44](../../docs/plans/05-pending-rulings.md)（runtime image 的 base OS 要不要換），
 證據落在 [`docs/plans/mvp/m4/sec-009-acceptance/2026-09-05-nested-dev-container/`](../../docs/plans/mvp/m4/sec-009-acceptance/2026-09-05-nested-dev-container/)。
@@ -347,7 +322,7 @@ python tools/sec009/t8-node-probe.py --self-check  # 離線，不碰節點也不
 
 **`unset` 的基線判 `fail` 而不是 `unknown`**，而且訊息說的是「基準本身沒有值，所以沒有東西可以比對，而[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)把 P-04 列為阻擋級」。這兩者的差別在部署日很要緊：`unknown` 聽起來像「再查一下」，`fail` 說的是「這台機器不進池，去把那個檔填了」。
 
-### 第一次跑抓到什麼
+### 探針輸入契約的離線驗證
 
 在一個 `python:3.12-slim` 容器裡跑（沒有 facts、沒有 `runsc`、沒有 docker），八列有**六列 `unknown`**、P-04 `fail`、P-05 `pass`，rc=2。**那六個 `unknown` 就是 fail-closed 的正向證明。**
 

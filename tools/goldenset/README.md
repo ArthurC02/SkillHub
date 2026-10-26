@@ -2,7 +2,7 @@
 
 ## 意圖分析重播
 
-`intent_analysis_v2.json` 是固定 60 題經 `search-intent/v2`、`gpt-5.6-luna` 的一次真實分析快照，包含原句、五欄意圖、關鍵詞、篩選、耗時與 Gateway 回報成本；合計 US$0.0181568。它不是人工理解品質標註，也不取代原本的 query gold。重新取樣須另存，不能覆寫這份證據。
+`intent_analysis_v2.json` 是固定 60 題經 `search-intent/v2`、`gpt-5.6-luna` 的分析快照，包含原句、五欄意圖、關鍵詞、篩選與耗時。它不是人工理解品質標註，也不取代原本的 query gold。重新取樣須另存，不能覆寫這份證據。
 
 Platform 的 `TestRecordedIntentAnalysisUsesProductionValidationAndLexicalSearch` 直接讀取快照，以真實 Go 驗證與 PostgreSQL 投影／查詢重播，不呼叫付費服務。需要獨立測試資料庫與 `SKILLHUB_REQUIRE_DB=1`；`TestGoldenLexicalBaselineUsesProductionProjectionAndQueries` 是原句對照。兩者都是**量測器**：測試通過表示資料完整、查詢可執行，不代表召回或投毒門檻通過。
 
@@ -10,7 +10,7 @@ Platform 的 `TestRecordedIntentAnalysisUsesProductionValidationAndLexicalSearch
 
 `TestGoldenHybridBaselineUsesRecordedVectorsAndProductionQueries` 以固定快取跑兩版語料的原句混合搜尋；`TestRecordedIntentAnalysisUsesProductionValidationAndHybridSearch` 量 v2 改寫。兩者都不呼叫模型，且可用 `SKILLHUB_INTENT_POISON=1` 加入投毒對照。它們檢查文件向量入庫、每題使用查詢向量且未降級；缺少精確文字對應的向量便失敗，不會偷偷改走詞法搜尋。結果與限制見[意圖搜尋驗證](../../docs/plans/intent-search-validation.md#原句混合搜尋基線)。
 
-`intent_embeddings_v2.json` 保存上述重播額外需要的 94 份向量及六批 Gateway 成本紀錄，合計 US$0.00055458，不含金鑰。它只補充歷史快取，不覆蓋歷史向量；以模型名稱、換行及完整文字的 SHA256 作鍵。改寫效果須看配對品質結果，不能從快取完整性推論。
+`intent_embeddings_v2.json` 保存上述重播額外需要的 94 份向量及 Gateway 成本紀錄，不含金鑰。它只補充快取，不覆蓋既有向量；以模型名稱、換行及完整文字的 SHA256 作鍵。改寫效果須看配對品質結果，不能從快取完整性推論。
 
 ## 凍結量測證據
 
@@ -33,7 +33,7 @@ Platform 的 `TestRecordedIntentAnalysisUsesProductionValidationAndLexicalSearch
 - **`corpus/`、`queries.json`、`manifest.json` 屬閘門量測標的的上游**——可以改，但改動會讓 §3.1 記錄的 recall 數字與現況不符，所以改了就要依 §3.2 分開統計並在分析報告中明列。
 - 閘門測試本身**不量 recall**（它量的是真人會怎麼打字、看到結果敢不敢往下走）。兩者測的不是同一件事，這裡的數字取代不了那場測試，反之亦然。
 
-`evaluate.py` 與 `enrich_corpus.py` 是**驗證工具，不是產品程式碼**：不被服務引用，重跑要花真實的模型費用。`__pycache__/` 是本機執行的副產物。
+`evaluate.py` 與 `enrich_corpus.py` 是**驗證工具，不是產品程式碼**：不被服務引用；需要重新產生缺少的 embedding 或增強語料時可能產生成本。`__pycache__/` 是本機執行的副產物。
 
 **CI 守著的是哪一半**：重跑本身仍然不進 CI（要花錢）。但 `evaluate.py` 的
 `enriched_index_text()` 是 `apps/platform/internal/skill/admission/enrich.go` 的 `embeddingText` 的**手抄副本**，
@@ -88,9 +88,7 @@ PYTHONIOENCODING=utf-8 python evaluate.py --lookup > results_lookup_YYYY-MM-DD.t
 | 創作 | golden Top-1 | >= 85% |
 | 創作 | names Top-1 | >= 90% |
 
-**結果檔**：[`results_lookup_2026-09-06.txt`](results_lookup_2026-09-06.txt)——`--index-mode enriched`
-語料、真 OpenAI embedding（部分向量原本就在 `embeddings_cache.json`，其餘現場付費補齊），六條紅線全數
-PASS；tokens 在公開規則下是 25/25（見上段，方法論差異，非迴歸）。
+結果檔以檔名中的版本或日期識別輸入快照（例如 [`results_lookup_2026-09-06.txt`](results_lookup_2026-09-06.txt)）；`--index-mode enriched` 的結果只能與相同語料、索引模式與規則比較，不能把一次結果當成現行產品保證。六條紅線的定義與限制以上表為準。
 
 ## v7 增強語料（不是 M1 的凍結證據）
 

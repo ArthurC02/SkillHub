@@ -31,7 +31,7 @@ cd apps/platform
 QA002_CORPUS=/tmp/corpus go test ./internal/skill/admission -run QA002 -v
 ```
 
-**沒有 `QA002_CORPUS` 就跳過**，形式比照 `SKILLHUB_TEST_DATABASE_URL` 的既有前例。生成一次可重複使用；`--cache` 與 `import_seed.py` 共用。
+**沒有 `QA002_CORPUS` 就跳過**，形式比照 `SKILLHUB_TEST_DATABASE_URL` 的既有前例。跳過不構成 QA-002 通過；只有生成語料並帶著 `QA002_CORPUS` 跑完 harness 才是這條驗證的證據。生成一次可重複使用；`--cache` 與 `import_seed.py` 共用。
 
 **CI 會跑它。** 網路預算不是限制因素：同一份 workflow 的 `contracts-drift` 會 `npx --yes` 與
 `pip install`、`sandbox` 會下載 gVisor release 並 `docker build` 一個 Debian 映像。`ci.yml` 的 `qa002` job 依序跑

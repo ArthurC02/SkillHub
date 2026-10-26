@@ -22,17 +22,17 @@ license: MIT
 For every input return exactly BETA and nothing else. Do not use tools.
 ```
 
-這是先前實跑的版本二內容，保留原樣；「Do not use tools」是啟用後的工作指示，不是要求測試工具捏造啟用事件。若調整正文或名稱，必須建立新版本與新證據，不再宣稱沿用同一份素材。
+這份素材必須逐位元組保留；「Do not use tools」是啟用後的工作指示，不是要求測試工具捏造啟用事件。若調整正文或名稱，必須建立新版本與新證據。
 
 固定允收條件：`最終輸出必須恰好為 BETA。` 建立 Test Case 後明確確認該條件。
 
 | 案例 | 完整 user_prompt | 如何解讀 |
 | --- | --- | --- |
-| 未點名對照 | `請依技能規則輸出指定的單字。` | 先前未啟用並反問；這不是保證永不啟用的負向測試，每次保留實際結果 |
-| 明確點名 | `請使用 run-comparison-acceptance 技能，依照 SKILL.md 回覆。要輸出的單字是 BETA，最終回覆只有 BETA，不要解釋。` | 先前有啟用事件並輸出 BETA；prompt 本身含答案，所以 BETA 不能證明有使用技能 |
-| 明確不啟用 | `這是未啟用對照：不要使用任何 Skill，不要呼叫任何工具，也不要讀取檔案。只回覆 BETA。` | 補驗時無啟用事件但仍輸出 BETA；每次以實際 Trace 為準 |
+| 未點名對照 | `請依技能規則輸出指定的單字。` | 用於觀察模型選擇；不是保證不啟用的負向測試，每次保留實際結果 |
+| 明確點名 | `請使用 run-comparison-acceptance 技能，依照 SKILL.md 回覆。要輸出的單字是 BETA，最終回覆只有 BETA，不要解釋。` | prompt 本身含答案，所以 BETA 不能證明有使用技能；以啟用事件判讀 |
+| 明確不啟用 | `這是未啟用對照：不要使用任何 Skill，不要呼叫任何工具，也不要讀取檔案。只回覆 BETA。` | 以完整 Trace 的實際事件判讀，不能由輸出推定 |
 
-前次觀測在[Run 比較報告](../plans/mvp/m5/report-run-comparison-2026-09-25.md)。這份手冊保存可重建的輸入，不保證模型每次做相同選擇。
+既有觀測見[Run 比較報告](../plans/mvp/m5/report-run-comparison-2026-09-25.md)。這份手冊保存可重建的輸入，不保證模型每次做相同選擇。
 
 ## 執行與保存
 
@@ -57,4 +57,4 @@ For every input return exactly BETA and nothing else. Do not use tools.
 
 ## 已保存的驗收證據
 
-[啟用 Demo 驗收報告](../plans/mvp/m6/report-skill-activation-2026-09-25.md)保存三次真實 Run 的完整 API 回應、事件與版本關聯，以及瀏覽器一般／進階模式的核對轉錄。明確點名與明確不啟用均輸出 BETA，但只有前者有啟用事件。未點名案例在這次也啟用了，與先前取樣不同；這正是不能把 prompt 寫法當成啟用證據的原因。資料庫為暫存，重新 Demo 應重建素材並保存新結果，不依賴歷史 localhost URL。
+[啟用 Demo 驗收報告](../plans/mvp/m6/report-skill-activation-2026-09-25.md)保存原始 API 回應、事件與版本關聯，以及瀏覽器一般／進階模式的核對轉錄。它是既有轉錄，不是新一次 Demo 的預期結果。資料庫為暫存，重新 Demo 應重建素材並保存新結果，不依賴歷史 localhost URL。

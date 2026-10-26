@@ -1,19 +1,6 @@
-# docs/spikes/ — 墓碑
+# docs/spikes/ — 證據索引
 
-本目錄原本放 **M0 驗證用 spike code**：一次性的可行性探測程式，可重跑但**不是產品程式碼**、
-不被任何服務 import、不進 CI。它們的任務是回答「這個方向能不能走」，答案問出來之後，
-**結論已全數沉澱到下列文件與工具**，程式碼本身不再有讀者。
-
-**內容已於 commit `bcd5817` 之後刪除**（24 個追蹤檔案，兩個 spike）。
-
-## 怎麼還原
-
-```bash
-git checkout bcd5817 -- docs/spikes
-```
-
-`bcd5817` 是刪除前的最後一個 commit，spike 程式碼與其結果檔在該 commit 完整存在。
-還原只為了考古；**不要把它們接回產品程式碼或 CI**，理由見上。
+本目錄不放產品程式碼或 CI 輸入。一次性可行性探測的結論已沉澱在下列報告、決策與持續驗證工具；需要查核時讀這些受維護來源，不將歷史探測程式接回服務或 CI。
 
 ## 結論現在住在哪
 
@@ -38,10 +25,6 @@ git checkout bcd5817 -- docs/spikes
 | `README.md`、`run_spike.py`、`results.txt`、`results-embedding.txt` | [`docs/plans/mvp/m0/pdm-011-spike-report.md`](../plans/mvp/m0/pdm-011-spike-report.md)（含第 9 節真 Embedding 與 RRF 增益的補跑）；定案與四項實證調整見 [意圖搜尋](../adr/README.md#意圖搜尋)「定案紀錄」 |
 | `samples/`（12 份取自 `github.com/anthropics/skills` 的公開 `SKILL.md`） | **未被任何工具引用，隨 spike 一併刪除。** 正式的評估語料是 [`tools/goldenset/`](../../tools/goldenset/)（31 份 Skill ＋ 增強後的 `corpus_enriched/`），它自成一套、從不讀 spike 的 `samples/` |
 
-## 為什麼不留程式碼
+## 持續驗證
 
-spike 的價值在結論，不在實作：它的相依（`litellm[proxy]`、釘死的 `fastapi<0.140`、
-一份約 300MB 的 `.venv`）早已與產品的版本基線脫節，重跑一次比重寫一次貴。
-真正需要持續回歸的部分沒有被丟掉——它變成了[Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全)的 Agent SDK 版本重驗清單，
-由 `infra/images/runtime-agent-sdk/UPGRADES.md` 逐次升級記錄實測輸出，
-那才是有人維護、會被 CI 與 review 盯著的落點。
+需要持續回歸的內容以[Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全)的 Agent SDK 版本重驗清單為準，實測輸出記在 `infra/images/runtime-agent-sdk/UPGRADES.md`。
