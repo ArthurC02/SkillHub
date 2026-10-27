@@ -2,6 +2,13 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 4.2.13
+
+### Fixed
+
+- A field written in two places of one concept file was settled silently: a body section replaced the frontmatter value (`synonyms: 5` beside a `# Synonyms` section passed `validate`, and a frontmatter list beside the section was never searched), the frontmatter replaced the body text, and an `id` in the frontmatter replaced the file name. The concept reader now refuses the file by name and says where both copies are: `vocabulary/x.md: synonyms is written both in the frontmatter and in a body section; keep one`. The same holds for the title and a frontmatter `name`, the Relations section, `sources` and `evidence`, and the status fields. Repeating one section heading still adds to the same list.
+- `validate` accepts `synonyms: null` and `not_same_as: null` as absent, as the other readers have since 4.2.12; it used to report `synonyms and not_same_as must be lists of non-empty strings`.
+
 ## 4.2.12
 
 ### Fixed

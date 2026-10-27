@@ -240,6 +240,32 @@ class ConceptDocumentTest(unittest.TestCase):
             with self.subTest(label), self.assertRaisesRegex(ValueError, message):
                 decode("vocabulary", "x", f"---\ntype: Term\n{field}\n---\n")
 
+    def test_a_field_written_in_two_places_is_refused_by_name(self) -> None:
+        cases = [
+            ("frontmatter and a body section", "vocabulary", "Term", "synonyms: 5\n", "# Synonyms\n- cart\n",
+             "synonyms is written both in the frontmatter and in a body section; keep one"),
+            ("frontmatter and the body text", "rules", "Business Rule", "statement: Short.\n", "Long.\n",
+             "statement is written both in the body text and in the frontmatter; keep one"),
+            ("title and a frontmatter name", "vocabulary", "Term", "title: Order\nname: Purchase\n", "",
+             "name is written both in the frontmatter title and in the frontmatter; keep one"),
+            ("frontmatter and the Relations section", "rules", "Business Rule", "contexts:\n  - a\n",
+             "# Relations\n- Contexts: [a](/contexts/a)\n",
+             "contexts is written both in the frontmatter and in the Relations section; keep one"),
+            ("the Relations section and a body section", "rules", "Business Rule", "",
+             "# Relations\n- Contexts: [a](/contexts/a)\n# Contexts\n- b\n",
+             "contexts is written both in the Relations section and in a body section; keep one"),
+            ("frontmatter evidence and sources", "rules", "Business Rule",
+             "evidence: []\nsources:\n  - resource: a.go#L1-2\n", "",
+             "evidence is written both in the frontmatter and in the frontmatter sources; keep one"),
+            ("frontmatter and the status", "decisions", "Decision", "review_status: draft\nstatus: stable\n", "",
+             "review_status is written both in the frontmatter and in the frontmatter status; keep one"),
+            ("the file name and the frontmatter", "rules", "Business Rule", "id: other\n", "",
+             "id is written both in the file name and in the frontmatter; keep one"),
+        ]
+        for label, asset, kind, front, body, message in cases:
+            with self.subTest(label), self.assertRaisesRegex(ValueError, message):
+                decode(asset, "x", f"---\ntype: {kind}\n{front}---\n{body}")
+
     def test_null_synonyms_read_as_absent(self) -> None:
         self.assertIsNone(decode("vocabulary", "x", "---\ntype: Term\nsynonyms: null\n---\n").get("synonyms"))
 

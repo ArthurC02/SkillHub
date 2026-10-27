@@ -114,25 +114,31 @@ def encode(asset: str, record: dict[str, Any]) -> str:
 def decode(asset: str, record_id: str, text: str) -> dict[str, Any]:
     front, body = split_concept(text)
     record: dict[str, Any] = {"id": record_id}
+    origins: dict[str, str] = {"id": "the file name"}
+
+    def put(origin: str, fields: dict[str, Any]) -> None:
+        for key, value in fields.items():
+            if key in origins:
+                raise ValueError(f"{key} is written both in {origins[key]} and in {origin}; keep one")
+            origins[key] = origin
+            record[key] = value
+
     title_field = TITLE_FIELDS.get(asset)
     if title_field and "title" in front:
-        record[title_field] = front["title"]
+        put("the frontmatter title", {title_field: front["title"]})
     prose, relations, sections = _parse_body(body)
     if prose:
         if asset not in PROSE_FIELDS:
             raise ValueError(f"a {asset} concept has no prose field; move its text into a frontmatter field")
-        record[PROSE_FIELDS[asset]] = prose
-    for key, value in front.items():
-        if key in RESERVED_KEYS:
-            continue
-        record[key] = value
-    record.update(relations)
-    record.update(sections)
+        put("the body text", {PROSE_FIELDS[asset]: prose})
+    put("the frontmatter", {key: value for key, value in front.items() if key not in RESERVED_KEYS})
+    put("the Relations section", relations)
+    put("a body section", sections)
     if "sources" in front:
         if not isinstance(front["sources"], list):
             raise ValueError("sources must be a list of cited sources")
-        record["evidence"] = [_evidence(source) for source in front["sources"]]
-    record.update(_registry_status(asset, front))
+        put("the frontmatter sources", {"evidence": [_evidence(source) for source in front["sources"]]})
+    put("the frontmatter status", _registry_status(asset, front))
     _check_relation_shapes(record)
     _check_synonym_shape(record)
     return record

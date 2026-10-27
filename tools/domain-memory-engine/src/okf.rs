@@ -74,27 +74,49 @@ pub fn review_field(asset: &str) -> &'static str {
     }
 }
 
+#[derive(Default)]
+struct Fields {
+    record: Object,
+    origins: Vec<(String, &'static str)>,
+}
+
+impl Fields {
+    fn put(&mut self, origin: &'static str, key: &str, value: Value) -> Result<(), String> {
+        if let Some((_, first)) = self.origins.iter().find(|(seen, _)| seen == key) {
+            return Err(format!(
+                "{key} is written both in {first} and in {origin}; keep one"
+            ));
+        }
+        self.origins.push((key.to_string(), origin));
+        self.record.insert(key, value);
+        Ok(())
+    }
+}
+
 pub fn decode(asset: &str, record_id: &str, text: &str) -> Result<Object, String> {
     let (front, body) = split_concept(text)?;
-    let mut record = Object::new();
-    record.insert("id", Value::Str(record_id.to_string()));
+    let mut fields = Fields::default();
+    fields.put("the file name", "id", Value::Str(record_id.to_string()))?;
     if let (Some(field), Some(title)) = (title_field(asset), front.get("title")) {
-        record.insert(field, title.clone());
+        fields.put("the frontmatter title", field, title.clone())?;
     }
     let (prose, relations, sections) = parse_body(&body)?;
     if !prose.is_empty() {
         let field = prose_field(asset).ok_or_else(|| {
             format!("a {asset} concept has no prose field; move its text into a frontmatter field")
         })?;
-        record.insert(field, Value::Str(prose));
+        fields.put("the body text", field, Value::Str(prose))?;
     }
     for (key, value) in front.iter() {
         if !RESERVED_KEYS.contains(&key.as_str()) {
-            record.insert(key.clone(), value.clone());
+            fields.put("the frontmatter", key, value.clone())?;
         }
     }
-    for (key, value) in relations.iter().chain(sections.iter()) {
-        record.insert(key.clone(), value.clone());
+    for (key, value) in relations.iter() {
+        fields.put("the Relations section", key, value.clone())?;
+    }
+    for (key, value) in sections.iter() {
+        fields.put("a body section", key, value.clone())?;
     }
     if let Some(sources) = front.get("sources") {
         let sources = sources
@@ -104,11 +126,16 @@ pub fn decode(asset: &str, record_id: &str, text: &str) -> Result<Object, String
             .iter()
             .map(evidence_of)
             .collect::<Result<Vec<_>, _>>()?;
-        record.insert("evidence", Value::Array(evidence));
+        fields.put(
+            "the frontmatter sources",
+            "evidence",
+            Value::Array(evidence),
+        )?;
     }
     for (key, value) in registry_status(asset, &front)? {
-        record.insert(key, value);
+        fields.put("the frontmatter status", &key, value)?;
     }
+    let record = fields.record;
     check_relation_shapes(&record)?;
     if let Some(shape) = record.get("synonyms").and_then(stray_text_list) {
         return Err(format!("synonyms must be a list of labels, got {shape}"));

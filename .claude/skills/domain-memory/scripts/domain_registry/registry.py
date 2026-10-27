@@ -498,7 +498,9 @@ def _validate_idempotency(contracts: list[dict[str, Any]]) -> list[str]:
 
 
 def _labels(entry: dict[str, Any], field: str) -> list[Any] | None:
-    labels = entry.get(field, [])
+    labels = entry.get(field)
+    if labels is None:
+        labels = []
     if not isinstance(labels, list) or not all(
         isinstance(label, str) and label.strip() for label in labels
     ):

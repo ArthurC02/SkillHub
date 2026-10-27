@@ -257,6 +257,12 @@ class RegistryValidationTest(RegistryTestCase):
         ])
         self.assertEqual([], validate(self.repo / "memory", None, False))
 
+    def test_null_synonyms_and_look_alikes_validate_as_absent(self) -> None:
+        self.seed("contexts.json", [orders_context()])
+        self.seed("vocabulary.json", [{"id": "order", "name": "Order", "contexts": ["orders"], "synonyms": None,
+                                       "not_same_as": None}])
+        self.assertEqual([], validate(self.repo / "memory", None, False))
+
     def test_audit_refuses_to_extend_a_corrupt_log(self) -> None:
         root = self.repo / "memory"
         append_audit(root, {"operation": "first"})
