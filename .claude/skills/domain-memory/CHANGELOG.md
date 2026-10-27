@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 5.0.1
+
+### Added
+
+- The Rust executable answers `scan-secrets`, `discover-sources` (with `--output`), `verify-sources`, `verify-audit`, `audit-attestations`, `verify-scm-attestation`, `verify-git-governance` and `governance-readiness`. Two differences from the script remain: on Windows the executable does not descend into a directory junction while the script does, and on malformed input where the script stops with a Python traceback the executable prints one `ERROR:` line; the exit code and standard output are the same.
+
 ## 5.0.0
 
 ### Removed

@@ -76,10 +76,19 @@ impl Value {
 const MAX_DEPTH: usize = 980;
 
 pub fn parse(text: &str) -> Result<Value, ()> {
+    parsed(text, false)
+}
+
+pub fn parse_keeping_last_duplicate(text: &str) -> Result<Value, ()> {
+    parsed(text, true)
+}
+
+fn parsed(text: &str, last_duplicate_wins: bool) -> Result<Value, ()> {
     let mut parser = Parser {
         bytes: text.as_bytes(),
         text,
         at: 0,
+        last_duplicate_wins,
     };
     parser.skip_whitespace();
     let value = parser.value(0)?;
@@ -96,6 +105,7 @@ pub fn number_prefix(text: &str) -> Option<usize> {
         bytes: text.as_bytes(),
         text,
         at: 0,
+        last_duplicate_wins: false,
     };
     parser.scan_number().ok()?;
     Some(parser.at)
@@ -105,6 +115,7 @@ struct Parser<'a> {
     bytes: &'a [u8],
     text: &'a str,
     at: usize,
+    last_duplicate_wins: bool,
 }
 
 impl Parser<'_> {
@@ -163,7 +174,7 @@ impl Parser<'_> {
             self.at += 1;
             self.skip_whitespace();
             let value = self.value(depth + 1)?;
-            if object.get(&key).is_some() {
+            if object.get(&key).is_some() && !self.last_duplicate_wins {
                 return Err(());
             }
             object.insert(key, value);

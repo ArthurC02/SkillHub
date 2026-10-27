@@ -192,12 +192,109 @@ pub fn os_error(error: &io::Error, path: &Path) -> String {
     format!("{message}: {}", repr(&shown(path)))
 }
 
+pub fn open_error(error: &io::Error, path: &Path) -> String {
+    let (errno, text) = match error.raw_os_error() {
+        Some(2 | 3) if cfg!(windows) => (2, "No such file or directory"),
+        Some(5 | 32 | 33) if cfg!(windows) => (13, "Permission denied"),
+        Some(80 | 183) if cfg!(windows) => (17, "File exists"),
+        Some(87 | 123 | 161) if cfg!(windows) => (22, "Invalid argument"),
+        Some(4) if cfg!(windows) => (24, "Too many open files"),
+        _ => return os_error(error, path),
+    };
+    format!("[Errno {errno}] {text}: {}", repr(&shown(path)))
+}
+
 pub fn compare_paths(left: &Path, right: &Path) -> Ordering {
     if cfg!(windows) {
         shown(left).to_lowercase().cmp(&shown(right).to_lowercase())
     } else {
         left.as_os_str().cmp(right.as_os_str())
     }
+}
+
+pub struct PurePath {
+    anchor: String,
+    parts: Vec<String>,
+}
+
+impl PurePath {
+    pub fn new(given: &str) -> Self {
+        if cfg!(windows) {
+            Self::windows(given)
+        } else {
+            Self::posix(given)
+        }
+    }
+
+    fn posix(given: &str) -> Self {
+        let slashes = given.len() - given.trim_start_matches('/').len();
+        let anchor = match slashes {
+            0 => "",
+            2 => "//",
+            _ => "/",
+        };
+        Self {
+            anchor: anchor.to_string(),
+            parts: given
+                .split('/')
+                .filter(|part| !part.is_empty() && *part != ".")
+                .map(str::to_string)
+                .collect(),
+        }
+    }
+
+    fn windows(given: &str) -> Self {
+        let text = given.replace('/', "\\");
+        let (drive, rest) = windows_drive(&text);
+        let root = rest.starts_with('\\');
+        Self {
+            anchor: format!("{drive}{}", if root { "\\" } else { "" }),
+            parts: rest
+                .split('\\')
+                .filter(|part| !part.is_empty() && *part != ".")
+                .map(str::to_string)
+                .collect(),
+        }
+    }
+
+    pub fn parent(&self) -> Self {
+        let mut parts = self.parts.clone();
+        parts.pop();
+        Self {
+            anchor: self.anchor.clone(),
+            parts,
+        }
+    }
+
+    pub fn as_posix(&self) -> String {
+        let separator = if cfg!(windows) { "\\" } else { "/" };
+        let joined = format!("{}{}", self.anchor, self.parts.join(separator));
+        if joined.is_empty() {
+            ".".to_string()
+        } else {
+            joined.replace('\\', "/")
+        }
+    }
+}
+
+fn windows_drive(text: &str) -> (String, &str) {
+    let mut letters = text.chars();
+    if let (Some(letter), Some(':')) = (letters.next(), letters.next())
+        && letter.is_ascii_alphabetic()
+    {
+        return (text[..2].to_string(), &text[2..]);
+    }
+    if let Some(unc) = text.strip_prefix("\\\\") {
+        let mut names = unc.splitn(3, '\\');
+        if let (Some(server), Some(share)) = (names.next(), names.next())
+            && !server.is_empty()
+            && !share.is_empty()
+        {
+            let length = 2 + server.len() + 1 + share.len();
+            return (text[..length].to_string(), &text[length..]);
+        }
+    }
+    (String::new(), text)
 }
 
 #[cfg(test)]
@@ -210,6 +307,23 @@ mod tests {
         assert_eq!(repr("it's"), "\"it's\"");
         assert_eq!(repr("both ' and \""), "'both \\' and \"'");
         assert_eq!(repr("tab\tnew\nbell\u{7}é"), "'tab\\tnew\\nbell\\x07é'");
+    }
+
+    #[test]
+    fn a_pure_path_drops_dots_and_repeated_separators_and_names_its_parent() {
+        let given = if cfg!(windows) {
+            "C:\\a/./b//"
+        } else {
+            "/a/./b//"
+        };
+        let prefix = if cfg!(windows) { "C:/" } else { "/" };
+        assert_eq!(PurePath::new(given).as_posix(), format!("{prefix}a/b"));
+        assert_eq!(
+            PurePath::new(given).parent().as_posix(),
+            format!("{prefix}a")
+        );
+        assert_eq!(PurePath::new("x").parent().as_posix(), ".");
+        assert_eq!(PurePath::new("").as_posix(), ".");
     }
 
     #[test]

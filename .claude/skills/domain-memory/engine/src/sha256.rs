@@ -27,6 +27,48 @@ pub fn hex_digest(data: &[u8]) -> String {
     state.iter().map(|word| format!("{word:08x}")).collect()
 }
 
+pub struct Sha256 {
+    state: [u32; 8],
+    pending: Vec<u8>,
+    length: u64,
+}
+
+impl Sha256 {
+    pub fn start() -> Self {
+        Self {
+            state: INITIAL_STATE,
+            pending: Vec::new(),
+            length: 0,
+        }
+    }
+
+    pub fn update(&mut self, data: &[u8]) {
+        self.length = self.length.wrapping_add(data.len() as u64);
+        self.pending.extend_from_slice(data);
+        let whole = self.pending.len() / 64 * 64;
+        for block in self.pending[..whole].as_chunks::<64>().0 {
+            compress(&mut self.state, block);
+        }
+        self.pending.drain(..whole);
+    }
+
+    pub fn hex_finish(mut self) -> String {
+        let bit_length = self.length.wrapping_mul(8);
+        self.pending.push(0x80);
+        while self.pending.len() % 64 != 56 {
+            self.pending.push(0);
+        }
+        self.pending.extend_from_slice(&bit_length.to_be_bytes());
+        for block in self.pending.as_chunks::<64>().0 {
+            compress(&mut self.state, block);
+        }
+        self.state
+            .iter()
+            .map(|word| format!("{word:08x}"))
+            .collect()
+    }
+}
+
 fn compress(state: &mut [u32; 8], block: &[u8; 64]) {
     let mut schedule = [0u32; 64];
     for (word, bytes) in schedule.iter_mut().zip(block.as_chunks::<4>().0) {
@@ -70,7 +112,17 @@ fn compress(state: &mut [u32; 8], block: &[u8; 64]) {
 
 #[cfg(test)]
 mod tests {
-    use super::hex_digest;
+    use super::{Sha256, hex_digest};
+
+    #[test]
+    fn hashing_in_pieces_gives_the_one_shot_digest() {
+        let data: Vec<u8> = (0..200u8).collect();
+        let mut hasher = Sha256::start();
+        for piece in data.chunks(37) {
+            hasher.update(piece);
+        }
+        assert_eq!(hasher.hex_finish(), hex_digest(&data));
+    }
 
     #[test]
     fn the_standard_vectors_hash_to_their_published_digests() {

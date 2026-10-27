@@ -1,3 +1,6 @@
+mod attestations;
+mod audit_commands;
+mod audit_log;
 mod cite;
 mod cli;
 mod context;
@@ -7,8 +10,11 @@ mod difflib;
 mod digits;
 mod evidence;
 mod files;
+mod fnmatch;
 mod git;
+mod git_governance;
 mod json;
+mod listing;
 mod okf;
 mod policy;
 mod proposals;
@@ -17,7 +23,10 @@ mod pyre;
 mod pyvalue;
 mod records;
 mod search;
+mod secret_patterns;
+mod secrets;
 mod sha256;
+mod sources;
 mod store;
 mod tar;
 mod unicode;
@@ -197,8 +206,86 @@ fn execute(invocation: &Invocation) -> Result<i32, String> {
             }
             Ok(0)
         }
+        "scan-secrets" => scan_secrets(invocation),
+        "discover-sources" => discover_sources(invocation),
+        "verify-sources" => verify_sources(invocation),
+        "verify-audit" => audit_commands::verify_audit(invocation),
+        "audit-attestations" => audit_commands::audit_attestations(invocation),
+        "verify-scm-attestation" => audit_commands::verify_scm_attestation(invocation),
+        "verify-git-governance" => audit_commands::verify_git_governance(invocation),
+        "governance-readiness" => audit_commands::governance_readiness(invocation),
         other => Err(format!("{other} is not available in the Rust engine yet")),
     }
+}
+
+fn scan_secrets(invocation: &Invocation) -> Result<i32, String> {
+    let root = py::resolve(invocation.text("repo_root").unwrap_or("."));
+    let (report, code) = secrets::scan_report(&root, secrets::LIMITS)?;
+    let style = Style {
+        indent: None,
+        ..Style::PRINTED
+    };
+    emit_stdout(&format!("{}\n", json::dumps(&Value::Object(report), style)));
+    Ok(code)
+}
+
+fn discover_sources(invocation: &Invocation) -> Result<i32, String> {
+    let mut given = Object::new();
+    for (flag, key) in [
+        ("implementation_root", "implementation_roots"),
+        ("excluded_directory", "excluded_directories"),
+        ("decision_root", "decision_roots"),
+        ("boundary_marker", "boundary_markers"),
+    ] {
+        let values = invocation.texts(flag);
+        if !values.is_empty() {
+            let items = values.iter().map(|item| Value::Str(item.clone())).collect();
+            given.insert(key, Value::Array(items));
+        }
+    }
+    let given = Value::Object(given);
+    let errors = policy::profile_errors(Some(&given));
+    if !errors.is_empty() {
+        return Err(format!("invalid project profile: {}", errors.join("; ")));
+    }
+    let root = py::resolve(invocation.text("repo_root").unwrap_or("."));
+    let source_map = Value::Object(sources::discover_sources(
+        &root,
+        &sources::Profile::from_section(Some(&given)),
+    )?);
+    if let Some(output) = invocation.text("output") {
+        files::write_source_file(&py::resolve(output), &source_map)?;
+    }
+    print_json(&source_map);
+    Ok(0)
+}
+
+fn verify_sources(invocation: &Invocation) -> Result<i32, String> {
+    let policy = match invocation.text("policy") {
+        Some(given) => Some(files::load_json(&py::resolve(given))?),
+        None => None,
+    };
+    let repo_given = invocation.text("repo_root").unwrap_or(".");
+    let map_given = invocation.text("source_map").unwrap_or(".");
+    let result = sources::verify_against_discovery(
+        &py::resolve(repo_given),
+        &py::resolve(map_given),
+        policy.as_ref(),
+    )?;
+    print_json(&Value::Object(result.clone()));
+    if let Some(note) = sources::discovery_drift_note(
+        &result,
+        &py::PurePath::new(map_given).parent(),
+        &py::PurePath::new(repo_given),
+    ) {
+        emit_stderr(&format!("{note}\n"));
+    }
+    let status = result.get("status").and_then(Value::as_str);
+    Ok(if matches!(status, Some("current" | "discovery_drifted")) {
+        0
+    } else {
+        1
+    })
 }
 
 fn verify_evidence(invocation: &Invocation) -> Result<i32, String> {

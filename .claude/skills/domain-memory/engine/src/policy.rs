@@ -44,7 +44,11 @@ fn valid_policy_if_any(root: &Path) -> Result<Option<Object>, String> {
     if !path.is_file() {
         return Ok(None);
     }
-    let policy = load_json(&path)?;
+    valid_policy(&path).map(Some)
+}
+
+fn valid_policy(path: &Path) -> Result<Object, String> {
+    let policy = load_json(path)?;
     let errors = validate_policy(&policy);
     if !errors.is_empty() {
         return Err(format!(
@@ -52,7 +56,16 @@ fn valid_policy_if_any(root: &Path) -> Result<Option<Object>, String> {
             errors.join("; ")
         ));
     }
-    Ok(Some(policy))
+    Ok(policy)
+}
+
+pub fn review_governance(root: &Path) -> Result<Object, String> {
+    let policy = valid_policy(&root.join(POLICY_FILE))?;
+    Ok(policy
+        .get("review_governance")
+        .and_then(Value::as_object)
+        .cloned()
+        .unwrap_or_default())
 }
 
 pub fn review_mode(root: &Path) -> Result<String, String> {
@@ -257,7 +270,7 @@ fn unknown_keys(section: &str, value: &Object, known: &[&str]) -> Vec<String> {
         .collect()
 }
 
-fn profile_errors(value: Option<&Value>) -> Vec<String> {
+pub fn profile_errors(value: Option<&Value>) -> Vec<String> {
     let value = match value {
         None | Some(Value::Null) => return Vec::new(),
         Some(Value::Object(value)) => value,

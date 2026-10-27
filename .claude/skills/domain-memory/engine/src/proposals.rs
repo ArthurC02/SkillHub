@@ -47,6 +47,22 @@ pub fn iter_packages(changes_root: &Path) -> Result<Vec<Package>, String> {
         .collect())
 }
 
+pub fn readable_packages(changes_root: &Path) -> Result<Vec<(PathBuf, Object)>, String> {
+    iter_packages(changes_root)?
+        .into_iter()
+        .map(|(package, proposal)| {
+            proposal
+                .map(|proposal| (package.clone(), proposal))
+                .map_err(|error| {
+                    format!(
+                        "Change Package {} cannot be read: {error}",
+                        package_name(&package).as_str().unwrap_or_default()
+                    )
+                })
+        })
+        .collect()
+}
+
 fn superseded_ids(row: &Object) -> Option<BTreeSet<String>> {
     match row.get("supersedes") {
         None | Some(Value::Null) => Some(BTreeSet::new()),
