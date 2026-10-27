@@ -59,9 +59,7 @@ class ConceptRoundTripTest(unittest.TestCase):
     def test_what_markdown_cannot_carry_stays_in_frontmatter(self) -> None:
         cases = [
             ("relation id with a space", "interactions", {"id": "i", "producer_context": "two words"}),
-            ("relation that is not a string", "interactions", {"id": "i", "consumer_context": 7}),
             ("empty list relation", "rules", {"id": "r", "contexts": []}),
-            ("list relation given as text", "rules", {"id": "r", "contexts": "orders"}),
             ("prose with a heading line", "rules", {"id": "r", "statement": "First.\n# Not a heading"}),
             ("prose with surrounding space", "rules", {"id": "r", "statement": " padded "}),
             ("blank prose", "rules", {"id": "r", "statement": ""}),
@@ -210,6 +208,32 @@ class ConceptDocumentTest(unittest.TestCase):
         for label, value in (("list", "\n  - stable"), ("number", "3")):
             with self.subTest(label), self.assertRaisesRegex(ValueError, "status must be text"):
                 decode("rules", "r", f"---\ntype: Business Rule\nstatus: {value}\n---\n")
+
+    def test_a_relation_of_the_wrong_shape_is_refused_by_name(self) -> None:
+        cases = [
+            ("list relation given a number", "rules", "Business Rule", "contexts: 5",
+             "contexts must be a list of Context ids, got a number"),
+            ("list relation given text", "rules", "Business Rule", "contexts: orders",
+             "contexts must be a list of Context ids, got a string"),
+            ("list relation holding a list", "rules", "Business Rule", "contexts:\n  -\n    - orders",
+             "contexts must be a list of Context ids, got a list holding a list"),
+            ("list relation holding an object", "contracts", "Contract", "consumer_contexts:\n  - id: orders",
+             "consumer_contexts must be a list of Context ids, got a list holding an object"),
+            ("single relation given a list", "interactions", "Interaction", "producer_context:\n  - orders",
+             "producer_context must be one Context id, got a list"),
+            ("single relation given a number", "rules", "Business Rule", "aggregate: 3",
+             "aggregate must be one Aggregate id, got a number"),
+            ("list relation given a boolean", "decisions", "Decision", "supersedes: true",
+             "supersedes must be a list of Decision ids, got a boolean"),
+        ]
+        for label, asset, kind, field, message in cases:
+            with self.subTest(label), self.assertRaisesRegex(ValueError, message):
+                decode(asset, "x", f"---\ntype: {kind}\n{field}\n---\n")
+
+    def test_a_null_relation_reads_as_absent(self) -> None:
+        record = decode("contracts", "x", "---\ntype: Contract\nproducer_context: null\nconsumer_contexts: null\n---\n")
+        self.assertIsNone(record.get("producer_context"))
+        self.assertIsNone(record.get("consumer_contexts"))
 
     def test_windows_line_endings_read_like_unix_ones(self) -> None:
         self.assertEqual(({"type": "T"}, "Body."), split_concept("---\r\ntype: T\r\n---\r\nBody."))

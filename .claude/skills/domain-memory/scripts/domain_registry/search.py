@@ -137,7 +137,7 @@ def every_resolved_term(
     needle = query.casefold()
     matches = []
     for term in asset_records(root, "vocabulary.json"):
-        if context is not None and context not in term.get("contexts", []):
+        if context is not None and context not in (term.get("contexts") or []):
             continue
         kind = _match_kind(term, needle)
         if kind is not None:

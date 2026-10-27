@@ -91,6 +91,17 @@ pub fn repr_of(value: &Value) -> String {
     }
 }
 
+pub fn kind_of(value: &Value) -> &'static str {
+    match value {
+        Value::Null => "null",
+        Value::Bool(_) => "a boolean",
+        Value::Int(_) | Value::Float(_) => "a number",
+        Value::Str(_) => "a string",
+        Value::Array(_) => "a list",
+        Value::Object(_) => "an object",
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

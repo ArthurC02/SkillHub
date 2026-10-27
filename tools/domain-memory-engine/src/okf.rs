@@ -1,6 +1,7 @@
 use crate::digits::decimal_value;
 use crate::json::{self, Object, Value};
 use crate::py;
+use crate::pyvalue::kind_of;
 
 pub const INT_MAX_STR_DIGITS: usize = 4300;
 
@@ -17,6 +18,21 @@ const PROSE_FIELDS: &[(&str, &str)] = &[
     ("dependency-policies", "rationale"),
 ];
 
+const RELATION_TARGETS: &[(&str, &str)] = &[
+    ("context", "Context"),
+    ("contexts", "Context"),
+    ("owner_context", "Context"),
+    ("producer_context", "Context"),
+    ("consumer_context", "Context"),
+    ("consumer_contexts", "Context"),
+    ("from_context", "Context"),
+    ("to_context", "Context"),
+    ("consumers", "Context"),
+    ("aggregate", "Aggregate"),
+    ("contract_id", "Contract"),
+    ("not_same_as", "Term"),
+    ("supersedes", "Decision"),
+];
 const LIST_RELATIONS: &[&str] = &[
     "contexts",
     "consumer_contexts",
@@ -93,7 +109,37 @@ pub fn decode(asset: &str, record_id: &str, text: &str) -> Result<Object, String
     for (key, value) in registry_status(asset, &front)? {
         record.insert(key, value);
     }
+    check_relation_shapes(&record)?;
     Ok(record)
+}
+
+fn check_relation_shapes(record: &Object) -> Result<(), String> {
+    for (field, noun) in RELATION_TARGETS {
+        let value = match record.get(field) {
+            None | Some(Value::Null) => continue,
+            Some(value) => value,
+        };
+        if LIST_RELATIONS.contains(field) {
+            let stray = match value {
+                Value::Array(items) => items.iter().find(|item| item.as_str().is_none()),
+                other => Some(other),
+            };
+            if let Some(stray) = stray {
+                let shape = if matches!(value, Value::Array(_)) {
+                    format!("a list holding {}", kind_of(stray))
+                } else {
+                    kind_of(stray).to_string()
+                };
+                return Err(format!("{field} must be a list of {noun} ids, got {shape}"));
+            }
+        } else if value.as_str().is_none() {
+            return Err(format!(
+                "{field} must be one {noun} id, got {}",
+                kind_of(value)
+            ));
+        }
+    }
+    Ok(())
 }
 
 fn registry_status(asset: &str, front: &Object) -> Result<Vec<(String, Value)>, String> {

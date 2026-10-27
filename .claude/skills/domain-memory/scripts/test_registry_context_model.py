@@ -64,6 +64,17 @@ class RegistryContextModelTest(RegistryTestCase):
             ["invoice-api", "order-api"],
         )
 
+    def test_a_null_relation_list_names_no_context(self) -> None:
+        self.two_contexts()
+        self.seed("contracts.json", [{"id": "feed", "producer_context": "billing", "consumer_contexts": None}])
+        self.seed("rules.json", [{"id": "loose", "statement": "Loose.", "contexts": None}])
+        self.seed("vocabulary.json", [{"id": "word", "name": "Word", "definition": "A word.", "contexts": None}])
+        model = context_model(self.repo / "memory", "orders")
+        assert model is not None
+        self.assertEqual([], model["contracts"])
+        self.assertEqual([], model["rules"])
+        self.assertEqual([], model["vocabulary"])
+
     def test_a_local_draft_context_model_is_working_memory(self) -> None:
         amend_policy(
             self.repo / "memory", "review_mode", "local-draft-only", "No external verifier is configured."

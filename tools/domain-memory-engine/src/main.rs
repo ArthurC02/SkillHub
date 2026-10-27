@@ -1,10 +1,12 @@
 mod cli;
+mod context;
 mod difflib;
 mod digits;
 mod files;
 mod git;
 mod json;
 mod okf;
+mod policy;
 mod proposals;
 mod py;
 mod pyvalue;
@@ -98,6 +100,29 @@ fn execute(invocation: &Invocation) -> Result<i32, String> {
             }
             print_json(&reply.record);
             Ok(0)
+        }
+        "get-context" => {
+            let root = py::resolve(invocation.text("registry_root").unwrap_or("."));
+            print_json(&context::get_context(
+                &root,
+                invocation.text("id").unwrap_or_default(),
+                invocation.flag("summary"),
+            )?);
+            Ok(0)
+        }
+        "validate-policy" => {
+            let path = py::resolve(invocation.text("policy").unwrap_or("."));
+            let errors = policy::validate_policy(&files::load_json(&path)?);
+            if errors.is_empty() {
+                emit_stdout("Domain Memory policy is valid.\n");
+                return Ok(0);
+            }
+            let lines: Vec<String> = errors
+                .iter()
+                .map(|error| format!("ERROR: {error}"))
+                .collect();
+            emit_stderr(&format!("{}\n", lines.join("\n")));
+            Ok(1)
         }
         other => Err(format!("{other} is not available in the Rust engine yet")),
     }

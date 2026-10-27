@@ -600,7 +600,7 @@ def contexts_holding(records: dict[str, list[dict[str, Any]]]) -> dict[str, set[
         "vocabulary": {
             context
             for entry in records.get("vocabulary.json", [])
-            for context in entry.get("contexts", [])
+            for context in entry.get("contexts") or []
         },
         "aggregates": {
             entry.get("context") for entry in records.get("aggregates.json", [])
@@ -608,7 +608,7 @@ def contexts_holding(records: dict[str, list[dict[str, Any]]]) -> dict[str, set[
         "rules": {
             context
             for entry in records.get("rules.json", [])
-            for context in entry.get("contexts", [])
+            for context in entry.get("contexts") or []
         },
         "contracts": contracts,
         "events": {entry.get("owner_context") for entry in records.get("events.json", [])},
@@ -708,7 +708,7 @@ def context_model(root: Path, identifier: str,
         return None
     contracts = [
         entry for entry in held("contracts.json")
-        if identifier == entry.get("producer_context") or identifier in entry.get("consumer_contexts", [])
+        if identifier == entry.get("producer_context") or identifier in (entry.get("consumer_contexts") or [])
     ]
     interactions = [
         entry for entry in held("interactions.json")
@@ -720,9 +720,9 @@ def context_model(root: Path, identifier: str,
         "usage": "constraint" if mode == "scm-verified" else "working-memory",
         "review_mode": mode,
         "context": context,
-        "vocabulary": [entry for entry in held("vocabulary.json") if identifier in entry.get("contexts", [])],
+        "vocabulary": [entry for entry in held("vocabulary.json") if identifier in (entry.get("contexts") or [])],
         "aggregates": [entry for entry in held("aggregates.json") if entry.get("context") == identifier],
-        "rules": [entry for entry in rules if identifier in entry.get("contexts", [])],
+        "rules": [entry for entry in rules if identifier in (entry.get("contexts") or [])],
         "contracts": contracts,
         "interactions": interactions,
         "events": [
@@ -743,7 +743,7 @@ def _bound_rules(
     ]
     bound = []
     for rule in rules:
-        if identifier in rule.get("contexts", []):
+        if identifier in (rule.get("contexts") or []):
             continue
         cited = cited_paths(rule)
         via = [name for name, paths in collaborations if cited & paths]

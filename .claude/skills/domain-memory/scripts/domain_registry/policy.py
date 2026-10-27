@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from .common import change_template_dir, invalid_choice, load_json, whole_number, write_json, writer_lock
+from .common import change_template_dir, invalid_choice, kind_of, load_json, whole_number, write_json, writer_lock
 
 STORAGE_MODES = ("tracked", "ignored", "external")
 CLASSIFICATIONS = ("public", "internal", "confidential", "restricted")
@@ -34,7 +34,7 @@ def _nonblank_strings(value: Any) -> bool:
 
 
 ENUMERATED_FIELDS = (
-    ("format", {"domain-memory-policy/v1"}),
+    ("format", ("domain-memory-policy/v1",)),
     ("storage_mode", STORAGE_MODES),
     ("data_classification", CLASSIFICATIONS),
     ("review_mode", REVIEW_MODES),
@@ -121,7 +121,7 @@ def _conventions_errors(value: Any) -> list[str]:
     if value is None:
         return []
     if not isinstance(value, dict):
-        return [f"schema_conventions must be an object, got {_kind_of(value)}"]
+        return [f"schema_conventions must be an object, got {kind_of(value)}"]
     errors = [f"schema_conventions.{key} is not a known key{_closest(key)}" for key in value if key not in SCHEMA_CONVENTION_DEFAULTS]
     for key in CONVENTION_LISTS:
         if key in value:
@@ -134,8 +134,8 @@ def _conventions_errors(value: Any) -> list[str]:
 
 def _list_errors(name: str, items: Any) -> list[str]:
     if not isinstance(items, list):
-        return [f"{name} must be a list, got {_kind_of(items)}"]
-    return [f"{name}[{index}] is blank" if isinstance(item, str) else f"{name}[{index}] must be a string, got {_kind_of(item)}"
+        return [f"{name} must be a list, got {kind_of(items)}"]
+    return [f"{name}[{index}] is blank" if isinstance(item, str) else f"{name}[{index}] must be a string, got {kind_of(item)}"
             for index, item in enumerate(items) if not (isinstance(item, str) and item.strip())]
 
 
@@ -144,13 +144,6 @@ def _closest(key: str, known: dict[str, Any] = SCHEMA_CONVENTION_DEFAULTS) -> st
 
     close = difflib.get_close_matches(key, list(known), n=1, cutoff=0.6)
     return f"; did you mean {close[0]}?" if close else ""
-
-
-def _kind_of(value: Any) -> str:
-    if value is None:
-        return "null"
-    kinds = {bool: "a boolean", int: "a number", float: "a number", str: "a string", list: "a list", dict: "an object"}
-    return kinds.get(type(value), type(value).__name__)
 
 
 def profile_from(section: Any) -> dict[str, list[str]]:
@@ -173,7 +166,7 @@ def profile_errors(value: Any) -> list[str]:
     if value is None:
         return []
     if not isinstance(value, dict):
-        return [f"project_profile must be an object, got {_kind_of(value)}"]
+        return [f"project_profile must be an object, got {kind_of(value)}"]
     errors = [f"project_profile.{key} is not a known key{_closest(key, PROJECT_PROFILE_DEFAULTS)}"
               for key in value if key not in PROJECT_PROFILE_DEFAULTS]
     for key in PROJECT_PROFILE_DEFAULTS:

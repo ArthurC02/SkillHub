@@ -68,6 +68,10 @@ pub struct Invocation {
 }
 
 impl Invocation {
+    pub fn flag(&self, dest: &str) -> bool {
+        matches!(self.values.get(dest), Some(Arg::Flag(true)))
+    }
+
     pub fn text(&self, dest: &str) -> Option<&str> {
         match self.values.get(dest) {
             Some(Arg::Text(text)) => Some(text),

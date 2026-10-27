@@ -57,7 +57,7 @@ fn is_concept_file_name(identifier: &str) -> bool {
         && identifier != "index"
 }
 
-fn read_record(root: &Path, asset: &str, identifier: &str) -> Result<Option<Object>, String> {
+pub fn read_record(root: &Path, asset: &str, identifier: &str) -> Result<Option<Object>, String> {
     if !is_concept_file_name(identifier) {
         return Ok(None);
     }
@@ -75,7 +75,7 @@ fn read_record(root: &Path, asset: &str, identifier: &str) -> Result<Option<Obje
         .map_err(|error| format!("{asset}/{identifier}.md: {error}"))
 }
 
-fn did_you_mean(identifier: &str, records: &[Value]) -> String {
+pub fn did_you_mean(identifier: &str, records: &[Value]) -> String {
     let known: Vec<&str> = records
         .iter()
         .filter_map(|record| record.as_object()?.get("id")?.as_str())

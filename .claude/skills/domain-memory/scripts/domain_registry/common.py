@@ -333,6 +333,13 @@ def invalid_choice(label: str, field: str, value: Any, allowed: Iterable[str]) -
     return f"{label} has an invalid {field}: {value!r} is not one of {', '.join(sorted(allowed))}"
 
 
+def kind_of(value: Any) -> str:
+    if value is None:
+        return "null"
+    kinds = {bool: "a boolean", int: "a number", float: "a number", str: "a string", list: "a list", dict: "an object"}
+    return kinds.get(type(value), type(value).__name__)
+
+
 def whole_number(value: Any) -> bool:
     return isinstance(value, int) and not isinstance(value, bool)
 

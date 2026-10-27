@@ -5,7 +5,7 @@ import math
 import re
 from typing import Any
 
-from .common import review_field
+from .common import kind_of, review_field
 
 OKF_VERSION = "0.2"
 
@@ -52,6 +52,8 @@ RELATION_TARGETS = {
     "supersedes": "decisions",
 }
 LIST_RELATIONS = {"contexts", "consumer_contexts", "consumers", "not_same_as", "supersedes"}
+RELATION_NOUNS = {"contexts": "Context", "aggregates": "Aggregate", "contracts": "Contract",
+                  "vocabulary": "Term", "decisions": "Decision"}
 CONTEXT_RELATIONS = tuple(field for field, target in RELATION_TARGETS.items() if target == "contexts")
 
 
@@ -131,7 +133,27 @@ def decode(asset: str, record_id: str, text: str) -> dict[str, Any]:
             raise ValueError("sources must be a list of cited sources")
         record["evidence"] = [_evidence(source) for source in front["sources"]]
     record.update(_registry_status(asset, front))
+    _check_relation_shapes(record)
     return record
+
+
+def _check_relation_shapes(record: dict[str, Any]) -> None:
+    for field, target in RELATION_TARGETS.items():
+        value = record.get(field)
+        if value is None:
+            continue
+        noun = RELATION_NOUNS[target]
+        if field in LIST_RELATIONS:
+            if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+                raise ValueError(f"{field} must be a list of {noun} ids, got {_shape_of(value)}")
+        elif not isinstance(value, str):
+            raise ValueError(f"{field} must be one {noun} id, got {kind_of(value)}")
+
+
+def _shape_of(value: Any) -> str:
+    if not isinstance(value, list):
+        return kind_of(value)
+    return f"a list holding {next(kind_of(item) for item in value if not isinstance(item, str))}"
 
 
 def split_concept(text: str) -> tuple[dict[str, Any], str]:

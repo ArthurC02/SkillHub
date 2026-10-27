@@ -2,6 +2,14 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 4.2.11
+
+### Fixed
+
+- A relation field of the wrong shape stopped `validate` and `get-context` with a Python traceback on 64 of 140 shapes tried (a number, a mapping, a nested list, a list where one id belongs). The concept reader now refuses it by file name and exits 1: `rules/x.md: contexts must be a list of Context ids, got a number`, `interactions/x.md: producer_context must be one Context id, got a list`, `rules/x.md: contexts must be a list of Context ids, got a list holding an object`. A list relation written as one word used to match by substring; it is refused the same way.
+- A relation set to `null` reads as absent: `get-context` and `resolve-terms --context` no longer crash on `contexts: null` or `consumer_contexts: null`, and `validate` reports the missing field instead.
+- `validate-policy` reports a `format` that is a list or a mapping as an invalid format, `policy has an invalid format: [] is not one of domain-memory-policy/v1`, instead of crashing.
+
 ## 4.2.10
 
 ### Fixed

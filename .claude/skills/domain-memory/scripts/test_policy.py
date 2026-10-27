@@ -32,6 +32,7 @@ class PolicyTest(RegistryTestCase):
                   "authorized_signers": ["SHA256:key"]}
         cases = [
             ("format", {"format": "domain-memory-policy/v2"}, "policy has an invalid format: 'domain-memory-policy/v2' is not one of domain-memory-policy/v1"),
+            ("format a list", {"format": []}, "policy has an invalid format: [] is not one of domain-memory-policy/v1"),
             ("storage", {"storage_mode": "cloud"}, "policy has an invalid storage_mode: 'cloud' is not one of external, ignored, tracked"),
             ("classification", {"data_classification": "secret"}, "policy has an invalid data_classification: 'secret' is not one of confidential, internal, public, restricted"),
             ("review mode", {"review_mode": "maybe"}, "policy has an invalid review_mode: 'maybe' is not one of local-draft-only, scm-verified"),

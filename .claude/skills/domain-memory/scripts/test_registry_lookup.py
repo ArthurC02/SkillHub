@@ -44,6 +44,11 @@ class RegistryLookupTest(RegistryTestCase):
         )
         self.assertEqual([term["id"] for term in matches], ["run"])
 
+    def test_a_term_with_null_contexts_is_outside_every_context(self) -> None:
+        self.seed("vocabulary.json", [{"id": "run", "name": "Run", "definition": "One execution.", "contexts": None}])
+        self.assertEqual([], every_resolved_term(self.repo / "memory", "Run", "orders"))
+        self.assertEqual(["run"], [term["id"] for term in every_resolved_term(self.repo / "memory", "Run", None)])
+
     def test_a_sentence_naming_no_registered_term_still_resolves_to_nothing(
         self,
     ) -> None:
