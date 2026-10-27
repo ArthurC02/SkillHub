@@ -2,7 +2,7 @@
  "python": "3.13",
  "prog": "registry_tools.py",
  "usage": "usage: registry_tools.py [-h] command ...\n",
- "help": "usage: registry_tools.py [-h] command ...\n\nInitialize, validate, or assess a file-backed Domain Registry.\n\npositional arguments:\n  command\n    readiness           Assess project readiness\n    probe               Report Registry health\n    lookup              Search an asset\n    resolve-terms       Resolve vocabulary\n    get-context         Retrieve a Context model\n    get-record          Retrieve a record\n    dependents          Follow a record's relations\n    describe-table      Describe a table from its migrations and the Registry,\n                        or list the tables\n    brief               Brief a change or a record\n    analyze-boundary    Inspect a boundary\n    boundary-impact     Find boundaries a change touches\n    validate            Validate the Registry\n    coverage            Report modelling gaps\n    verify-evidence     Verify citations\n    verify-sources      Verify selected sources\n    verify-audit        Verify audit trail\n    reconcile-audit     Reconcile audit trail\n    refresh-indexes     Rebuild concept indexes\n    cite                Build an evidence citation\n    recite              Re-cite one changed citation\n    relocate-evidence   Re-cite evidence after a move\n    upsert-candidate    Add or revise a candidate\n    retract-candidate   Withdraw a candidate\n    promote-candidate   Put a candidate into a draft proposal\n    harvest             Prove and package harvested rules\n    discard-harvest     Withdraw a Change Package that is not applied, written\n                        by harvest or by hand\n    init-change-package\n                        Start a Change Package\n    validate-change-package\n                        Validate a Change Package\n    submit-proposal     Submit for review\n    record-test-result  Record a test result\n    record-approval     Record human approval\n    verify-proposal     Verify test attestations\n    rebase-proposal     Restamp a stale proposal on the current Registry\n    ship-package        Attest, finalize and apply a verified package\n    supersede-proposal  Retire a proposal\n    list-proposals      List the Change Packages\n    quality-gates       Find the repository's own checks\n    counterfactual      Break one protection and restore it\n    discover-sources    Map repository sources\n    init-domain-memory  Start a Registry from human choices: the entry point\n    confirm-sources     Confirm the selected sources\n    refine-sources      Focus selected sources\n    refresh-sources     Re-snapshot the selected sources\n    refresh-listing     Refresh the discovered listing\n    recover-registry-update\n                        Recover an interrupted update\n    demote-local-reviews\n                        Withdraw local reviewed status\n    redraft-proposal    Redraft a retired proposal\n    export              Read the whole Registry from another tool\n    change-coupling     See which modules change together\n    compare-registry    Score an extracted Registry\n    harvest-candidates  Harvest a scratch extraction\n    extract-sql-schema  Extract SQL constraints as candidate rules\n    governance-readiness\n                        Report what governance still needs\n    init-signing-key    Prepare a signing identity\n    amend-policy        Change governance fields\n    install-git-hitl-hook\n                        Enforce signatures on push\n    install-pre-commit-hook\n                        Check staged citations on commit\n    verify-git-governance\n                        Check commit signatures\n    validate-policy     Check a policy before adopting it\n    verify-scm-attestation\n                        Check SCM evidence alone\n    audit-attestations  Audit past attestations\n    scan-secrets        Scan for secrets\n    validate-contract   Check a contract schema file\n    mcp-serve           Serve the read commands to a host over MCP\n\noptions:\n  -h, --help            show this help message and exit\n\nEveryday commands: readiness, probe, lookup, resolve-terms, get-context, get-record, dependents,\n  describe-table, brief, analyze-boundary, boundary-impact, validate, coverage, verify-evidence,\n  verify-sources, verify-audit, reconcile-audit, refresh-indexes, cite, recite, relocate-evidence,\n  upsert-candidate, retract-candidate, promote-candidate, harvest, discard-harvest,\n  init-change-package, validate-change-package, submit-proposal, record-test-result,\n  record-approval, verify-proposal, rebase-proposal, ship-package, supersede-proposal,\n  list-proposals, quality-gates, counterfactual.\n\nAdvanced commands: discover-sources, init-domain-memory, confirm-sources, refine-sources,\n  refresh-sources, refresh-listing, recover-registry-update, demote-local-reviews, redraft-proposal,\n  export, change-coupling, compare-registry, harvest-candidates, extract-sql-schema,\n  governance-readiness, init-signing-key, amend-policy, install-git-hitl-hook,\n  install-pre-commit-hook, verify-git-governance, validate-policy, verify-scm-attestation,\n  audit-attestations, scan-secrets, validate-contract, mcp-serve.\n",
+ "help": "usage: registry_tools.py [-h] command ...\n\nInitialize, validate, or assess a file-backed Domain Registry.\n\npositional arguments:\n  command\n    readiness           Assess project readiness\n    probe               Report Registry health\n    lookup              Search an asset\n    resolve-terms       Resolve vocabulary\n    get-context         Retrieve a Context model\n    get-record          Retrieve a record\n    dependents          Follow a record's relations\n    brief               Brief a change or a record\n    analyze-boundary    Inspect a boundary\n    boundary-impact     Find boundaries a change touches\n    validate            Validate the Registry\n    coverage            Report modelling gaps\n    verify-evidence     Verify citations\n    verify-sources      Verify selected sources\n    verify-audit        Verify audit trail\n    reconcile-audit     Reconcile audit trail\n    refresh-indexes     Rebuild concept indexes\n    cite                Build an evidence citation\n    recite              Re-cite one changed citation\n    relocate-evidence   Re-cite evidence after a move\n    upsert-candidate    Add or revise a candidate\n    retract-candidate   Withdraw a candidate\n    promote-candidate   Put a candidate into a draft proposal\n    harvest             Prove and package harvested rules\n    discard-harvest     Withdraw a Change Package that is not applied, written\n                        by harvest or by hand\n    init-change-package\n                        Start a Change Package\n    validate-change-package\n                        Validate a Change Package\n    submit-proposal     Submit for review\n    record-test-result  Record a test result\n    record-approval     Record human approval\n    verify-proposal     Verify test attestations\n    rebase-proposal     Restamp a stale proposal on the current Registry\n    ship-package        Attest, finalize and apply a verified package\n    supersede-proposal  Retire a proposal\n    list-proposals      List the Change Packages\n    quality-gates       Find the repository's own checks\n    counterfactual      Break one protection and restore it\n    discover-sources    Map repository sources\n    init-domain-memory  Start a Registry from human choices: the entry point\n    confirm-sources     Confirm the selected sources\n    refine-sources      Focus selected sources\n    refresh-sources     Re-snapshot the selected sources\n    refresh-listing     Refresh the discovered listing\n    recover-registry-update\n                        Recover an interrupted update\n    demote-local-reviews\n                        Withdraw local reviewed status\n    redraft-proposal    Redraft a retired proposal\n    export              Read the whole Registry from another tool\n    change-coupling     See which modules change together\n    compare-registry    Score an extracted Registry\n    harvest-candidates  Harvest a scratch extraction\n    governance-readiness\n                        Report what governance still needs\n    init-signing-key    Prepare a signing identity\n    amend-policy        Change governance fields\n    install-git-hitl-hook\n                        Enforce signatures on push\n    install-pre-commit-hook\n                        Check staged citations on commit\n    verify-git-governance\n                        Check commit signatures\n    validate-policy     Check a policy before adopting it\n    verify-scm-attestation\n                        Check SCM evidence alone\n    audit-attestations  Audit past attestations\n    scan-secrets        Scan for secrets\n    validate-contract   Check a contract schema file\n    mcp-serve           Serve the read commands to a host over MCP\n\noptions:\n  -h, --help            show this help message and exit\n\nEveryday commands: readiness, probe, lookup, resolve-terms, get-context, get-record, dependents,\n  brief, analyze-boundary, boundary-impact, validate, coverage, verify-evidence, verify-sources,\n  verify-audit, reconcile-audit, refresh-indexes, cite, recite, relocate-evidence, upsert-candidate,\n  retract-candidate, promote-candidate, harvest, discard-harvest, init-change-package,\n  validate-change-package, submit-proposal, record-test-result, record-approval, verify-proposal,\n  rebase-proposal, ship-package, supersede-proposal, list-proposals, quality-gates, counterfactual.\n\nAdvanced commands: discover-sources, init-domain-memory, confirm-sources, refine-sources,\n  refresh-sources, refresh-listing, recover-registry-update, demote-local-reviews, redraft-proposal,\n  export, change-coupling, compare-registry, harvest-candidates, governance-readiness,\n  init-signing-key, amend-policy, install-git-hitl-hook, install-pre-commit-hook,\n  verify-git-governance, validate-policy, verify-scm-attestation, audit-attestations, scan-secrets,\n  validate-contract, mcp-serve.\n",
  "commands": {
   "lookup": {
    "prog": "registry_tools.py lookup",
@@ -323,103 +323,6 @@
      "type": "str",
      "choices": null,
      "default": null
-    }
-   ],
-   "mutex": []
-  },
-  "describe-table": {
-   "prog": "registry_tools.py describe-table",
-   "usage": "usage: registry_tools.py describe-table [-h] [--registry-root REGISTRY_ROOT]\n                                        --repo-root REPO_ROOT\n                                        --migrations MIGRATIONS\n                                        [--queries QUERIES] [--table TABLE]\n                                        [--base BASE] [--require-complete]\n",
-   "help": "usage: registry_tools.py describe-table [-h] [--registry-root REGISTRY_ROOT]\n                                        --repo-root REPO_ROOT\n                                        --migrations MIGRATIONS\n                                        [--queries QUERIES] [--table TABLE]\n                                        [--base BASE] [--require-complete]\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --migrations MIGRATIONS\n  --queries QUERIES\n  --table TABLE\n  --base BASE\n  --require-complete\n",
-   "actions": [
-    {
-     "dest": "help",
-     "options": [
-      "-h",
-      "--help"
-     ],
-     "kind": "help",
-     "required": false,
-     "type": "str",
-     "choices": null,
-     "default": "==SUPPRESS=="
-    },
-    {
-     "dest": "registry_root",
-     "options": [
-      "--registry-root"
-     ],
-     "kind": "store",
-     "required": false,
-     "type": "path",
-     "choices": null,
-     "default": null
-    },
-    {
-     "dest": "repo_root",
-     "options": [
-      "--repo-root"
-     ],
-     "kind": "store",
-     "required": true,
-     "type": "path",
-     "choices": null,
-     "default": null
-    },
-    {
-     "dest": "migrations",
-     "options": [
-      "--migrations"
-     ],
-     "kind": "store",
-     "required": true,
-     "type": "path",
-     "choices": null,
-     "default": null
-    },
-    {
-     "dest": "queries",
-     "options": [
-      "--queries"
-     ],
-     "kind": "store",
-     "required": false,
-     "type": "path",
-     "choices": null,
-     "default": null
-    },
-    {
-     "dest": "table",
-     "options": [
-      "--table"
-     ],
-     "kind": "store",
-     "required": false,
-     "type": "str",
-     "choices": null,
-     "default": null
-    },
-    {
-     "dest": "base",
-     "options": [
-      "--base"
-     ],
-     "kind": "store",
-     "required": false,
-     "type": "str",
-     "choices": null,
-     "default": null
-    },
-    {
-     "dest": "require_complete",
-     "options": [
-      "--require-complete"
-     ],
-     "kind": "store_true",
-     "required": false,
-     "type": "str",
-     "choices": null,
-     "default": false
     }
    ],
    "mutex": []
@@ -2943,81 +2846,6 @@
      "type": "str",
      "choices": null,
      "default": false
-    }
-   ],
-   "mutex": []
-  },
-  "extract-sql-schema": {
-   "prog": "registry_tools.py extract-sql-schema",
-   "usage": "usage: registry_tools.py extract-sql-schema [-h] --registry-root REGISTRY_ROOT\n                                            --repo-root REPO_ROOT\n                                            --migrations MIGRATIONS\n                                            [--table-context TABLE_CONTEXT]\n                                            [--default-context DEFAULT_CONTEXT]\n",
-   "help": "usage: registry_tools.py extract-sql-schema [-h] --registry-root REGISTRY_ROOT\n                                            --repo-root REPO_ROOT\n                                            --migrations MIGRATIONS\n                                            [--table-context TABLE_CONTEXT]\n                                            [--default-context DEFAULT_CONTEXT]\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --migrations MIGRATIONS\n  --table-context TABLE_CONTEXT\n                        repeatable TABLE=CONTEXT, the Context a table's rules\n                        belong to\n  --default-context DEFAULT_CONTEXT\n                        the Context for a table --table-context does not name\n",
-   "actions": [
-    {
-     "dest": "help",
-     "options": [
-      "-h",
-      "--help"
-     ],
-     "kind": "help",
-     "required": false,
-     "type": "str",
-     "choices": null,
-     "default": "==SUPPRESS=="
-    },
-    {
-     "dest": "registry_root",
-     "options": [
-      "--registry-root"
-     ],
-     "kind": "store",
-     "required": true,
-     "type": "path",
-     "choices": null,
-     "default": null
-    },
-    {
-     "dest": "repo_root",
-     "options": [
-      "--repo-root"
-     ],
-     "kind": "store",
-     "required": true,
-     "type": "path",
-     "choices": null,
-     "default": null
-    },
-    {
-     "dest": "migrations",
-     "options": [
-      "--migrations"
-     ],
-     "kind": "store",
-     "required": true,
-     "type": "path",
-     "choices": null,
-     "default": null
-    },
-    {
-     "dest": "table_context",
-     "options": [
-      "--table-context"
-     ],
-     "kind": "append",
-     "required": false,
-     "type": "str",
-     "choices": null,
-     "default": []
-    },
-    {
-     "dest": "default_context",
-     "options": [
-      "--default-context"
-     ],
-     "kind": "store",
-     "required": false,
-     "type": "str",
-     "choices": null,
-     "default": null
     }
    ],
    "mutex": []

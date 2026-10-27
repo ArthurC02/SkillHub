@@ -711,18 +711,5 @@ def read_schema_texts(migrations: Iterable[tuple[str, str]]) -> Schema:
     return schema
 
 
-def sql_directory_inside(repo_root: Path, given: Path, flag: str) -> Path:
-    root = repo_root.resolve()
-    located = (given if given.is_absolute() else root / given).resolve()
-    if not located.is_relative_to(root):
-        raise ValueError(f"{flag} resolves outside --repo-root ({located}); pass it relative to the repo root or as an "
-                         "absolute path inside it")
-    if not located.is_dir():
-        raise ValueError(f"{flag} directory {located} does not exist")
-    if not any(located.rglob("*.sql")):
-        raise ValueError(f"{flag} directory {located} holds no .sql files")
-    return located
-
-
 def live_tables(schema: Schema) -> dict[str, Table]:
     return {name: table for name, table in schema.tables.items() if table.partition_of is None}

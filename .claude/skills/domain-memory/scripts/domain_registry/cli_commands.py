@@ -16,7 +16,7 @@ __all__ = [
 COMMANDS_BY_MODULE = {
     "read": (
         "mcp-serve", "quality-gates", "counterfactual", "list-proposals", "coverage", "export", "compare-registry",
-        "lookup", "resolve-terms", "get-context", "get-record", "dependents", "describe-table", "brief",
+        "lookup", "resolve-terms", "get-context", "get-record", "dependents", "brief",
         "analyze-boundary", "boundary-impact", "change-coupling", "readiness", "probe",
     ),
     "evidence": (
@@ -25,7 +25,7 @@ COMMANDS_BY_MODULE = {
     ),
     "lifecycle": (
         "init-change-package", "redraft-proposal", "validate", "upsert-candidate", "harvest-candidates",
-        "extract-sql-schema", "harvest", "discard-harvest", "retract-candidate", "promote-candidate",
+        "harvest", "discard-harvest", "retract-candidate", "promote-candidate",
         "demote-local-reviews", "recover-registry-update", "submit-proposal", "record-approval", "supersede-proposal",
         "verify-proposal", "rebase-proposal", "record-test-result", "ship-package", "validate-change-package",
     ),

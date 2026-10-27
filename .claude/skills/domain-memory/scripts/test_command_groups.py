@@ -219,7 +219,7 @@ class PagesTest(unittest.TestCase):
     def test_the_code_rules_live_on_the_entry_page_alone_and_the_hygiene_page_points_there(self) -> None:
         hygiene = (PLUGIN / "skills/domain-memory-implementation-hygiene/SKILL.md").read_text(encoding="utf-8")
         self.assertEqual(
-            (7, True, False),
+            (6, True, False),
             (len(code_rules(PLUGIN / "AGENTS.md")), "AGENTS.md#when-you-are-the-one-writing-the-code" in hygiene,
              "## When you are the one writing the code" in hygiene),
         )

@@ -219,30 +219,6 @@ def _pairs(entries: list[str], option: str, shape: str) -> dict[str, str]:
     return pairs
 
 
-def handle_extract_sql_schema(args: argparse.Namespace) -> int:
-    from ..sql_candidates import extract_sql_rules
-    from ..sql_schema import sql_directory_inside
-
-    report = extract_sql_rules(
-        args.registry_root.resolve(), args.repo_root.resolve(), sql_directory_inside(args.repo_root, args.migrations, "--migrations"),
-        _pairs(args.table_context, "--table-context", "TABLE=CONTEXT"), args.default_context,
-    )
-    print_json(report)
-    if report["unplaced_tables"]:
-        print("NOTE: no Context for the constraints of " + ", ".join(report["unplaced_tables"])
-              + "; name one with --table-context TABLE=CONTEXT or --default-context to extract them.", file=sys.stderr)
-    if report["unread_statements"]:
-        print(f"NOTE: {len(report['unread_statements'])} statement(s) were not read, so their constraints are not "
-              "extracted; see unread_statements.", file=sys.stderr)
-    if report["dynamic_ddl"]:
-        print(f"NOTE: {len(report['dynamic_ddl'])} statement(s) build DDL at run time inside a DO block or function, which the "
-              "reader cannot see; see dynamic_ddl.", file=sys.stderr)
-    if report["outside_sources"]:
-        print("NOTE: the extracted rules rest on files the confirmed source map does not cover: "
-              + ", ".join(report["outside_sources"]) + ". " + OUTSIDE_SOURCES_CONSEQUENCE, file=sys.stderr)
-    return 0
-
-
 def handle_harvest_candidates(args: argparse.Namespace) -> int:
     from ..harvest import harvest_candidates
 
@@ -471,7 +447,6 @@ HANDLERS: dict[str, Callable[[argparse.Namespace], int]] = {
     "validate": handle_validate,
     "upsert-candidate": handle_upsert_candidate,
     "harvest-candidates": handle_harvest_candidates,
-    "extract-sql-schema": handle_extract_sql_schema,
     "harvest": handle_harvest,
     "discard-harvest": handle_discard_harvest,
     "retract-candidate": handle_retract_candidate,

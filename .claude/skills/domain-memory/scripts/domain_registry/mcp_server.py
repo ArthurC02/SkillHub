@@ -135,11 +135,6 @@ TOOLS = (
     Tool("validate", "Validate the Registry's shape and references.", BOTH_ROOTS,
          (Parameter("require_reviewed", "boolean"),)),
     Tool("readiness", "Assess what Domain Memory work this repository is ready for.", BOTH_ROOTS, prints_object=True),
-    Tool("describe-table", "Describe one database table from its migrations and the Registry: meaning, columns with allowed "
-         "values, constraints, relations, history, gaps, and the statements under queries that use it; without table, "
-         "list every table with its meaning and gap count.", BOTH_ROOTS,
-         (Parameter("migrations", required=True, inside_repository=True), Parameter("table"), Parameter("base"),
-          Parameter("queries", inside_repository=True), Parameter("require_complete", "boolean")), prints_object=True),
     Tool("list-proposals", "List the Change Packages under a directory with their state.", (),
          (Parameter("changes_root", required=True, inside_repository=True),)),
     Tool("validate-change-package", "Validate a Change Package, or preview what the next stage still needs.",

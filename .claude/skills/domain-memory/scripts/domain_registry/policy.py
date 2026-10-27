@@ -39,15 +39,11 @@ ENUMERATED_FIELDS = (
     ("data_classification", CLASSIFICATIONS),
     ("review_mode", REVIEW_MODES),
 )
+POLICY_KEYS = (
+    "format", "storage_mode", "data_classification", "review_mode", "review_governance", "source_policy", "limits",
+    "project_profile", "approved_command_profiles",
+)
 LIMIT_KEYS = ("max_file_count", "max_file_bytes", "max_total_bytes", "max_query_results")
-SCHEMA_CONVENTION_DEFAULTS: dict[str, Any] = {
-    "exempt_columns": ["id", "created_at", "updated_at"],
-    "status_like_suffixes": ["status", "state", "kind", "mode", "tier", "role", "decision", "verdict", "outcome",
-                             "phase", "stage", "level", "priority", "severity", "visibility", "category"],
-    "free_text_markers": ["free text", "free-text"],
-    "value_comment_limit": 12,
-}
-CONVENTION_LISTS = ("exempt_columns", "status_like_suffixes", "free_text_markers")
 PROJECT_PROFILE_DEFAULTS: dict[str, list[str]] = {
     "implementation_roots": ["apps", "src", "services", "packages", "db", "database", "migrations", "schema"],
     "excluded_directories": [],
@@ -112,26 +108,6 @@ def _limits_error(limits: Any) -> str | None:
     return None
 
 
-def schema_conventions(policy: dict[str, Any] | None) -> dict[str, Any]:
-    given = policy.get("schema_conventions") if policy else None
-    return {**SCHEMA_CONVENTION_DEFAULTS, **(given if isinstance(given, dict) else {})}
-
-
-def _conventions_errors(value: Any) -> list[str]:
-    if value is None:
-        return []
-    if not isinstance(value, dict):
-        return [f"schema_conventions must be an object, got {kind_of(value)}"]
-    errors = [f"schema_conventions.{key} is not a known key{_closest(key)}" for key in value if key not in SCHEMA_CONVENTION_DEFAULTS]
-    for key in CONVENTION_LISTS:
-        if key in value:
-            errors.extend(_list_errors(f"schema_conventions.{key}", value[key]))
-    limit = value.get("value_comment_limit", 0)
-    if not whole_number(limit) or limit < 0:
-        errors.append(f"schema_conventions.value_comment_limit must be a whole number 0 or more, got {limit!r}")
-    return errors
-
-
 def _list_errors(name: str, items: Any) -> list[str]:
     if not isinstance(items, list):
         return [f"{name} must be a list, got {kind_of(items)}"]
@@ -139,7 +115,7 @@ def _list_errors(name: str, items: Any) -> list[str]:
             for index, item in enumerate(items) if not (isinstance(item, str) and item.strip())]
 
 
-def _closest(key: str, known: dict[str, Any] = SCHEMA_CONVENTION_DEFAULTS) -> str:
+def _closest(key: str, known: dict[str, Any]) -> str:
     import difflib
 
     close = difflib.get_close_matches(key, list(known), n=1, cutoff=0.6)
@@ -195,8 +171,8 @@ def validate_policy(value: dict[str, Any]) -> list[str]:
         _source_error(value.get("source_policy")),
         _limits_error(value.get("limits")),
     )
-    return (errors + [error for error in found if error] + _conventions_errors(value.get("schema_conventions"))
-            + profile_errors(value.get("project_profile")))
+    unknown = [f"policy.{key} is not a known key{_closest(key, dict.fromkeys(POLICY_KEYS))}" for key in value if key not in POLICY_KEYS]
+    return errors + [error for error in found if error] + profile_errors(value.get("project_profile")) + unknown
 
 
 def _default_governance(review_mode: str) -> dict[str, Any]:

@@ -19,7 +19,7 @@ SINGULAR_ASSETS = {
 }
 COMMAND_GROUPS = {
     "everyday": (
-        "readiness", "probe", "lookup", "resolve-terms", "get-context", "get-record", "dependents", "describe-table", "brief",
+        "readiness", "probe", "lookup", "resolve-terms", "get-context", "get-record", "dependents", "brief",
         "analyze-boundary", "boundary-impact", "validate", "coverage", "verify-evidence", "verify-sources",
         "verify-audit", "reconcile-audit", "refresh-indexes", "cite", "recite", "relocate-evidence", "upsert-candidate", "retract-candidate",
         "promote-candidate", "harvest", "discard-harvest", "init-change-package", "validate-change-package", "submit-proposal",
@@ -29,7 +29,7 @@ COMMAND_GROUPS = {
     "advanced": (
         "discover-sources", "init-domain-memory", "confirm-sources", "refine-sources", "refresh-sources", "refresh-listing",
         "recover-registry-update", "demote-local-reviews", "redraft-proposal",
-        "export", "change-coupling", "compare-registry", "harvest-candidates", "extract-sql-schema", "governance-readiness",
+        "export", "change-coupling", "compare-registry", "harvest-candidates", "governance-readiness",
         "init-signing-key", "amend-policy", "install-git-hitl-hook", "install-pre-commit-hook", "verify-git-governance", "validate-policy",
         "verify-scm-attestation", "audit-attestations", "scan-secrets", "validate-contract", "mcp-serve",
     ),
@@ -148,14 +148,6 @@ def _add_lookup_commands(commands: argparse._SubParsersAction) -> None:
     add_path(dependents_parser, "--registry-root")
     add_asset(dependents_parser)
     dependents_parser.add_argument("--id", required=True)
-    describe_parser = commands.add_parser("describe-table", help="Describe a table from its migrations and the Registry, or list the tables")
-    add_path(describe_parser, "--registry-root", required=False)
-    add_path(describe_parser, "--repo-root")
-    add_path(describe_parser, "--migrations")
-    add_path(describe_parser, "--queries", required=False)
-    describe_parser.add_argument("--table")
-    describe_parser.add_argument("--base")
-    describe_parser.add_argument("--require-complete", action="store_true")
     brief_parser = commands.add_parser("brief", help="Brief a change or a record")
     add_path(brief_parser, "--registry-root")
     add_path(brief_parser, "--repo-root")
@@ -439,14 +431,6 @@ def _add_harvest_command(commands: argparse._SubParsersAction) -> None:
         "--context-map", action="append", default=[], help="repeatable CANDIDATE=GOLD, over the pairing found by path or name"
     )
     harvest_parser.add_argument("--keep-duplicates", action="store_true")
-    schema_parser = commands.add_parser("extract-sql-schema", help="Extract SQL constraints as candidate rules")
-    add_path(schema_parser, "--registry-root")
-    add_path(schema_parser, "--repo-root")
-    add_path(schema_parser, "--migrations")
-    schema_parser.add_argument(
-        "--table-context", action="append", default=[], help="repeatable TABLE=CONTEXT, the Context a table's rules belong to"
-    )
-    schema_parser.add_argument("--default-context", help="the Context for a table --table-context does not name")
     prove_parser = commands.add_parser("harvest", help="Prove and package harvested rules")
     add_path(prove_parser, "--registry-root")
     add_path(prove_parser, "--repo-root")

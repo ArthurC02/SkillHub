@@ -2,6 +2,17 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 5.0.0
+
+### Removed
+
+- The plugin no longer reads database schemas. `describe-table`, `extract-sql-schema` and the MCP tool `describe_table` are gone, with the PostgreSQL migration reader behind them. A host that calls `describe_table` gets an unknown tool; the MCP server now offers thirteen read commands. A repository that needs its tables described or its migrations turned into candidate Rules keeps that in its own tooling.
+- The `schema_conventions` section of `domain-memory-policy.json`, and its place in the policy template. A policy must drop the section: it configured only the removed migration reader.
+
+### Changed
+
+- `validate-policy` and `validate` refuse a top-level key the policy does not define, as `policy.<key> is not a known key`, with `; did you mean <key>?` when one is close. A leftover `schema_conventions` is refused this way, so a policy that still holds it fails both until it is dropped.
+
 ## 4.2.19
 
 ### Added

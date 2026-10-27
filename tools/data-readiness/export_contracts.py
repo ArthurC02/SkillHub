@@ -10,8 +10,8 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 import measure_readiness as mr  # noqa: E402
-from domain_registry.sql_describe import CHECK_BODY, describe_table  # noqa: E402
-from domain_registry.sql_schema import strip_comments  # noqa: E402
+from sql_describe import CHECK_BODY, describe_table  # noqa: E402
+from sql_schema import strip_comments  # noqa: E402
 
 API_VERSION = "v3.1.0"
 SCHEMA_FILE = HERE / "odcs-json-schema-v3.1.0.json"

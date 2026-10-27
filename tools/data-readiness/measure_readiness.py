@@ -8,12 +8,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-PLUGIN_SCRIPTS = Path(__file__).resolve().parents[2] / ".claude" / "skills" / "domain-memory" / "scripts"
-sys.path.insert(0, str(PLUGIN_SCRIPTS))
-
-from domain_registry.policy import existing_policy, schema_conventions  # noqa: E402
-from domain_registry.sql_describe import allowed_values, sql_statements_under, statements_naming  # noqa: E402
-from domain_registry.sql_schema import IDENT, ForeignKey, Schema, Table, read_schema, statements, strip_comments  # noqa: E402
+from sql_describe import EXEMPT_COLUMNS, allowed_values, sql_statements_under, statements_naming
+from sql_schema import IDENT, ForeignKey, Schema, Table, read_schema, statements, strip_comments
 
 QUERY_NAME = re.compile(r"^--\s*name:\s*(\S+)\s+:(\w+)", re.M)
 QUERY_TABLES = re.compile(rf"\b(?:FROM|JOIN|INTO|UPDATE|DELETE\s+FROM)\s+(?:ONLY\s+)?({IDENT})", re.I)
@@ -384,7 +380,7 @@ def read_inputs(repo_root: Path, registry_root: Path) -> Inputs:
         read_owners(repo_root / "db" / "query-owners.yaml"), read_registry(registry_root),
         read_identity(repo_root / "apps" / "platform" / "architecture-identity.yaml"),
         _queried_columns(schema, queries_dir, repo_root),
-        frozenset(schema_conventions(existing_policy(registry_root))["exempt_columns"]),
+        EXEMPT_COLUMNS,
     )
 
 

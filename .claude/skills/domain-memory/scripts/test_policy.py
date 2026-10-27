@@ -111,37 +111,14 @@ class PolicyTest(RegistryTestCase):
             validate_policy(broken),
         )
 
-    def test_schema_conventions_are_optional_and_each_defect_is_named(self) -> None:
+    def test_a_key_the_policy_does_not_define_is_named_with_the_closest_one(self) -> None:
         sound = stored_policy_of(self.repo)
-        whole = {"exempt_columns": ["id"], "status_like_suffixes": ["state"], "free_text_markers": ["free text"],
-                 "value_comment_limit": 0}
-        cases = [
-            ("absent", {}, []),
-            ("whole", {"schema_conventions": whole}, []),
-            ("one key", {"schema_conventions": {"value_comment_limit": 3}}, []),
-            ("not an object", {"schema_conventions": ["id"]}, ["schema_conventions must be an object, got a list"]),
-            ("unknown key", {"schema_conventions": {**whole, "colour": "blue"}}, ["schema_conventions.colour is not a known key"]),
-            ("misspelt key", {"schema_conventions": {**whole, "exempt_column": ["id"]}},
-             ["schema_conventions.exempt_column is not a known key; did you mean exempt_columns?"]),
-            ("blank suffix", {"schema_conventions": {**whole, "status_like_suffixes": ["status", " "]}},
-             ["schema_conventions.status_like_suffixes[1] is blank"]),
-            ("number in a list", {"schema_conventions": {**whole, "exempt_columns": ["id", 7]}},
-             ["schema_conventions.exempt_columns[1] must be a string, got a number"]),
-            ("markers not a list", {"schema_conventions": {**whole, "free_text_markers": "free text"}},
-             ["schema_conventions.free_text_markers must be a list, got a string"]),
-            ("negative limit", {"schema_conventions": {**whole, "value_comment_limit": -1}},
-             ["schema_conventions.value_comment_limit must be a whole number 0 or more, got -1"]),
-            ("boolean limit", {"schema_conventions": {**whole, "value_comment_limit": True}},
-             ["schema_conventions.value_comment_limit must be a whole number 0 or more, got True"]),
-            ("every defect at once",
-             {"schema_conventions": {"exempt_column": ["id"], "status_like_suffixes": ["status", ""], "value_comment_limit": -1}},
-             ["schema_conventions.exempt_column is not a known key; did you mean exempt_columns?",
-              "schema_conventions.status_like_suffixes[1] is blank",
-              "schema_conventions.value_comment_limit must be a whole number 0 or more, got -1"]),
-        ]
-        for label, change, expected in cases:
-            with self.subTest(label):
-                self.assertEqual(expected, validate_policy({**sound, **change}))
+        self.assertEqual(
+            ["policy.schema_conventions is not a known key",
+             "policy.review_mod is not a known key; did you mean review_mode?"],
+            validate_policy({**sound, "schema_conventions": {}, "review_mod": "scm-verified"}),
+        )
+        self.assertEqual([], validate_policy({**sound, "approved_command_profiles": [], "project_profile": {}}))
 
     def test_each_limit_accepts_one_and_refuses_zero(self) -> None:
         sound = stored_policy_of(self.repo)

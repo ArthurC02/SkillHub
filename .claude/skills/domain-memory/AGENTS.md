@@ -64,9 +64,6 @@ Each row names the command and the flags that matter; [script-api.md](references
 | Know what this repository has | `readiness --repo-root <repo> [--registry-root <root>]` |
 | Start a Domain Memory | `discover-sources --repo-root <repo>`, then `init-domain-memory` with the destination, sources and policy a developer chose |
 | Read the model before coding | `resolve-terms --query <word>`, `get-context --id <id>`, `get-record --asset <asset> --id <id>`; `dependents --asset <asset> --id <id>` before changing a record |
-| Find the table a request is about | `describe-table --repo-root <repo> --migrations <dir>` lists every table with its meaning and gap count |
-| Read or write a table | `describe-table --repo-root <repo> --migrations <dir> --table <name> [--queries <dir>]` |
-| Finish a migration | `describe-table --repo-root <repo> --migrations <dir> --table <name> --require-complete`, or `--base <ref>` in place of `--table`; exit 0 means done |
 | Review a branch against the model | `brief --base <branch point> --markdown` |
 | See which boundaries a change touches | `boundary-impact --base <branch point>` |
 | Check the Registry | `validate`; `verify-evidence` for whether citations still match the code; `coverage` for the Contexts that still lack rules |
@@ -94,7 +91,7 @@ Each row names the command and the flags that matter; [script-api.md](references
 
 ## When you are the one writing the code
 
-The reviewed facts say what must stay true. These seven hold for every change to source, and they are stated here because this page is the one every Agent reads:
+The reviewed facts say what must stay true. These six hold for every change to source, and they are stated here because this page is the one every Agent reads:
 
 1. Run `quality-gates --repo-root <repo>`. The checks it lists must pass, and a check met by a change of form alone is not met: when one forces a change, remove the cause it points at. A flag kept as a keyword argument or a default is a change of form; when it chooses between kinds the domain names, including a kind the handoff says is coming, name that concept in this change. When `standard` is `none`, say so in your report and claim no standard the repository does not enforce.
 2. Search for what already exists, and use it or extend it.
@@ -102,6 +99,5 @@ The reviewed facts say what must stay true. These seven hold for every change to
 4. Every rule you add or move ends with a test in the repository that fails when the rule is broken. Prove it with `counterfactual`, once for each rule: `survived` means no test protects that rule, so write the test and run it again. A comparison you run once and discard does not count. Report each rule that survived before you wrote its test.
 5. An external system goes behind a Port named in the domain's terms and declared where a decision can reach it without loading the provider. Address, credentials, and status codes stay in the Adapter. A failure the domain survives is handed to the caller or recorded, never dropped.
 6. A mechanical change gets the change, the tests, and a short report.
-7. A migration that creates or alters a table is done when `describe-table --repo-root <repo> --migrations <dir> --table <name> --require-complete` exits 0, or `--base <ref>` in place of `--table` when older tables carry gaps of their own. `gaps` lists what is missing, and [describe-table](references/script-api.md#describe-table) defines each gap: a table or column without a `COMMENT ON`, a status-like column without a value list, a value list that leaves NULL undecided, a listed value the comment does not explain, a foreign key without `ON DELETE`, and DDL built at run time.
 
 The reasoning, the evidence each claim needs, and the cases where these do not apply are in [references/code-expression.md](references/code-expression.md) and [references/ports-and-adapters.md](references/ports-and-adapters.md).

@@ -11,7 +11,6 @@ from ..changes import list_proposals, packages_root, proof_of, rule_coverage
 from ..common import ASSET_KEYS, load_json, shown_path
 from ..locate import domain_memory_hint
 from ..policy import policy_path, query_result_limit
-from ..policy import existing_policy
 from ..registry import (
     asset_records,
     boundary_analysis,
@@ -26,7 +25,6 @@ from .common import print_json
 
 if TYPE_CHECKING:
     from ..counterfactual import Mutation
-    from ..sql_describe import Conventions
 
 
 COUNTERFACTUAL_EXIT_CODES = {"killed": 0, "survived": 1, "inconclusive": 2, "error": 3}
@@ -156,94 +154,6 @@ def handle_get_context(args: argparse.Namespace) -> int:
         raise ValueError(f"context not found: {args.id}{_did_you_mean(args.id, asset_records(root, 'contexts.json'))}")
     print_json(context_summary(result) if args.summary else result)
     return 0
-
-
-def handle_describe_table(args: argparse.Namespace) -> int:
-    from ..sql_describe import describe_table, queries_naming
-    from ..sql_schema import sql_directory_inside
-
-    if args.base:
-        return _handle_gaps_since(args)
-    registry_root = args.registry_root.resolve() if args.registry_root else None
-    migrations = sql_directory_inside(args.repo_root, args.migrations, "--migrations")
-    if not args.table:
-        return _handle_catalog(args, migrations, _conventions_of(registry_root))
-    table = args.table.strip()
-    queries = sql_directory_inside(args.repo_root, args.queries, "--queries") if args.queries else None
-    result = describe_table(registry_root, args.repo_root.resolve(), migrations, table, _conventions_of(registry_root))
-    if queries is not None:
-        result["queries"] = queries_naming(queries, args.repo_root.resolve(), table, [column["name"] for column in result["columns"]])
-    print_json(result)
-    for note in _describe_notes(result, table, without_registry=registry_root is None, require_complete=args.require_complete,
-                                queries=args.queries):
-        print(f"NOTE: {note}", file=sys.stderr)
-    return 1 if args.require_complete and result["gaps"] else 0
-
-
-def _handle_catalog(args: argparse.Namespace, migrations: Path, conventions: Conventions) -> int:
-    from ..sql_describe import catalog
-
-    result = catalog(args.repo_root.resolve(), migrations, conventions)
-    print_json(result)
-    open_tables = [entry["table"] for entry in result["tables"] if entry["gaps"]]
-    gapped = f"{len(open_tables)} with gaps: {', '.join(open_tables)}" if open_tables else "none with a gap"
-    print(f"NOTE: {len(result['tables'])} table{_s(result['tables'])}, {gapped}; --table <name> describes one", file=sys.stderr)
-    return 1 if args.require_complete and open_tables else 0
-
-
-def _conventions_of(registry_root: Path | None) -> Conventions:
-    from ..sql_describe import Conventions
-
-    return Conventions.from_policy(existing_policy(registry_root) if registry_root is not None else None)
-
-
-def _handle_gaps_since(args: argparse.Namespace) -> int:
-    from ..sql_describe import gaps_since
-    from ..sql_schema import sql_directory_inside
-
-    registry_root = args.registry_root.resolve() if args.registry_root else None
-    result = gaps_since(args.repo_root.resolve(), sql_directory_inside(args.repo_root, args.migrations, "--migrations"), args.base,
-                        args.table.strip() if args.table else None, _conventions_of(registry_root))
-    print_json(result)
-    opened = {table: len(entry["new_gaps"]) for table, entry in result["tables"].items() if entry["new_gaps"]}
-    if opened:
-        print(f"NOTE: {result['new_gaps']} new gap{_s(list(range(result['new_gaps'])))} since {args.base} in "
-              + ", ".join(f"{table} ({count})" for table, count in opened.items())
-              + "; the change is not done until they are closed", file=sys.stderr)
-    else:
-        print(f"NOTE: no new gaps since {args.base}", file=sys.stderr)
-    return 1 if args.require_complete and opened else 0
-
-
-def _describe_notes(result: dict, table: str, *, without_registry: bool, require_complete: bool,
-                    queries: Path | None = None) -> list[str]:
-    notes = []
-    if queries is not None and not result["queries"]:
-        notes.append(f"no statement under {queries.as_posix()} names {table}")
-    dynamic = result["dynamic_ddl"]
-    if dynamic:
-        notes.append(f"{len(dynamic)} statement{_s(dynamic)} build{'s' if len(dynamic) == 1 else ''} DDL at run time naming {table}, "
-                     "which the description cannot show: " + ", ".join(statement["at"] for statement in dynamic))
-    missing = result["undescribed_columns"]
-    if missing:
-        carries, they, mean = ("carries", "it", "means") if len(missing) == 1 else ("carry", "they", "mean")
-        notes.append(f"{len(missing)} column{_s(missing)} of {table} {carries} no COMMENT ON, so the files do not say what {they} {mean}: "
-                     + ", ".join(missing))
-    replaced = [mention["id"] for mention in result["registry"] if mention["cites_replaced"]]
-    if replaced:
-        notes.append(f"{len(replaced)} Registry record{_s(replaced)} cite{'s' if len(replaced) == 1 else ''} a constraint a later "
-                     f"migration replaced; the constraints listed above are the ones in force: " + ", ".join(replaced))
-    if without_registry:
-        notes.append("without --registry-root the description carries no Registry records; pass it to see the rules and "
-                     "aggregates that mention the table.")
-    if require_complete and result["gaps"]:
-        notes.append(f"{table} is not complete: {len(result['gaps'])} gap{_s(result['gaps'])} listed under gaps; "
-                     "the change is not done until they are closed")
-    return notes
-
-
-def _s(items: list) -> str:
-    return "" if len(items) == 1 else "s"
 
 
 def handle_get_record(args: argparse.Namespace) -> int:
@@ -509,7 +419,6 @@ HANDLERS: dict[str, Callable[[argparse.Namespace], int]] = {
     "get-context": handle_get_context,
     "get-record": handle_get_record,
     "dependents": handle_dependents,
-    "describe-table": handle_describe_table,
     "brief": handle_brief,
     "analyze-boundary": handle_analyze_boundary,
     "boundary-impact": handle_boundary_impact,

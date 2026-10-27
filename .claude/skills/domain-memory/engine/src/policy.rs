@@ -29,17 +29,6 @@ const LIMIT_KEYS: &[&str] = &[
     "max_total_bytes",
     "max_query_results",
 ];
-const CONVENTION_KEYS: &[&str] = &[
-    "exempt_columns",
-    "status_like_suffixes",
-    "free_text_markers",
-    "value_comment_limit",
-];
-const CONVENTION_LISTS: &[&str] = &[
-    "exempt_columns",
-    "status_like_suffixes",
-    "free_text_markers",
-];
 const PROFILE_KEYS: &[&str] = &[
     "implementation_roots",
     "excluded_directories",
@@ -87,6 +76,18 @@ pub fn query_result_limit(root: &Path) -> Result<usize, String> {
     })
 }
 
+const POLICY_KEYS: &[&str] = &[
+    "format",
+    "storage_mode",
+    "data_classification",
+    "review_mode",
+    "review_governance",
+    "source_policy",
+    "limits",
+    "project_profile",
+    "approved_command_profiles",
+];
+
 pub fn validate_policy(policy: &Object) -> Vec<String> {
     let mut errors = Vec::new();
     for (key, allowed) in ENUMERATED_FIELDS {
@@ -108,8 +109,8 @@ pub fn validate_policy(policy: &Object) -> Vec<String> {
     ));
     errors.extend(source_error(policy.get("source_policy")));
     errors.extend(limits_error(policy.get("limits")));
-    errors.extend(conventions_errors(policy.get("schema_conventions")));
     errors.extend(profile_errors(policy.get("project_profile")));
+    errors.extend(unknown_keys("policy", policy, POLICY_KEYS));
     errors
 }
 
@@ -254,36 +255,6 @@ fn unknown_keys(section: &str, value: &Object, known: &[&str]) -> Vec<String> {
         .filter(|(key, _)| !known.contains(&key.as_str()))
         .map(|(key, _)| format!("{section}.{key} is not a known key{}", closest(key, known)))
         .collect()
-}
-
-fn conventions_errors(value: Option<&Value>) -> Vec<String> {
-    let value = match value {
-        None | Some(Value::Null) => return Vec::new(),
-        Some(Value::Object(value)) => value,
-        Some(other) => {
-            return vec![format!(
-                "schema_conventions must be an object, got {}",
-                kind_of(other)
-            )];
-        }
-    };
-    let mut errors = unknown_keys("schema_conventions", value, CONVENTION_KEYS);
-    for key in CONVENTION_LISTS {
-        if let Some(items) = value.get(key) {
-            errors.extend(list_errors(&format!("schema_conventions.{key}"), items));
-        }
-    }
-    let limit = value
-        .get("value_comment_limit")
-        .cloned()
-        .unwrap_or(Value::Int("0".to_string()));
-    if !matches!(&limit, Value::Int(digits) if !digits.starts_with('-')) {
-        errors.push(format!(
-            "schema_conventions.value_comment_limit must be a whole number 0 or more, got {}",
-            repr_of(&limit)
-        ));
-    }
-    errors
 }
 
 fn profile_errors(value: Option<&Value>) -> Vec<String> {

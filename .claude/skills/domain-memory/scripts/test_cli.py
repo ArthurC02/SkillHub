@@ -25,11 +25,11 @@ from test_support import RegistryTestCase, amend_policy, stored_policy_of
 UNNEEDED_BY_COVERAGE = (
     "domain_registry.commands.evidence", "domain_registry.commands.governance", "domain_registry.commands.lifecycle",
     "domain_registry.counterfactual", "domain_registry.mcp_server", "domain_registry.search",
-    "domain_registry.sql_schema", "difflib",
+    "difflib",
 )
 UNNEEDED_BY_VALIDATE = (
     "domain_registry.commands.read", "domain_registry.counterfactual", "domain_registry.hitl",
-    "domain_registry.sql_schema", "difflib",
+    "difflib",
 )
 LOADED_MODULES_PROBE = (
     "import contextlib, io, json, sys\n"
@@ -43,7 +43,7 @@ LOADED_MODULES_PROBE = (
 
 
 class CliTest(RegistryTestCase):
-    def test_coverage_leaves_the_other_command_modules_and_the_sql_reader_unloaded(self) -> None:
+    def test_coverage_leaves_the_other_command_modules_unloaded(self) -> None:
         words = ["coverage", "--registry-root", str(self.repo / "memory")]
         self.assertEqual((0, ""), self.loaded_after(words, UNNEEDED_BY_COVERAGE))
 
@@ -376,7 +376,7 @@ class CliTest(RegistryTestCase):
             tasks.setdefault(command, task.strip())
         [subcommands] = [action for action in build_parser()._actions if isinstance(action, argparse._SubParsersAction)]
         helps = {choice.dest: choice.help for choice in subcommands._choices_actions}
-        self.assertEqual((64, tasks), (len(helps), helps))
+        self.assertEqual((62, tasks), (len(helps), helps))
 
     def test_readiness_command_returns_json_without_writing_and_assesses_the_one_domain_memory_it_finds(self) -> None:
         before = self.file_bytes()

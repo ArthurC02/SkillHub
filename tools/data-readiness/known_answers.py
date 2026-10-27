@@ -14,7 +14,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 import measure_readiness as mr  # noqa: E402
-from domain_registry.sql_describe import allowed_values, describe_table  # noqa: E402
+from sql_describe import allowed_values, describe_table  # noqa: E402
 
 QUESTIONS = HERE / "known-answers.jsonl"
 SYSTEM_PROMPT = (
