@@ -72,6 +72,13 @@ impl Invocation {
         matches!(self.values.get(dest), Some(Arg::Flag(true)))
     }
 
+    pub fn texts(&self, dest: &str) -> &[String] {
+        match self.values.get(dest) {
+            Some(Arg::List(items)) => items,
+            _ => &[],
+        }
+    }
+
     pub fn text(&self, dest: &str) -> Option<&str> {
         match self.values.get(dest) {
             Some(Arg::Text(text)) => Some(text),

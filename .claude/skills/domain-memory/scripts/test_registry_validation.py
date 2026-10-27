@@ -48,7 +48,7 @@ class RegistryValidationTest(RegistryTestCase):
              "rules/r is reviewed but lacks evidence"),
             ("term without contexts", "vocabulary.json", [{"id": "t", "contexts": []}], "vocabulary/t requires contexts"),
             ("synonyms not a list", "vocabulary.json", [{**order_term, "synonyms": "purchase"}],
-             "vocabulary/order synonyms and not_same_as must be lists of non-empty strings"),
+             "vocabulary/order.md: synonyms must be a list of labels, got a string"),
             ("blank synonym", "vocabulary.json", [{**order_term, "synonyms": [" "]}],
              "vocabulary/order synonyms and not_same_as must be lists of non-empty strings"),
             ("look-alikes not a list", "vocabulary.json", [{**order_term, "not_same_as": "invoice"}],

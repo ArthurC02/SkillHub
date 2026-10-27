@@ -18,7 +18,7 @@ const PROSE_FIELDS: &[(&str, &str)] = &[
     ("dependency-policies", "rationale"),
 ];
 
-const RELATION_TARGETS: &[(&str, &str)] = &[
+pub const RELATION_TARGETS: &[(&str, &str)] = &[
     ("context", "Context"),
     ("contexts", "Context"),
     ("owner_context", "Context"),
@@ -110,6 +110,9 @@ pub fn decode(asset: &str, record_id: &str, text: &str) -> Result<Object, String
         record.insert(key, value);
     }
     check_relation_shapes(&record)?;
+    if let Some(shape) = record.get("synonyms").and_then(stray_text_list) {
+        return Err(format!("synonyms must be a list of labels, got {shape}"));
+    }
     Ok(record)
 }
 
@@ -120,16 +123,7 @@ fn check_relation_shapes(record: &Object) -> Result<(), String> {
             Some(value) => value,
         };
         if LIST_RELATIONS.contains(field) {
-            let stray = match value {
-                Value::Array(items) => items.iter().find(|item| item.as_str().is_none()),
-                other => Some(other),
-            };
-            if let Some(stray) = stray {
-                let shape = if matches!(value, Value::Array(_)) {
-                    format!("a list holding {}", kind_of(stray))
-                } else {
-                    kind_of(stray).to_string()
-                };
+            if let Some(shape) = stray_text_list(value) {
                 return Err(format!("{field} must be a list of {noun} ids, got {shape}"));
             }
         } else if value.as_str().is_none() {
@@ -140,6 +134,17 @@ fn check_relation_shapes(record: &Object) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+fn stray_text_list(value: &Value) -> Option<String> {
+    match value {
+        Value::Null => None,
+        Value::Array(items) => items
+            .iter()
+            .find(|item| item.as_str().is_none())
+            .map(|stray| format!("a list holding {}", kind_of(stray))),
+        other => Some(kind_of(other).to_string()),
+    }
 }
 
 fn registry_status(asset: &str, front: &Object) -> Result<Vec<(String, Value)>, String> {

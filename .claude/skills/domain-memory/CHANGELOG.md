@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 4.2.12
+
+### Fixed
+
+- `synonyms` that is not a list of labels stopped `resolve-terms` with a Python traceback when it was a number or a boolean, and when it was one word each letter counted as a synonym, so `resolve-terms --query order` reported a term with `synonyms: orders` as a synonym match. The concept reader now refuses it by file name and exits 1: `vocabulary/x.md: synonyms must be a list of labels, got a string`. `synonyms: null` reads as absent.
+
 ## 4.2.11
 
 ### Fixed

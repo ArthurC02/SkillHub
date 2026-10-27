@@ -134,6 +134,7 @@ def decode(asset: str, record_id: str, text: str) -> dict[str, Any]:
         record["evidence"] = [_evidence(source) for source in front["sources"]]
     record.update(_registry_status(asset, front))
     _check_relation_shapes(record)
+    _check_synonym_shape(record)
     return record
 
 
@@ -148,6 +149,12 @@ def _check_relation_shapes(record: dict[str, Any]) -> None:
                 raise ValueError(f"{field} must be a list of {noun} ids, got {_shape_of(value)}")
         elif not isinstance(value, str):
             raise ValueError(f"{field} must be one {noun} id, got {kind_of(value)}")
+
+
+def _check_synonym_shape(record: dict[str, Any]) -> None:
+    synonyms = record.get("synonyms")
+    if synonyms is not None and (not isinstance(synonyms, list) or not all(isinstance(item, str) for item in synonyms)):
+        raise ValueError(f"synonyms must be a list of labels, got {_shape_of(synonyms)}")
 
 
 def _shape_of(value: Any) -> str:

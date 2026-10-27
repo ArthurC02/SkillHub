@@ -48,10 +48,12 @@ const PROFILE_KEYS: &[&str] = &[
 ];
 const BARE_NAME_KEYS: &[&str] = &["excluded_directories", "boundary_markers"];
 
-pub fn review_mode(root: &Path) -> Result<String, String> {
+const DEFAULT_QUERY_RESULTS: usize = 100;
+
+fn valid_policy_if_any(root: &Path) -> Result<Option<Object>, String> {
     let path = root.join(POLICY_FILE);
     if !path.is_file() {
-        return Ok("no-policy".to_string());
+        return Ok(None);
     }
     let policy = load_json(&path)?;
     let errors = validate_policy(&policy);
@@ -61,11 +63,28 @@ pub fn review_mode(root: &Path) -> Result<String, String> {
             errors.join("; ")
         ));
     }
-    Ok(policy
-        .get("review_mode")
-        .and_then(Value::as_str)
-        .unwrap_or_default()
-        .to_string())
+    Ok(Some(policy))
+}
+
+pub fn review_mode(root: &Path) -> Result<String, String> {
+    Ok(valid_policy_if_any(root)?.map_or_else(
+        || "no-policy".to_string(),
+        |policy| text(&policy, "review_mode").unwrap_or_default().to_string(),
+    ))
+}
+
+pub fn query_result_limit(root: &Path) -> Result<usize, String> {
+    let Some(policy) = valid_policy_if_any(root)? else {
+        return Ok(DEFAULT_QUERY_RESULTS);
+    };
+    let limit = policy
+        .get("limits")
+        .and_then(Value::as_object)
+        .and_then(|limits| limits.get("max_query_results"));
+    Ok(match limit {
+        Some(Value::Int(digits)) => digits.parse().unwrap_or(usize::MAX),
+        _ => DEFAULT_QUERY_RESULTS,
+    })
 }
 
 pub fn validate_policy(policy: &Object) -> Vec<String> {

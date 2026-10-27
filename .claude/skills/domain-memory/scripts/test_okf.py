@@ -230,6 +230,19 @@ class ConceptDocumentTest(unittest.TestCase):
             with self.subTest(label), self.assertRaisesRegex(ValueError, message):
                 decode(asset, "x", f"---\ntype: {kind}\n{field}\n---\n")
 
+    def test_synonyms_of_the_wrong_shape_are_refused_by_name(self) -> None:
+        cases = [
+            ("a number", "synonyms: 5", "synonyms must be a list of labels, got a number"),
+            ("one word", "synonyms: orders", "synonyms must be a list of labels, got a string"),
+            ("a list holding a number", "synonyms:\n  - 3", "synonyms must be a list of labels, got a list holding a number"),
+        ]
+        for label, field, message in cases:
+            with self.subTest(label), self.assertRaisesRegex(ValueError, message):
+                decode("vocabulary", "x", f"---\ntype: Term\n{field}\n---\n")
+
+    def test_null_synonyms_read_as_absent(self) -> None:
+        self.assertIsNone(decode("vocabulary", "x", "---\ntype: Term\nsynonyms: null\n---\n").get("synonyms"))
+
     def test_a_null_relation_reads_as_absent(self) -> None:
         record = decode("contracts", "x", "---\ntype: Contract\nproducer_context: null\nconsumer_contexts: null\n---\n")
         self.assertIsNone(record.get("producer_context"))
