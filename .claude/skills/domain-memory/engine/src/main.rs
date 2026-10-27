@@ -1,3 +1,4 @@
+mod cite;
 mod cli;
 mod context;
 mod coverage;
@@ -12,6 +13,7 @@ mod okf;
 mod policy;
 mod proposals;
 mod py;
+mod pyre;
 mod pyvalue;
 mod records;
 mod search;
@@ -180,6 +182,21 @@ fn execute(invocation: &Invocation) -> Result<i32, String> {
             Ok(0)
         }
         "verify-evidence" => verify_evidence(invocation),
+        "cite" => {
+            let cited = cite::cite(
+                &py::resolve(invocation.text("repo_root").unwrap_or(".")),
+                invocation.text("path").unwrap_or_default(),
+                invocation.text("lines"),
+                invocation.text("function"),
+                invocation.text("registry_root").map(py::resolve).as_deref(),
+                invocation.flag("show"),
+            )?;
+            print_json(&Value::Object(cited.reference));
+            for note in cited.notes {
+                emit_stderr(&format!("{note}\n"));
+            }
+            Ok(0)
+        }
         other => Err(format!("{other} is not available in the Rust engine yet")),
     }
 }
