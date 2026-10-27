@@ -6,9 +6,13 @@
       "target": "x86_64-unknown-linux-musl",
       "sha256": "c2f905887c96750aff4f08907567ef1721db3f9079aa408552dca24166595676"
     },
+    "macos-universal/domain-memory": {
+      "target": "universal2-apple-darwin",
+      "sha256": "5fc4bb802c436b9a23be82b5f19110dd5afb2f8afa2340fef4ead96f1a03b5d5"
+    },
     "windows-x86_64/domain-memory.exe": {
       "target": "x86_64-pc-windows-gnullvm",
-      "sha256": "312248bbeb2eae1efa784cb791422c690a0dee3d6f8e233c4cbe42633a53a4f2"
+      "sha256": "efca4c03d8a7eb5bb91c28ee0727cf3e501dc26dae2a996c3d3631ee4ca026f2"
     }
   }
 }

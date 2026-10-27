@@ -39,7 +39,7 @@ A record moves along one of three paths:
 python3 scripts/registry_tools.py <command> [options]
 ```
 
-The same commands also run as a compiled Rust executable, which needs no Python and answers faster; [domain-memory-cli](skills/domain-memory-cli/SKILL.md) names the committed executable for Linux and Windows, how to build one elsewhere, how to call it and which commands it answers yet.
+The same commands also run as a compiled Rust executable, which needs no Python and answers faster; [domain-memory-cli](skills/domain-memory-cli/SKILL.md) names the committed executable for Linux, macOS and Windows, how to build one elsewhere, how to call it and which commands it answers yet.
 
 Python 3.10 or later, its standard library, and `git` on the path. Call the interpreter by the name your system gives it: `python3` on most Linux and macOS systems, `python` on Windows, where `python3` is often a store stub. Nothing to install, and the script runs from any working directory. What a command prints and how it refuses: [output and refusals](references/script-api.md#output-and-refusals).
 

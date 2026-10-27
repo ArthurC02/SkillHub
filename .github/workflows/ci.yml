@@ -743,6 +743,8 @@ jobs:
         include:
           - os: ubuntu-latest
             binary: bin/linux-x86_64/domain-memory
+          - os: macos-latest
+            binary: bin/macos-universal/domain-memory
           - os: windows-latest
             binary: bin/windows-x86_64/domain-memory.exe
     defaults:

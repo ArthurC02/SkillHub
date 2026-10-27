@@ -2,6 +2,16 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 4.2.17
+
+### Added
+
+- The Rust executable is also committed for macOS, as one universal file for Apple silicon and Intel: `engine/bin/macos-universal/domain-memory`. The `domain-memory-cli` Skill lists it.
+
+### Changed
+
+- The Windows executable is linked without a timestamp, so rebuilding unchanged source gives the same bytes. `engine/build_binaries.py` builds nothing when the committed binaries already match the source.
+
 ## 4.2.16
 
 ### Added

@@ -14,10 +14,11 @@ The Rust executable is the same command line as `scripts/registry_tools.py`: the
    | Platform | Executable |
    | --- | --- |
    | Linux on x86-64 (static, any distribution) | `engine/bin/linux-x86_64/domain-memory` |
+   | macOS on Apple silicon or Intel | `engine/bin/macos-universal/domain-memory` |
    | Windows on x86-64 | `engine/bin/windows-x86_64/domain-memory.exe` |
 
    `engine/bin/manifest.json` records the SHA-256 of each one and of the source it was built from.
-2. On any other platform, such as macOS, build it once from the plugin directory when `cargo` is on the path:
+2. On any other platform, such as Linux on ARM, build it once from the plugin directory when `cargo` is on the path:
 
    ```bash
    cargo build --release --locked --manifest-path engine/Cargo.toml

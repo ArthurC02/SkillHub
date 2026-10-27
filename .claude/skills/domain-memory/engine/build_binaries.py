@@ -14,9 +14,17 @@ BIN = ENGINE / "bin"
 MANIFEST = BIN / "manifest.json"
 FORMAT = "domain-memory-engine-binaries/v1"
 SOURCES = ("Cargo.toml", "Cargo.lock", "rust-toolchain.toml", "contract/cli.json")
+CARGO = ("cargo", "build")
+ZIGBUILD = ("cargo-zigbuild", "build")
 PLATFORMS = {
-    "linux-x86_64/domain-memory": ("x86_64-unknown-linux-musl", "domain-memory", {"CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER": "rust-lld"}),
-    "windows-x86_64/domain-memory.exe": ("x86_64-pc-windows-gnullvm", "domain-memory.exe", {}),
+    "linux-x86_64/domain-memory": (
+        "x86_64-unknown-linux-musl", "domain-memory", CARGO, {"CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER": "rust-lld"},
+    ),
+    "macos-universal/domain-memory": ("universal2-apple-darwin", "domain-memory", ZIGBUILD, {}),
+    "windows-x86_64/domain-memory.exe": (
+        "x86_64-pc-windows-gnullvm", "domain-memory.exe", CARGO,
+        {"CARGO_TARGET_X86_64_PC_WINDOWS_GNULLVM_RUSTFLAGS": "-C link-arg=--no-insert-timestamp"},
+    ),
 }
 
 
@@ -38,7 +46,7 @@ def expected_manifest() -> dict:
         "source_sha256": source_sha256(),
         "binaries": {
             name: {"target": target, "sha256": file_sha256(BIN / name)}
-            for name, (target, _, _) in PLATFORMS.items()
+            for name, (target, _, _, _) in PLATFORMS.items()
             if (BIN / name).is_file()
         },
     }
@@ -62,9 +70,9 @@ def problems() -> list[str]:
 
 
 def build() -> None:
-    for name, (target, built, linker) in PLATFORMS.items():
-        subprocess.run(["cargo", "build", "--release", "--locked", "--target", target], cwd=ENGINE,
-                       env={**os.environ, **linker}, check=True)
+    for name, (target, built, command, environment) in PLATFORMS.items():
+        subprocess.run([*command, "--release", "--locked", "--target", target], cwd=ENGINE,
+                       env={**os.environ, **environment}, check=True)
         destination = BIN / name
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(ENGINE / "target" / target / "release" / built, destination)
@@ -75,7 +83,7 @@ def build() -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Build the committed engine binaries, or check that they match the source.")
     parser.add_argument("--check", action="store_true", help="compare without building")
-    if not parser.parse_args().check:
+    if not parser.parse_args().check and problems():
         build()
     found = problems()
     for problem in found:

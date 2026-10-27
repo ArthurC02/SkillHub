@@ -25,16 +25,19 @@ Python's `\d` follows Python 3.13's Unicode data; the table is `src/digits.rs`. 
 
 ## Committed binaries
 
-`bin/` holds an executable per platform, committed so a copy of the plugin runs it without a Rust toolchain: `linux-x86_64/domain-memory`, static against musl, and `windows-x86_64/domain-memory.exe`, which needs only the C runtime every supported Windows ships. `bin/manifest.json` records each one's SHA-256 and the SHA-256 of the source that built it: `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `contract/cli.json` and `src/`.
+`bin/` holds an executable per platform, committed so a copy of the plugin runs it without a Rust toolchain: `linux-x86_64/domain-memory`, static against musl; `macos-universal/domain-memory`, one file for Apple silicon and Intel, ad-hoc signed; and `windows-x86_64/domain-memory.exe`, which needs only the C runtime every supported Windows ships. `bin/manifest.json` records each one's SHA-256 and the SHA-256 of the source that built it: `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `contract/cli.json` and `src/`.
 
-Every change to that source rebuilds both in the same commit:
+Every change to that source rebuilds all three in the same commit:
 
 ```sh
-rustup target add x86_64-unknown-linux-musl x86_64-pc-windows-gnullvm
+rustup target add x86_64-unknown-linux-musl x86_64-pc-windows-gnullvm aarch64-apple-darwin x86_64-apple-darwin
+pip install cargo-zigbuild ziglang
 python3 build_binaries.py
 ```
 
-On Windows it cross-links the Linux binary with the `rust-lld` that ships with Rust, so that one machine builds both. `python3 build_binaries.py --check` compares without building; the plugin's test suite runs it, and CI runs the parity cases against the committed binary on Linux and on Windows. macOS needs Apple's SDK to link, so it builds from source.
+One machine builds all three: the Linux binary links with the `rust-lld` that ships with Rust, and the macOS one with `cargo-zigbuild`, whose zig carries the macOS system library stubs, so no Apple SDK is needed. Where `python3` is not the interpreter that holds `ziglang`, point `CARGO_ZIGBUILD_ZIG_PATH` at its `zig` executable. A run whose binaries already match the source builds nothing. The Linux and Windows builds are byte-for-byte reproducible; the macOS linker writes a random `LC_UUID`, so a macOS rebuild differs in that and in the signature hash over it.
+
+`python3 build_binaries.py --check` compares without building; the plugin's test suite runs it, and CI runs the parity cases against the committed binary on Linux, macOS and Windows.
 
 ## Commands
 
