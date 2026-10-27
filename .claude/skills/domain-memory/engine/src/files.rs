@@ -32,7 +32,7 @@ pub fn load_json(path: &Path) -> Result<Object, String> {
     }
 }
 
-fn one_level_too_deep_hint(path: &Path) -> String {
+pub fn one_level_too_deep_hint(path: &Path) -> String {
     let (Some(parent), Some(name)) = (path.parent().and_then(Path::parent), path.file_name())
     else {
         return String::new();

@@ -17,6 +17,7 @@ pub const STATUSES: [&str; 6] = [
     "current", "shifted", "stale", "unhashed", "missing", "invalid",
 ];
 pub const FAILING: [&str; 4] = ["stale", "unhashed", "missing", "invalid"];
+const POSIX_NUL_IN_PATH: &str = "lstat: embedded null character in path";
 const WIDEN_TO_UNIQUE: &str =
     "Widen the citation to the enclosing block, so its lines occur once in the file.";
 
@@ -74,6 +75,9 @@ impl Verifier {
     }
 
     fn source(&self, path_text: &str) -> Result<Source, String> {
+        if !cfg!(windows) && path_text.contains('\0') {
+            return Err(POSIX_NUL_IN_PATH.to_string());
+        }
         let path = py::resolve_path(&self.root.join(path_text));
         if !path.starts_with(&self.root) {
             return Ok(Source::Verdict(verdict(&[

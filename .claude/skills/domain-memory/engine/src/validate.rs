@@ -272,7 +272,7 @@ fn conflict_marker_errors(root: &Path, registry: &Registry) -> Result<Vec<String
         let data = std::fs::read(&path).map_err(|error| py::os_error(&error, &path))?;
         texts.push((path, lossy_text(&data)));
     }
-    texts.sort_by(|left, right| py::compare_path_parts(&left.0, &right.0));
+    texts.sort_by(|left, right| py::compare_paths(&left.0, &right.0));
     Ok(texts
         .iter()
         .filter_map(|(path, text)| Some((path, conflict_marked_line(text)?)))

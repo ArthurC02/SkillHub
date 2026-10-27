@@ -276,7 +276,7 @@ fn domain_memory_hint(root: &Path, repo_root: Option<&Path>) -> Result<String, S
     let asked = py::resolve_path(root);
     let places: Vec<String> = candidates(&asked, repo_root)?
         .into_iter()
-        .filter(|place| py::compare_path_parts(place, &asked) != Ordering::Equal)
+        .filter(|place| py::compare_paths(place, &asked) != Ordering::Equal)
         .map(|place| shown_path(&place, repo_root))
         .collect();
     Ok(match places.as_slice() {
@@ -341,16 +341,16 @@ fn domain_memories_known_to_git(repo_root: &Path) -> Result<Option<Vec<PathBuf>>
         let resolved = py::resolve_path(home.unwrap_or(&marker));
         if !homes
             .iter()
-            .any(|seen| py::compare_path_parts(seen, &resolved) == Ordering::Equal)
+            .any(|seen| py::compare_paths(seen, &resolved) == Ordering::Equal)
         {
             homes.push(resolved);
         }
     }
-    homes.sort_by(|left, right| py::compare_path_parts(left, right));
+    homes.sort_by(|left, right| py::compare_paths(left, right));
     Ok(Some(homes))
 }
 
-fn neighbours(asked: &Path) -> Result<Vec<PathBuf>, String> {
+pub fn neighbours(asked: &Path) -> Result<Vec<PathBuf>, String> {
     let parent = asked.parent().unwrap_or(asked).to_path_buf();
     let mut siblings = directories_in(&parent)?;
     siblings.retain(|place| py::compare_paths(place, asked) != Ordering::Equal);
@@ -361,7 +361,7 @@ fn neighbours(asked: &Path) -> Result<Vec<PathBuf>, String> {
         .collect())
 }
 
-fn directories_in(directory: &Path) -> Result<Vec<PathBuf>, String> {
+pub fn directories_in(directory: &Path) -> Result<Vec<PathBuf>, String> {
     if !directory.is_dir() {
         return Ok(Vec::new());
     }
@@ -384,7 +384,7 @@ fn is_domain_source_map(path: &Path) -> bool {
         .is_ok_and(|map| map.get("format").and_then(Value::as_str) == Some(SOURCE_MAP_FORMAT))
 }
 
-fn holds_domain_memory(place: &Path) -> bool {
+pub fn holds_domain_memory(place: &Path) -> bool {
     is_domain_source_map(&place.join("source-map.json"))
         || registry_dir(place).join(INDEX).is_file()
 }

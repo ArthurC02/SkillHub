@@ -204,14 +204,6 @@ pub fn open_error(error: &io::Error, path: &Path) -> String {
     format!("[Errno {errno}] {text}: {}", repr(&shown(path)))
 }
 
-pub fn compare_paths(left: &Path, right: &Path) -> Ordering {
-    if cfg!(windows) {
-        shown(left).to_lowercase().cmp(&shown(right).to_lowercase())
-    } else {
-        left.as_os_str().cmp(right.as_os_str())
-    }
-}
-
 pub struct PurePath {
     anchor: String,
     parts: Vec<String>,
@@ -297,7 +289,7 @@ fn windows_drive(text: &str) -> (String, &str) {
     (String::new(), text)
 }
 
-pub fn compare_path_parts(left: &Path, right: &Path) -> Ordering {
+pub fn compare_paths(left: &Path, right: &Path) -> Ordering {
     let parts = |path: &Path| -> Vec<String> {
         path.components()
             .map(|part| {
@@ -346,8 +338,8 @@ mod tests {
     fn paths_order_by_their_parts_not_by_their_text() {
         let before = Path::new("root/zz/x.md");
         let after = Path::new("root/zz-q/x.md");
-        assert_eq!(compare_path_parts(before, after), Ordering::Less);
-        assert_eq!(compare_path_parts(after, before), Ordering::Greater);
+        assert_eq!(compare_paths(before, after), Ordering::Less);
+        assert_eq!(compare_paths(after, before), Ordering::Greater);
     }
 
     #[test]

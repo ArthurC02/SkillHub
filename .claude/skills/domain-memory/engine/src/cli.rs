@@ -79,6 +79,13 @@ impl Invocation {
         }
     }
 
+    pub fn int(&self, dest: &str) -> Option<i64> {
+        match self.values.get(dest) {
+            Some(Arg::Int(number)) => Some(*number),
+            _ => None,
+        }
+    }
+
     pub fn text(&self, dest: &str) -> Option<&str> {
         match self.values.get(dest) {
             Some(Arg::Text(text)) => Some(text),

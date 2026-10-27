@@ -107,6 +107,25 @@ pub fn run_git(root: &Path, arguments: &[&str], input: Option<&[u8]>) -> Result<
     run_bounded(&argv, input)
 }
 
+pub fn run_git_lenient(
+    root: &Path,
+    arguments: &[&str],
+    input: Option<&[u8]>,
+) -> Result<Result<Output, String>, String> {
+    deadline_seconds()?;
+    Ok(run_git(root, arguments, input).map_err(|error| error.message))
+}
+
+pub fn checked_git_bytes(root: &Path, arguments: &[&str], failure: &str) -> Result<Output, String> {
+    deadline_seconds()?;
+    let result = run_git_bytes(root, arguments).map_err(|error| format!("{failure}: {error}"))?;
+    if result.code != 0 {
+        let stderr = String::from_utf8_lossy(&result.stderr);
+        return Err(format!("{failure}: {}", py::strip(&stderr)));
+    }
+    Ok(result)
+}
+
 pub fn deadline_seconds() -> Result<f64, String> {
     let Some(given) = std::env::var_os(TIMEOUT_VARIABLE) else {
         return Ok(DEFAULT_SECONDS);

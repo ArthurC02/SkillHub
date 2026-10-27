@@ -3,7 +3,9 @@ mod audit_commands;
 mod audit_log;
 mod cite;
 mod cli;
+mod compare;
 mod context;
+mod coupling;
 mod coverage;
 mod crossrefs;
 mod dependents;
@@ -22,12 +24,17 @@ mod policy;
 mod proposals;
 mod py;
 mod pyre;
+mod pyregex;
 mod pyvalue;
+mod read_commands;
+mod readiness;
 mod records;
+mod registry_check;
 mod search;
 mod secret_patterns;
 mod secrets;
 mod sha256;
+mod source_probe;
 mod sources;
 mod store;
 mod tar;
@@ -219,6 +226,10 @@ fn execute(invocation: &Invocation) -> Result<i32, String> {
         "governance-readiness" => audit_commands::governance_readiness(invocation),
         "validate" => validate_command(invocation),
         "refresh-indexes" => refresh_indexes_command(invocation),
+        "change-coupling" => read_commands::change_coupling(invocation),
+        "compare-registry" => read_commands::compare_registry(invocation),
+        "probe" => read_commands::probe(invocation),
+        "readiness" => read_commands::readiness(invocation),
         other => Err(format!("{other} is not available in the Rust engine yet")),
     }
 }
