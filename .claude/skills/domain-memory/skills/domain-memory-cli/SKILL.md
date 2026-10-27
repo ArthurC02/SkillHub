@@ -1,6 +1,6 @@
 ---
 name: domain-memory-cli
-description: Run Domain Memory commands through the compiled Rust executable instead of the Python script. Use when a script, a host or a loop calls the read commands many times, or when no Python interpreter is available; it says how to build or find the executable, what it reads and prints, its exit codes, and when to fall back to the Python script.
+description: Run Domain Memory commands through the compiled Rust executable instead of the Python script. Use when a script, a host or a loop calls the read commands many times, or when no Python interpreter is available; it says which committed executable to run or how to build one, what it reads and prints, its exit codes, and when to fall back to the Python script.
 ---
 
 # Domain Memory CLI
@@ -9,22 +9,29 @@ The Rust executable is the same command line as `scripts/registry_tools.py`: the
 
 ## Get the executable
 
-1. Look for `engine/target/release/domain-memory` (`domain-memory.exe` on Windows) in this plugin. It is built locally and never committed.
-2. If it is not there and `cargo` is on the path, build it once from the plugin directory:
+1. The plugin carries one, built from its own source, for each of these platforms; run it from the plugin directory:
+
+   | Platform | Executable |
+   | --- | --- |
+   | Linux on x86-64 (static, any distribution) | `engine/bin/linux-x86_64/domain-memory` |
+   | Windows on x86-64 | `engine/bin/windows-x86_64/domain-memory.exe` |
+
+   `engine/bin/manifest.json` records the SHA-256 of each one and of the source it was built from.
+2. On any other platform, such as macOS, build it once from the plugin directory when `cargo` is on the path:
 
    ```bash
    cargo build --release --locked --manifest-path engine/Cargo.toml
    ```
 
-   `engine/rust-toolchain.toml` pins the Rust version; `rustup` installs it on the first build. The build reads nothing outside `engine/`.
-3. With no executable and no `cargo`, use `python3 scripts/registry_tools.py`. Nothing in the Registry depends on which one ran.
+   It lands at `engine/target/release/domain-memory`. `engine/rust-toolchain.toml` pins the Rust version; `rustup` installs it on the first build, and the build reads nothing outside `engine/`.
+3. With neither, use `python3 scripts/registry_tools.py`. Nothing in the Registry depends on which one ran.
 
 ## Call it
 
 Pass the arguments you would pass to the Python script, with the command first:
 
 ```bash
-engine/target/release/domain-memory get-context --registry-root <root> --id <context>
+engine/bin/linux-x86_64/domain-memory get-context --registry-root <root> --id <context>
 ```
 
 - **Input**: arguments only. No command reads standard input, and none writes a file.

@@ -46,3 +46,5 @@
 *.woff  binary
 *.woff2 binary
 *.ttf   binary
+*.exe   binary
+.claude/skills/domain-memory/engine/bin/*/domain-memory binary

@@ -100,7 +100,7 @@ def main() -> int:
     chosen = [case for case in cases if not options.only or options.only in case["name"]]
     failed = 0
     for case in chosen:
-        problems = compared(case, options.binary)
+        problems = compared(case, options.binary.resolve())
         if problems:
             failed += 1
             print(f"DIFF {case['name']}")

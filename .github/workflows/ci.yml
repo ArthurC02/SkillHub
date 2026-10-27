@@ -740,7 +740,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            binary: bin/linux-x86_64/domain-memory
+          - os: windows-latest
+            binary: bin/windows-x86_64/domain-memory.exe
     defaults:
       run:
         shell: bash
@@ -766,6 +770,12 @@ jobs:
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'CLI contract drift' python parity/extract_cli_contract.py --check
       - name: Engine output matches the plugin
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Engine parity' python -X utf8 parity/parity.py
+      - name: Committed binaries match the source
+        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Committed binaries' python build_binaries.py --check
+      - name: Committed binary matches the plugin
+        env:
+          BINARY: ${{ matrix.binary }}
+        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Committed binary parity' python -X utf8 parity/parity.py --binary "$BINARY"
 
   qa002:
     needs: changes

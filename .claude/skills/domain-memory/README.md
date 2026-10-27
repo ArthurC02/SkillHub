@@ -1,6 +1,6 @@
 # Domain Memory — developing the plugin
 
-Agents start at `AGENTS.md`, the entry for an Agent without Skill support; this page is for people changing the plugin itself. `skills/` holds the eight Skills the manifest points to, and `references/`, `templates/` and `scripts/` are shared by all of them. `engine/` is the Rust rewrite of `scripts/`, taking over one command at a time; its [README](engine/README.md) has the rules and the checks.
+Agents start at `AGENTS.md`, the entry for an Agent without Skill support; this page is for people changing the plugin itself. `skills/` holds the eight Skills the manifest points to, and `references/`, `templates/` and `scripts/` are shared by all of them. `engine/` is the Rust rewrite of `scripts/`, taking over one command at a time, with its Linux and Windows executables committed under `engine/bin/`; its [README](engine/README.md) has the rules, the checks, and the rebuild every engine change needs.
 
 Requirements: Python 3.10 or later, the standard library, and `git`; `init-signing-key` alone also needs OpenSSH's `ssh-keygen`. The suite runs on Linux and Windows.
 

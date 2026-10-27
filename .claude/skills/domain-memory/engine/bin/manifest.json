@@ -1,0 +1,14 @@
+{
+  "format": "domain-memory-engine-binaries/v1",
+  "source_sha256": "3b89cd1cf1896f926d101212d574bf3f5c113beaa62943c7f04cc493f09578f5",
+  "binaries": {
+    "linux-x86_64/domain-memory": {
+      "target": "x86_64-unknown-linux-musl",
+      "sha256": "c2f905887c96750aff4f08907567ef1721db3f9079aa408552dca24166595676"
+    },
+    "windows-x86_64/domain-memory.exe": {
+      "target": "x86_64-pc-windows-gnullvm",
+      "sha256": "312248bbeb2eae1efa784cb791422c690a0dee3d6f8e233c4cbe42633a53a4f2"
+    }
+  }
+}

@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 4.2.16
+
+### Added
+
+- The Rust executable is committed for Linux on x86-64 (static, `engine/bin/linux-x86_64/domain-memory`) and Windows on x86-64 (`engine/bin/windows-x86_64/domain-memory.exe`), so a copy of the plugin runs it without a Rust toolchain. `engine/bin/manifest.json` records each one's SHA-256 and the digest of the source that built it, and `engine/build_binaries.py --check` refuses a binary that no longer matches. Other platforms still build it with `cargo`. The `domain-memory-cli` Skill now starts from the committed executable.
+
 ## 4.2.15
 
 ### Added

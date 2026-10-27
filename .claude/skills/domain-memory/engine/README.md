@@ -23,6 +23,19 @@ Known differences: help always wraps at 80 columns, where the script follows the
 
 Python's `\d` follows Python 3.13's Unicode data; the table is `src/digits.rs`. Search uses NFKC, case folding and word characters from `src/unicode_data.rs`, which `parity/generate_unicode.py` generates with Python 3.13; regenerate it, never edit it, when the Python version changes.
 
+## Committed binaries
+
+`bin/` holds an executable per platform, committed so a copy of the plugin runs it without a Rust toolchain: `linux-x86_64/domain-memory`, static against musl, and `windows-x86_64/domain-memory.exe`, which needs only the C runtime every supported Windows ships. `bin/manifest.json` records each one's SHA-256 and the SHA-256 of the source that built it: `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `contract/cli.json` and `src/`.
+
+Every change to that source rebuilds both in the same commit:
+
+```sh
+rustup target add x86_64-unknown-linux-musl x86_64-pc-windows-gnullvm
+python3 build_binaries.py
+```
+
+On Windows it cross-links the Linux binary with the `rust-lld` that ships with Rust, so that one machine builds both. `python3 build_binaries.py --check` compares without building; the plugin's test suite runs it, and CI runs the parity cases against the committed binary on Linux and on Windows. macOS needs Apple's SDK to link, so it builds from source.
+
 ## Commands
 
 From this directory; `rust-toolchain.toml` pins the Rust version:
@@ -34,4 +47,5 @@ cargo test --locked
 cargo build --release --locked
 python3.13 parity/extract_cli_contract.py --check
 python3.13 parity/parity.py
+python3 build_binaries.py --check
 ```
