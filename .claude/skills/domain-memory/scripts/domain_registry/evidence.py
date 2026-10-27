@@ -537,6 +537,7 @@ def unclassified_paths(value: Any) -> list[str]:
             reference["path"]
             for reference in all_references(value)
             if isinstance(reference, dict)
+            and isinstance(reference.get("path"), str)
             and reference.get("source_kind") == "unclassified"
         }
     )

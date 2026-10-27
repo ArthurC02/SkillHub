@@ -221,10 +221,7 @@ def _validate_confirmed_absences(
             errors.append(f"{label} confirmed_absences must be a list")
             continue
         for declaration in declarations:
-            if (
-                not isinstance(declaration, dict)
-                or declaration.get("asset") not in ABSENCE_ASSETS
-            ):
+            if _absent_asset(declaration) is None:
                 errors.append(
                     f"{label} confirms an absence of an unknown asset; "
                     f"use one of {', '.join(sorted(ABSENCE_ASSETS))}"
@@ -624,9 +621,15 @@ def declared_absences(contexts: list[dict[str, Any]]) -> dict[str, set[Any]]:
         if not isinstance(declarations, list):
             continue
         for declaration in declarations:
-            if isinstance(declaration, dict) and declaration.get("asset") in absent:
-                absent[declaration["asset"]].add(entry.get("id"))
+            asset = _absent_asset(declaration)
+            if asset is not None:
+                absent[asset].add(entry.get("id"))
     return absent
+
+
+def _absent_asset(declaration: Any) -> str | None:
+    asset = declaration.get("asset") if isinstance(declaration, dict) else None
+    return asset if isinstance(asset, str) and asset in ABSENCE_ASSETS else None
 
 
 def as_stored(asset: str, record: dict[str, Any]) -> Any:

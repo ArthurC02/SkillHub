@@ -13,6 +13,7 @@ from domain_registry.evidence import (
     citation,
     classify_all,
     source_map_for,
+    unclassified_paths,
     verify,
 )
 from domain_registry.common import inside
@@ -180,6 +181,16 @@ class EvidenceTest(RegistryTestCase):
     def test_listing_references_rejects_a_reference_one_level_past_the_depth_limit(self) -> None:
         with self.assertRaisesRegex(ValueError, "nesting depth 100"):
             all_references(self.evidence_below_nesting(99))
+
+    def test_only_a_cited_path_of_text_is_listed_as_unclassified(self) -> None:
+        value = {"evidence": [
+            {"path": 5, "source_kind": "unclassified"},
+            {"source_kind": "unclassified"},
+            {"path": "apps/b.go", "source_kind": "unclassified"},
+            {"path": "apps/a.go", "source_kind": "unclassified"},
+            {"path": "apps/c.go", "source_kind": "implementation"},
+        ]}
+        self.assertEqual(["apps/a.go", "apps/b.go"], unclassified_paths(value))
 
     def test_evidence_classification_rejects_excessive_nesting(self) -> None:
         value: dict[str, Any] = {}

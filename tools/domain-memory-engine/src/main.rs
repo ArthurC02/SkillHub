@@ -1,5 +1,6 @@
 mod cli;
 mod context;
+mod coverage;
 mod dependents;
 mod difflib;
 mod digits;
@@ -142,6 +143,22 @@ fn execute(invocation: &Invocation) -> Result<i32, String> {
             Ok(0)
         }
         "resolve-terms" => resolve_terms(invocation),
+        "coverage" => {
+            let root = py::resolve(invocation.text("registry_root").unwrap_or("."));
+            let changes_root = match invocation.text("changes_root") {
+                Some(given) => Some(py::resolve(given)),
+                None => Some(root.join("changes")).filter(|beside| beside.is_dir()),
+            };
+            let report = coverage::coverage(&root, changes_root)?;
+            print_json(&report.coverage);
+            if let Some(beside) = report.missing_changes {
+                emit_stderr(&format!(
+                    "NOTE: no Change Packages at {}; pass --changes-root to count the rules a test proves.\n",
+                    py::shown(&beside)
+                ));
+            }
+            Ok(0)
+        }
         "analyze-boundary" => {
             let root = py::resolve(invocation.text("registry_root").unwrap_or("."));
             print_json(&context::boundary_analysis(

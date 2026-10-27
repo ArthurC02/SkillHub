@@ -2,6 +2,14 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 4.2.14
+
+### Fixed
+
+- `coverage` and `validate` stopped with a Python traceback when a confirmed absence named its asset as something other than text (`asset: [rules]`). `validate` now reports it as an absence of an unknown asset, as it does for any other asset it does not know, and `coverage` leaves the Context among the gaps.
+- `coverage` stopped with a Python traceback when `source-map.json` listed a source group without a `kind` or without `paths` and gave no `source_kinds`. Such a group now counts as unclassified, as it already did when the map carried `source_kinds`.
+- `coverage` stopped with a Python traceback when a citation written straight into the frontmatter carried `source_kind: unclassified` with a `path` that is not text. Only a path of text is listed as outside the selected sources.
+
 ## 4.2.13
 
 ### Fixed

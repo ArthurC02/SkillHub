@@ -426,9 +426,9 @@ def _snapshots_of(root: Path, selected: list[str], owned: dict[str, list[Path]])
 
 def source_kinds(source_map: dict[str, Any]) -> dict[str, str]:
     kind_of = {
-        path: group["kind"]
+        path: group.get("kind", "unclassified")
         for group in source_map.get("source_groups", [])
-        for path in group["paths"]
+        for path in group.get("paths", [])
     }
     return {
         path: kind_of.get(path, "unclassified")

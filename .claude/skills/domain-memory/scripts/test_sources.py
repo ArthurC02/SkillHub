@@ -706,6 +706,13 @@ class SourcesTest(RegistryTestCase):
             (source_kind_for(source_map, "db/migrations/0002.sql"), source_kind_for(source_map, "infra/x.tf")),
         )
 
+    def test_a_source_group_without_a_kind_or_paths_classifies_nothing(self) -> None:
+        source_map = {"selected_paths": ["db"], "source_groups": [{"paths": ["db"]}, {"kind": "implementation"}]}
+        self.assertEqual(
+            ("selected", "unclassified"),
+            (source_kind_for(source_map, "db/0001.sql"), source_kind_for(source_map, "infra/x.tf")),
+        )
+
     def test_a_path_two_groups_list_takes_the_kind_of_the_first(self) -> None:
         source_map = {
             "source_groups": [

@@ -375,6 +375,8 @@ class RegistryContextModelTest(RegistryTestCase):
              "contexts/orders confirms an absence of an unknown asset; use one of aggregates, contracts, events, rules, vocabulary"),
             ("not an object", ["rules"], [],
              "contexts/orders confirms an absence of an unknown asset; use one of aggregates, contracts, events, rules, vocabulary"),
+            ("asset not text", [{"asset": ["rules"], "reason": "None."}], [],
+             "contexts/orders confirms an absence of an unknown asset; use one of aggregates, contracts, events, rules, vocabulary"),
             ("blank reason", [{"asset": "rules", "reason": " "}], [],
              "contexts/orders confirms an absence of rules without a reason; a confirmed absence is a finding and needs one"),
             ("contradicted by a record", [{"asset": "rules", "reason": "Orders decides nothing."}],
@@ -398,6 +400,13 @@ class RegistryContextModelTest(RegistryTestCase):
         report = coverage(self.repo / "memory")
         self.assertEqual((1, [], ["billing"]),
                          (report["events"], report["gaps"]["without_event"], report["confirmed_absent"]["without_event"]))
+
+    def test_coverage_leaves_a_context_in_the_gaps_when_its_absence_names_no_asset(self) -> None:
+        self.seed("contexts.json", [{"id": "billing", "name": "Billing", "responsibility": "Own invoices.",
+                                     "confirmed_absences": [{"asset": ["events"], "reason": "None."}]}])
+        report = coverage(self.repo / "memory")
+        self.assertEqual((["billing"], []),
+                         (report["gaps"]["without_event"], report["confirmed_absent"]["without_event"]))
 
     def bound(self, rule_paths: list[str]) -> list[dict]:
         def cite(path: str) -> list[dict]:

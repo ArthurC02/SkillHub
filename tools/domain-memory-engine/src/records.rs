@@ -164,6 +164,17 @@ fn proven(mut record: Object, obligations: Vec<Value>) -> Object {
 }
 
 fn review_history(root: &Path, key: &str) -> Result<Option<Vec<Value>>, String> {
+    let Some(events) = audit_events(root)? else {
+        return Ok(None);
+    };
+    let history: Vec<Value> = events
+        .iter()
+        .flat_map(|event| reviewed_by(event, key))
+        .collect();
+    Ok((!history.is_empty()).then_some(history))
+}
+
+pub fn audit_events(root: &Path) -> Result<Option<Vec<Object>>, String> {
     let path = root.join("audit").join("events.jsonl");
     if !path.is_file() {
         return Ok(None);
@@ -176,14 +187,12 @@ fn review_history(root: &Path, key: &str) -> Result<Option<Vec<Value>>, String> 
     }
     let bytes = std::fs::read(&path).map_err(|error| py::os_error(&error, &path))?;
     let text = py::utf8_text(&bytes).map_err(|error| format!("audit/events.jsonl: {error}"))?;
-    let mut history = Vec::new();
-    for (index, line) in splitlines(&text).into_iter().enumerate() {
-        let event = parsed_event(index + 1, line, root)?;
-        for proposal_id in reviewed_by(&event, key) {
-            history.push(proposal_id);
-        }
-    }
-    Ok((!history.is_empty()).then_some(history))
+    splitlines(&text)
+        .into_iter()
+        .enumerate()
+        .map(|(index, line)| parsed_event(index + 1, line, root))
+        .collect::<Result<Vec<_>, _>>()
+        .map(Some)
 }
 
 fn parsed_event(index: usize, line: &str, root: &Path) -> Result<Object, String> {
@@ -204,7 +213,7 @@ fn parsed_event(index: usize, line: &str, root: &Path) -> Result<Object, String>
     }
 }
 
-fn reviewed_by(event: &Object, key: &str) -> Vec<Value> {
+pub fn reviewed_by(event: &Object, key: &str) -> Vec<Value> {
     match event.get("operation").and_then(Value::as_str) {
         Some(APPLY_OPERATION) => {
             let names_key = match event.get("records") {
@@ -233,7 +242,7 @@ fn reviewed_by(event: &Object, key: &str) -> Vec<Value> {
     }
 }
 
-fn readable_packages(changes_root: &Path) -> Result<Vec<(PathBuf, Object)>, String> {
+pub fn readable_packages(changes_root: &Path) -> Result<Vec<(PathBuf, Object)>, String> {
     iter_packages(changes_root)?
         .into_iter()
         .map(|(package, proposal)| {
@@ -299,7 +308,7 @@ fn obligations_proving(
     Ok(Some(found))
 }
 
-fn obligations(package: &Path) -> Result<Vec<Value>, String> {
+pub fn obligations(package: &Path) -> Result<Vec<Value>, String> {
     let path = package.join(OBLIGATIONS_FILE);
     if !path.is_file() {
         return Ok(Vec::new());
@@ -316,7 +325,7 @@ fn obligations(package: &Path) -> Result<Vec<Value>, String> {
     })
 }
 
-fn covers(obligation: &Object, source: (&str, &str)) -> bool {
+pub fn covers(obligation: &Object, source: (&str, &str)) -> bool {
     let named = |item: &Object| {
         item.get("source_type").and_then(Value::as_str) == Some(source.0)
             && item.get("source_id").and_then(Value::as_str) == Some(source.1)
