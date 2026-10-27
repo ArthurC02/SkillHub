@@ -46763,5 +46763,17 @@
     "files": {
       "src/a.go": "x\n"
     }
+  },
+  {
+    "name": "refresh-indexes writes the same index files as the script",
+    "writes": true,
+    "args": [
+      "refresh-indexes",
+      "--registry-root",
+      "{fixture}/m"
+    ],
+    "files": {
+      "m/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n"
+    }
   }
 ]

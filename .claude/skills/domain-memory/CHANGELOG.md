@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 5.0.4
+
+### Changed
+
+- The engine's parity harness runs a command that writes files in a fresh copy of its fixture for each side and compares every file written; the script's `verify-audit` checks any audit log the executable writes. No change to either command line.
+
 ## 5.0.3
 
 ### Added

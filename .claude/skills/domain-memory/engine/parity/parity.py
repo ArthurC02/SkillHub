@@ -3,6 +3,8 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -18,6 +20,9 @@ BINARY = ENGINE / "target" / "release" / ("domain-memory.exe" if os.name == "nt"
 PYTHON = "3.13"
 UNKNOWN_OPTION = "--not-an-option-of-any-command"
 RUN_SECONDS = 120
+FIXED_GIT_DATE = "2026-01-01T00:00:00Z"
+VOLATILE_DIGEST = re.compile(rb'"(event_sha256|previous_event_sha256|head_sha256)": ("[0-9a-f]{64}"|null|\[[^\]]*\])')
+VOLATILE_NOW = re.compile(rb"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{6}Z|(?<=domain-registry-stage-)[0-9a-f]{32}|(?<=domain-registry-backup-)[0-9a-f]{32}")
 
 
 def generated_cases() -> list[dict]:
@@ -40,8 +45,14 @@ def written_fixture(root: Path, files: dict[str, str | dict[str, str] | None]) -
 
 
 def committed(root: Path) -> None:
+    dated = {**os.environ, "GIT_AUTHOR_DATE": FIXED_GIT_DATE, "GIT_COMMITTER_DATE": FIXED_GIT_DATE}
+
     def git(*args: str) -> None:
-        subprocess.run(["git", "-C", str(root), "-c", "core.autocrlf=false", *args], check=True, capture_output=True)
+        done = subprocess.run(
+            ["git", "-C", str(root), "-c", "core.autocrlf=false", *args], capture_output=True, env=dated, check=False
+        )
+        if done.returncode != 0:
+            raise RuntimeError(f"fixture git {' '.join(args)} failed in {root}: {(done.stdout + done.stderr).decode('utf-8', 'replace')}")
 
     git("init", "-q")
     git("add", "-A")
@@ -69,20 +80,66 @@ def first_difference(left: bytes, right: bytes) -> str:
     return f"python has {len(left_lines)} lines, rust has {len(right_lines)}"
 
 
+def masked(data: bytes) -> bytes:
+    return VOLATILE_NOW.sub(b"~", VOLATILE_DIGEST.sub(rb'"\1": "~"', data))
+
+
+def tree_of(root: Path) -> dict[str, bytes]:
+    return {
+        path.relative_to(root).as_posix(): masked(path.read_bytes())
+        for path in sorted(root.rglob("*"))
+        if path.is_file() and ".git" not in path.relative_to(root).parts
+    }
+
+
+def audit_problems(root: Path) -> list[str]:
+    problems = []
+    for events in sorted(root.rglob("audit/events.jsonl")):
+        registry_root = events.parent.parent
+        checked = run([sys.executable, str(PLUGIN_ENTRY), "verify-audit", "--registry-root", str(registry_root)], {})
+        if checked["exit"] != 0:
+            problems.append(f"audit written by rust under {registry_root.relative_to(root).as_posix()} fails verify-audit: {checked['stdout'].decode('utf-8', 'replace').strip()}")
+    return problems
+
+
+def prepared(case: dict, fixture: Path) -> None:
+    written_fixture(fixture, case.get("files", {}))
+    if case.get("git"):
+        committed(fixture)
+
+
+def ran(case: dict, fixture: Path, argv: list[str]) -> dict:
+    return run([*argv, *expanded(case["args"], fixture)], case.get("env", {}))
+
+
 def compared(case: dict, binary: Path) -> list[str]:
     with tempfile.TemporaryDirectory() as scratch:
-        fixture = Path(scratch)
-        written_fixture(fixture, case.get("files", {}))
-        if case.get("git"):
-            committed(fixture)
-        args = expanded(case["args"], fixture)
-        python = run([sys.executable, str(PLUGIN_ENTRY), *args], case.get("env", {}))
-        rust = run([str(binary), *args], case.get("env", {}))
+        fixture = Path(scratch) / "f"
+        fixture.mkdir()
+        prepared(case, fixture)
+        python = ran(case, fixture, [sys.executable, str(PLUGIN_ENTRY)])
+        problems: list[str] = []
+        if case.get("writes"):
+            python_tree = tree_of(fixture)
+            shutil.rmtree(fixture, onexc=lambda function, path, _: (os.chmod(path, 0o700), function(path)))
+            fixture.mkdir()
+            prepared(case, fixture)
+        rust = ran(case, fixture, [str(binary)])
+        if case.get("writes"):
+            for stream in ("stdout", "stderr"):
+                python[stream], rust[stream] = masked(python[stream]), masked(rust[stream])
+            rust_tree = tree_of(fixture)
+            problems += [
+                f"file {name}: {first_difference(python_tree.get(name, b''), rust_tree.get(name, b''))}"
+                for name in sorted(set(python_tree) | set(rust_tree))
+                if python_tree.get(name) != rust_tree.get(name)
+            ]
+            problems += audit_problems(fixture)
     problems = [
         f"{stream}: {first_difference(python[stream], rust[stream])}"
         for stream in ("stdout", "stderr")
         if python[stream] != rust[stream]
-    ]
+    ] + problems
     if python["exit"] != rust["exit"]:
         problems.append(f"exit: python {python['exit']} / rust {rust['exit']}")
     return problems
