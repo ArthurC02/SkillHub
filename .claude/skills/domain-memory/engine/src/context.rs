@@ -5,7 +5,7 @@ use crate::json::{Object, Value};
 use crate::policy::review_mode;
 use crate::pyvalue::str_of;
 use crate::records::{did_you_mean, read_record};
-use crate::store::asset_records;
+use crate::store::{Registry, asset_records};
 
 const SUMMARY_FIELDS: &[&str] = &[
     "statement",
@@ -33,8 +33,9 @@ pub fn get_context(root: &Path, identifier: &str, summary: bool) -> Result<Value
     }))
 }
 
-fn records(root: &Path, asset: &str) -> Result<Vec<Object>, String> {
-    Ok(asset_records(root, asset)?
+fn records(registry: &Registry, asset: &str) -> Result<Vec<Object>, String> {
+    Ok(registry
+        .records(asset)?
         .into_iter()
         .filter_map(|record| match record {
             Value::Object(record) => Some(record),
@@ -67,28 +68,29 @@ fn objects(entries: Vec<Object>) -> Value {
 }
 
 fn context_model(root: &Path, identifier: &str, context: Object) -> Result<Object, String> {
-    let contracts = keep(records(root, "contracts")?, |entry| {
+    let registry = Registry::open(root)?;
+    let contracts = keep(records(&registry, "contracts")?, |entry| {
         is(entry, "producer_context", identifier) || names(entry, "consumer_contexts", identifier)
     });
-    let interactions = keep(records(root, "interactions")?, |entry| {
+    let interactions = keep(records(&registry, "interactions")?, |entry| {
         is(entry, "producer_context", identifier) || is(entry, "consumer_context", identifier)
     });
-    let rules = records(root, "rules")?;
+    let rules = records(&registry, "rules")?;
     let mode = review_mode(root)?;
-    let vocabulary = keep(records(root, "vocabulary")?, |entry| {
+    let vocabulary = keep(records(&registry, "vocabulary")?, |entry| {
         names(entry, "contexts", identifier)
     });
-    let aggregates = keep(records(root, "aggregates")?, |entry| {
+    let aggregates = keep(records(&registry, "aggregates")?, |entry| {
         is(entry, "context", identifier)
     });
     let own_rules = keep(rules.clone(), |entry| names(entry, "contexts", identifier));
-    let events = keep(records(root, "events")?, |entry| {
+    let events = keep(records(&registry, "events")?, |entry| {
         is(entry, "owner_context", identifier) || names(entry, "consumers", identifier)
     });
-    let capabilities = keep(records(root, "capabilities")?, |entry| {
+    let capabilities = keep(records(&registry, "capabilities")?, |entry| {
         is(entry, "context", identifier)
     });
-    let value_objects = keep(records(root, "value-objects")?, |entry| {
+    let value_objects = keep(records(&registry, "value-objects")?, |entry| {
         is(entry, "context", identifier)
     });
     let bound = bound_rules(identifier, &contracts, &interactions, &rules)?;
@@ -242,10 +244,11 @@ fn context_summary(model: &Object) -> Object {
 }
 
 pub fn boundary_analysis(root: &Path, source: &str, target: &str) -> Result<Value, String> {
-    let interactions = records(root, "interactions")?;
-    let contracts = records(root, "contracts")?;
-    let dependencies = records(root, "dependency-policies")?;
-    let events = records(root, "events")?;
+    let registry = Registry::open(root)?;
+    let interactions = records(&registry, "interactions")?;
+    let contracts = records(&registry, "contracts")?;
+    let dependencies = records(&registry, "dependency-policies")?;
+    let events = records(&registry, "events")?;
     let held = [&interactions, &contracts, &dependencies, &events];
     let forward = dependence(held, source, target);
     let backward = dependence(held, target, source);

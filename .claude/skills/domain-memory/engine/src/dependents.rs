@@ -5,7 +5,7 @@ use crate::context::summarized;
 use crate::json::{Object, Value};
 use crate::okf::{LIST_RELATIONS, RELATION_TARGETS};
 use crate::records::{did_you_mean, read_record};
-use crate::store::{ASSETS, asset_records};
+use crate::store::{ASSETS, Registry, asset_records};
 
 const HUB_ASSET: &str = "contexts";
 const NOUN_ASSETS: &[(&str, &str)] = &[
@@ -28,8 +28,9 @@ pub fn dependents(root: &Path, asset: &str, identifier: &str) -> Result<Value, S
     }
     let mut by_key: HashMap<Key, Object> = HashMap::new();
     let mut edges: HashMap<Key, Vec<(Key, String)>> = HashMap::new();
+    let registry = Registry::open(root)?;
     for (name, _, _) in ASSETS {
-        for entry in asset_records(root, name)? {
+        for entry in registry.records(name)? {
             let Value::Object(entry) = entry else {
                 continue;
             };

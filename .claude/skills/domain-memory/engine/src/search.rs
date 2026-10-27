@@ -6,7 +6,7 @@ use crate::okf::{RELATION_TARGETS, prose_field, review_field};
 use crate::policy::query_result_limit;
 use crate::py;
 use crate::pyvalue::{equal, str_of};
-use crate::store::{ASSETS, asset_records};
+use crate::store::{ASSETS, Registry, asset_records};
 use crate::unicode::{casefold, is_alphanumeric, nfkc};
 
 const COMMON_SHARE: usize = 4;
@@ -272,14 +272,14 @@ fn lists(record: &Object, key: &str, identifier: &str) -> bool {
 }
 
 pub fn every_resolved_term(
-    root: &Path,
+    registry: &Registry,
     query: &str,
     context: Option<&str>,
     with_mentions: bool,
 ) -> Result<Vec<Object>, String> {
     let needle = casefold(query);
     let mut matches = Vec::new();
-    for term in asset_records(root, "vocabulary")? {
+    for term in registry.records("vocabulary")? {
         let Value::Object(mut term) = term else {
             continue;
         };
@@ -299,7 +299,7 @@ pub fn every_resolved_term(
         return Ok(matches);
     }
     let matched: Vec<&Value> = matches.iter().filter_map(|term| term.get("id")).collect();
-    let mentions: Vec<Object> = prose_mentions(root, &needle)?
+    let mentions: Vec<Object> = prose_mentions(registry, &needle)?
         .into_iter()
         .filter(|mention| {
             mention.get("asset").and_then(Value::as_str) != Some("vocabulary")
@@ -312,7 +312,7 @@ pub fn every_resolved_term(
     Ok(matches)
 }
 
-pub fn prose_mentions(root: &Path, needle: &str) -> Result<Vec<Object>, String> {
+pub fn prose_mentions(registry: &Registry, needle: &str) -> Result<Vec<Object>, String> {
     let wanted = query_words(needle);
     if wanted.is_empty() {
         return Ok(Vec::new());
@@ -321,7 +321,7 @@ pub fn prose_mentions(root: &Path, needle: &str) -> Result<Vec<Object>, String> 
     assets.sort_by_key(|asset| format!("{asset}.json"));
     let mut mentions = Vec::new();
     for asset in assets {
-        for entry in asset_records(root, asset)? {
+        for entry in registry.records(asset)? {
             let Value::Object(entry) = entry else {
                 continue;
             };

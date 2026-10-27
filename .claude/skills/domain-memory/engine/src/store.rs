@@ -44,12 +44,12 @@ pub fn has_registry(root: &Path) -> bool {
 }
 
 pub fn read_documents(root: &Path) -> Result<Object, String> {
+    if !has_registry(root) {
+        return Err(missing_registry(root)?);
+    }
+    let held = registry_files(root)?;
     let mut documents = Object::new();
     for (asset, key, format) in ASSETS {
-        if !has_registry(root) {
-            return Err(missing_registry(root)?);
-        }
-        let held = registry_files(root)?;
         documents.insert(
             *asset,
             asset_document(asset, key, format, concept_texts(asset, &held)?)?,
@@ -59,21 +59,41 @@ pub fn read_documents(root: &Path) -> Result<Object, String> {
 }
 
 pub fn asset_records(root: &Path, asset: &str) -> Result<Vec<Value>, String> {
-    let (_, key, format) = ASSETS
+    known_asset(asset)?;
+    Registry::open(root)?.records(asset)
+}
+
+fn known_asset(asset: &str) -> Result<&'static (&'static str, &'static str, &'static str), String> {
+    ASSETS
         .iter()
         .find(|(name, _, _)| *name == asset)
-        .ok_or_else(|| format!("unknown asset {asset}"))?;
-    if !has_registry(root) {
-        return Err(missing_registry(root)?);
+        .ok_or_else(|| format!("unknown asset {asset}"))
+}
+
+pub struct Registry {
+    files: Files,
+}
+
+impl Registry {
+    pub fn open(root: &Path) -> Result<Self, String> {
+        if !has_registry(root) {
+            return Err(missing_registry(root)?);
+        }
+        Ok(Self {
+            files: registry_files(root)?,
+        })
     }
-    let held = registry_files(root)?;
-    let document = asset_document(asset, key, format, concept_texts(asset, &held)?)?;
-    Ok(document
-        .as_object()
-        .and_then(|document| document.get(key))
-        .and_then(Value::as_array)
-        .map(<[Value]>::to_vec)
-        .unwrap_or_default())
+
+    pub fn records(&self, asset: &str) -> Result<Vec<Value>, String> {
+        let (_, key, format) = known_asset(asset)?;
+        let document = asset_document(asset, key, format, concept_texts(asset, &self.files)?)?;
+        Ok(document
+            .as_object()
+            .and_then(|document| document.get(key))
+            .and_then(Value::as_array)
+            .map(<[Value]>::to_vec)
+            .unwrap_or_default())
+    }
 }
 
 pub fn committed_documents(

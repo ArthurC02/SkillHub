@@ -58,7 +58,7 @@ updates:
 
   - package-ecosystem: cargo
     directories:
-      - /tools/domain-memory-engine
+      - /.claude/skills/domain-memory/engine
     schedule:
       interval: weekly
     open-pull-requests-limit: 0

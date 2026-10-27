@@ -21,6 +21,8 @@ Then choose one capability:
 - **Review a change** when asked to review a pull request or a branch, from one `brief`, to decide whether it needs a Change Package, a recite, or nothing: [domain-memory-review-change](skills/domain-memory-review-change/SKILL.md).
 - **Implementation hygiene** while writing code from a handoff, when a repository check forces a change, or when an external system is added or replaced: [domain-memory-implementation-hygiene](skills/domain-memory-implementation-hygiene/SKILL.md).
 
+Every capability runs the same commands. To run them through the compiled Rust executable instead of the Python script, see [domain-memory-cli](skills/domain-memory-cli/SKILL.md).
+
 A brownfield refactoring that preserves the reviewed model takes the [brownfield refactoring fast path](references/brownfield-refactoring.md) before anyone opens a Change Package: it is a proof of preservation, not a way around unknown ownership or a changed contract.
 
 A Registry that has never named an approval authority holds candidates only, and no capability can promote one. *Preparing the approval authority* in [script-api.md](references/script-api.md#preparing-the-approval-authority) covers it: a maintainer or reviewer who signs, and the two-person rule when the policy asks for it.

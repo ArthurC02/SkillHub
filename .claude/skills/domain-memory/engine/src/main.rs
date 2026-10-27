@@ -185,10 +185,15 @@ fn resolve_terms(invocation: &Invocation) -> Result<i32, String> {
     let root = py::resolve(invocation.text("registry_root").unwrap_or("."));
     let with_mentions = invocation.flag("with_mentions");
     let limit = policy::query_result_limit(&root)?;
+    let registry = store::Registry::open(&root)?;
     let mut found: Vec<(&str, Vec<Object>)> = Vec::new();
     for query in invocation.texts("query") {
-        let matches =
-            search::every_resolved_term(&root, query, invocation.text("context"), with_mentions)?;
+        let matches = search::every_resolved_term(
+            &registry,
+            query,
+            invocation.text("context"),
+            with_mentions,
+        )?;
         match found.iter_mut().find(|(seen, _)| seen == query) {
             Some(slot) => slot.1 = matches,
             None => found.push((query, matches)),
@@ -215,7 +220,7 @@ fn resolve_terms(invocation: &Invocation) -> Result<i32, String> {
         let constraints: Vec<Object> = if with_mentions {
             Vec::new()
         } else {
-            search::prose_mentions(&root, query)?
+            search::prose_mentions(&registry, query)?
                 .into_iter()
                 .filter(|mention| {
                     mention

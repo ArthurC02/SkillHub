@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 ENGINE = Path(__file__).resolve().parents[1]
-PLUGIN_SCRIPTS = ENGINE.parents[1] / ".claude" / "skills" / "domain-memory" / "scripts"
+PLUGIN_SCRIPTS = ENGINE.parent / "scripts"
 CONTRACT = ENGINE / "contract" / "cli.json"
 PROG = "registry_tools.py"
 PYTHON = "3.13"

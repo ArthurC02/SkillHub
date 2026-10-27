@@ -9,8 +9,9 @@ import tempfile
 from pathlib import Path
 
 ENGINE = Path(__file__).resolve().parents[1]
-REPO = ENGINE.parents[1]
-PLUGIN_ENTRY = REPO / ".claude" / "skills" / "domain-memory" / "scripts" / "registry_tools.py"
+PLUGIN = ENGINE.parent
+REPO = ENGINE.parents[3]
+PLUGIN_ENTRY = PLUGIN / "scripts" / "registry_tools.py"
 CASES = ENGINE / "parity" / "cases.json"
 CONTRACT = ENGINE / "contract" / "cli.json"
 BINARY = ENGINE / "target" / "release" / ("domain-memory.exe" if os.name == "nt" else "domain-memory")

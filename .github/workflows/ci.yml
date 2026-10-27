@@ -121,7 +121,6 @@ jobs:
               - '.claude/skills/domain-memory/**'
               - '.github/workflows/ci.yml'
             domain-memory-engine:
-              - 'tools/domain-memory-engine/**'
               - '.claude/skills/domain-memory/**'
               - '.github/workflows/ci.yml'
 
@@ -745,7 +744,7 @@ jobs:
     defaults:
       run:
         shell: bash
-        working-directory: tools/domain-memory-engine
+        working-directory: .claude/skills/domain-memory/engine
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

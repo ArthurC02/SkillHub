@@ -2,6 +2,13 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 4.2.15
+
+### Added
+
+- `engine/`: the plugin's commands rewritten in Rust as one executable, `domain-memory`, which takes over from `scripts/registry_tools.py` one command at a time with the same arguments and byte-for-byte the same output and refusals. It answers `list-proposals`, `export`, `get-record`, `get-context`, `validate-policy`, `lookup`, `resolve-terms`, `coverage`, `analyze-boundary` and `dependents`, needs no Python, and answers each of them faster than the script; every other command refuses with `ERROR: <command> is not available in the Rust engine yet` and stays with the script. The source ships with the plugin; the executable is built locally with `cargo` and never committed.
+- The `domain-memory-cli` Skill: how to build or find the executable, what it reads and prints, its exit codes, the commands it answers, and when to fall back to the Python script. Nothing changes for an Agent that keeps calling the script.
+
 ## 4.2.14
 
 ### Fixed
