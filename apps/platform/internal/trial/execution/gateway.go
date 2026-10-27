@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -60,6 +61,7 @@ type Gateway struct {
 	maxBudgetUSD   float64
 	tpmLimit       int
 	client         *http.Client
+	readyTeams     sync.Map
 }
 
 type GatewayConfig struct {
@@ -130,7 +132,7 @@ type AttemptKeyTerms struct {
 
 func (g *Gateway) Issue(ctx context.Context, runID, runAttemptID string, terms AttemptKeyTerms) (*ModelGatewayGrant, error) {
 	return g.issue(ctx, virtualKeyTerms{
-		attemptID: runAttemptID, ttl: terms.TTL, maxBudgetUSD: terms.BudgetUSD, tpmLimit: terms.TPMLimit, model: g.model,
+		attemptID: runAttemptID, ttl: terms.TTL, maxBudgetUSD: terms.BudgetUSD, tpmLimit: terms.TPMLimit, model: g.model, team: runTeam,
 		metadata: map[string]string{"run_id": runID, "run_attempt_id": runAttemptID},
 	})
 }
@@ -143,14 +145,14 @@ type CreationKeyTerms struct {
 
 func (g *Gateway) IssueCreationForModel(ctx context.Context, sessionID, attemptID string, terms CreationKeyTerms) (*ModelGatewayGrant, error) {
 	return g.issue(ctx, virtualKeyTerms{
-		attemptID: attemptID, ttl: terms.TTL, maxBudgetUSD: terms.BudgetUSD, model: terms.Model,
+		attemptID: attemptID, ttl: terms.TTL, maxBudgetUSD: terms.BudgetUSD, model: terms.Model, team: creationTeam,
 		metadata: map[string]string{"creation_session_id": sessionID, "creation_attempt_id": attemptID},
 	})
 }
 
 func (g *Gateway) IssueAgentRun(ctx context.Context, runID string, terms CreationKeyTerms) (*ModelGatewayGrant, error) {
 	return g.issue(ctx, virtualKeyTerms{
-		attemptID: runID, ttl: terms.TTL, maxBudgetUSD: terms.BudgetUSD, model: terms.Model,
+		attemptID: runID, ttl: terms.TTL, maxBudgetUSD: terms.BudgetUSD, model: terms.Model, team: platformAgentTeam,
 		metadata: map[string]string{"platform_agent_run_id": runID},
 	})
 }
@@ -161,7 +163,35 @@ type virtualKeyTerms struct {
 	maxBudgetUSD float64
 	tpmLimit     int
 	model        string
+	team         gatewayTeam
 	metadata     map[string]string
+}
+
+type gatewayTeam string
+
+const (
+	runTeam           gatewayTeam = "skillhub-run"
+	creationTeam      gatewayTeam = "skillhub-creation"
+	platformAgentTeam gatewayTeam = "skillhub-platform-agent"
+)
+
+type teamCreationRequest struct {
+	TeamID         string `json:"team_id"`
+	TeamAlias      string `json:"team_alias"`
+	BudgetDuration string `json:"budget_duration"`
+}
+
+func (g *Gateway) teamFor(ctx context.Context, team gatewayTeam) string {
+	if _, ready := g.readyTeams.Load(team); ready {
+		return string(team)
+	}
+	err := g.post(ctx, "/team/new", teamCreationRequest{TeamID: string(team), TeamAlias: string(team), BudgetDuration: "1d"}, nil)
+	if ge, ok := errors.AsType[*gatewayError](err); err != nil && (!ok || !ge.alreadyExists()) {
+		slog.WarnContext(ctx, "model gateway team unavailable; the key is issued outside it", "team", team, "err", err)
+		return ""
+	}
+	g.readyTeams.Store(team, struct{}{})
+	return string(team)
 }
 
 type keyGenerationRequest struct {
@@ -171,6 +201,7 @@ type keyGenerationRequest struct {
 	TPMLimit  int               `json:"tpm_limit"`
 	Metadata  map[string]string `json:"metadata"`
 	Models    []string          `json:"models,omitempty"`
+	TeamID    string            `json:"team_id,omitempty"`
 }
 
 type keyDeletionRequest struct {
@@ -195,6 +226,7 @@ func (g *Gateway) issue(ctx context.Context, terms virtualKeyTerms) (*ModelGatew
 		MaxBudget: maxBudgetUSD,
 		TPMLimit:  tpmLimit,
 		Metadata:  metadata,
+		TeamID:    g.teamFor(ctx, terms.team),
 	}
 	if model != "" {
 		body.Models = []string{model}
@@ -313,6 +345,10 @@ func (e *gatewayError) notFound() bool {
 	lower := strings.ToLower(e.Message)
 	return e.Status == http.StatusBadRequest &&
 		(strings.Contains(lower, "not found") || strings.Contains(lower, "does not exist"))
+}
+
+func (e *gatewayError) alreadyExists() bool {
+	return e.Status == http.StatusBadRequest && strings.Contains(strings.ToLower(e.Message), "already exists")
 }
 
 func notAnswering(err error) bool {

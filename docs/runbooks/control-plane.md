@@ -48,7 +48,7 @@ EOF
 | `postgres.env` | `POSTGRES_USER`、`POSTGRES_PASSWORD`、`POSTGRES_DB=skillhub`；WAL-G：`WALG_S3_PREFIX=s3://<備份 bucket>/postgres`、`AWS_ACCESS_KEY_ID`、`AWS_SECRET_ACCESS_KEY`、`AWS_ENDPOINT`、`AWS_REGION`、`AWS_S3_FORCE_PATH_STYLE=true`；可選 `WALG_RETAIN_DAYS`（預設 35，備份保留天數；仍設著舊的 `WALG_RETAIN_FULL` 時備份拒絕執行）、`DRILL_RTO_SECONDS`（預設 14400，還原演練的時間上限） |
 | `platform.env` | api、worker、maintenance、reindex 共用。`DATABASE_URL=postgres://<user>:<password>@postgres:5432/skillhub?sslmode=disable`；其餘照 [release-checklist](../plans/mvp/m4/release-checklist.md) §2.3 的表，完整清單是 `.env.example` |
 | `objstore-backup.env` | 只給 maintenance 的物件備份 job：`OBJSTORE_BACKUP_ENDPOINT`、`OBJSTORE_BACKUP_ACCESS_KEY`、`OBJSTORE_BACKUP_SECRET_KEY`、`OBJSTORE_BACKUP_BUCKET`、`OBJSTORE_BACKUP_SSL=1`。指向**另一個** bucket（最好另一個區域），金鑰只對那個 bucket 有權限；缺任何一項 `backup-objects` 拒絕執行並點名，與應用程式同一個 bucket 也拒絕。建議在備份 bucket 開版本控管，舊版本 35 天後過期，金鑰外洩時刪掉的備份仍救得回來 |
-| `llm.env` | apps/llm 的設定；`LITELLM_API_KEY` 是 Virtual Key，不是 master key（§2.3） |
+| `llm.env` | apps/llm 的設定；`LITELLM_API_KEY` 是 Virtual Key，不是 master key（§2.3）。簽發前先以 `/team/new` 建 `skillhub-service` 團隊（`budget_duration` 填 `1d`），簽發時帶 `"team_id": "skillhub-service"`，搜尋、目錄整理與判定的花費才會和試跑、創作分開記 |
 | `postgres-exporter.env` | `DATA_SOURCE_NAME=postgresql://<user>:<password>@postgres:5432/skillhub?sslmode=disable` |
 | `smtp-password` | SMTP 密碼，單獨一行 |
 
