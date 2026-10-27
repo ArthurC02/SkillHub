@@ -225,6 +225,312 @@ function bundleOverview(latestVersion: BundleVersion, publication?: Publication)
   };
 }
 
+function bundleOperationFixture(
+  action: "publish" | "delist",
+  status: number,
+  needsAttestation = false,
+) {
+  const older = {
+    ...OWN_BUNDLE,
+    version: "1.0.0",
+    content_hash: "sha256:bundle-1",
+    created_at: "2026-09-01T00:00:00Z",
+  };
+  const publication: Publication = {
+    ...OWN_PUBLICATION,
+    kind: "bundle",
+    name: OWN_BUNDLE.bundle,
+    address: `/p/${PUBLISHER}/${OWN_BUNDLE.bundle}`,
+    status: "published",
+    status_changed_at: "2026-09-01T00:00:00Z",
+    releases: [
+      {
+        bundle_version: "1.0.0",
+        content_hash: older.content_hash,
+        released_at: "2026-09-01T00:00:00Z",
+        rights_attested: needsAttestation,
+        findings: { errors: [], warnings: [], infos: [] },
+      },
+    ],
+  };
+  const updated: Publication = {
+    ...publication,
+    status: action === "delist" ? "delisted" : "published",
+    status_changed_at: "2026-09-20T00:00:00Z",
+    availability:
+      action === "delist"
+        ? {
+            value: "delisted",
+            label: "作者已撤回",
+            note: "作者撤回了這個發佈物，這一頁不再提供它的內容。",
+          }
+        : publication.availability,
+    acquisition:
+      action === "delist"
+        ? { available: false, note: "作者撤回了這個發佈物，這一頁不再提供它的內容。" }
+        : publication.acquisition,
+    releases:
+      action === "publish"
+        ? [
+            {
+              ...publication.releases[0],
+              bundle_version: "1.1.0",
+              content_hash: OWN_BUNDLE.content_hash,
+              released_at: "2026-09-20T00:00:00Z",
+            },
+          ]
+        : publication.releases,
+  };
+  let finishWrite!: () => void;
+  let finishRead!: (body?: unknown, status?: number) => void;
+  const write = new Promise<Response>((resolve) => {
+    finishWrite = () =>
+      resolve(
+        new Response(JSON.stringify(status === 200 ? updated : { error: "unavailable" }), {
+          status,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+  });
+  const read = new Promise<Response>((resolve) => {
+    finishRead = (body = bundleOverview(OWN_BUNDLE, updated), readStatus = 200) =>
+      resolve(
+        new Response(JSON.stringify(body), {
+          status: readStatus,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+  });
+  let reads = 0;
+  let writes = 0;
+  const requests: unknown[] = [];
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    const path = String(input)
+      .replace(/^https?:\/\/[^/]+/, "")
+      .split("?")[0];
+    if (path === `/me/bundles/${OWN_BUNDLE.bundle}/publication` && init?.method) {
+      writes++;
+      if (init.method === "POST") requests.push(JSON.parse(String(init.body)));
+      return write;
+    }
+    if (path === "/me/bundles/overview") {
+      reads++;
+      return reads === 1
+        ? json(bundleOverview(OWN_BUNDLE, publication))
+        : reads === 2
+          ? read
+          : json(bundleOverview(OWN_BUNDLE, updated));
+    }
+    if (needsAttestation && (path.startsWith("/skills") || path.startsWith("/api/skills/"))) {
+      const response = platformResponse(String(input));
+      return json(
+        path === `/api/skills/${SKILL}`
+          ? detail({ redistribution: { value: "generated", label: "平台生成", note: "" } })
+          : response.body,
+        response.status,
+      );
+    }
+    const routes: Record<string, unknown> = {
+      "/me/publisher": OWN_PUBLISHER,
+      "/me/publications": { publications: [] },
+      "/me/bundles": { bundles: [OWN_BUNDLE, older] },
+      "/skills": { skills: [], total: 0, limit: 100, truncated: false },
+      "/downloads": { downloads: [] },
+    };
+    return json(routes[path] ?? { error: "not found" }, path in routes ? 200 : 404);
+  });
+  return { finishWrite, finishRead, reads: () => reads, writes: () => writes, requests };
+}
+
+for (const action of ["publish", "delist"] as const) {
+  test(`Bundle ${action} declarations stay fixed until observation and retain each version draft`, async () => {
+    const fixture = bundleOperationFixture(action, 200, true);
+    const declarations = () =>
+      Array.from(
+        container.querySelectorAll<HTMLInputElement>(
+          `article[aria-labelledby="bundle-${OWN_BUNDLE.bundle}"] input[type="checkbox"]`,
+        ),
+      );
+    await render(<PublishingWorkspace />, () => declarations().length === 2);
+    expect(button("發佈 v1.1.0")?.disabled).toBe(true);
+    await act(async () => declarations()[0].click());
+    await waitFor(() => button("發佈 v1.1.0")?.disabled === false);
+    if (action === "delist") await act(async () => button("撤回")!.click());
+    await act(async () => button(action === "publish" ? "發佈 v1.1.0" : "確認撤回")!.click());
+    await waitFor(() =>
+      Boolean(button(action === "publish" ? "正在發佈 v1.1.0" : "送出中")?.disabled),
+    );
+    expect(fixture.writes()).toBe(1);
+    expect(declarations().map((input) => [input.checked, input.disabled])).toEqual([
+      [true, true],
+      [false, true],
+    ]);
+    const reason = container.querySelector(
+      `[id="${declarations()[0].getAttribute("aria-describedby")}"]`,
+    );
+    expect(reason?.textContent).toContain("核對 Bundle 發佈狀態");
+    await act(async () => fixture.finishWrite());
+    await waitFor(() => fixture.reads() === 2);
+    expect(declarations().every((input) => input.disabled)).toBe(true);
+    await act(async () => fixture.finishRead());
+    await waitFor(() => declarations().every((input) => !input.disabled));
+    expect(declarations().map((input) => input.checked)).toEqual([true, false]);
+    expect(fixture.requests).toEqual(
+      action === "publish" ? [{ version: "1.1.0", rights_attested: true }] : [],
+    );
+  });
+  for (const status of [200, 503]) {
+    test(`Bundle ${action} ${status} coordinates immutable versions until its overview is observed`, async () => {
+      const fixture = bundleOperationFixture(action, status);
+      await render(<PublishingWorkspace />, () =>
+        Boolean(button("發佈 v1.1.0") && !button("發佈 v1.1.0")!.disabled),
+      );
+      const sibling = button("發佈 v1.0.0")!;
+      expect(sibling.disabled).toBe(false);
+      if (action === "delist") await act(async () => button("撤回")!.click());
+      await act(async () => button(action === "publish" ? "發佈 v1.1.0" : "確認撤回")!.click());
+      await waitFor(() =>
+        Boolean(button(action === "publish" ? "正在發佈 v1.1.0" : "送出中")?.disabled),
+      );
+      expect(fixture.writes()).toBe(1);
+      expect(sibling.disabled).toBe(true);
+      expect(button("匯出 v1.0.0 Plugin")!.disabled).toBe(false);
+      expect(button(action === "publish" ? "撤回" : "發佈 v1.1.0")!.disabled).toBe(true);
+      const heading = container.querySelector(`#bundle-${OWN_BUNDLE.bundle}`)!;
+      expect(document.activeElement).toBe(heading);
+      const other = container.querySelector<HTMLInputElement>(".bundle-form input")!;
+      other.focus();
+      await act(async () => fixture.finishWrite());
+      await waitFor(() => fixture.reads() === 2);
+      expect(queryClient.isMutating()).toBe(1);
+      expect(sibling.disabled).toBe(true);
+      expect(button(action === "publish" ? "正在發佈 v1.1.0" : "送出中")?.disabled).toBe(true);
+      expect(text()).toContain("核對 Bundle 發佈狀態");
+      expect(text()).not.toContain("沒有完成");
+      await act(async () => fixture.finishRead());
+      await waitFor(() => !sibling.disabled);
+      expect(fixture.writes()).toBe(1);
+      expect(document.activeElement).toBe(other);
+      const publishedState = container.querySelector(".bundle-overview-header [role='status']");
+      expect(publishedState?.textContent).toBe(action === "publish" ? "已發佈" : "已撤回");
+      expect(container.querySelector("article")?.textContent).toContain(
+        action === "delist" ? "目前不提供套件" : "目前提供套件",
+      );
+      const release = container.querySelector(".bundle-publication-grid div:nth-child(2) dd");
+      expect(release?.textContent).toContain(action === "publish" ? "v1.1.0" : "v1.0.0");
+      expect(release?.getAttribute("aria-live")).toBe("polite");
+      if (status === 503) {
+        expect(text()).toContain(`尚未確認${action === "publish" ? "發佈" : "撤回"}是否已完成`);
+        expect(
+          container
+            .querySelector("article [role='alert']")!
+            .compareDocumentPosition(container.querySelector(".bundle-version-list")!) &
+            Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+      }
+    });
+  }
+  for (const readFailure of ["unavailable", "invalid"] as const) {
+    test(`Bundle ${action} unknown outcome survives an ${readFailure} overview and a read-only retry`, async () => {
+      const fixture = bundleOperationFixture(action, 503);
+      await render(<PublishingWorkspace />, () =>
+        Boolean(button("發佈 v1.1.0") && !button("發佈 v1.1.0")!.disabled),
+      );
+      if (action === "delist") await act(async () => button("撤回")!.click());
+      await act(async () => button(action === "publish" ? "發佈 v1.1.0" : "確認撤回")!.click());
+      await act(async () => fixture.finishWrite());
+      await waitFor(() => fixture.reads() === 2);
+      await act(async () => fixture.finishRead({}, readFailure === "unavailable" ? 503 : 200));
+      await waitFor(() => text().includes("暫時無法讀取Bundle 發佈概覽"));
+      expect(container.querySelector(".bundle-publication")).toBeNull();
+      expect(text()).not.toContain("上面的狀態已重新讀取");
+      await act(async () => button("再試一次")!.click());
+      await waitFor(() => Boolean(button("發佈 v1.1.0") && !button("發佈 v1.1.0")!.disabled));
+      expect(fixture.reads()).toBe(3);
+      expect(fixture.writes()).toBe(1);
+      expect(text()).toContain(`尚未確認${action === "publish" ? "發佈" : "撤回"}是否已完成`);
+      expect(
+        container
+          .querySelector("article [role='alert']")!
+          .compareDocumentPosition(container.querySelector(".bundle-version-list")!) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+  }
+}
+
+test("Bundle concurrent cards follow the latest shared overview without blocking unrelated writes", async () => {
+  const other = { ...OWN_BUNDLE, bundle: "other-toolkit" };
+  const bundles = [OWN_BUNDLE, other];
+  let reads = 0;
+  const writes: string[] = [];
+  const writeResolvers = new Map<string, () => void>();
+  const readResolvers = new Map<number, () => void>();
+  const overview = { bundles: bundles.map((bundle) => bundleOverview(bundle).bundles[0]) };
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    const path = String(input)
+      .replace(/^https?:\/\/[^/]+/, "")
+      .split("?")[0];
+    const bundle = bundles.find((item) => path === `/me/bundles/${item.bundle}/publication`);
+    if (bundle && init?.method === "POST") {
+      writes.push(bundle.bundle);
+      return new Promise<Response>((resolve) => {
+        writeResolvers.set(bundle.bundle, () =>
+          resolve(
+            new Response(JSON.stringify({ ...OWN_PUBLICATION, kind: "bundle" }), { status: 200 }),
+          ),
+        );
+      });
+    }
+    if (path === "/me/bundles/overview") {
+      reads++;
+      if (reads === 1) return json(overview);
+      return new Promise<Response>((resolve) => {
+        readResolvers.set(reads, () =>
+          resolve(new Response(JSON.stringify(overview), { status: 200 })),
+        );
+      });
+    }
+    const routes: Record<string, unknown> = {
+      "/me/publisher": OWN_PUBLISHER,
+      "/me/publications": { publications: [] },
+      "/me/bundles": { bundles },
+      "/skills": { skills: [], total: 0, limit: 100, truncated: false },
+      "/downloads": { downloads: [] },
+    };
+    return json(routes[path] ?? {}, path in routes ? 200 : 404);
+  });
+  const action = (bundle: string) =>
+    container.querySelector<HTMLButtonElement>(
+      `article[aria-labelledby="bundle-${bundle}"] .bundle-version-actions button:nth-child(2)`,
+    )!;
+  await render(<PublishingWorkspace />, () =>
+    Boolean(
+      action(OWN_BUNDLE.bundle) &&
+      !action(OWN_BUNDLE.bundle).disabled &&
+      action(other.bundle) &&
+      !action(other.bundle).disabled,
+    ),
+  );
+  await act(async () => action(OWN_BUNDLE.bundle).click());
+  await waitFor(() => writes.length === 1);
+  await act(async () => writeResolvers.get(OWN_BUNDLE.bundle)!());
+  await waitFor(() => reads === 2);
+  expect(action(other.bundle).disabled).toBe(false);
+  await act(async () => action(other.bundle).click());
+  await waitFor(() => writes.length === 2);
+  await act(async () => writeResolvers.get(other.bundle)!());
+  await waitFor(() => reads === 3);
+  await act(async () => readResolvers.get(2)!());
+  await waitFor(() => queryClient.isMutating() === 2);
+  expect(action(OWN_BUNDLE.bundle).disabled).toBe(true);
+  expect(action(other.bundle).disabled).toBe(true);
+  await act(async () => readResolvers.get(3)!());
+  await waitFor(() => !action(OWN_BUNDLE.bundle).disabled && !action(other.bundle).disabled);
+  expect(writes).toEqual(["pdf-toolkit", "other-toolkit"]);
+  expect(reads).toBe(3);
+});
+
 test("the publishing space brings identity, Bundles, and delivery records into one lifecycle", async () => {
   stub({
     "/me/publisher": { body: OWN_PUBLISHER },

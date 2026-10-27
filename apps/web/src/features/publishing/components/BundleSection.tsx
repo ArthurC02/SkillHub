@@ -25,7 +25,7 @@ import {
   type OwnerBundlePublicationSummary,
   type OwnerBundleSummary,
 } from "../publishing.service";
-import { actionFailureSentence } from "../publishing.model";
+import { actionFailureSentence, writeFailureSentence } from "../publishing.model";
 import { AcquisitionFailure } from "./AcquisitionFailure";
 import { DeliveryAudience } from "./DeliveryAudience";
 
@@ -285,6 +285,9 @@ function BundleOverviewCard({
   memberPolicyKnownOf: (version: BundleVersion) => boolean;
 }) {
   const delist = useDelistBundle(bundle);
+  const publish = usePublishBundle(bundle);
+  const pending = publish.isPending || delist.isPending;
+  const focusTarget = `bundle-${bundle}`;
   const latestVersion = versions[0];
   const publication = overview?.publication;
 
@@ -293,18 +296,34 @@ function BundleOverviewCard({
       <header className="bundle-overview-header">
         <div>
           <p className="note">Bundle</p>
-          <h3 id={`bundle-${bundle}`}>{bundle}</h3>
+          <h3 id={focusTarget} tabIndex={-1}>
+            {bundle}
+          </h3>
           <p>{latestVersion.description}</p>
         </div>
         {publication && (
-          <span className={publication.status === "delisted" ? "badge badge-danger" : "badge"}>
+          <span
+            role="status"
+            className={publication.status === "delisted" ? "badge badge-danger" : "badge"}
+          >
             {publication.status === "published" ? "已發佈" : "已撤回"}
           </span>
         )}
       </header>
 
+      {pending && (
+        <p id={`${focusTarget}-pending`} role="status" className="note">
+          正在送出或核對 Bundle 發佈狀態，完成前暫停發佈與撤回。目前先顯示上次讀取的結果。
+        </p>
+      )}
+
       {publication ? (
-        <BundleOverviewPublication publication={publication} delist={delist} />
+        <BundleOverviewPublication
+          publication={publication}
+          delist={delist}
+          disabled={pending}
+          focusTarget={focusTarget}
+        />
       ) : overviewReady && overview ? (
         <p className="note">尚未發佈。可從下方任一不可變版本建立第一個公開 Release。</p>
       ) : overviewReady ? (
@@ -312,6 +331,22 @@ function BundleOverviewCard({
           無法確認這個 Bundle 的發佈狀態；版本操作仍可使用，請重新整理後再確認。
         </p>
       ) : null}
+
+      {overviewReady && overview && !pending && (
+        <>
+          <ReadFailure error={publish.error} what="發佈">
+            <p role="alert">
+              v{publish.variables?.version}：
+              {actionFailureSentence(publish.error, writeFailureSentence(publish.error, "發佈"))}
+            </p>
+          </ReadFailure>
+          <ReadFailure error={delist.error} what="撤回">
+            <p role="alert">
+              {actionFailureSentence(delist.error, writeFailureSentence(delist.error, "撤回"))}
+            </p>
+          </ReadFailure>
+        </>
+      )}
 
       <h4>不可變版本</h4>
       <ul className="bundle-version-list">
@@ -324,15 +359,13 @@ function BundleOverviewCard({
               publicationKnown={overviewReady && Boolean(overview)}
               needsAttestation={needsAttestationOf(version)}
               memberPolicyKnown={memberPolicyKnownOf(version)}
+              publish={publish}
+              pending={pending}
+              focusTarget={focusTarget}
             />
           </li>
         ))}
       </ul>
-      {delist.isError && (
-        <p role="alert">
-          {actionFailureSentence(delist.error, "撤回沒有完成；請確認狀態後再試一次。")}
-        </p>
-      )}
     </article>
   );
 }
@@ -340,9 +373,13 @@ function BundleOverviewCard({
 function BundleOverviewPublication({
   publication,
   delist,
+  disabled,
+  focusTarget,
 }: {
   publication: OwnerBundlePublicationSummary;
   delist: ReturnType<typeof useDelistBundle>;
+  disabled: boolean;
+  focusTarget: string;
 }) {
   return (
     <section className="bundle-publication" aria-label="Bundle 發佈狀態">
@@ -360,7 +397,7 @@ function BundleOverviewPublication({
         </div>
         <div>
           <dt>目前 Release</dt>
-          <dd>
+          <dd aria-live="polite" aria-atomic="true">
             {publication.latest_release ? (
               <>
                 v{publication.latest_release.bundle_version} ·{" "}
@@ -383,7 +420,12 @@ function BundleOverviewPublication({
           label="撤回"
           confirmLabel="確認撤回"
           pending={delist.isPending}
-          onConfirm={() => delist.mutate()}
+          disabled={disabled}
+          disabledReasonId={`${focusTarget}-pending`}
+          onConfirm={() => {
+            delist.mutate();
+            document.getElementById(focusTarget)?.focus();
+          }}
           scope={<>撤回會停止新的公開取得，但不會刪除 Bundle Version 或既有 Release 紀錄。</>}
         />
       )}
@@ -398,6 +440,9 @@ function BundleVersionOperations({
   publicationKnown,
   needsAttestation,
   memberPolicyKnown,
+  publish,
+  pending,
+  focusTarget,
 }: {
   bundle: BundleVersion;
   isLatest: boolean;
@@ -405,6 +450,9 @@ function BundleVersionOperations({
   publicationKnown: boolean;
   needsAttestation: boolean;
   memberPolicyKnown: boolean;
+  publish: ReturnType<typeof usePublishBundle>;
+  pending: boolean;
+  focusTarget: string;
 }) {
   return (
     <div>
@@ -436,6 +484,9 @@ function BundleVersionOperations({
         publicationKnown={publicationKnown}
         needsAttestation={needsAttestation}
         memberPolicyKnown={memberPolicyKnown}
+        publish={publish}
+        pending={pending}
+        focusTarget={focusTarget}
       />
     </div>
   );
@@ -447,15 +498,20 @@ function BundleVersionActions({
   publicationKnown,
   needsAttestation,
   memberPolicyKnown,
+  publish,
+  pending,
+  focusTarget,
 }: {
   bundle: BundleVersion;
   publication?: OwnerBundlePublicationSummary;
   publicationKnown: boolean;
   needsAttestation: boolean;
   memberPolicyKnown: boolean;
+  publish: ReturnType<typeof usePublishBundle>;
+  pending: boolean;
+  focusTarget: string;
 }) {
   const exportBundle = useExportBundle(bundle.bundle, bundle.version);
-  const publish = usePublishBundle(bundle.bundle);
   const [attested, setAttested] = useState(false);
   const disabledReason =
     needsAttestation && !attested ? "發佈前需要確認你有權重新散布所有成員。" : undefined;
@@ -467,7 +523,13 @@ function BundleVersionActions({
 
   return (
     <>
-      <BundleAttestation required={needsAttestation} checked={attested} onChange={setAttested} />
+      <BundleAttestation
+        required={needsAttestation}
+        checked={attested}
+        onChange={setAttested}
+        disabled={pending}
+        disabledReasonId={`${focusTarget}-pending`}
+      />
       <p className="bundle-version-actions">
         <button
           type="button"
@@ -480,19 +542,24 @@ function BundleVersionActions({
         </button>{" "}
         <button
           type="button"
-          disabled={publish.isPending || Boolean(blockedReason)}
+          disabled={pending || Boolean(blockedReason)}
           aria-describedby={
-            blockedReason ? `bundle-publish-disabled-${bundle.bundle}-${bundle.version}` : undefined
+            pending
+              ? `${focusTarget}-pending`
+              : blockedReason
+                ? `bundle-publish-disabled-${bundle.bundle}-${bundle.version}`
+                : undefined
           }
-          onClick={() =>
+          onClick={() => {
             publish.mutate({
               name: publication ? undefined : bundle.bundle,
               version: bundle.version,
               rightsAttested: attested,
-            })
-          }
+            });
+            document.getElementById(focusTarget)?.focus();
+          }}
         >
-          {publish.isPending
+          {publish.isPending && publish.variables?.version === bundle.version
             ? `正在發佈 v${bundle.version}…`
             : !publicationKnown
               ? "確認發佈狀態後可操作"
@@ -506,7 +573,7 @@ function BundleVersionActions({
           {blockedReason}
         </p>
       )}
-      <BundleActionFeedback exportBundle={exportBundle} publish={publish} />
+      <BundleActionFeedback exportBundle={exportBundle} />
     </>
   );
 }
@@ -515,10 +582,14 @@ function BundleAttestation({
   required,
   checked,
   onChange,
+  disabled,
+  disabledReasonId,
 }: {
   required: boolean;
   checked: boolean;
   onChange: (checked: boolean) => void;
+  disabled: boolean;
+  disabledReasonId: string;
 }) {
   if (!required) return null;
   return (
@@ -527,6 +598,8 @@ function BundleAttestation({
         <input
           type="checkbox"
           checked={checked}
+          disabled={disabled}
+          aria-describedby={disabled ? disabledReasonId : undefined}
           onChange={(event) => onChange(event.target.checked)}
         />{" "}
         我確認有權重新散布此版本的所有成員
@@ -537,10 +610,8 @@ function BundleAttestation({
 
 function BundleActionFeedback({
   exportBundle,
-  publish,
 }: {
   exportBundle: ReturnType<typeof useExportBundle>;
-  publish: ReturnType<typeof usePublishBundle>;
 }) {
   return (
     <>
@@ -559,11 +630,6 @@ function BundleActionFeedback({
           <Link to="/workspace/downloads" search={{ artifact: exportBundle.data.artifact_id }}>
             查看這次交付紀錄
           </Link>
-        </p>
-      )}
-      {publish.isError && (
-        <p role="alert">
-          {actionFailureSentence(publish.error, "發佈沒有完成；請確認版本狀態後再試一次。")}
         </p>
       )}
     </>

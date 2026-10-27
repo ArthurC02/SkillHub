@@ -356,8 +356,9 @@ export function usePublishBundle(bundle: string) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, version, rights_attested: rightsAttested }),
       }),
-    onSuccess: () => {
-      void client.invalidateQueries({ queryKey: queryKeys.publishing.bundleOverview });
+    onSettled: (_, error) => {
+      if (error instanceof SessionNotReadyError) return;
+      return client.invalidateQueries({ queryKey: queryKeys.publishing.bundleOverview });
     },
   });
 }
@@ -367,8 +368,9 @@ export function useDelistBundle(bundle: string) {
   return useMutation({
     mutationFn: () =>
       apiFetch<Publication>(`/me/bundles/${bundle}/publication`, { method: "DELETE" }),
-    onSuccess: () => {
-      void client.invalidateQueries({ queryKey: queryKeys.publishing.bundleOverview });
+    onSettled: (_, error) => {
+      if (error instanceof SessionNotReadyError) return;
+      return client.invalidateQueries({ queryKey: queryKeys.publishing.bundleOverview });
     },
   });
 }
