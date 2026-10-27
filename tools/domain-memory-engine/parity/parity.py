@@ -16,6 +16,7 @@ CONTRACT = ENGINE / "contract" / "cli.json"
 BINARY = ENGINE / "target" / "release" / ("domain-memory.exe" if os.name == "nt" else "domain-memory")
 PYTHON = "3.13"
 UNKNOWN_OPTION = "--not-an-option-of-any-command"
+RUN_SECONDS = 120
 
 
 def generated_cases() -> list[dict]:
@@ -52,7 +53,10 @@ def expanded(args: list[str], fixture: Path) -> list[str]:
 
 def run(argv: list[str], extra: dict[str, str]) -> dict:
     environment = {**os.environ, "COLUMNS": "80", "PYTHONIOENCODING": "utf-8", **extra}
-    done = subprocess.run(argv, cwd=REPO, capture_output=True, env=environment, check=False)
+    try:
+        done = subprocess.run(argv, cwd=REPO, capture_output=True, env=environment, check=False, timeout=RUN_SECONDS)
+    except subprocess.TimeoutExpired as expired:
+        return {"exit": f"killed after {RUN_SECONDS} s", "stdout": expired.stdout or b"", "stderr": expired.stderr or b""}
     return {"exit": done.returncode, "stdout": done.stdout, "stderr": done.stderr}
 
 
