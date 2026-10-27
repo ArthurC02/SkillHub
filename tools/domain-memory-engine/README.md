@@ -22,7 +22,7 @@ Domain Memory 外掛的命令引擎，以 Rust 重寫。終點是外掛的 Pytho
 
 一個命令算移植完成，條件是它的每一條輸出分支（成功、每一種拒絕、每一種讀取失敗）都有案例而且一致。新案例要先對外掛跑過，確認它走到想測的分支，再對引擎跑。
 
-目前移植完成的命令：`list-proposals`、`export`、`get-record`、`get-context`、`validate-policy`、`lookup`、`resolve-terms`。案例的 `git: true` 會把 fixture 提交成 git 倉庫，`env` 設定環境變數；git 逾時的訊息只有單元測試，因為逾時與否取決於機器速度。
+目前移植完成的命令：`list-proposals`、`export`、`get-record`、`get-context`、`validate-policy`、`lookup`、`resolve-terms`、`dependents`、`analyze-boundary`。案例的 `git: true` 會把 fixture 提交成 git 倉庫，`env` 設定環境變數；git 逾時的訊息只有單元測試，因為逾時與否取決於機器速度。
 
 Python 的 `\d` 依 Python 3.13 的 Unicode 資料判斷，表格在 `src/digits.rs`。搜尋用的 NFKC、casefold 與字詞字元表在 `src/unicode_data.rs`，由 `parity/generate_unicode.py` 以 Python 3.13 產生，不手改；換 Python 版本時重新產生。
 

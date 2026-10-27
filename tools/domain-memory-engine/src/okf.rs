@@ -33,7 +33,7 @@ pub const RELATION_TARGETS: &[(&str, &str)] = &[
     ("not_same_as", "Term"),
     ("supersedes", "Decision"),
 ];
-const LIST_RELATIONS: &[&str] = &[
+pub const LIST_RELATIONS: &[&str] = &[
     "contexts",
     "consumer_contexts",
     "consumers",

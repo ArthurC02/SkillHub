@@ -1,5 +1,6 @@
 mod cli;
 mod context;
+mod dependents;
 mod difflib;
 mod digits;
 mod files;
@@ -141,6 +142,24 @@ fn execute(invocation: &Invocation) -> Result<i32, String> {
             Ok(0)
         }
         "resolve-terms" => resolve_terms(invocation),
+        "analyze-boundary" => {
+            let root = py::resolve(invocation.text("registry_root").unwrap_or("."));
+            print_json(&context::boundary_analysis(
+                &root,
+                invocation.text("source_context").unwrap_or_default(),
+                invocation.text("target_context").unwrap_or_default(),
+            )?);
+            Ok(0)
+        }
+        "dependents" => {
+            let root = py::resolve(invocation.text("registry_root").unwrap_or("."));
+            print_json(&dependents::dependents(
+                &root,
+                invocation.text("asset").unwrap_or_default(),
+                invocation.text("id").unwrap_or_default(),
+            )?);
+            Ok(0)
+        }
         other => Err(format!("{other} is not available in the Rust engine yet")),
     }
 }

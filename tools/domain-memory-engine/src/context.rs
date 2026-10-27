@@ -198,7 +198,7 @@ fn all_references(value: &Value, depth: usize, found: &mut Vec<Value>) -> Result
     Ok(())
 }
 
-fn summarized(entry: &Object) -> Object {
+pub fn summarized(entry: &Object) -> Object {
     let summary = SUMMARY_FIELDS
         .iter()
         .find_map(|key| entry.get(key).and_then(Value::as_str))
@@ -239,6 +239,66 @@ fn context_summary(model: &Object) -> Object {
         out.insert(key.clone(), shown);
     }
     out
+}
+
+pub fn boundary_analysis(root: &Path, source: &str, target: &str) -> Result<Value, String> {
+    let interactions = records(root, "interactions")?;
+    let contracts = records(root, "contracts")?;
+    let dependencies = records(root, "dependency-policies")?;
+    let events = records(root, "events")?;
+    let held = [&interactions, &contracts, &dependencies, &events];
+    let forward = dependence(held, source, target);
+    let backward = dependence(held, target, source);
+    let collaborates = |kinds: &[usize]| {
+        [&forward, &backward]
+            .iter()
+            .any(|direction| kinds.iter().any(|kind| !direction[*kind].is_empty()))
+    };
+    let status = if collaborates(&[0, 1, 3]) {
+        "known"
+    } else if collaborates(&[2]) {
+        "policy_only"
+    } else {
+        "no_registered_collaboration"
+    };
+    let mut reply = Object::new();
+    reply.insert("source_context", Value::Str(source.to_string()));
+    reply.insert("target_context", Value::Str(target.to_string()));
+    reply.insert("source_depends_on_target", direction(forward));
+    reply.insert("target_depends_on_source", direction(backward));
+    reply.insert("status", Value::Str(status.to_string()));
+    Ok(Value::Object(reply))
+}
+
+fn dependence(held: [&Vec<Object>; 4], dependent: &str, provider: &str) -> [Vec<Object>; 4] {
+    let [interactions, contracts, dependencies, events] = held;
+    let chosen =
+        |entries: &Vec<Object>, wanted: &dyn Fn(&Object) -> bool| keep(entries.clone(), wanted);
+    [
+        chosen(interactions, &|entry| {
+            is(entry, "producer_context", provider) && is(entry, "consumer_context", dependent)
+        }),
+        chosen(contracts, &|entry| {
+            is(entry, "producer_context", provider) && names(entry, "consumer_contexts", dependent)
+        }),
+        chosen(dependencies, &|entry| {
+            is(entry, "from_context", dependent) && is(entry, "to_context", provider)
+        }),
+        chosen(events, &|entry| {
+            is(entry, "owner_context", provider) && names(entry, "consumers", dependent)
+        }),
+    ]
+}
+
+fn direction(lists: [Vec<Object>; 4]) -> Value {
+    let mut out = Object::new();
+    for (name, entries) in ["interactions", "contracts", "dependencies", "events"]
+        .into_iter()
+        .zip(lists)
+    {
+        out.insert(name, objects(entries));
+    }
+    Value::Object(out)
 }
 
 #[cfg(test)]
