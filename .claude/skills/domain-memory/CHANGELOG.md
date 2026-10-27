@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 4.2.10
+
+### Fixed
+
+- `get-record` and every reader of the audit log name the file that is not UTF-8, as the Registry loader has since 4.2.5: `contexts/orders.md: 'utf-8' codec ...` and `audit/events.jsonl: 'utf-8' codec ...`. Both used to report only the codec error, so the reader could not tell which file to fix; `verify-audit` reports the same named reason.
+
 ## 4.2.9
 
 ### Fixed

@@ -68,7 +68,8 @@ fn read_record(root: &Path, asset: &str, identifier: &str) -> Result<Option<Obje
         return Ok(None);
     }
     let bytes = std::fs::read(&concept).map_err(|error| py::os_error(&error, &concept))?;
-    let text = py::utf8_text(&bytes)?;
+    let text =
+        py::utf8_text(&bytes).map_err(|error| format!("{asset}/{identifier}.md: {error}"))?;
     okf::decode(asset, identifier, &text)
         .map(Some)
         .map_err(|error| format!("{asset}/{identifier}.md: {error}"))
@@ -174,7 +175,7 @@ fn review_history(root: &Path, key: &str) -> Result<Option<Vec<Value>>, String> 
         ));
     }
     let bytes = std::fs::read(&path).map_err(|error| py::os_error(&error, &path))?;
-    let text = py::utf8_text(&bytes)?;
+    let text = py::utf8_text(&bytes).map_err(|error| format!("audit/events.jsonl: {error}"))?;
     let mut history = Vec::new();
     for (index, line) in splitlines(&text).into_iter().enumerate() {
         let event = parsed_event(index + 1, line, root)?;

@@ -49,7 +49,10 @@ def _event_lines(root: Path) -> list[str]:
         return []
     if path.stat().st_size > MAX_JSON_BYTES:
         raise ValueError(f"audit log exceeds {MAX_JSON_BYTES} bytes: {path}")
-    return path.read_text(encoding="utf-8").splitlines()
+    try:
+        return path.read_text(encoding="utf-8").splitlines()
+    except UnicodeDecodeError as error:
+        raise ValueError(f"audit/events.jsonl: {error}") from error
 
 
 def _conflict_marker(line: str) -> bool:

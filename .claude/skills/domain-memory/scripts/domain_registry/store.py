@@ -140,7 +140,7 @@ def read_record(root: Path, name: str, record_id: str) -> dict[str, Any] | None:
         return None
     if not concept.is_file():
         return None
-    return _decoded(asset, record_id, concept.read_text(encoding="utf-8"))
+    return _decoded(asset, record_id, _text_or_refusal(f"{asset}/{concept.name}", concept.read_bytes()))
 
 
 def asset_document(name: str, concepts: list[tuple[str, str]]) -> dict[str, Any]:

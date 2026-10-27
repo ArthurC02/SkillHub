@@ -270,6 +270,13 @@ class ReadRecordTest(RegistryTestCase):
              read_record(root, "contexts.json", "index"), read_record(root, "contexts.json", "../orders"),
              read_record(root, "contexts.json", "orders/../orders")),
         )
+    def test_a_record_whose_concept_file_is_not_utf_8_is_refused_by_name(self) -> None:
+        self.seed("contexts.json", [orders_context()])
+        concept = self.repo / "memory" / "registry" / "contexts" / "orders.md"
+        concept.write_bytes(concept.read_bytes() + b"\xff\n")
+        with self.assertRaisesRegex(ValueError, "^contexts/orders.md: 'utf-8' codec can't decode byte 0xff"):
+            read_record(self.repo / "memory", "contexts.json", "orders")
+
 
 if __name__ == "__main__":
     unittest.main()

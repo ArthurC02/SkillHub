@@ -104,6 +104,12 @@ class AuditMergeTest(RegistryTestCase):
             ),
         )
 
+    def test_an_audit_log_that_is_not_utf_8_is_invalid_by_name(self) -> None:
+        self.events_file().write_bytes(self.events_file().read_bytes() + b"\xff\n")
+        verified = verify_audit(self.memory)
+        self.assertEqual("invalid", verified["status"])
+        self.assertRegex(verified["reason"], "^audit/events.jsonl: 'utf-8' codec can't decode byte 0xff")
+
     def test_reconcile_on_a_domain_memory_without_an_audit_log_writes_nothing(self) -> None:
         root = self.repo / "fresh"
         init_registry(root)
