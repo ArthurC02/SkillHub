@@ -137,6 +137,15 @@ class RegistryContextModelTest(RegistryTestCase):
             validate(self.repo / "memory", self.repo, False),
         )
 
+    def test_a_subdomain_that_is_not_text_is_named_as_unknown(self) -> None:
+        self.seed("contexts.json", [
+            {"id": "orders", "name": "Orders", "responsibility": "Own orders.", "subdomain": ["core"]},
+        ])
+        self.assertEqual(
+            ["contexts/orders has an unknown subdomain: ['core'] is not one of core, generic, supporting"],
+            validate(self.repo / "memory", self.repo, False),
+        )
+
     def test_a_collaboration_field_outside_its_closed_set_is_refused(self) -> None:
         cases = [
             ("relationship", "interactions.json",

@@ -257,6 +257,16 @@ class RegistryValidationTest(RegistryTestCase):
         ])
         self.assertEqual([], validate(self.repo / "memory", None, False))
 
+    def test_a_registry_status_that_is_not_text_is_named_as_invalid(self) -> None:
+        self.seed("contexts.json", [orders_context()])
+        concept = self.repo / "memory" / "registry" / "contexts" / "orders.md"
+        concept.write_text(concept.read_text(encoding="utf-8").replace("---\n", "---\nregistry_status:\n  - reviewed\n", 1),
+                           encoding="utf-8")
+        self.assertEqual(
+            ["contexts/orders has an invalid status: ['reviewed'] is not one of candidate, deprecated, reviewed, superseded"],
+            validate(self.repo / "memory", None, False),
+        )
+
     def test_null_synonyms_and_look_alikes_validate_as_absent(self) -> None:
         self.seed("contexts.json", [orders_context()])
         self.seed("vocabulary.json", [{"id": "order", "name": "Order", "contexts": ["orders"], "synonyms": None,

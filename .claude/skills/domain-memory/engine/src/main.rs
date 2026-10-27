@@ -4,6 +4,7 @@ mod coverage;
 mod dependents;
 mod difflib;
 mod digits;
+mod evidence;
 mod files;
 mod git;
 mod json;
@@ -14,6 +15,7 @@ mod py;
 mod pyvalue;
 mod records;
 mod search;
+mod sha256;
 mod store;
 mod tar;
 mod unicode;
@@ -177,7 +179,36 @@ fn execute(invocation: &Invocation) -> Result<i32, String> {
             )?);
             Ok(0)
         }
+        "verify-evidence" => verify_evidence(invocation),
         other => Err(format!("{other} is not available in the Rust engine yet")),
+    }
+}
+
+fn verify_evidence(invocation: &Invocation) -> Result<i32, String> {
+    let repo_root = py::resolve(invocation.text("repo_root").unwrap_or("."));
+    let staged = invocation.flag("staged");
+    let overlay = match invocation.text("package_root") {
+        Some(package_root) => evidence::package_overlay(&py::resolve(package_root))?,
+        None => Vec::new(),
+    };
+    let mut verifier = evidence::Verifier::new(&repo_root, staged);
+    let report = evidence::verify_evidence(
+        &py::resolve(invocation.text("registry_root").unwrap_or(".")),
+        &mut verifier,
+        invocation.texts("path"),
+        &overlay,
+    )?;
+    print_json(&Value::Object(report.clone()));
+    let mut failing: Vec<&str> = evidence::FAILING.to_vec();
+    if invocation.flag("strict") {
+        failing.push("shifted");
+    }
+    match evidence::failure_message(&report, &failing, staged) {
+        Some(message) => {
+            emit_stderr(&format!("{message}\n"));
+            Ok(1)
+        }
+        None => Ok(0),
     }
 }
 

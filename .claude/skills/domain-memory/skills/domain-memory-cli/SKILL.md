@@ -43,6 +43,6 @@ engine/bin/linux-x86_64/domain-memory get-context --registry-root <root> --id <c
 
 ## Commands it answers
 
-`list-proposals`, `export`, `get-record`, `get-context`, `validate-policy`, `lookup`, `resolve-terms`, `coverage`, `analyze-boundary` and `dependents`.
+`list-proposals`, `export`, `get-record`, `get-context`, `validate-policy`, `lookup`, `resolve-terms`, `coverage`, `analyze-boundary`, `dependents` and `verify-evidence`.
 
 Every other command parses its arguments, then exits `1` with `ERROR: <command> is not available in the Rust engine yet`. Run the same arguments with `python3 scripts/registry_tools.py`; never treat that refusal as an answer about the Registry. Each command and its guarantees are in [the file-backed API](../../references/script-api.md).

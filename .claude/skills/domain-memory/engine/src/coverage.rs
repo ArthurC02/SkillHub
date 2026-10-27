@@ -249,7 +249,7 @@ fn with_references(value: &Value, kinds: &SourceKinds, depth: usize) -> Result<V
     })
 }
 
-fn all_references(value: &Value, depth: usize) -> Result<Vec<Value>, String> {
+pub fn all_references(value: &Value, depth: usize) -> Result<Vec<Value>, String> {
     if depth > MAX_NESTING_DEPTH {
         return Err(too_deep());
     }
@@ -273,14 +273,14 @@ fn all_references(value: &Value, depth: usize) -> Result<Vec<Value>, String> {
     Ok(found)
 }
 
-struct SourceKinds {
+pub struct SourceKinds {
     active: bool,
     kinds: Vec<(String, Value)>,
     group_kinds: Vec<(String, Value)>,
 }
 
 impl SourceKinds {
-    fn of(source_map: &Object) -> Self {
+    pub fn of(source_map: &Object) -> Self {
         let groups: Vec<&Object> = source_map
             .get("source_groups")
             .and_then(Value::as_array)
@@ -351,7 +351,7 @@ impl SourceKinds {
         }
     }
 
-    fn classify(&self, reference: &Value) -> Value {
+    pub fn classify(&self, reference: &Value) -> Value {
         let Value::Object(reference) = reference else {
             return reference.clone();
         };

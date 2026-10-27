@@ -670,6 +670,8 @@ def _starts_by_digest(rows: list[str], length: int) -> dict[str, list[int]]:
 
 def _starts_of(rows: list[str], length: int, excerpt_sha256: str,
                windows: dict[tuple[str, int], dict[str, list[int]]] | None = None, path_text: str = "") -> list[int]:
+    if not isinstance(excerpt_sha256, str):
+        return []
     if windows is None:
         return _starts_by_digest(rows, length).get(excerpt_sha256, [])
     if (path_text, length) not in windows:

@@ -2,6 +2,19 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 4.2.18
+
+### Added
+
+- The Rust executable answers `verify-evidence`, with `--path`, `--strict`, `--staged` and `--package-root`.
+
+### Fixed
+
+- `validate` named a concept whose `registry_status` is a list with a traceback; it now reports the invalid status.
+- `validate` named a Context whose `subdomain` is a list with a traceback; it now reports the unknown subdomain.
+- `verify-evidence` stopped with a traceback on a citation whose `excerpt_sha256` is a list; that citation is now stale.
+- `list-proposals` stopped with a traceback when a package's `proposal_id` is a list; packages sharing such an id are now flagged as duplicates.
+
 ## 4.2.17
 
 ### Added

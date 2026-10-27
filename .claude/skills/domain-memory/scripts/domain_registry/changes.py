@@ -1,6 +1,5 @@
 import re
 import shutil
-from collections import Counter
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -1010,16 +1009,16 @@ def list_proposals(changes_root: Path) -> list[dict[str, Any]]:
         })
         if completed_identifier(proposal.get("superseded_by")):
             replacements[len(rows) - 1] = proposal["superseded_by"]
-    known = Counter(row.get("proposal_id") for row in rows)
+    known = [row.get("proposal_id") for row in rows]
     for row in rows:
-        if row.get("proposal_id") is not None and known[row["proposal_id"]] > 1:
+        if row.get("proposal_id") is not None and known.count(row["proposal_id"]) > 1:
             row["duplicate_proposal_id"] = True
     for index, replacement in replacements.items():
         rows[index]["superseded_by"] = replacement
         if replacement not in known:
             rows[index]["superseded_by_unknown"] = True
     for row in rows:
-        unknown = sorted((superseded_ids(row) or set()) - set(known))
+        unknown = sorted(identifier for identifier in superseded_ids(row) or set() if identifier not in known)
         if unknown:
             row["supersedes_unknown"] = unknown
     return rows

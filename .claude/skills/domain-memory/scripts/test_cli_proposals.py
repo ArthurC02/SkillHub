@@ -482,6 +482,18 @@ class CliProposalsTest(RegistryTestCase):
         self.assertEqual([("a", True), ("b", True), ("c", False)],
                          [(row["package"], row.get("duplicate_proposal_id", False)) for row in rows])
 
+    def test_list_proposals_flags_packages_sharing_a_proposal_id_that_is_not_text(self) -> None:
+        changes = self.repo / "changes"
+        for name, proposal_id in (("a", ["same"]), ("b", ["same"]), ("c", "same")):
+            (changes / name).mkdir(parents=True)
+            (changes / name / "domain-change-proposal.json").write_text(
+                json.dumps({"proposal_id": proposal_id, "status": "draft", "supersedes": ["same", "gone"]}),
+                encoding="utf-8")
+        rows = json.loads(self.run_cli("list-proposals", "--changes-root", str(changes)).stdout)
+        self.assertEqual([("a", True, ["gone"]), ("b", True, ["gone"]), ("c", False, ["gone"])],
+                         [(row["package"], row.get("duplicate_proposal_id", False), row.get("supersedes_unknown"))
+                          for row in rows])
+
     def validated_package(self, *, updates: bool) -> list[str]:
         package = self.draft_package()
         path = package / "domain-change-proposal.json"

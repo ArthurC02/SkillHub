@@ -124,7 +124,7 @@ def _entry_status_errors(
     name: str, entry: dict[str, Any], status: Any, require_reviewed: bool  # noqa: FBT001
 ) -> list[str]:
     label = f"{name.removesuffix('.json')}/{entry.get('id')}"
-    if status not in REGISTRY_STATUSES:
+    if not isinstance(status, str) or status not in REGISTRY_STATUSES:
         return [invalid_choice(label, "status", status, REGISTRY_STATUSES)]
     errors: list[str] = []
     if "review" in entry:
@@ -171,7 +171,7 @@ def _context_placement_problems(entries: list[dict[str, Any]]) -> list[str]:
         identifier = entry.get("id")
         label = f"contexts/{identifier}"
         subdomain = entry.get("subdomain")
-        if subdomain is not None and subdomain not in CONTEXT_SUBDOMAINS:
+        if subdomain is not None and (not isinstance(subdomain, str) or subdomain not in CONTEXT_SUBDOMAINS):
             errors.append(
                 f"{label} has an unknown subdomain: "
                 f"{subdomain!r} is not one of {', '.join(sorted(CONTEXT_SUBDOMAINS))}"

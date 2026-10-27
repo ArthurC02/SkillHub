@@ -7246,5 +7246,586 @@
       "m/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n",
       "m/registry/rules/deep.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n    -\n      -\n        -\n          -\n            -\n              -\n                -\n                  -\n                    -\n                      -\n                        -\n                          -\n                            -\n                              -\n                                -\n                                  -\n                                    -\n                                      -\n                                        -\n                                          -\n                                            -\n                                              -\n                                                -\n                                                  -\n                                                    -\n                                                      -\n                                                        -\n                                                          -\n                                                            -\n                                                              -\n                                                                -\n                                                                  -\n                                                                    -\n                                                                      -\n                                                                        -\n                                                                          -\n                                                                            -\n                                                                              -\n                                                                                -\n                                                                                  -\n                                                                                    -\n                                                                                      -\n                                                                                        -\n                                                                                          -\n                                                                                            -\n                                                                                              -\n                                                                                                -\n                                                                                                  -\n                                                                                                    -\n                                                                                                      -\n                                                                                                        -\n                                                                                                          -\n                                                                                                            -\n                                                                                                              -\n                                                                                                                -\n                                                                                                                  -\n                                                                                                                    -\n                                                                                                                      -\n                                                                                                                        -\n                                                                                                                          -\n                                                                                                                            -\n                                                                                                                              -\n                                                                                                                                -\n                                                                                                                                  -\n                                                                                                                                    -\n                                                                                                                                      -\n                                                                                                                                        -\n                                                                                                                                          -\n                                                                                                                                            -\n                                                                                                                                              -\n                                                                                                                                                -\n                                                                                                                                                  -\n                                                                                                                                                    -\n                                                                                                                                                      -\n                                                                                                                                                        -\n                                                                                                                                                          -\n                                                                                                                                                            -\n                                                                                                                                                              -\n                                                                                                                                                                -\n                                                                                                                                                                  -\n                                                                                                                                                                    -\n                                                                                                                                                                      -\n                                                                                                                                                                        -\n                                                                                                                                                                          -\n                                                                                                                                                                            -\n                                                                                                                                                                              -\n                                                                                                                                                                                -\n                                                                                                                                                                                  -\n                                                                                                                                                                                    -\n                                                                                                                                                                                      -\n                                                                                                                                                                                        -\n                                                                                                                                                                                          -\n                                                                                                                                                                                            -\n                                                                                                                                                                                              -\n                                                                                                                                                                                                -\n                                                                                                                                                                                                  -\n                                                                                                                                                                                                    -\n                                                                                                                                                                                                      -\n                                                                                                                                                                                                        -\n                                                                                                                                                                                                          - leaf\n---\nDeep.\n"
     }
+  },
+  {
+    "name": "verify-evidence without a Registry",
+    "args": [
+      "verify-evidence",
+      "--registry-root",
+      "{fixture}/m",
+      "--repo-root",
+      "{fixture}"
+    ]
+  },
+  {
+    "name": "verify-evidence of an empty Registry",
+    "args": [
+      "verify-evidence",
+      "--registry-root",
+      "{fixture}/m",
+      "--repo-root",
+      "{fixture}"
+    ],
+    "files": {
+      "m/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n"
+    }
+  },
+  {
+    "name": "verify-evidence names every status",
+    "args": [
+      "verify-evidence",
+      "--registry-root",
+      "{fixture}/m",
+      "--repo-root",
+      "{fixture}"
+    ],
+    "files": {
+      "m/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n",
+      "src/a.txt": "alpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "src/moved.txt": "zero\nalpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "m/registry/rules/current.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 6\n      end: 6\n    excerpt_sha256: sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\n---\nRule current.\n",
+      "m/registry/rules/shifted.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/moved.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/moved.txt\n    lines:\n      start: 9\n      end: 9\n    excerpt_sha256: sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\n---\nRule shifted.\n",
+      "m/registry/rules/stale.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n  - path: src/a.txt\n    lines:\n      start: 2\n      end: 3\n    excerpt_sha256: sha256:0aa5989aacb57830a365b63654addd2b3e7427ce3e8869f52e261ac98cc318734\n---\nRule stale.\n",
+      "m/registry/rules/repeated.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 2\n    excerpt_sha256: sha256:aa5989aacb57830a365b63654addd2b3e7427ce3e8869f52e261ac98cc318734\n---\nRule repeated.\n",
+      "m/registry/rules/unhashed.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n---\nRule unhashed.\n",
+      "m/registry/rules/past.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 7\n      end: 9\n  - path: src/a.txt\n    lines:\n      start: 7\n      end: 9\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n---\nRule past.\n",
+      "m/registry/rules/missing.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/none.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule missing.\n",
+      "m/registry/rules/escape.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: ../outside.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule escape.\n",
+      "m/registry/rules/shapes.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - just text\n  - path: src/a.txt\n  - lines:\n      start: 1\n      end: 1\n  - path: src/a.txt\n    lines:\n      start: 0\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 3\n      end: 2\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: true\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1.0\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: \"1\"\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: -3\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 100000000000000000000000000000000000000000\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: 7\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: null\n---\nRule shapes.\n"
+    }
+  },
+  {
+    "name": "verify-evidence strict fails on shifted",
+    "args": [
+      "verify-evidence",
+      "--registry-root",
+      "{fixture}/m",
+      "--repo-root",
+      "{fixture}",
+      "--strict"
+    ],
+    "files": {
+      "m/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n",
+      "src/moved.txt": "zero\nalpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "m/registry/rules/shifted.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/moved.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule shifted.\n"
+    }
+  },
+  {
+    "name": "verify-evidence passes when only shifted",
+    "args": [
+      "verify-evidence",
+      "--registry-root",
+      "{fixture}/m",
+      "--repo-root",
+      "{fixture}"
+    ],
+    "files": {
+      "m/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n",
+      "src/moved.txt": "zero\nalpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "m/registry/rules/shifted.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/moved.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule shifted.\n"
+    }
+  },
+  {
+    "name": "verify-evidence with one failing citation",
+    "args": [
+      "verify-evidence",
+      "--registry-root",
+      "{fixture}/m",
+      "--repo-root",
+      "{fixture}"
+    ],
+    "files": {
+      "m/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n",
+      "src/a.txt": "alpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "m/registry/rules/stale.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n---\nRule stale.\n"
+    }
+  },
+  {
+    "name": "verify-evidence classifies by the source map",
+    "args": [
+      "verify-evidence",
+      "--registry-root",
+      "{fixture}/m",
+      "--repo-root",
+      "{fixture}"
+    ],
+    "files": {
+      "m/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n",
+      "src/a.txt": "alpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "src/moved.txt": "zero\nalpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "m/registry/rules/current.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 6\n      end: 6\n    excerpt_sha256: sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\n---\nRule current.\n",
+      "m/registry/rules/shifted.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/moved.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/moved.txt\n    lines:\n      start: 9\n      end: 9\n    excerpt_sha256: sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\n---\nRule shifted.\n",
+      "m/registry/rules/stale.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n  - path: src/a.txt\n    lines:\n      start: 2\n      end: 3\n    excerpt_sha256: sha256:0aa5989aacb57830a365b63654addd2b3e7427ce3e8869f52e261ac98cc318734\n---\nRule stale.\n",
+      "m/registry/rules/repeated.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 2\n    excerpt_sha256: sha256:aa5989aacb57830a365b63654addd2b3e7427ce3e8869f52e261ac98cc318734\n---\nRule repeated.\n",
+      "m/registry/rules/unhashed.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n---\nRule unhashed.\n",
+      "m/registry/rules/past.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 7\n      end: 9\n  - path: src/a.txt\n    lines:\n      start: 7\n      end: 9\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n---\nRule past.\n",
+      "m/registry/rules/missing.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/none.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule missing.\n",
+      "m/registry/rules/escape.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: ../outside.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule escape.\n",
+      "m/registry/rules/shapes.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - just text\n  - path: src/a.txt\n  - lines:\n      start: 1\n      end: 1\n  - path: src/a.txt\n    lines:\n      start: 0\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 3\n      end: 2\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: true\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1.0\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: \"1\"\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: -3\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 100000000000000000000000000000000000000000\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: 7\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: null\n---\nRule shapes.\n",
+      "m/source-map.json": "{\"selected_paths\": [\"src\"], \"source_groups\": [{\"kind\": \"domain\", \"paths\": [\"src/a.txt\"]}]}"
+    }
+  },
+  {
+    "name": "verify-evidence with an invalid source map",
+    "args": [
+      "verify-evidence",
+      "--registry-root",
+      "{fixture}/m",
+      "--repo-root",
+      "{fixture}"
+    ],
+    "files": {
+      "m/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n",
+      "src/a.txt": "alpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "src/moved.txt": "zero\nalpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "m/registry/rules/current.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 6\n      end: 6\n    excerpt_sha256: sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\n---\nRule current.\n",
+      "m/registry/rules/shifted.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/moved.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/moved.txt\n    lines:\n      start: 9\n      end: 9\n    excerpt_sha256: sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\n---\nRule shifted.\n",
+      "m/registry/rules/stale.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n  - path: src/a.txt\n    lines:\n      start: 2\n      end: 3\n    excerpt_sha256: sha256:0aa5989aacb57830a365b63654addd2b3e7427ce3e8869f52e261ac98cc318734\n---\nRule stale.\n",
+      "m/registry/rules/repeated.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 2\n    excerpt_sha256: sha256:aa5989aacb57830a365b63654addd2b3e7427ce3e8869f52e261ac98cc318734\n---\nRule repeated.\n",
+      "m/registry/rules/unhashed.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n---\nRule unhashed.\n",
+      "m/registry/rules/past.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 7\n      end: 9\n  - path: src/a.txt\n    lines:\n      start: 7\n      end: 9\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n---\nRule past.\n",
+      "m/registry/rules/missing.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/none.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule missing.\n",
+      "m/registry/rules/escape.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: ../outside.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule escape.\n",
+      "m/registry/rules/shapes.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - just text\n  - path: src/a.txt\n  - lines:\n      start: 1\n      end: 1\n  - path: src/a.txt\n    lines:\n      start: 0\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 3\n      end: 2\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: true\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1.0\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: \"1\"\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: -3\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 100000000000000000000000000000000000000000\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: 7\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: null\n---\nRule shapes.\n",
+      "m/source-map.json": "{"
+    }
+  },
+  {
+    "name": "verify-evidence for chosen paths",
+    "args": [
+      "verify-evidence",
+      "--registry-root",
+      "{fixture}/m",
+      "--repo-root",
+      "{fixture}",
+      "--path",
+      "./src//a.txt",
+      "--path",
+      "src/none.txt",
+      "--path",
+      "src/a.txt",
+      "--path",
+      "src/unused.txt",
+      "--path",
+      "src/moved.txt/"
+    ],
+    "files": {
+      "m/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n",
+      "src/a.txt": "alpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "src/moved.txt": "zero\nalpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "m/registry/rules/current.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 6\n      end: 6\n    excerpt_sha256: sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\n---\nRule current.\n",
+      "m/registry/rules/shifted.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/moved.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/moved.txt\n    lines:\n      start: 9\n      end: 9\n    excerpt_sha256: sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\n---\nRule shifted.\n",
+      "m/registry/rules/stale.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n  - path: src/a.txt\n    lines:\n      start: 2\n      end: 3\n    excerpt_sha256: sha256:0aa5989aacb57830a365b63654addd2b3e7427ce3e8869f52e261ac98cc318734\n---\nRule stale.\n",
+      "m/registry/rules/repeated.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 2\n    excerpt_sha256: sha256:aa5989aacb57830a365b63654addd2b3e7427ce3e8869f52e261ac98cc318734\n---\nRule repeated.\n",
+      "m/registry/rules/unhashed.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n---\nRule unhashed.\n",
+      "m/registry/rules/past.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 7\n      end: 9\n  - path: src/a.txt\n    lines:\n      start: 7\n      end: 9\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n---\nRule past.\n",
+      "m/registry/rules/missing.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/none.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule missing.\n",
+      "m/registry/rules/escape.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: ../outside.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule escape.\n",
+      "m/registry/rules/shapes.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - just text\n  - path: src/a.txt\n  - lines:\n      start: 1\n      end: 1\n  - path: src/a.txt\n    lines:\n      start: 0\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 3\n      end: 2\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: true\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1.0\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: \"1\"\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: -3\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 100000000000000000000000000000000000000000\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: 7\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: null\n---\nRule shapes.\n"
+    }
+  },
+  {
+    "name": "verify-evidence staged",
+    "git": true,
+    "args": [
+      "verify-evidence",
+      "--registry-root",
+      "{fixture}/m",
+      "--repo-root",
+      "{fixture}",
+      "--staged",
+      "--path",
+      "src/a.txt",
+      "--path",
+      "src/none.txt"
+    ],
+    "files": {
+      "m/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n",
+      "src/a.txt": "alpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "src/moved.txt": "zero\nalpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "m/registry/rules/current.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 6\n      end: 6\n    excerpt_sha256: sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\n---\nRule current.\n",
+      "m/registry/rules/shifted.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/moved.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/moved.txt\n    lines:\n      start: 9\n      end: 9\n    excerpt_sha256: sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\n---\nRule shifted.\n",
+      "m/registry/rules/stale.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n  - path: src/a.txt\n    lines:\n      start: 2\n      end: 3\n    excerpt_sha256: sha256:0aa5989aacb57830a365b63654addd2b3e7427ce3e8869f52e261ac98cc318734\n---\nRule stale.\n",
+      "m/registry/rules/repeated.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 2\n    excerpt_sha256: sha256:aa5989aacb57830a365b63654addd2b3e7427ce3e8869f52e261ac98cc318734\n---\nRule repeated.\n",
+      "m/registry/rules/unhashed.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n---\nRule unhashed.\n",
+      "m/registry/rules/past.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 7\n      end: 9\n  - path: src/a.txt\n    lines:\n      start: 7\n      end: 9\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n---\nRule past.\n",
+      "m/registry/rules/missing.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/none.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule missing.\n",
+      "m/registry/rules/escape.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: ../outside.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule escape.\n",
+      "m/registry/rules/shapes.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - just text\n  - path: src/a.txt\n  - lines:\n      start: 1\n      end: 1\n  - path: src/a.txt\n    lines:\n      start: 0\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 3\n      end: 2\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: true\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1.0\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: \"1\"\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: -3\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 100000000000000000000000000000000000000000\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: 7\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: null\n---\nRule shapes.\n"
+    }
+  },
+  {
+    "name": "verify-evidence staged everything",
+    "git": true,
+    "args": [
+      "verify-evidence",
+      "--registry-root",
+      "{fixture}/m",
+      "--repo-root",
+      "{fixture}",
+      "--staged"
+    ],
+    "files": {
+      "m/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n",
+      "src/a.txt": "alpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "src/moved.txt": "zero\nalpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "m/registry/rules/current.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 6\n      end: 6\n    excerpt_sha256: sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\n---\nRule current.\n",
+      "m/registry/rules/shifted.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/moved.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/moved.txt\n    lines:\n      start: 9\n      end: 9\n    excerpt_sha256: sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\n---\nRule shifted.\n",
+      "m/registry/rules/stale.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n  - path: src/a.txt\n    lines:\n      start: 2\n      end: 3\n    excerpt_sha256: sha256:0aa5989aacb57830a365b63654addd2b3e7427ce3e8869f52e261ac98cc318734\n---\nRule stale.\n",
+      "m/registry/rules/repeated.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 2\n    excerpt_sha256: sha256:aa5989aacb57830a365b63654addd2b3e7427ce3e8869f52e261ac98cc318734\n---\nRule repeated.\n",
+      "m/registry/rules/unhashed.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n---\nRule unhashed.\n",
+      "m/registry/rules/past.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 7\n      end: 9\n  - path: src/a.txt\n    lines:\n      start: 7\n      end: 9\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n---\nRule past.\n",
+      "m/registry/rules/missing.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/none.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule missing.\n",
+      "m/registry/rules/escape.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: ../outside.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule escape.\n",
+      "m/registry/rules/shapes.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - just text\n  - path: src/a.txt\n  - lines:\n      start: 1\n      end: 1\n  - path: src/a.txt\n    lines:\n      start: 0\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 3\n      end: 2\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: true\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1.0\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: \"1\"\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: -3\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 100000000000000000000000000000000000000000\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: 7\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: null\n---\nRule shapes.\n"
+    }
+  },
+  {
+    "name": "verify-evidence staged outside a repository",
+    "args": [
+      "verify-evidence",
+      "--registry-root",
+      "{fixture}/m",
+      "--repo-root",
+      "{fixture}/m",
+      "--staged"
+    ],
+    "files": {
+      "m/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n",
+      "m/registry/rules/one.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule one.\n"
+    }
+  },
+  {
+    "name": "verify-evidence with a Change Package overlay",
+    "args": [
+      "verify-evidence",
+      "--registry-root",
+      "{fixture}/m",
+      "--repo-root",
+      "{fixture}",
+      "--package-root",
+      "{fixture}/p"
+    ],
+    "files": {
+      "m/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n",
+      "src/a.txt": "alpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "src/moved.txt": "zero\nalpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "m/registry/rules/current.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 6\n      end: 6\n    excerpt_sha256: sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\n---\nRule current.\n",
+      "m/registry/rules/shifted.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/moved.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/moved.txt\n    lines:\n      start: 9\n      end: 9\n    excerpt_sha256: sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\n---\nRule shifted.\n",
+      "m/registry/rules/stale.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n  - path: src/a.txt\n    lines:\n      start: 2\n      end: 3\n    excerpt_sha256: sha256:0aa5989aacb57830a365b63654addd2b3e7427ce3e8869f52e261ac98cc318734\n---\nRule stale.\n",
+      "m/registry/rules/repeated.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 2\n    excerpt_sha256: sha256:aa5989aacb57830a365b63654addd2b3e7427ce3e8869f52e261ac98cc318734\n---\nRule repeated.\n",
+      "m/registry/rules/unhashed.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n---\nRule unhashed.\n",
+      "m/registry/rules/past.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 7\n      end: 9\n  - path: src/a.txt\n    lines:\n      start: 7\n      end: 9\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n---\nRule past.\n",
+      "m/registry/rules/missing.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/none.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule missing.\n",
+      "m/registry/rules/escape.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: ../outside.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule escape.\n",
+      "m/registry/rules/shapes.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - just text\n  - path: src/a.txt\n  - lines:\n      start: 1\n      end: 1\n  - path: src/a.txt\n    lines:\n      start: 0\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 3\n      end: 2\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: true\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1.0\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: \"1\"\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: -3\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 100000000000000000000000000000000000000000\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: 7\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: null\n---\nRule shapes.\n",
+      "p/domain-change-proposal.json": "{\"registry_updates\": [{\"operation\": \"upsert\", \"asset\": \"rules\", \"record\": {\"id\": \"stale\", \"statement\": \"x\", \"evidence\": [{\"path\": \"src/a.txt\", \"lines\": {\"start\": 6, \"end\": 6}, \"excerpt_sha256\": \"sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\"}]}}, {\"operation\": \"remove\", \"asset\": \"rules\", \"id\": \"missing\"}, {\"operation\": \"upsert\", \"asset\": \"contexts\", \"record\": {\"id\": \"new\", \"evidence\": [{\"path\": \"src/a.txt\", \"lines\": {\"start\": 1, \"end\": 1}, \"excerpt_sha256\": \"sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\"}]}}, {\"operation\": \"upsert\", \"asset\": \"contexts\", \"record\": {\"id\": \"new\", \"evidence\": [{\"path\": \"src/a.txt\", \"lines\": {\"start\": 2, \"end\": 2}}]}}]}"
+    }
+  },
+  {
+    "name": "verify-evidence overlay with an operation it does not know",
+    "args": [
+      "verify-evidence",
+      "--registry-root",
+      "{fixture}/m",
+      "--repo-root",
+      "{fixture}",
+      "--package-root",
+      "{fixture}/p"
+    ],
+    "files": {
+      "m/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n",
+      "src/a.txt": "alpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "src/moved.txt": "zero\nalpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "m/registry/rules/current.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 6\n      end: 6\n    excerpt_sha256: sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\n---\nRule current.\n",
+      "m/registry/rules/shifted.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/moved.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/moved.txt\n    lines:\n      start: 9\n      end: 9\n    excerpt_sha256: sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\n---\nRule shifted.\n",
+      "m/registry/rules/stale.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n  - path: src/a.txt\n    lines:\n      start: 2\n      end: 3\n    excerpt_sha256: sha256:0aa5989aacb57830a365b63654addd2b3e7427ce3e8869f52e261ac98cc318734\n---\nRule stale.\n",
+      "m/registry/rules/repeated.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 2\n    excerpt_sha256: sha256:aa5989aacb57830a365b63654addd2b3e7427ce3e8869f52e261ac98cc318734\n---\nRule repeated.\n",
+      "m/registry/rules/unhashed.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n---\nRule unhashed.\n",
+      "m/registry/rules/past.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 7\n      end: 9\n  - path: src/a.txt\n    lines:\n      start: 7\n      end: 9\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n---\nRule past.\n",
+      "m/registry/rules/missing.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/none.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule missing.\n",
+      "m/registry/rules/escape.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: ../outside.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule escape.\n",
+      "m/registry/rules/shapes.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - just text\n  - path: src/a.txt\n  - lines:\n      start: 1\n      end: 1\n  - path: src/a.txt\n    lines:\n      start: 0\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 3\n      end: 2\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: true\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1.0\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: \"1\"\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: -3\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 100000000000000000000000000000000000000000\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: 7\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: null\n---\nRule shapes.\n",
+      "p/domain-change-proposal.json": "{\"registry_updates\": [{\"operation\": \"merge\", \"asset\": \"rules\", \"record\": {\"id\": \"a\"}}]}"
+    }
+  },
+  {
+    "name": "verify-evidence overlay with an update that is not an object",
+    "args": [
+      "verify-evidence",
+      "--registry-root",
+      "{fixture}/m",
+      "--repo-root",
+      "{fixture}",
+      "--package-root",
+      "{fixture}/p"
+    ],
+    "files": {
+      "m/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n",
+      "src/a.txt": "alpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "src/moved.txt": "zero\nalpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "m/registry/rules/current.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 6\n      end: 6\n    excerpt_sha256: sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\n---\nRule current.\n",
+      "m/registry/rules/shifted.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/moved.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/moved.txt\n    lines:\n      start: 9\n      end: 9\n    excerpt_sha256: sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\n---\nRule shifted.\n",
+      "m/registry/rules/stale.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n  - path: src/a.txt\n    lines:\n      start: 2\n      end: 3\n    excerpt_sha256: sha256:0aa5989aacb57830a365b63654addd2b3e7427ce3e8869f52e261ac98cc318734\n---\nRule stale.\n",
+      "m/registry/rules/repeated.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 2\n    excerpt_sha256: sha256:aa5989aacb57830a365b63654addd2b3e7427ce3e8869f52e261ac98cc318734\n---\nRule repeated.\n",
+      "m/registry/rules/unhashed.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n---\nRule unhashed.\n",
+      "m/registry/rules/past.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 7\n      end: 9\n  - path: src/a.txt\n    lines:\n      start: 7\n      end: 9\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n---\nRule past.\n",
+      "m/registry/rules/missing.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/none.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule missing.\n",
+      "m/registry/rules/escape.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: ../outside.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule escape.\n",
+      "m/registry/rules/shapes.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - just text\n  - path: src/a.txt\n  - lines:\n      start: 1\n      end: 1\n  - path: src/a.txt\n    lines:\n      start: 0\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 3\n      end: 2\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: true\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1.0\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: \"1\"\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: -3\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 100000000000000000000000000000000000000000\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: 7\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: null\n---\nRule shapes.\n",
+      "p/domain-change-proposal.json": "{\"registry_updates\": [\"upsert\"]}"
+    }
+  },
+  {
+    "name": "verify-evidence overlay with a list name as its asset",
+    "args": [
+      "verify-evidence",
+      "--registry-root",
+      "{fixture}/m",
+      "--repo-root",
+      "{fixture}",
+      "--package-root",
+      "{fixture}/p"
+    ],
+    "files": {
+      "m/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n",
+      "src/a.txt": "alpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "src/moved.txt": "zero\nalpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "m/registry/rules/current.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 6\n      end: 6\n    excerpt_sha256: sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\n---\nRule current.\n",
+      "m/registry/rules/shifted.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/moved.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/moved.txt\n    lines:\n      start: 9\n      end: 9\n    excerpt_sha256: sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\n---\nRule shifted.\n",
+      "m/registry/rules/stale.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n  - path: src/a.txt\n    lines:\n      start: 2\n      end: 3\n    excerpt_sha256: sha256:0aa5989aacb57830a365b63654addd2b3e7427ce3e8869f52e261ac98cc318734\n---\nRule stale.\n",
+      "m/registry/rules/repeated.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 2\n    excerpt_sha256: sha256:aa5989aacb57830a365b63654addd2b3e7427ce3e8869f52e261ac98cc318734\n---\nRule repeated.\n",
+      "m/registry/rules/unhashed.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n---\nRule unhashed.\n",
+      "m/registry/rules/past.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 7\n      end: 9\n  - path: src/a.txt\n    lines:\n      start: 7\n      end: 9\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n---\nRule past.\n",
+      "m/registry/rules/missing.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/none.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule missing.\n",
+      "m/registry/rules/escape.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: ../outside.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule escape.\n",
+      "m/registry/rules/shapes.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - just text\n  - path: src/a.txt\n  - lines:\n      start: 1\n      end: 1\n  - path: src/a.txt\n    lines:\n      start: 0\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 3\n      end: 2\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: true\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1.0\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: \"1\"\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: -3\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 100000000000000000000000000000000000000000\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: 7\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: null\n---\nRule shapes.\n",
+      "p/domain-change-proposal.json": "{\"registry_updates\": [{\"operation\": \"upsert\", \"asset\": \"terms\", \"record\": {\"id\": \"a\"}}]}"
+    }
+  },
+  {
+    "name": "verify-evidence overlay with an unknown asset",
+    "args": [
+      "verify-evidence",
+      "--registry-root",
+      "{fixture}/m",
+      "--repo-root",
+      "{fixture}",
+      "--package-root",
+      "{fixture}/p"
+    ],
+    "files": {
+      "m/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n",
+      "src/a.txt": "alpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "src/moved.txt": "zero\nalpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "m/registry/rules/current.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 6\n      end: 6\n    excerpt_sha256: sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\n---\nRule current.\n",
+      "m/registry/rules/shifted.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/moved.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/moved.txt\n    lines:\n      start: 9\n      end: 9\n    excerpt_sha256: sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\n---\nRule shifted.\n",
+      "m/registry/rules/stale.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n  - path: src/a.txt\n    lines:\n      start: 2\n      end: 3\n    excerpt_sha256: sha256:0aa5989aacb57830a365b63654addd2b3e7427ce3e8869f52e261ac98cc318734\n---\nRule stale.\n",
+      "m/registry/rules/repeated.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 2\n    excerpt_sha256: sha256:aa5989aacb57830a365b63654addd2b3e7427ce3e8869f52e261ac98cc318734\n---\nRule repeated.\n",
+      "m/registry/rules/unhashed.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n---\nRule unhashed.\n",
+      "m/registry/rules/past.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 7\n      end: 9\n  - path: src/a.txt\n    lines:\n      start: 7\n      end: 9\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n---\nRule past.\n",
+      "m/registry/rules/missing.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/none.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule missing.\n",
+      "m/registry/rules/escape.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: ../outside.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule escape.\n",
+      "m/registry/rules/shapes.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - just text\n  - path: src/a.txt\n  - lines:\n      start: 1\n      end: 1\n  - path: src/a.txt\n    lines:\n      start: 0\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 3\n      end: 2\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: true\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1.0\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: \"1\"\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: -3\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 100000000000000000000000000000000000000000\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: 7\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: null\n---\nRule shapes.\n",
+      "p/domain-change-proposal.json": "{\"registry_updates\": [{\"operation\": \"upsert\", \"asset\": 7, \"record\": {\"id\": \"a\"}}]}"
+    }
+  },
+  {
+    "name": "verify-evidence overlay with a record without an id",
+    "args": [
+      "verify-evidence",
+      "--registry-root",
+      "{fixture}/m",
+      "--repo-root",
+      "{fixture}",
+      "--package-root",
+      "{fixture}/p"
+    ],
+    "files": {
+      "m/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n",
+      "src/a.txt": "alpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "src/moved.txt": "zero\nalpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "m/registry/rules/current.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 6\n      end: 6\n    excerpt_sha256: sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\n---\nRule current.\n",
+      "m/registry/rules/shifted.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/moved.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/moved.txt\n    lines:\n      start: 9\n      end: 9\n    excerpt_sha256: sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\n---\nRule shifted.\n",
+      "m/registry/rules/stale.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n  - path: src/a.txt\n    lines:\n      start: 2\n      end: 3\n    excerpt_sha256: sha256:0aa5989aacb57830a365b63654addd2b3e7427ce3e8869f52e261ac98cc318734\n---\nRule stale.\n",
+      "m/registry/rules/repeated.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 2\n    excerpt_sha256: sha256:aa5989aacb57830a365b63654addd2b3e7427ce3e8869f52e261ac98cc318734\n---\nRule repeated.\n",
+      "m/registry/rules/unhashed.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n---\nRule unhashed.\n",
+      "m/registry/rules/past.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 7\n      end: 9\n  - path: src/a.txt\n    lines:\n      start: 7\n      end: 9\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n---\nRule past.\n",
+      "m/registry/rules/missing.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/none.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule missing.\n",
+      "m/registry/rules/escape.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: ../outside.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule escape.\n",
+      "m/registry/rules/shapes.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - just text\n  - path: src/a.txt\n  - lines:\n      start: 1\n      end: 1\n  - path: src/a.txt\n    lines:\n      start: 0\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 3\n      end: 2\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: true\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1.0\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: \"1\"\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: -3\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 100000000000000000000000000000000000000000\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: 7\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: null\n---\nRule shapes.\n",
+      "p/domain-change-proposal.json": "{\"registry_updates\": [{\"operation\": \"upsert\", \"asset\": \"rules\", \"record\": {\"statement\": \"a\"}}]}"
+    }
+  },
+  {
+    "name": "verify-evidence overlay with a placeholder id",
+    "args": [
+      "verify-evidence",
+      "--registry-root",
+      "{fixture}/m",
+      "--repo-root",
+      "{fixture}",
+      "--package-root",
+      "{fixture}/p"
+    ],
+    "files": {
+      "m/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n",
+      "src/a.txt": "alpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "src/moved.txt": "zero\nalpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "m/registry/rules/current.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 6\n      end: 6\n    excerpt_sha256: sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\n---\nRule current.\n",
+      "m/registry/rules/shifted.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/moved.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/moved.txt\n    lines:\n      start: 9\n      end: 9\n    excerpt_sha256: sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\n---\nRule shifted.\n",
+      "m/registry/rules/stale.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n  - path: src/a.txt\n    lines:\n      start: 2\n      end: 3\n    excerpt_sha256: sha256:0aa5989aacb57830a365b63654addd2b3e7427ce3e8869f52e261ac98cc318734\n---\nRule stale.\n",
+      "m/registry/rules/repeated.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 2\n    excerpt_sha256: sha256:aa5989aacb57830a365b63654addd2b3e7427ce3e8869f52e261ac98cc318734\n---\nRule repeated.\n",
+      "m/registry/rules/unhashed.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n---\nRule unhashed.\n",
+      "m/registry/rules/past.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 7\n      end: 9\n  - path: src/a.txt\n    lines:\n      start: 7\n      end: 9\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n---\nRule past.\n",
+      "m/registry/rules/missing.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/none.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule missing.\n",
+      "m/registry/rules/escape.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: ../outside.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule escape.\n",
+      "m/registry/rules/shapes.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - just text\n  - path: src/a.txt\n  - lines:\n      start: 1\n      end: 1\n  - path: src/a.txt\n    lines:\n      start: 0\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 3\n      end: 2\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: true\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1.0\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: \"1\"\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: -3\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 100000000000000000000000000000000000000000\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: 7\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: null\n---\nRule shapes.\n",
+      "p/domain-change-proposal.json": "{\"registry_updates\": [{\"operation\": \"remove\", \"asset\": \"rules\", \"id\": \"<rule id>\"}]}"
+    }
+  },
+  {
+    "name": "verify-evidence overlay with a blank id",
+    "args": [
+      "verify-evidence",
+      "--registry-root",
+      "{fixture}/m",
+      "--repo-root",
+      "{fixture}",
+      "--package-root",
+      "{fixture}/p"
+    ],
+    "files": {
+      "m/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n",
+      "src/a.txt": "alpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "src/moved.txt": "zero\nalpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "m/registry/rules/current.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 6\n      end: 6\n    excerpt_sha256: sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\n---\nRule current.\n",
+      "m/registry/rules/shifted.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/moved.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/moved.txt\n    lines:\n      start: 9\n      end: 9\n    excerpt_sha256: sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\n---\nRule shifted.\n",
+      "m/registry/rules/stale.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n  - path: src/a.txt\n    lines:\n      start: 2\n      end: 3\n    excerpt_sha256: sha256:0aa5989aacb57830a365b63654addd2b3e7427ce3e8869f52e261ac98cc318734\n---\nRule stale.\n",
+      "m/registry/rules/repeated.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 2\n    excerpt_sha256: sha256:aa5989aacb57830a365b63654addd2b3e7427ce3e8869f52e261ac98cc318734\n---\nRule repeated.\n",
+      "m/registry/rules/unhashed.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n---\nRule unhashed.\n",
+      "m/registry/rules/past.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 7\n      end: 9\n  - path: src/a.txt\n    lines:\n      start: 7\n      end: 9\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n---\nRule past.\n",
+      "m/registry/rules/missing.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/none.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule missing.\n",
+      "m/registry/rules/escape.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: ../outside.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule escape.\n",
+      "m/registry/rules/shapes.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - just text\n  - path: src/a.txt\n  - lines:\n      start: 1\n      end: 1\n  - path: src/a.txt\n    lines:\n      start: 0\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 3\n      end: 2\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: true\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1.0\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: \"1\"\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: -3\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 100000000000000000000000000000000000000000\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: 7\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: null\n---\nRule shapes.\n",
+      "p/domain-change-proposal.json": "{\"registry_updates\": [{\"operation\": \"remove\", \"asset\": \"rules\", \"id\": \"  \"}]}"
+    }
+  },
+  {
+    "name": "verify-evidence overlay with an empty record",
+    "args": [
+      "verify-evidence",
+      "--registry-root",
+      "{fixture}/m",
+      "--repo-root",
+      "{fixture}",
+      "--package-root",
+      "{fixture}/p"
+    ],
+    "files": {
+      "m/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n",
+      "src/a.txt": "alpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "src/moved.txt": "zero\nalpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "m/registry/rules/current.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 6\n      end: 6\n    excerpt_sha256: sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\n---\nRule current.\n",
+      "m/registry/rules/shifted.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/moved.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/moved.txt\n    lines:\n      start: 9\n      end: 9\n    excerpt_sha256: sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\n---\nRule shifted.\n",
+      "m/registry/rules/stale.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n  - path: src/a.txt\n    lines:\n      start: 2\n      end: 3\n    excerpt_sha256: sha256:0aa5989aacb57830a365b63654addd2b3e7427ce3e8869f52e261ac98cc318734\n---\nRule stale.\n",
+      "m/registry/rules/repeated.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 2\n    excerpt_sha256: sha256:aa5989aacb57830a365b63654addd2b3e7427ce3e8869f52e261ac98cc318734\n---\nRule repeated.\n",
+      "m/registry/rules/unhashed.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n---\nRule unhashed.\n",
+      "m/registry/rules/past.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 7\n      end: 9\n  - path: src/a.txt\n    lines:\n      start: 7\n      end: 9\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n---\nRule past.\n",
+      "m/registry/rules/missing.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/none.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule missing.\n",
+      "m/registry/rules/escape.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: ../outside.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule escape.\n",
+      "m/registry/rules/shapes.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - just text\n  - path: src/a.txt\n  - lines:\n      start: 1\n      end: 1\n  - path: src/a.txt\n    lines:\n      start: 0\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 3\n      end: 2\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: true\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1.0\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: \"1\"\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: -3\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 100000000000000000000000000000000000000000\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: 7\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: null\n---\nRule shapes.\n",
+      "p/domain-change-proposal.json": "{\"registry_updates\": [{\"operation\": \"upsert\", \"asset\": \"rules\", \"record\": []}]}"
+    }
+  },
+  {
+    "name": "verify-evidence overlay with updates that are not a list",
+    "args": [
+      "verify-evidence",
+      "--registry-root",
+      "{fixture}/m",
+      "--repo-root",
+      "{fixture}",
+      "--package-root",
+      "{fixture}/p"
+    ],
+    "files": {
+      "m/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n",
+      "src/a.txt": "alpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "src/moved.txt": "zero\nalpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "m/registry/rules/current.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 6\n      end: 6\n    excerpt_sha256: sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\n---\nRule current.\n",
+      "m/registry/rules/shifted.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/moved.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/moved.txt\n    lines:\n      start: 9\n      end: 9\n    excerpt_sha256: sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\n---\nRule shifted.\n",
+      "m/registry/rules/stale.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n  - path: src/a.txt\n    lines:\n      start: 2\n      end: 3\n    excerpt_sha256: sha256:0aa5989aacb57830a365b63654addd2b3e7427ce3e8869f52e261ac98cc318734\n---\nRule stale.\n",
+      "m/registry/rules/repeated.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 2\n    excerpt_sha256: sha256:aa5989aacb57830a365b63654addd2b3e7427ce3e8869f52e261ac98cc318734\n---\nRule repeated.\n",
+      "m/registry/rules/unhashed.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n---\nRule unhashed.\n",
+      "m/registry/rules/past.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 7\n      end: 9\n  - path: src/a.txt\n    lines:\n      start: 7\n      end: 9\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n---\nRule past.\n",
+      "m/registry/rules/missing.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/none.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule missing.\n",
+      "m/registry/rules/escape.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: ../outside.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule escape.\n",
+      "m/registry/rules/shapes.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - just text\n  - path: src/a.txt\n  - lines:\n      start: 1\n      end: 1\n  - path: src/a.txt\n    lines:\n      start: 0\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 3\n      end: 2\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: true\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1.0\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: \"1\"\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: -3\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 100000000000000000000000000000000000000000\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: 7\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: null\n---\nRule shapes.\n",
+      "p/domain-change-proposal.json": "{\"registry_updates\": {\"operation\": \"upsert\"}}"
+    }
+  },
+  {
+    "name": "verify-evidence overlay with no updates",
+    "args": [
+      "verify-evidence",
+      "--registry-root",
+      "{fixture}/m",
+      "--repo-root",
+      "{fixture}",
+      "--package-root",
+      "{fixture}/p"
+    ],
+    "files": {
+      "m/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n",
+      "src/a.txt": "alpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "src/moved.txt": "zero\nalpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "m/registry/rules/current.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 6\n      end: 6\n    excerpt_sha256: sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\n---\nRule current.\n",
+      "m/registry/rules/shifted.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/moved.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/moved.txt\n    lines:\n      start: 9\n      end: 9\n    excerpt_sha256: sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\n---\nRule shifted.\n",
+      "m/registry/rules/stale.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n  - path: src/a.txt\n    lines:\n      start: 2\n      end: 3\n    excerpt_sha256: sha256:0aa5989aacb57830a365b63654addd2b3e7427ce3e8869f52e261ac98cc318734\n---\nRule stale.\n",
+      "m/registry/rules/repeated.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 2\n    excerpt_sha256: sha256:aa5989aacb57830a365b63654addd2b3e7427ce3e8869f52e261ac98cc318734\n---\nRule repeated.\n",
+      "m/registry/rules/unhashed.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n---\nRule unhashed.\n",
+      "m/registry/rules/past.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 7\n      end: 9\n  - path: src/a.txt\n    lines:\n      start: 7\n      end: 9\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n---\nRule past.\n",
+      "m/registry/rules/missing.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/none.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule missing.\n",
+      "m/registry/rules/escape.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: ../outside.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule escape.\n",
+      "m/registry/rules/shapes.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - just text\n  - path: src/a.txt\n  - lines:\n      start: 1\n      end: 1\n  - path: src/a.txt\n    lines:\n      start: 0\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 3\n      end: 2\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: true\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1.0\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: \"1\"\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: -3\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 100000000000000000000000000000000000000000\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: 7\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: null\n---\nRule shapes.\n",
+      "p/domain-change-proposal.json": "{\"registry_updates\": null}"
+    }
+  },
+  {
+    "name": "verify-evidence overlay without a proposal",
+    "args": [
+      "verify-evidence",
+      "--registry-root",
+      "{fixture}/m",
+      "--repo-root",
+      "{fixture}",
+      "--package-root",
+      "{fixture}/p"
+    ],
+    "files": {
+      "m/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n",
+      "src/a.txt": "alpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "src/moved.txt": "zero\nalpha\nbeta\ngamma\nbeta\ngamma\ndelta\n",
+      "m/registry/rules/current.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 6\n      end: 6\n    excerpt_sha256: sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\n---\nRule current.\n",
+      "m/registry/rules/shifted.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/moved.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/moved.txt\n    lines:\n      start: 9\n      end: 9\n    excerpt_sha256: sha256:673953e0ad7fc53247f4feadc2c2d4506396840d1f8796526f48d47333ac7652\n---\nRule shifted.\n",
+      "m/registry/rules/stale.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n  - path: src/a.txt\n    lines:\n      start: 2\n      end: 3\n    excerpt_sha256: sha256:0aa5989aacb57830a365b63654addd2b3e7427ce3e8869f52e261ac98cc318734\n---\nRule stale.\n",
+      "m/registry/rules/repeated.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 2\n    excerpt_sha256: sha256:aa5989aacb57830a365b63654addd2b3e7427ce3e8869f52e261ac98cc318734\n---\nRule repeated.\n",
+      "m/registry/rules/unhashed.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n---\nRule unhashed.\n",
+      "m/registry/rules/past.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/a.txt\n    lines:\n      start: 7\n      end: 9\n  - path: src/a.txt\n    lines:\n      start: 7\n      end: 9\n    excerpt_sha256: sha256:ec729b9a95852cbfa6a1894b06d4177ae3c40ca90f7ec96d9d016216538660f7\n---\nRule past.\n",
+      "m/registry/rules/missing.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: src/none.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule missing.\n",
+      "m/registry/rules/escape.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - path: ../outside.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule escape.\n",
+      "m/registry/rules/shapes.md": "---\ntype: Business Rule\nstatus: stable\nevidence:\n  - just text\n  - path: src/a.txt\n  - lines:\n      start: 1\n      end: 1\n  - path: src/a.txt\n    lines:\n      start: 0\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 3\n      end: 2\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: true\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1.0\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: \"1\"\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: -3\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 100000000000000000000000000000000000000000\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: 7\n  - path: src/a.txt\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: null\n---\nRule shapes.\n"
+    }
+  },
+  {
+    "name": "verify-evidence of the plugin's own Registry",
+    "args": [
+      "verify-evidence",
+      "--registry-root",
+      "{repo}/docs/domain-memory",
+      "--repo-root",
+      "{repo}"
+    ]
   }
 ]

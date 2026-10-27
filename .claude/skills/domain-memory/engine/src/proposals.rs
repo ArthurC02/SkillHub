@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use crate::files::{PROPOSAL_FILE, load_json};
 use crate::json::{Object, Value};
 use crate::py;
+use crate::pyvalue::equal;
 
 const PROPOSAL_MOMENTS: [&str; 6] = [
     "redrafted_at",
@@ -127,7 +128,7 @@ pub fn list_proposals(changes_root: &Path) -> Result<Vec<Value>, String> {
         .iter()
         .map(|row| row.get("proposal_id").cloned().unwrap_or(Value::Null))
         .collect();
-    let count = |id: &Value| known.iter().filter(|other| *other == id).count();
+    let count = |id: &Value| known.iter().filter(|other| equal(other, id)).count();
     for row in &mut rows {
         let id = row.get("proposal_id").cloned().unwrap_or(Value::Null);
         if id != Value::Null && count(&id) > 1 {
@@ -135,7 +136,7 @@ pub fn list_proposals(changes_root: &Path) -> Result<Vec<Value>, String> {
         }
     }
     for (index, replacement) in replacements {
-        let unknown = !known.contains(&replacement);
+        let unknown = !known.iter().any(|other| equal(other, &replacement));
         rows[index].insert("superseded_by", replacement);
         if unknown {
             rows[index].insert("superseded_by_unknown", Value::Bool(true));
@@ -145,7 +146,11 @@ pub fn list_proposals(changes_root: &Path) -> Result<Vec<Value>, String> {
         let unknown: Vec<Value> = superseded_ids(row)
             .unwrap_or_default()
             .into_iter()
-            .filter(|id| !known.contains(&Value::Str(id.clone())))
+            .filter(|id| {
+                !known
+                    .iter()
+                    .any(|other| equal(other, &Value::Str(id.clone())))
+            })
             .map(Value::Str)
             .collect();
         if !unknown.is_empty() {
