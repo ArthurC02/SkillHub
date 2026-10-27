@@ -6,7 +6,7 @@ use crate::json::{Object, Value};
 use crate::py;
 use crate::pyvalue::{kind_of, repr_of};
 
-const POLICY_FILE: &str = "domain-memory-policy.json";
+pub const POLICY_FILE: &str = "domain-memory-policy.json";
 const REVIEW_MODES: &[&str] = &["local-draft-only", "scm-verified"];
 const ENUMERATED_FIELDS: &[(&str, &[&str])] = &[
     ("format", &["domain-memory-policy/v1"]),

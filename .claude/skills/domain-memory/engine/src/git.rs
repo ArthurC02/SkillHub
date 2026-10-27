@@ -87,6 +87,19 @@ fn universal_newlines(bytes: &[u8]) -> String {
         .replace('\r', "\n")
 }
 
+pub enum Launched {
+    Ran(Output),
+    Unavailable,
+}
+
+pub fn launch_git(root: &Path, arguments: &[&str]) -> Result<Launched, String> {
+    match run_git(root, arguments, None) {
+        Ok(output) => Ok(Launched::Ran(output)),
+        Err(error) if error.kind == Failure::Spawn => Ok(Launched::Unavailable),
+        Err(error) => Err(error.message),
+    }
+}
+
 pub fn run_git(root: &Path, arguments: &[&str], input: Option<&[u8]>) -> Result<Output, GitError> {
     let root_text = py::shown(root);
     let mut argv = vec!["git", "-C", root_text.as_str()];
@@ -94,7 +107,7 @@ pub fn run_git(root: &Path, arguments: &[&str], input: Option<&[u8]>) -> Result<
     run_bounded(&argv, input)
 }
 
-fn deadline_seconds() -> Result<f64, String> {
+pub fn deadline_seconds() -> Result<f64, String> {
     let Some(given) = std::env::var_os(TIMEOUT_VARIABLE) else {
         return Ok(DEFAULT_SECONDS);
     };

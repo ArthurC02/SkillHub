@@ -123,7 +123,7 @@ fn listed<'a>(entry: &'a Object, key: &str) -> Vec<&'a str> {
         .collect()
 }
 
-fn holding<'a>(asset: &str, records: &'a [Object]) -> Vec<&'a str> {
+pub fn holding<'a>(asset: &str, records: &'a [Object]) -> Vec<&'a str> {
     records
         .iter()
         .flat_map(|entry| match asset {

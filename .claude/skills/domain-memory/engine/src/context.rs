@@ -1,6 +1,7 @@
 use std::collections::BTreeSet;
 use std::path::Path;
 
+use crate::coverage::all_references;
 use crate::json::{Object, Value};
 use crate::policy::review_mode;
 use crate::pyvalue::str_of;
@@ -15,7 +16,6 @@ const SUMMARY_FIELDS: &[&str] = &[
     "name",
 ];
 const BOUND_RULES: &str = "rules_bound_through_collaborations";
-const MAX_NESTING_DEPTH: usize = 100;
 
 pub fn get_context(root: &Path, identifier: &str, summary: bool) -> Result<Value, String> {
     let Some(context) = read_record(root, "contexts", identifier)? else {
@@ -161,8 +161,7 @@ fn bound_rules(
 }
 
 fn cited_paths(record: &Object) -> Result<BTreeSet<String>, String> {
-    let mut references = Vec::new();
-    all_references(&Value::Object(record.clone()), 0, &mut references)?;
+    let references = all_references(&Value::Object(record.clone()), 0)?;
     Ok(references
         .iter()
         .filter_map(|reference| {
@@ -173,31 +172,6 @@ fn cited_paths(record: &Object) -> Result<BTreeSet<String>, String> {
                 .map(str::to_string)
         })
         .collect())
-}
-
-fn all_references(value: &Value, depth: usize, found: &mut Vec<Value>) -> Result<(), String> {
-    if depth > MAX_NESTING_DEPTH {
-        return Err(format!(
-            "evidence document exceeds nesting depth {MAX_NESTING_DEPTH}"
-        ));
-    }
-    match value {
-        Value::Object(object) => {
-            for (key, child) in object.iter() {
-                if let (true, Value::Array(items)) = (key == "evidence", child) {
-                    found.extend(items.iter().cloned());
-                }
-                all_references(child, depth + 1, found)?;
-            }
-        }
-        Value::Array(items) => {
-            for child in items {
-                all_references(child, depth + 1, found)?;
-            }
-        }
-        _ => {}
-    }
-    Ok(())
 }
 
 pub fn summarized(entry: &Object) -> Object {

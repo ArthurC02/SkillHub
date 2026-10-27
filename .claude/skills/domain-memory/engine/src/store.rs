@@ -75,6 +75,10 @@ pub struct Registry {
 }
 
 impl Registry {
+    pub fn files(&self) -> &Files {
+        &self.files
+    }
+
     pub fn open(root: &Path) -> Result<Self, String> {
         if !has_registry(root) {
             return Err(missing_registry(root)?);
@@ -243,20 +247,37 @@ pub fn posix(path: &Path) -> String {
 }
 
 pub fn missing_registry(root: &Path) -> Result<String, String> {
+    missing_registry_for(root, None)
+}
+
+pub fn missing_registry_for(root: &Path, repo_root: Option<&Path>) -> Result<String, String> {
     Ok(format!(
         "no Domain Registry at {}: it holds no registry/{INDEX}; {}",
-        posix(&py::resolve_path(root)),
-        domain_memory_hint(root)?
+        shown_path(root, repo_root),
+        domain_memory_hint(root, repo_root)?
     ))
 }
 
-fn domain_memory_hint(root: &Path) -> Result<String, String> {
+pub fn shown_path(path: &Path, top: Option<&Path>) -> String {
+    let resolved = py::resolve_path(path);
+    if let Some(top) = top
+        && let Ok(inside) = py::relative_to(&resolved, &py::resolve_path(top))
+    {
+        return if inside.is_empty() {
+            ".".to_string()
+        } else {
+            inside
+        };
+    }
+    posix(&resolved)
+}
+
+fn domain_memory_hint(root: &Path, repo_root: Option<&Path>) -> Result<String, String> {
     let asked = py::resolve_path(root);
-    let same = |place: &Path| py::compare_paths(place, &asked) == Ordering::Equal;
-    let places: Vec<String> = neighbours(&asked)?
+    let places: Vec<String> = candidates(&asked, repo_root)?
         .into_iter()
-        .filter(|place| holds_domain_memory(place) && !same(place))
-        .map(|place| posix(&py::resolve_path(&place)))
+        .filter(|place| py::compare_path_parts(place, &asked) != Ordering::Equal)
+        .map(|place| shown_path(&place, repo_root))
         .collect();
     Ok(match places.as_slice() {
         [] => DOMAIN_MEMORY_HINT.to_string(),
@@ -266,6 +287,67 @@ fn domain_memory_hint(root: &Path) -> Result<String, String> {
             many.join(", ")
         ),
     })
+}
+
+fn candidates(asked: &Path, repo_root: Option<&Path>) -> Result<Vec<PathBuf>, String> {
+    if let Some(repo_root) = repo_root
+        && let Some(listed) = domain_memories_known_to_git(repo_root)?
+    {
+        return Ok(listed);
+    }
+    Ok(neighbours(asked)?
+        .into_iter()
+        .filter(|place| holds_domain_memory(place))
+        .collect())
+}
+
+fn domain_memories_known_to_git(repo_root: &Path) -> Result<Option<Vec<PathBuf>>, String> {
+    let launched = git::launch_git(
+        repo_root,
+        &[
+            "ls-files",
+            "-z",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+            "--",
+            ":(glob)**/source-map.json",
+            ":(glob)**/registry/index.md",
+        ],
+    )?;
+    let git::Launched::Ran(listed) = launched else {
+        return Ok(None);
+    };
+    if listed.code != 0 {
+        return Ok(None);
+    }
+    let mut homes: Vec<PathBuf> = Vec::new();
+    for entry in String::from_utf8_lossy(&listed.stdout).split('\0') {
+        if entry.is_empty() {
+            continue;
+        }
+        let marker = repo_root.join(entry);
+        let is_map = marker
+            .file_name()
+            .is_some_and(|name| name == "source-map.json");
+        if is_map && !is_domain_source_map(&marker) {
+            continue;
+        }
+        let home = if is_map {
+            marker.parent()
+        } else {
+            marker.parent().and_then(Path::parent)
+        };
+        let resolved = py::resolve_path(home.unwrap_or(&marker));
+        if !homes
+            .iter()
+            .any(|seen| py::compare_path_parts(seen, &resolved) == Ordering::Equal)
+        {
+            homes.push(resolved);
+        }
+    }
+    homes.sort_by(|left, right| py::compare_path_parts(left, right));
+    Ok(Some(homes))
 }
 
 fn neighbours(asked: &Path) -> Result<Vec<PathBuf>, String> {
@@ -297,8 +379,12 @@ fn directories_in(directory: &Path) -> Result<Vec<PathBuf>, String> {
     Ok(found)
 }
 
+fn is_domain_source_map(path: &Path) -> bool {
+    load_json(path)
+        .is_ok_and(|map| map.get("format").and_then(Value::as_str) == Some(SOURCE_MAP_FORMAT))
+}
+
 fn holds_domain_memory(place: &Path) -> bool {
-    let source_map = load_json(&place.join("source-map.json"))
-        .is_ok_and(|map| map.get("format").and_then(Value::as_str) == Some(SOURCE_MAP_FORMAT));
-    source_map || registry_dir(place).join(INDEX).is_file()
+    is_domain_source_map(&place.join("source-map.json"))
+        || registry_dir(place).join(INDEX).is_file()
 }

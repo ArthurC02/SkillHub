@@ -297,6 +297,22 @@ fn windows_drive(text: &str) -> (String, &str) {
     (String::new(), text)
 }
 
+pub fn compare_path_parts(left: &Path, right: &Path) -> Ordering {
+    let parts = |path: &Path| -> Vec<String> {
+        path.components()
+            .map(|part| {
+                let text = part.as_os_str().to_string_lossy().into_owned();
+                if cfg!(windows) {
+                    text.to_lowercase()
+                } else {
+                    text
+                }
+            })
+            .collect()
+    };
+    parts(left).cmp(&parts(right))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -324,6 +340,14 @@ mod tests {
         );
         assert_eq!(PurePath::new("x").parent().as_posix(), ".");
         assert_eq!(PurePath::new("").as_posix(), ".");
+    }
+
+    #[test]
+    fn paths_order_by_their_parts_not_by_their_text() {
+        let before = Path::new("root/zz/x.md");
+        let after = Path::new("root/zz-q/x.md");
+        assert_eq!(compare_path_parts(before, after), Ordering::Less);
+        assert_eq!(compare_path_parts(after, before), Ordering::Greater);
     }
 
     #[test]

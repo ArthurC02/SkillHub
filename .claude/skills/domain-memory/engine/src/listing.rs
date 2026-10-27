@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::git::{self, Failure};
 use crate::py;
@@ -169,4 +169,43 @@ fn untracked(root: &Path, relatives: &[String]) -> Result<Vec<String>, String> {
         .filter(|entry| !tracked.contains(*entry))
         .cloned()
         .collect())
+}
+
+pub struct Repository {
+    pub root: PathBuf,
+    directories: Option<Vec<String>>,
+}
+
+impl Repository {
+    pub fn new(root: &Path) -> Self {
+        Self {
+            root: root.to_path_buf(),
+            directories: None,
+        }
+    }
+
+    pub fn directories(&mut self) -> Result<&[String], String> {
+        if self.directories.is_none() {
+            let excluded = EXCLUDED_DIRECTORIES
+                .iter()
+                .map(|name| (*name).to_string())
+                .collect();
+            self.directories = Some(directories_of(&listing_of(&self.root, &excluded)?.entries));
+        }
+        Ok(self.directories.as_deref().unwrap_or_default())
+    }
+}
+
+fn directories_of(files: &[String]) -> Vec<String> {
+    let mut seen = HashSet::new();
+    files
+        .iter()
+        .map(|file| {
+            format!(
+                "/{}/",
+                file.rsplit_once('/').map_or("", |(parent, _)| parent)
+            )
+        })
+        .filter(|directory| seen.insert(directory.clone()))
+        .collect()
 }

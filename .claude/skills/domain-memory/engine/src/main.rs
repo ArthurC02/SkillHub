@@ -5,6 +5,7 @@ mod cite;
 mod cli;
 mod context;
 mod coverage;
+mod crossrefs;
 mod dependents;
 mod difflib;
 mod digits;
@@ -13,6 +14,7 @@ mod files;
 mod fnmatch;
 mod git;
 mod git_governance;
+mod indexes;
 mod json;
 mod listing;
 mod okf;
@@ -30,6 +32,7 @@ mod sources;
 mod store;
 mod tar;
 mod unicode;
+mod validate;
 #[rustfmt::skip]
 mod unicode_data;
 
@@ -214,6 +217,8 @@ fn execute(invocation: &Invocation) -> Result<i32, String> {
         "verify-scm-attestation" => audit_commands::verify_scm_attestation(invocation),
         "verify-git-governance" => audit_commands::verify_git_governance(invocation),
         "governance-readiness" => audit_commands::governance_readiness(invocation),
+        "validate" => validate_command(invocation),
+        "refresh-indexes" => refresh_indexes_command(invocation),
         other => Err(format!("{other} is not available in the Rust engine yet")),
     }
 }
@@ -286,6 +291,56 @@ fn verify_sources(invocation: &Invocation) -> Result<i32, String> {
     } else {
         1
     })
+}
+
+fn validate_command(invocation: &Invocation) -> Result<i32, String> {
+    let registry_root = py::resolve(invocation.text("registry_root").unwrap_or("."));
+    let mut repository = invocation
+        .text("repo_root")
+        .map(|given| listing::Repository::new(&py::resolve(given)));
+    let errors = validate::validate(
+        &registry_root,
+        repository.as_mut(),
+        invocation.flag("require_reviewed"),
+    )?;
+    let code = if errors.is_empty() {
+        emit_stdout("Registry is valid.\n");
+        0
+    } else {
+        let lines: Vec<String> = errors
+            .iter()
+            .map(|error| format!("ERROR: {error}"))
+            .collect();
+        emit_stderr(&format!("{}\n", lines.join("\n")));
+        1
+    };
+    let mut notes = validate::unsettled_notes(&registry_root)?;
+    if code == 0 {
+        notes.extend(validate::consistency_notes(&registry_root)?);
+        if let Some(repository) = repository.as_mut() {
+            notes.extend(validate::unplaced_note(&registry_root, repository)?);
+        }
+    }
+    for note in notes {
+        emit_stderr(&format!("{note}\n"));
+    }
+    Ok(code)
+}
+
+fn refresh_indexes_command(invocation: &Invocation) -> Result<i32, String> {
+    let root = py::resolve(invocation.text("registry_root").unwrap_or("."));
+    let refreshed = indexes::refresh_indexes(&root)?
+        .iter()
+        .map(|path| Value::Str(store::shown_path(path, Some(&root))))
+        .collect();
+    let mut reply = Object::new();
+    reply.insert("refreshed", Value::Array(refreshed));
+    let style = Style {
+        indent: None,
+        ..Style::PRINTED
+    };
+    emit_stdout(&format!("{}\n", json::dumps(&Value::Object(reply), style)));
+    Ok(0)
 }
 
 fn verify_evidence(invocation: &Invocation) -> Result<i32, String> {

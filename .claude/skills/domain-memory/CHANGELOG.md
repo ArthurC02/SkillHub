@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 5.0.2
+
+### Added
+
+- The Rust executable answers `validate` and `refresh-indexes`, with the same output, exit codes and written index files as the script.
+
 ## 5.0.1
 
 ### Added
