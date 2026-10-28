@@ -10,11 +10,11 @@ use crate::pyvalue::{equal, splitlines, str_of};
 use crate::sha256::hex_digest;
 use crate::store::{has_registry, missing_registry, posix};
 
-const MANIFEST_FORMAT: &str = "domain-memory-audit/v1";
-const APPLY_OPERATION: &str = "apply-approved-updates";
+pub const MANIFEST_FORMAT: &str = "domain-memory-audit/v1";
+pub const APPLY_OPERATION: &str = "apply-approved-updates";
 const CONFLICT_PREFIXES: [&str; 3] = ["<<<<<<< ", ">>>>>>> ", "||||||| "];
 
-const CANONICAL: Style = Style {
+pub const CANONICAL: Style = Style {
     indent: None,
     sort_keys: true,
     ensure_ascii: false,
@@ -147,7 +147,7 @@ fn highest(sequences: impl Iterator<Item = Value>) -> Value {
     best.unwrap_or_else(|| Value::int(0))
 }
 
-fn successor(value: &Value) -> Value {
+pub fn successor(value: &Value) -> Value {
     match value {
         Value::Float(number) => Value::Float(number + 1.0),
         Value::Bool(flag) => Value::Int((1 + i128::from(*flag)).to_string()),
@@ -346,7 +346,7 @@ fn applied_without_event(root: &Path, changes_root: &Path) -> Result<Vec<String>
     Ok(missing)
 }
 
-fn type_name(value: &Value) -> &'static str {
+pub fn type_name(value: &Value) -> &'static str {
     match value {
         Value::Null => "NoneType",
         Value::Bool(_) => "bool",

@@ -1,6 +1,8 @@
 mod attestations;
+mod audit_append;
 mod audit_commands;
 mod audit_log;
+mod candidate_evidence;
 mod cite;
 mod cli;
 mod compare;
@@ -20,7 +22,9 @@ mod indexes;
 mod json;
 mod listing;
 mod okf;
+mod okf_write;
 mod policy;
+mod promotion;
 mod proposals;
 mod py;
 mod pyre;
@@ -28,8 +32,11 @@ mod pyregex;
 mod pyvalue;
 mod read_commands;
 mod readiness;
+mod reconciliation;
 mod records;
 mod registry_check;
+mod registry_write;
+mod revision;
 mod search;
 mod secret_patterns;
 mod secrets;
@@ -38,8 +45,11 @@ mod source_probe;
 mod sources;
 mod store;
 mod tar;
+mod transaction;
 mod unicode;
+mod updates;
 mod validate;
+mod write_commands;
 #[rustfmt::skip]
 mod unicode_data;
 
@@ -230,6 +240,11 @@ fn execute(invocation: &Invocation) -> Result<i32, String> {
         "compare-registry" => read_commands::compare_registry(invocation),
         "probe" => read_commands::probe(invocation),
         "readiness" => read_commands::readiness(invocation),
+        "upsert-candidate" => write_commands::upsert(invocation),
+        "retract-candidate" => write_commands::retract(invocation),
+        "promote-candidate" => write_commands::promote(invocation),
+        "demote-local-reviews" => write_commands::demote(invocation),
+        "recover-registry-update" => write_commands::recover(invocation),
         other => Err(format!("{other} is not available in the Rust engine yet")),
     }
 }

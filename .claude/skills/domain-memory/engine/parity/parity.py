@@ -21,7 +21,8 @@ PYTHON = "3.13"
 UNKNOWN_OPTION = "--not-an-option-of-any-command"
 RUN_SECONDS = 120
 FIXED_GIT_DATE = "2026-01-01T00:00:00Z"
-VOLATILE_DIGEST = re.compile(rb'"(event_sha256|previous_event_sha256|head_sha256)": ("[0-9a-f]{64}"|null|\[[^\]]*\])')
+VOLATILE_FIELD = re.compile(rb'"(event_sha256|previous_event_sha256|head_sha256|heads|operation_id)": ("[^"]*"|null|\[[^\]]*\])')
+VOLATILE_VALUE = re.compile(rb"(sha256:)?[0-9a-f]{64}|[0-9a-f]{32}")
 VOLATILE_NOW = re.compile(rb"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{6}Z|(?<=domain-registry-stage-)[0-9a-f]{32}|(?<=domain-registry-backup-)[0-9a-f]{32}")
 
 
@@ -81,7 +82,10 @@ def first_difference(left: bytes, right: bytes) -> str:
 
 
 def masked(data: bytes) -> bytes:
-    return VOLATILE_NOW.sub(b"~", VOLATILE_DIGEST.sub(rb'"\1": "~"', data))
+    def field(match: re.Match[bytes]) -> bytes:
+        return match.group(0).replace(match.group(2), VOLATILE_VALUE.sub(b"~", match.group(2)))
+
+    return VOLATILE_NOW.sub(b"~", VOLATILE_FIELD.sub(field, data))
 
 
 def tree_of(root: Path) -> dict[str, bytes]:

@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 5.0.5
+
+### Added
+
+- The Rust executable writes the Registry: `upsert-candidate`, `retract-candidate`, `promote-candidate`, `demote-local-reviews` and `recover-registry-update`, with the same output, exit codes, written files, audit events and recovery from an interrupted update as the script. Two failures where the script stops with a Python traceback (a `registry_status` that is a list or an object, and a malformed `registry_updates` in a proposal) print one `ERROR:` line instead, with the same exit code.
+
 ## 5.0.4
 
 ### Changed

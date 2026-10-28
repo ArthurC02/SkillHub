@@ -98,23 +98,39 @@ pub fn write_json(path: &Path, value: &Value) -> Result<(), String> {
         .map_err(|(_, message)| message)
 }
 
-fn replace_path(source: &Path, target: &Path) -> Result<(), (bool, String)> {
+pub fn rename_retrying(source: &Path, target: &Path) -> std::io::Result<()> {
+    if cfg!(windows) && target.is_dir() {
+        return Err(std::io::Error::from_raw_os_error(5));
+    }
     for delay in REPLACE_DELAYS_MILLIS.iter().map(Some).chain([None]) {
         match std::fs::rename(source, target) {
             Ok(()) => return Ok(()),
             Err(error) => {
-                let denied = error.kind() == std::io::ErrorKind::PermissionDenied;
-                let Some(delay) = delay.filter(|_| denied) else {
-                    let message = format!(
-                        "{} -> {}",
-                        py::os_error(&error, source),
-                        py::repr(&shown(target))
-                    );
-                    return Err((denied, message));
+                let Some(delay) =
+                    delay.filter(|_| error.kind() == std::io::ErrorKind::PermissionDenied)
+                else {
+                    return Err(error);
                 };
                 std::thread::sleep(std::time::Duration::from_millis(*delay));
             }
         }
     }
     Ok(())
+}
+
+pub fn replace_error(error: &std::io::Error, source: &Path, target: &Path) -> String {
+    format!(
+        "{} -> {}",
+        py::os_error(error, source),
+        py::repr(&shown(target))
+    )
+}
+
+fn replace_path(source: &Path, target: &Path) -> Result<(), (bool, String)> {
+    rename_retrying(source, target).map_err(|error| {
+        (
+            error.kind() == std::io::ErrorKind::PermissionDenied,
+            replace_error(&error, source, target),
+        )
+    })
 }

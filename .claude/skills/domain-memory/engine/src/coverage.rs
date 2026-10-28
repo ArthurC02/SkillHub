@@ -187,7 +187,11 @@ fn evidence_gaps(root: &Path, held: &[(&str, Held)]) -> Result<Value, String> {
                 gaps.push(Value::Object(entry));
                 continue;
             }
-            let classified = with_references(&Value::Object(record.clone()), &kinds, 0)?;
+            let classified = with_references(
+                &Value::Object(record.clone()),
+                &mut |reference| Ok(kinds.classify(reference)),
+                0,
+            )?;
             let mut outside = Vec::new();
             for reference in all_references(&classified, 0)? {
                 let Value::Object(reference) = reference else {
@@ -221,7 +225,11 @@ fn too_deep() -> String {
     format!("evidence document exceeds nesting depth {MAX_NESTING_DEPTH}")
 }
 
-fn with_references(value: &Value, kinds: &SourceKinds, depth: usize) -> Result<Value, String> {
+pub fn with_references(
+    value: &Value,
+    change: &mut dyn FnMut(&Value) -> Result<Value, String>,
+    depth: usize,
+) -> Result<Value, String> {
     if depth > MAX_NESTING_DEPTH {
         return Err(too_deep());
     }
@@ -231,9 +239,9 @@ fn with_references(value: &Value, kinds: &SourceKinds, depth: usize) -> Result<V
             for (key, child) in object.iter() {
                 let changed = match child {
                     Value::Array(items) if key == "evidence" => {
-                        Value::Array(items.iter().map(|item| kinds.classify(item)).collect())
+                        Value::Array(items.iter().map(&mut *change).collect::<Result<_, _>>()?)
                     }
-                    _ => with_references(child, kinds, depth + 1)?,
+                    _ => with_references(child, change, depth + 1)?,
                 };
                 out.insert(key.clone(), changed);
             }
@@ -242,7 +250,7 @@ fn with_references(value: &Value, kinds: &SourceKinds, depth: usize) -> Result<V
         Value::Array(items) => Value::Array(
             items
                 .iter()
-                .map(|child| with_references(child, kinds, depth + 1))
+                .map(|child| with_references(child, change, depth + 1))
                 .collect::<Result<_, _>>()?,
         ),
         other => other.clone(),

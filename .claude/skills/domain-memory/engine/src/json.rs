@@ -83,21 +83,23 @@ pub fn parse_keeping_last_duplicate(text: &str) -> Result<Value, ()> {
     parsed(text, true)
 }
 
+pub enum Fault {
+    Malformed,
+    DuplicateKey(String),
+}
+
+pub fn parse_naming_duplicate(text: &str) -> Result<Value, Fault> {
+    let mut parser = Parser::over(text, false);
+    parser.document().map_err(|()| {
+        parser
+            .duplicate
+            .take()
+            .map_or(Fault::Malformed, Fault::DuplicateKey)
+    })
+}
+
 fn parsed(text: &str, last_duplicate_wins: bool) -> Result<Value, ()> {
-    let mut parser = Parser {
-        bytes: text.as_bytes(),
-        text,
-        at: 0,
-        last_duplicate_wins,
-    };
-    parser.skip_whitespace();
-    let value = parser.value(0)?;
-    parser.skip_whitespace();
-    if parser.at == parser.bytes.len() {
-        Ok(value)
-    } else {
-        Err(())
-    }
+    Parser::over(text, last_duplicate_wins).document()
 }
 
 pub fn number_prefix(text: &str) -> Option<usize> {
@@ -106,6 +108,7 @@ pub fn number_prefix(text: &str) -> Option<usize> {
         text,
         at: 0,
         last_duplicate_wins: false,
+        duplicate: None,
     };
     parser.scan_number().ok()?;
     Some(parser.at)
@@ -116,9 +119,31 @@ struct Parser<'a> {
     text: &'a str,
     at: usize,
     last_duplicate_wins: bool,
+    duplicate: Option<String>,
 }
 
-impl Parser<'_> {
+impl<'a> Parser<'a> {
+    fn over(text: &'a str, last_duplicate_wins: bool) -> Self {
+        Self {
+            bytes: text.as_bytes(),
+            text,
+            at: 0,
+            last_duplicate_wins,
+            duplicate: None,
+        }
+    }
+
+    fn document(&mut self) -> Result<Value, ()> {
+        self.skip_whitespace();
+        let value = self.value(0)?;
+        self.skip_whitespace();
+        if self.at == self.bytes.len() {
+            Ok(value)
+        } else {
+            Err(())
+        }
+    }
+
     fn skip_whitespace(&mut self) {
         while matches!(self.bytes.get(self.at), Some(b' ' | b'\t' | b'\n' | b'\r')) {
             self.at += 1;
@@ -161,6 +186,7 @@ impl Parser<'_> {
             self.at += 1;
             return Ok(Value::Object(object));
         }
+        let mut repeated: Option<String> = None;
         loop {
             self.skip_whitespace();
             if self.bytes.get(self.at) != Some(&b'"') {
@@ -174,8 +200,8 @@ impl Parser<'_> {
             self.at += 1;
             self.skip_whitespace();
             let value = self.value(depth + 1)?;
-            if object.get(&key).is_some() && !self.last_duplicate_wins {
-                return Err(());
+            if object.get(&key).is_some() && !self.last_duplicate_wins && repeated.is_none() {
+                repeated = Some(key.clone());
             }
             object.insert(key, value);
             self.skip_whitespace();
@@ -183,6 +209,10 @@ impl Parser<'_> {
                 Some(b',') => self.at += 1,
                 Some(b'}') => {
                     self.at += 1;
+                    if repeated.is_some() {
+                        self.duplicate = repeated;
+                        return Err(());
+                    }
                     return Ok(Value::Object(object));
                 }
                 _ => return Err(()),

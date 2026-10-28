@@ -58,7 +58,7 @@ const EXCLUDED_DIRECTORIES: &[&str] = &[
     "build",
     "generated",
 ];
-const OUTSIDE_SOURCES_CONSEQUENCE: &str = "A candidate may rest on it, but ship-package refuses to review a record whose evidence rests \
+pub const OUTSIDE_SOURCES_CONSEQUENCE: &str = "A candidate may rest on it, but ship-package refuses to review a record whose evidence rests \
      outside the confirmed sources; cite a source the corpus covers, or have the developer confirm this path \
      before the record is reviewed.";
 const WIDEN_TO_UNIQUE: &str =
@@ -176,7 +176,7 @@ fn whole_number(text: &str) -> Option<String> {
     })
 }
 
-fn line_range(text: &str) -> Result<(String, String), String> {
+pub fn line_range(text: &str) -> Result<(String, String), String> {
     let (start, end) = text.split_once('-').unwrap_or((text, ""));
     let refused = || format!("lines must be START or START-END, got {text}");
     let start_number = whole_number(start).ok_or_else(refused)?;
@@ -207,7 +207,7 @@ fn sha256_of(data: &[u8]) -> String {
     format!("sha256:{}", hex_digest(data))
 }
 
-fn citation(root: &Path, relative: &str, start: &str, end: &str) -> Result<Object, String> {
+pub fn citation(root: &Path, relative: &str, start: &str, end: &str) -> Result<Object, String> {
     let path = cited_file(root, relative)?;
     if path.metadata().map(|meta| meta.len()).unwrap_or(0) > MAX_EVIDENCE_BYTES {
         return Err(format!(
@@ -290,7 +290,7 @@ fn language(relative: &str) -> Result<(&'static str, &'static str), String> {
         })
 }
 
-fn function_span(root: &Path, relative: &str, name: &str) -> Result<(usize, usize), String> {
+pub fn function_span(root: &Path, relative: &str, name: &str) -> Result<(usize, usize), String> {
     let (language, start_form) = language(relative)?;
     let path = cited_file(root, relative)?;
     let rows = rows(&std::fs::read(&path).map_err(|error| py::os_error(&error, &path))?);

@@ -598,7 +598,7 @@ fn verdict(fields: &[(&str, &str)]) -> Object {
     out
 }
 
-fn shape(reference: &Value) -> Result<(&str, &Object), &'static str> {
+pub fn shape(reference: &Value) -> Result<(&str, &Object), &'static str> {
     let Value::Object(reference) = reference else {
         return Err("evidence must be an object");
     };

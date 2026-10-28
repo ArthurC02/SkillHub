@@ -85,7 +85,7 @@ fn context_fields() -> impl Iterator<Item = &'static str> {
         .map(|(field, _)| *field)
 }
 
-fn contexts_named_by(asset: &str, record: &Object) -> BTreeSet<String> {
+pub fn contexts_named_by(asset: &str, record: &Object) -> BTreeSet<String> {
     let mut named = BTreeSet::new();
     if asset == "contexts"
         && let Some(Value::Str(id)) = record.get("id")
