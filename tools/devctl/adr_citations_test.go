@@ -36,6 +36,7 @@ func adrCitationFixture(t *testing.T) (string, func(relative, contents string)) 
 	write("docs/plans/mvp/m1/R01.SKILL.md", nine+"\n")
 	write("tools/goldenset/corpus/x/SKILL.md", nine+"\n")
 	write("tools/eval-regression/results.jsonl", `{"note": "`+nine+`"}`+"\n")
+	write(domainMemoryRecordedOutput+"posix.json", `{"stdout": "`+nine+`"}`+"\n")
 	write(".gitignore", "local.md\n")
 	write("local.md", nine+"\n")
 	return root, write
@@ -101,6 +102,13 @@ func TestADRCitationProblemsFlagsProseInLivingDocuments(t *testing.T) {
 				write("docs/domain-memory/changes/x/draft-pr.md", "依 "+one+"。\n")
 			},
 			want: "docs/domain-memory/changes/x/draft-pr.md:1 names " + one, count: 1,
+		},
+		{
+			name: "the engine's written cases beside its recorded output are not exempt",
+			change: func(_ string, write func(string, string)) {
+				write(".claude/skills/domain-memory/engine/parity/cases.json", `{"args": "`+one+`"}`+"\n")
+			},
+			want: ".claude/skills/domain-memory/engine/parity/cases.json:1 names " + one, count: 1,
 		},
 	})
 }

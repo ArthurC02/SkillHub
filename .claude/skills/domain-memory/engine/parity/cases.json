@@ -33759,7 +33759,7 @@
       "--min-degree",
       "0",
       "--since",
-      "2999-01-01"
+      "2999-01-01T00:00:00Z"
     ],
     "files": {
       "pkg/a/x.txt": "x",
@@ -33805,7 +33805,7 @@
       "--min-degree",
       "0",
       "--since",
-      "2000-01-01"
+      "2000-01-01T00:00:00Z"
     ],
     "files": {
       "pkg/a/x.txt": "x",
@@ -34100,7 +34100,7 @@
       "--root",
       ".claude/skills/domain-memory",
       "--since",
-      "2026-10-20",
+      "2026-10-20T00:00:00Z",
       "--min-revisions",
       "1",
       "--min-shared",
@@ -34118,7 +34118,7 @@
       "--root",
       ".claude/skills/domain-memory",
       "--since",
-      "2026-10-20",
+      "2026-10-20T00:00:00Z",
       "--depth",
       "3",
       "--min-revisions",
@@ -34142,7 +34142,7 @@
       "--root",
       "docs",
       "--since",
-      "2026-10-15",
+      "2026-10-15T00:00:00Z",
       "--depth",
       "3",
       "--max-modules",
@@ -34170,7 +34170,7 @@
       "--max-changeset",
       "2",
       "--since",
-      "2026-10-01",
+      "2026-10-01T00:00:00Z",
       "--min-revisions",
       "1",
       "--min-shared",
@@ -34190,7 +34190,7 @@
       "--max-modules",
       "0",
       "--since",
-      "2026-10-01",
+      "2026-10-01T00:00:00Z",
       "--depth",
       "4",
       "--min-revisions",
@@ -34212,7 +34212,7 @@
       "--depth",
       "4",
       "--since",
-      "2026-09-01",
+      "2026-09-01T00:00:00Z",
       "--min-revisions",
       "1",
       "--min-shared",

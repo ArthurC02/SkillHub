@@ -755,6 +755,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.13'
@@ -772,10 +773,10 @@ jobs:
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'CLI contract drift' python parity/extract_cli_contract.py --check
       - name: Committed binaries match the source
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Committed binaries' python build_binaries.py --check
-      - name: Committed binary matches the plugin
+      - name: Committed binary matches the recorded output
         env:
-          BINARY: ${{ matrix.binary }}
-        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Committed binary parity' python -X utf8 parity/parity.py --binary "$BINARY"
+          DOMAIN_MEMORY_BINARY: ${{ matrix.binary }}
+        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Committed binary output' cargo test --release --locked --test expected_output
 
   qa002:
     needs: changes

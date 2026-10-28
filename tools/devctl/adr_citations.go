@@ -17,6 +17,8 @@ const adrDir = "docs/adr"
 
 const adrIndex = adrDir + "/README.md"
 
+const domainMemoryRecordedOutput = ".claude/skills/domain-memory/engine/parity/expected/"
+
 var (
 	adrNumberPattern = regexp.MustCompile(`ADR-\d{3}`)
 	adrFilePattern   = regexp.MustCompile(`^ADR-(\d{3})-[a-z0-9-]+\.md$`)
@@ -37,6 +39,9 @@ var adrCitationExemptions = []struct {
 		return strings.HasPrefix(r, "docs/domain-memory/registry/") ||
 			(strings.HasPrefix(r, "docs/domain-memory/") &&
 				(strings.HasSuffix(r, ".json") || strings.HasSuffix(r, ".jsonl")))
+	}},
+	{"the Domain Memory engine's recorded output, which replays this repository's Registry at a pinned commit byte for byte", func(r string) bool {
+		return strings.HasPrefix(r, domainMemoryRecordedOutput) && strings.HasSuffix(r, ".json")
 	}},
 	{"recorded measurement results", func(r string) bool {
 		return (strings.HasPrefix(r, "tools/eval-regression/") && strings.Contains(r, "results") && strings.HasSuffix(r, ".jsonl")) ||

@@ -11,6 +11,11 @@ license = "UNLICENSED"
 name = "domain-memory"
 path = "src/main.rs"
 
+[[test]]
+name = "expected_output"
+harness = false
+test = false
+
 [dependencies]
 
 [profile.release]

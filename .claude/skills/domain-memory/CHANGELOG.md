@@ -2,6 +2,13 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 5.1.1
+
+### Changed
+
+- The engine is tested against the script's output recorded in `engine/parity/expected/`, by a Rust test that needs no Python: every case's stdout, stderr, exit code and written files, with a pinned clone of the repository for the cases that read its own Registry or history. CI runs it against the committed executable on Linux, macOS and Windows.
+- `record-test-result` on Windows reads a test command's output as UTF-8 with replacement characters on every machine, where the script decoded it with the system code page.
+
 ## 5.1.0
 
 ### Changed

@@ -1,11 +1,11 @@
 # Domain Memory engine
 
-The plugin's commands, rewritten in Rust as one executable, `domain-memory`. It answers every command of `scripts/registry_tools.py`, including `mcp-serve`, which speaks JSON-RPC over stdio; [running the commands](../AGENTS.md#running-the-commands) tells an Agent which executable to call. The script stays only as the reference the parity check compares against, until that check moves to recorded expected output.
+The plugin's commands, rewritten in Rust as one executable, `domain-memory`. It answers every command of `scripts/registry_tools.py`, including `mcp-serve`, which speaks JSON-RPC over stdio; [running the commands](../AGENTS.md#running-the-commands) tells an Agent which executable to call. The script stays only until the Python is removed; the engine is held to the script's output recorded in `parity/expected/`.
 
 ## Rules
 
-- The Python script defines the behaviour until a command moves. The engine reproduces its output, not a version of its own: a change to the script makes the parity check below fail until the engine follows.
-- A command counts as moved when every output branch it has — the answer, each refusal, each read failure — has a parity case and matches. Run a new case against the script first, to see that it reaches the branch it names.
+- The recorded output defines the behaviour. A change of behaviour changes the engine and the recording in the same commit, and the diff of the recording is what a reviewer reads.
+- Every output branch a command has — the answer, each refusal, each read failure — has a case.
 - The engine uses the standard library only; `Cargo.lock` stays without dependencies.
 
 ## The command-line contract
@@ -16,9 +16,18 @@ The engine parses against that contract the way argparse does: unique prefixes o
 
 Known differences: help always wraps at 80 columns, where the script follows the terminal; a lone surrogate escape in JSON becomes U+FFFD.
 
-## Parity
+## Expected output
 
-`parity/parity.py` runs the same arguments through the script and the engine and compares stdout, stderr and the exit code byte for byte; run it with Python 3.13. Each command gets a generated `-h` case and an unknown-option case, and `parity/cases.json` holds the written ones. A case may build files in a temporary directory with `files`, which `{fixture}` in its arguments names; `git: true` commits the fixture as a repository; `env` sets environment variables; `stdin` is fed to standard input, with `{fixture}` in it written as a JSON string body; `writes: true` runs each side in a fresh fixture at the same path and compares the files it leaves. A run that does not finish in 120 seconds counts as a mismatch.
+`tests/expected_output.rs` runs every case through the executable and compares stdout, stderr, the exit code and the files a case writes with `parity/expected/posix.json`, overlaid on Windows by `parity/expected/windows.json`, which holds only the cases whose output differs there. Each command gets a generated `-h` case and an unknown-option case, and `parity/cases.json` holds the written ones. A case may build files in a temporary directory with `files`, which `{fixture}` in its arguments names; `git: true` commits the fixture as a repository with a fixed date; `env` sets environment variables; `stdin` is fed to standard input, with `{fixture}` in it written as a JSON string body; `writes: true` also compares the files it leaves and checks each audit log it wrote with `verify-audit`. A run that does not finish in 120 seconds counts as a mismatch.
+
+`{repo}` in a case names a clone of this repository at the commit the recording names as `pin`, so a case that reads the repository's own Registry or history reads the same bytes on every machine; it runs with that clone as its working directory, and CI fetches the full history for it. Before comparing, the fixture, its parent, the clone and the plugin directory become `{fixture}`, `{scratch}`, `{repo}` and `{plugin}` in each spelling a path takes in the output, the version in `mcp-serve`'s server info becomes `{version}`, and on Windows the system's own wording after `[WinError N]` becomes `~`, because it follows the display language. Output that a secret scanner would report is stored as `{"hex": …}`.
+
+```sh
+cargo test --release --locked --test expected_output
+DOMAIN_MEMORY_BINARY=bin/linux-x86_64/domain-memory cargo test --release --locked --test expected_output -- --only "mcp-serve"
+```
+
+Without `DOMAIN_MEMORY_BINARY` it runs the executable Cargo just built; `--only` keeps the cases whose name contains the text. `parity/parity.py --record <pin>` wrote the recording from the Python script, and `parity/parity.py` without options still compares the script and the engine directly, until the script is removed.
 
 Python's `\d` follows Python 3.13's Unicode data; the table is `src/digits.rs`. Search uses NFKC, case folding and word characters from `src/unicode_data.rs`, which `parity/generate_unicode.py` generates with Python 3.13; regenerate it, never edit it, when the Python version changes.
 
@@ -36,7 +45,7 @@ python3 build_binaries.py
 
 One machine builds all three: the Linux binary links with the `rust-lld` that ships with Rust, and the macOS one with `cargo-zigbuild`, whose zig carries the macOS system library stubs, so no Apple SDK is needed. Where `python3` is not the interpreter that holds `ziglang`, point `CARGO_ZIGBUILD_ZIG_PATH` at its `zig` executable. A run whose binaries already match the source builds nothing. The Linux and Windows builds are byte-for-byte reproducible; the macOS linker writes a random `LC_UUID`, so a macOS rebuild differs in that and in the signature hash over it.
 
-`python3 build_binaries.py --check` compares without building; the plugin's test suite runs it, and CI runs the parity cases against the committed binary on Linux, macOS and Windows.
+`python3 build_binaries.py --check` compares without building; the plugin's test suite runs it, and CI runs the expected-output cases against the committed binary on Linux, macOS and Windows.
 
 ## Commands
 
@@ -48,6 +57,6 @@ cargo clippy --all-targets --locked -- -D warnings
 cargo test --locked
 cargo build --release --locked
 python3.13 parity/extract_cli_contract.py --check
-python3.13 parity/parity.py
+cargo test --release --locked --test expected_output
 python3 build_binaries.py --check
 ```
