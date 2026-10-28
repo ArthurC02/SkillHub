@@ -1107,3 +1107,28 @@ Dependabot 對這個目錄的 npm 鎖檔回報一則 High；上一版留在冷�
 ### 預設映像從 `-22` 移到 `-23`
 
 四項在 `-23` 的 digest 上跑過之後移動：`apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`（與它 `docker tag` 成的本地 tag）、`p02_docker_test.go` 的常數、`automation.md` 的實跑範例，以及 `apps/sandbox/README.md` 的環境變數表與建置範例。
+
+## `2026.08-23` → `2026.08-24`（2026-10-28）— **安全性修補：`pypdf`；四項實測尚未跑，預設映像仍留在 `-23`**
+
+CI 的 Runtime Image 工作流程自 2026-10-26 的排程掃描起就紅；以 CI 釘住的掃描器在本機重現，grype 對 `pypdf` 6.21.1 列出三則可修的 High（I-06 的門檻）。
+
+| 套件 | 原版本 | 修正版本 | 公告 |
+| --- | --- | --- | --- |
+| `pypdf`（Python） | `6.21.1` | `6.21.2` | GHSA-jr96-gvgh-j3r4、GHSA-gmh7-3g9r-mjh5、GHSA-6c7f-9265-g8fw（High，2026-10-23 公告）：重複的畸形交互參照項目、過大的 xref 表頭上限、反覆參照同一個不存在的物件，三者都會讓解析花上極長時間 |
+
+**暴露面**：三則都在解析 PDF，Skill 讀使用者上傳的 PDF 時會走到；後果是那一次 Run 的沙箱耗盡時間上限，影響不出那個沙箱。
+
+**冷卻期**：`6.21.2` 於 2026-10-21 發佈，已過 7 天。
+
+| 欄位 | 值 |
+| --- | --- |
+| 變更 | `constraints.txt` 與 Dockerfile 的 `pypdf`；`ARG IMAGE_VERSION` |
+| 新增的依賴 | 無 |
+| SDK 版本 | `0.3.233`（**未變**） |
+| 基底 digest | **未變** |
+| `run.mjs` | **未變** |
+| 預設映像 | 仍是 `-23`；四項在 CI 發佈的 digest 上跑過之後才移動 |
+
+### 本機驗證（2026-10-28，沒有任何模型呼叫）
+
+以 CI 釘住的 `anchore/syft:v1.51.0@sha256:678bfa56…` 與 `anchore/grype:v0.117.0@sha256:ddf9e9f2…` 掃描本機建置，`--only-fixed --fail-on high`：No vulnerabilities found；換版之前同一個掃描列出上表三則 High。同一個映像、無網路：`node --version` → `v22.23.2`，`pypdf.__version__` → `6.21.2`；`pypdf` 寫出一頁 200×100 的 PDF 再讀回，頁數 1、寬 200.0，`pdfplumber` 讀同一份頁數 1；`id -u` → `65532`；`command -v npm` → 無；`.Size` → 1,365,812,762 bytes；version label → `2026.08-24`。
