@@ -29,6 +29,15 @@ const VOLATILE_FIELDS: [&str; 5] = [
     "operation_id",
 ];
 const RANDOM_NAME_PREFIXES: [&[u8]; 2] = [b"domain-registry-stage-", b"domain-registry-backup-"];
+const POLICY_FILE_NAME: &str = "domain-memory-policy.json";
+const UNKNOWN_POLICY_KEY: &str = "is not a known key";
+const CASES_ABOUT_UNKNOWN_POLICY_KEYS: [&str; 5] = [
+    "validate-policy with a leftover section the policy no longer defines",
+    "validate-policy with a misspelled key",
+    "validate-policy with every project profile problem",
+    "refine-sources source is the policy path of a different layout",
+    "amend-policy unknown key in the policy is refused by validation",
+];
 
 struct Run {
     exit: String,
@@ -184,6 +193,61 @@ fn exit_text(status: ExitStatus) -> String {
         Some(code) => code.to_string(),
         None => "no exit code".to_string(),
     }
+}
+
+fn policy_files(case: &Value) -> Vec<(&str, &Value)> {
+    let args: Vec<&str> = field(case, "args")
+        .and_then(Value::as_array)
+        .map(|args| args.iter().filter_map(Value::as_str).collect())
+        .unwrap_or_default();
+    let named: Vec<&str> = args
+        .windows(2)
+        .filter(|pair| pair[0] == "--policy")
+        .filter_map(|pair| pair[1].strip_prefix("{fixture}/"))
+        .collect();
+    let Some(files) = field(case, "files").and_then(Value::as_object) else {
+        return Vec::new();
+    };
+    files
+        .iter()
+        .map(|(relative, content)| (relative.as_str(), content))
+        .filter(|(relative, _)| {
+            relative.rsplit('/').next() == Some(POLICY_FILE_NAME) || named.contains(relative)
+        })
+        .collect()
+}
+
+fn policies_with_unknown_keys(binary: &Path, cases: &[Value], scratch: &Path) -> Vec<String> {
+    let policy = scratch.join(POLICY_FILE_NAME);
+    let mut verdicts: BTreeMap<Vec<u8>, Option<String>> = BTreeMap::new();
+    let mut found = Vec::new();
+    for case in cases {
+        let name = text(case, "name");
+        if CASES_ABOUT_UNKNOWN_POLICY_KEYS.contains(&name) {
+            continue;
+        }
+        for (relative, content) in policy_files(case) {
+            let bytes = stored_bytes(content);
+            let verdict = verdicts.entry(bytes.clone()).or_insert_with(|| {
+                std::fs::write(&policy, &bytes).expect("policy file");
+                let ran = run(
+                    Command::new(binary)
+                        .arg("validate-policy")
+                        .arg("--policy")
+                        .arg(&policy),
+                    Vec::new(),
+                );
+                String::from_utf8_lossy(&[ran.stdout, ran.stderr].concat())
+                    .lines()
+                    .find(|line| line.contains(UNKNOWN_POLICY_KEY))
+                    .map(str::to_string)
+            });
+            if let Some(line) = verdict {
+                found.push(format!("{name}: {relative}: {line}"));
+            }
+        }
+    }
+    found
 }
 
 fn drained(mut pipe: impl Read + Send + 'static) -> std::thread::JoinHandle<Vec<u8>> {
@@ -872,6 +936,17 @@ fn main() {
         std::env::temp_dir().join(format!("domain-memory-expected-{}", std::process::id()));
     let snapshot = scratch_root.join("repo");
     std::fs::create_dir_all(&scratch_root).expect("scratch directory");
+    let unknown_keys = policies_with_unknown_keys(&binary, &chosen, &scratch_root);
+    if !unknown_keys.is_empty() {
+        let _ = std::fs::remove_dir_all(&scratch_root);
+        println!(
+            "Fixture policies hold keys the policy does not define, so these cases stop before what they test:"
+        );
+        for problem in &unknown_keys {
+            println!("  {problem}");
+        }
+        std::process::exit(1);
+    }
     git_in(
         &repo,
         &[

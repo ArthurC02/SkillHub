@@ -2,6 +2,14 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 6.0.1
+
+### Fixed
+
+- 299 recorded cases stopped before what they test, and the recording held that stop as the expected output. 263 wrote a policy that still carried `schema_conventions`, which 5.0.0 removed, so `probe` answered "invalid" and `readiness` reported an invalid Registry whatever each case changed; 36 shared a rule whose `contexts` was a string, so every `brief of one record` case refused that rule instead of briefing its own record. The fixtures now hold valid policies and a valid rule, and each case's output shows the state its name describes.
+- `probe discovery drifted with a requirements root` put its requirements file inside a selected source, so the source went stale before discovery could drift; the file now sits in `requirements/`. `probe empty source map object is unverified` is named for what it shows under a policy: `probe empty source map object under a policy is invalid`. `validate-change-package does not read the registry for a rejected proposal` showed the opposite, as it should, since only a settled package may name an id the Registry later retired: it is now `validate-change-package still checks a rejected proposal against the registry`.
+- The expected-output run checks every policy a case writes with `validate-policy` first, and stops, without blessing, when one holds a key the policy does not define.
+
 ## 6.0.0
 
 ### Removed
