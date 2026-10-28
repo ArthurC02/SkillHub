@@ -175,18 +175,18 @@ fn run_bounded(argv: &[&str], input: Option<&[u8]>) -> Result<Output, GitError> 
         .ok()
         .and_then(|span| Instant::now().checked_add(span));
     let status = loop {
-        let waited = child
-            .try_wait()
-            .map_err(|error| GitError::new(Failure::Invalid, error.to_string()))?;
-        if let Some(status) = waited {
-            break status;
-        }
         if deadline.is_some_and(|limit| Instant::now() >= limit) {
             kill_tree(&mut child);
             return Err(GitError::new(
                 Failure::Deadline,
                 deadline_message(argv, seconds),
             ));
+        }
+        let waited = child
+            .try_wait()
+            .map_err(|error| GitError::new(Failure::Invalid, error.to_string()))?;
+        if let Some(status) = waited {
+            break status;
         }
         thread::sleep(POLL);
     };
