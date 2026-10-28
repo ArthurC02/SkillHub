@@ -387,7 +387,7 @@ impl SourceKinds {
         Value::Object(out)
     }
 
-    fn kind_of(&self, cited: &str) -> Value {
+    pub fn kind_of(&self, cited: &str) -> Value {
         let unclassified = Value::Str(UNCLASSIFIED.to_string());
         let owners = containing_paths(cited);
         let owner = owners

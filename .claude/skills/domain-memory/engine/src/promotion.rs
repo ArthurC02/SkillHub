@@ -15,7 +15,7 @@ fn no_attribute_get(value: &Value) -> String {
     format!("'{}' object has no attribute 'get'", type_name(value))
 }
 
-fn unhashable(value: &Value) -> Result<(), String> {
+pub fn unhashable(value: &Value) -> Result<(), String> {
     match value {
         Value::Array(_) | Value::Object(_) => {
             Err(format!("unhashable type: '{}'", type_name(value)))
@@ -264,6 +264,29 @@ pub fn add_promoted_evidence(
     rewrite_promoted_records(package_root, asset, record_id, |record| {
         let merged = with_citations(record.get("evidence"), citations)?;
         record.insert("evidence", Value::Array(merged));
+        Ok(())
+    })
+}
+
+pub fn replace_promoted_fields(
+    package_root: &Path,
+    asset: &str,
+    record_id: &str,
+    fields: &Object,
+) -> Result<(), String> {
+    rewrite_promoted_records(package_root, asset, record_id, |record| {
+        let mut replaced = Object::new();
+        for (key, value) in record.iter() {
+            if fields.get(key).is_none() {
+                replaced.insert(key.clone(), value.clone());
+            }
+        }
+        for (key, value) in fields.iter() {
+            if !matches!(value, Value::Null) {
+                replaced.insert(key.clone(), value.clone());
+            }
+        }
+        *record = replaced;
         Ok(())
     })
 }

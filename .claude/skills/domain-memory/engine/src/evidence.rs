@@ -2,13 +2,14 @@ use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-use crate::coverage::{SourceKinds, all_references};
+use crate::coverage::{SourceKinds, all_references, with_references};
 use crate::files::{PROPOSAL_FILE, load_json};
 use crate::git;
 use crate::json::{Object, Value};
-use crate::okf::truthy;
+use crate::okf::{review_field, truthy};
 use crate::py;
 use crate::pyvalue::{equal, repr_of};
+use crate::registry_write::without;
 use crate::sha256::hex_digest;
 use crate::store::{ASSETS, Registry};
 
@@ -18,7 +19,7 @@ pub const STATUSES: [&str; 6] = [
 ];
 pub const FAILING: [&str; 4] = ["stale", "unhashed", "missing", "invalid"];
 const POSIX_NUL_IN_PATH: &str = "lstat: embedded null character in path";
-const WIDEN_TO_UNIQUE: &str =
+pub const WIDEN_TO_UNIQUE: &str =
     "Widen the citation to the enclosing block, so its lines occur once in the file.";
 
 pub type Overlay = Vec<(String, Vec<(String, Option<Object>)>)>;
@@ -689,6 +690,34 @@ pub fn rows(content: &[u8]) -> Vec<String> {
         .split_inclusive('\n')
         .map(str::to_string)
         .collect()
+}
+
+pub fn fields_beyond_evidence(
+    asset: &str,
+    before: &Object,
+    after: &Object,
+) -> Result<Vec<String>, String> {
+    let settled = ["verified", review_field(asset)];
+    let stripped = |record: &Object| -> Result<Object, String> {
+        let kept = Value::Object(without(record, &settled));
+        match with_references(&kept, &mut |_| Ok(Value::Null), 0)? {
+            Value::Object(object) => Ok(object),
+            _ => Ok(Object::new()),
+        }
+    };
+    let (before, after) = (stripped(before)?, stripped(after)?);
+    let mut keys: Vec<String> = Vec::new();
+    for (key, _) in before.iter().chain(after.iter()) {
+        if !keys.contains(key) {
+            keys.push(key.clone());
+        }
+    }
+    keys.retain(|key| match (before.get(key), after.get(key)) {
+        (Some(one), Some(other)) => !equal(one, other),
+        _ => true,
+    });
+    keys.sort();
+    Ok(keys)
 }
 
 #[cfg(test)]

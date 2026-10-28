@@ -3,6 +3,7 @@ use std::fs;
 use std::path::{MAIN_SEPARATOR, Path, PathBuf};
 
 use crate::audit_append::{append, utc_now};
+use crate::coverage::SourceKinds;
 use crate::files::{load_json, one_level_too_deep_hint, write_json, write_source_file};
 use crate::fnmatch::fnmatchcase;
 use crate::git::{self, Failure};
@@ -1174,6 +1175,22 @@ pub fn refresh_listing_advice(registry_root: &py::PurePath, repo_root: &py::Pure
         shown_argument(registry_root),
         shown_argument(repo_root)
     )
+}
+
+pub fn discovery_placements(
+    repo_root: &Path,
+    paths: &[String],
+    policy: Option<&Object>,
+) -> Result<Vec<(String, String)>, String> {
+    let discovered = discover_sources(repo_root, &Profile::of_policy(policy), None)?;
+    let kinds = SourceKinds::of(&discovered);
+    Ok(paths
+        .iter()
+        .filter_map(|path| match kinds.kind_of(path) {
+            Value::Str(kind) if kind != "unclassified" => Some((path.clone(), kind)),
+            _ => None,
+        })
+        .collect())
 }
 
 fn length_of(result: &Object, key: &str) -> usize {

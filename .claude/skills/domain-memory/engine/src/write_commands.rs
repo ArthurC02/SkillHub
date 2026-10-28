@@ -11,7 +11,7 @@ use crate::transaction::{recover_interrupted_update, transaction_path};
 use crate::updates::{demote_local_reviews, retract_candidate, upsert_candidate};
 use crate::{emit_stderr, emit_stdout};
 
-fn resolved(invocation: &Invocation, dest: &str) -> PathBuf {
+pub fn resolved(invocation: &Invocation, dest: &str) -> PathBuf {
     py::resolve(invocation.text(dest).unwrap_or("."))
 }
 

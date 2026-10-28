@@ -1,11 +1,11 @@
 ---
 name: domain-memory-cli
-description: Run Domain Memory commands through the compiled Rust executable instead of the Python script. Use when a script, a host or a loop calls the read commands many times, or when no Python interpreter is available; it says which committed executable to run or how to build one, what it reads and prints, its exit codes, and when to fall back to the Python script.
+description: Run Domain Memory commands through the compiled Rust executable instead of the Python script. Use when a script, a host or a loop calls the commands many times, or when no Python interpreter is available; it says which committed executable to run or how to build one, what it reads, writes and prints, and its exit codes.
 ---
 
 # Domain Memory CLI
 
-The Rust executable is the same command line as `scripts/registry_tools.py`: the same commands, flags, output and refusals, byte for byte, for every command it has taken over. It runs without a Python interpreter and answers faster than the script. Its source is [`engine/`](../../engine/README.md) in this plugin.
+The Rust executable is the same command line as `scripts/registry_tools.py`: every command, flag, output, written file and refusal, byte for byte. It runs without a Python interpreter and answers faster than the script. Its source is [`engine/`](../../engine/README.md) in this plugin.
 
 ## Get the executable
 
@@ -35,7 +35,7 @@ Pass the arguments you would pass to the Python script, with the command first:
 engine/bin/linux-x86_64/domain-memory get-context --registry-root <root> --id <context>
 ```
 
-- **Input**: arguments only. No command reads standard input, and none writes a file.
+- **Input**: arguments. Two read standard input: `verify-git-governance --stdin` takes commits, one per line, and `mcp-serve` takes one JSON-RPC message per line and answers one reply per line on standard output. Commands that change the Registry, a policy or a Change Package write the same files the script writes.
 - **Standard output**: the answer. JSON commands print one JSON document; `validate-policy` prints one line of text.
 - **Standard error**: `ERROR: <reason>` when the command refuses, and `NOTE: <hint>` lines beside a successful answer, such as a result list that was cut short or a missing Change Package directory.
 - **Exit code**: `0` answered; `1` refused, with the reason on standard error; `2` the arguments did not parse, with the command's usage on standard error. The usage names the program `registry_tools.py`, as the Python script does.
@@ -43,6 +43,4 @@ engine/bin/linux-x86_64/domain-memory get-context --registry-root <root> --id <c
 
 ## Commands it answers
 
-`list-proposals`, `export`, `get-record`, `get-context`, `validate-policy`, `lookup`, `resolve-terms`, `coverage`, `analyze-boundary`, `dependents`, `verify-evidence`, `cite`, `scan-secrets`, `discover-sources`, `verify-sources`, `verify-audit`, `audit-attestations`, `verify-scm-attestation`, `verify-git-governance`, `governance-readiness`, `validate`, `refresh-indexes`, `change-coupling`, `compare-registry`, `probe`, `readiness`, `upsert-candidate`, `retract-candidate`, `promote-candidate`, `demote-local-reviews`, `recover-registry-update`, `quality-gates`, `boundary-impact`, `counterfactual`, `brief`, `init-domain-memory`, `confirm-sources`, `refresh-sources`, `refresh-listing`, `refine-sources`, `amend-policy`, `validate-contract`, `reconcile-audit`, `init-signing-key`, `install-git-hitl-hook`, `install-pre-commit-hook`, `init-change-package`, `validate-change-package`, `redraft-proposal`, `rebase-proposal`, `ship-package` and `mcp-serve`.
-
-Every other command parses its arguments, then exits `1` with `ERROR: <command> is not available in the Rust engine yet`. Run the same arguments with `python3 scripts/registry_tools.py`; never treat that refusal as an answer about the Registry. Each command and its guarantees are in [the file-backed API](../../references/script-api.md).
+All the commands of `scripts/registry_tools.py`; `--help` without a command lists them. Each command and its guarantees are in [the file-backed API](../../references/script-api.md).

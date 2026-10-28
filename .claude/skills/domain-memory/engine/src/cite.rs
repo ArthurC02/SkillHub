@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use crate::coverage::SourceKinds;
 use crate::digits::decimal_value;
-use crate::evidence::{MAX_EVIDENCE_BYTES, rows};
+use crate::evidence::{MAX_EVIDENCE_BYTES, WIDEN_TO_UNIQUE, rows};
 use crate::files::load_json;
 use crate::json::{Object, Value};
 use crate::listing::{default_excluded, listing_of};
@@ -51,8 +51,6 @@ const REGEX_AFTER_WORDS: &[&str] = &[
 pub const OUTSIDE_SOURCES_CONSEQUENCE: &str = "A candidate may rest on it, but ship-package refuses to review a record whose evidence rests \
      outside the confirmed sources; cite a source the corpus covers, or have the developer confirm this path \
      before the record is reviewed.";
-const WIDEN_TO_UNIQUE: &str =
-    "Widen the citation to the enclosing block, so its lines occur once in the file.";
 
 #[derive(Clone, Copy, PartialEq)]
 enum Kind {
@@ -122,21 +120,7 @@ pub fn cite(
             notes.push(format!("{path_text}:{end}: {}", row(end)));
         }
     }
-    let excerpt = reference
-        .get("excerpt_sha256")
-        .and_then(Value::as_str)
-        .unwrap_or_default();
-    let others: Vec<String> = excerpt_starts(&root, &path_text, end - start + 1, excerpt)
-        .into_iter()
-        .filter(|line| *line != start)
-        .map(|line| line.to_string())
-        .collect();
-    if !others.is_empty() {
-        notes.push(format!(
-            "NOTE: the text of {path_text}:{start}-{end} also starts at line {}, so a later edit cannot tell the copies apart. {WIDEN_TO_UNIQUE}",
-            others.join(", ")
-        ));
-    }
+    notes.extend(repeated_note(&root, &reference));
     if reference.get("source_kind").and_then(Value::as_str) == Some("unclassified") {
         notes.push(format!(
             "NOTE: {path_text} is outside the confirmed sources. {OUTSIDE_SOURCES_CONSEQUENCE}"
@@ -145,11 +129,40 @@ pub fn cite(
     Ok(Cited { reference, notes })
 }
 
+pub fn repeated_note(root: &Path, cited: &Object) -> Option<String> {
+    let text = |key: &str| {
+        cited
+            .get(key)
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string()
+    };
+    let (path_text, excerpt) = (text("path"), text("excerpt_sha256"));
+    let lines = cited.get("lines").and_then(Value::as_object)?;
+    let bound = |key: &str| match lines.get(key) {
+        Some(Value::Int(digits)) => to_count(digits),
+        _ => 0,
+    };
+    let (start, end) = (bound("start"), bound("end"));
+    let others: Vec<String> = excerpt_starts(root, &path_text, end - start + 1, &excerpt)
+        .into_iter()
+        .filter(|line| *line != start)
+        .map(|line| line.to_string())
+        .collect();
+    if others.is_empty() {
+        return None;
+    }
+    Some(format!(
+        "NOTE: the text of {path_text}:{start}-{end} also starts at line {}, so a later edit cannot tell the copies apart. {WIDEN_TO_UNIQUE}",
+        others.join(", ")
+    ))
+}
+
 fn to_count(digits: &str) -> usize {
     digits.parse().unwrap_or(usize::MAX)
 }
 
-fn whole_number(text: &str) -> Option<String> {
+pub fn whole_number(text: &str) -> Option<String> {
     if text.is_empty() {
         return None;
     }
@@ -232,7 +245,7 @@ pub fn citation(root: &Path, relative: &str, start: &str, end: &str) -> Result<O
     Ok(reference)
 }
 
-fn excerpt_starts(root: &Path, relative: &str, length: usize, excerpt: &str) -> Vec<usize> {
+pub fn excerpt_starts(root: &Path, relative: &str, length: usize, excerpt: &str) -> Vec<usize> {
     let path = py::resolve_path(&root.join(relative));
     if !path.starts_with(root)
         || !path.is_file()

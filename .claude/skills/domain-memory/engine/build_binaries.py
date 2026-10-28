@@ -75,6 +75,7 @@ def problems() -> list[str]:
 
 
 def build() -> None:
+    source = source_sha256()
     for name, (target, built, command, environment) in PLATFORMS.items():
         subprocess.run([*command, "--release", "--locked", "--target", target], cwd=ENGINE,
                        env={**os.environ, **environment}, check=True)
@@ -82,6 +83,8 @@ def build() -> None:
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(ENGINE / "target" / target / "release" / built, destination)
         destination.chmod(0o755)
+    if source_sha256() != source:
+        raise SystemExit("ERROR: the engine source changed while the binaries were building; run build_binaries.py again")
     MANIFEST.write_text(json.dumps(expected_manifest(), indent=2) + "\n", encoding="utf-8", newline="\n")
 
 

@@ -18,17 +18,23 @@ mod dependents;
 mod difflib;
 mod digits;
 mod evidence;
+mod evidence_commands;
 mod files;
 mod fnmatch;
 mod gates;
 mod git;
 mod git_governance;
 mod governance_commands;
+mod harvest;
+mod harvest_package;
+mod harvest_run;
 mod hitl;
+mod hitl_commands;
 mod impact;
 mod indexes;
 mod json;
 mod lifecycle;
+mod lifecycle_commands;
 mod listing;
 mod mcp;
 mod okf;
@@ -45,6 +51,7 @@ mod recitation_package;
 mod reconciliation;
 mod records;
 mod registry_write;
+mod relocate;
 mod review_commands;
 mod revision;
 mod search;
@@ -273,6 +280,16 @@ fn execute(invocation: &Invocation) -> Result<i32, String> {
         "boundary-impact" => review_commands::boundary_impact(invocation),
         "brief" => review_commands::brief(invocation),
         "counterfactual" => review_commands::counterfactual(invocation),
+        "submit-proposal" => hitl_commands::submit(invocation),
+        "record-approval" => hitl_commands::approve(invocation),
+        "supersede-proposal" => hitl_commands::supersede(invocation),
+        "verify-proposal" => hitl_commands::verify(invocation),
+        "record-test-result" => hitl_commands::record_result(invocation),
+        "harvest-candidates" => lifecycle_commands::harvest_candidates_command(invocation),
+        "harvest" => lifecycle_commands::harvest_command(invocation),
+        "discard-harvest" => lifecycle_commands::discard_harvest_command(invocation),
+        "recite" => evidence_commands::recite_command(invocation),
+        "relocate-evidence" => evidence_commands::relocate_evidence_command(invocation),
         "init-domain-memory" => source_commands::init_domain_memory(invocation),
         "confirm-sources" => source_commands::confirm_sources(invocation),
         "refresh-sources" => source_commands::refresh_sources(invocation),

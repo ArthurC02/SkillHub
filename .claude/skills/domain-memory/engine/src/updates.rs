@@ -2,7 +2,8 @@ use std::path::{Path, PathBuf};
 
 use crate::audit_log::{APPLY_OPERATION, read_events};
 use crate::candidate_evidence::{
-    classify_all, hash_all, one_cites_within_the_other, source_map_for, unclassified_paths,
+    cited_excerpts, classify_all, hash_all, one_cites_within_the_other, source_map_for,
+    unclassified_paths,
 };
 use crate::changes::{ParsedUpdate, parsed_update, validate_change_package};
 use crate::common::iso_timestamp;
@@ -28,7 +29,15 @@ pub struct Upserted {
     pub outside: Vec<String>,
     pub created: usize,
     pub same_evidence: Vec<String>,
+    pub skipped_reviewed: Vec<String>,
+    pub skipped_duplicate: Vec<(String, String)>,
     pub status_dropped: Vec<String>,
+}
+
+pub struct Staging<'a> {
+    pub kinds: &'a SourceKinds,
+    pub skip_reviewed: bool,
+    pub skip_duplicates: bool,
 }
 
 fn id_of(record: &Object) -> String {
@@ -94,18 +103,54 @@ fn as_object(value: Value) -> Object {
     }
 }
 
-fn stage_candidates(
+fn reviewed_copy(
+    asset: &str,
+    records: &[Object],
+    record: &Object,
+) -> Result<Option<String>, String> {
+    let excerpts = cited_excerpts(record)?;
+    if excerpts.is_empty() {
+        return Ok(None);
+    }
+    for other in records {
+        if !is_reviewed(asset, other) {
+            continue;
+        }
+        let held = cited_excerpts(other)?;
+        let same = held.len() == excerpts.len() && held.iter().all(|pair| excerpts.contains(pair));
+        if same {
+            let named = other.get("id").map_or_else(|| "None".to_string(), str_of);
+            return Ok(Some(format!("{asset}/{named}")));
+        }
+    }
+    Ok(None)
+}
+
+pub fn stage_candidates(
     asset: &str,
     records: &mut Vec<Object>,
     batch: &[Object],
-    kinds: &SourceKinds,
+    staging: &Staging,
     result: &mut Upserted,
 ) -> Result<(), String> {
+    let kinds = staging.kinds;
     for record in batch {
         let id = id_of(record);
         let existing = position_of(records, &id);
         if existing.is_some_and(|at| is_reviewed(asset, &records[at])) {
-            return Err(format!("cannot overwrite reviewed record: {id}"));
+            if !staging.skip_reviewed {
+                return Err(format!("cannot overwrite reviewed record: {id}"));
+            }
+            result.skipped_reviewed.push(format!("{asset}/{id}"));
+            continue;
+        }
+        if staging.skip_duplicates
+            && let Some(duplicates) = reviewed_copy(asset, records, record)?
+        {
+            result
+                .skipped_duplicate
+                .push((format!("{asset}/{id}"), duplicates));
+            continue;
         }
         result.created += usize::from(existing.is_none());
         for other in records.iter() {
@@ -172,7 +217,12 @@ pub fn upsert_candidate(
         repo_root,
         |staging| {
             let mut records = read_records(staging, asset)?;
-            stage_candidates(asset, &mut records, &batch, &kinds, &mut result)?;
+            let policy = Staging {
+                kinds: &kinds,
+                skip_reviewed: false,
+                skip_duplicates: false,
+            };
+            stage_candidates(asset, &mut records, &batch, &policy, &mut result)?;
             write_records(staging, asset, &records)
         },
         || event,

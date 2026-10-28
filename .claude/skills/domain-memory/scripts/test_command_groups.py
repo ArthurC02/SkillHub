@@ -91,12 +91,6 @@ def engine_commands() -> list[str]:
     return sorted(re.findall(r'^ {8}"([a-z][a-z-]*)" =>', dispatch, re.MULTILINE))
 
 
-def commands_the_cli_skill_lists() -> list[str]:
-    page = (PLUGIN / "skills" / "domain-memory-cli" / "SKILL.md").read_text(encoding="utf-8")
-    section = page.split("## Commands it answers", 1)[1].split("\n\n", 2)[1]
-    return sorted(re.findall(r"`([a-z][a-z-]*)`", section))
-
-
 def documented_groups() -> dict[str, set[str]]:
     groups: dict[str, set[str]] = {}
     heading = None
@@ -212,9 +206,8 @@ class PagesTest(unittest.TestCase):
                 refused[snippet] = refusals[0]
         self.assertEqual({}, refused)
 
-    def test_the_cli_skill_lists_exactly_the_commands_the_engine_answers(self) -> None:
-        answered = engine_commands()
-        self.assertEqual((answered, []), (commands_the_cli_skill_lists(), sorted(set(answered) - set(parsed_commands()))))
+    def test_the_engine_answers_every_command_the_parser_takes(self) -> None:
+        self.assertEqual(sorted(parsed_commands()), engine_commands())
 
     def test_the_code_rules_live_on_the_entry_page_alone_and_the_hygiene_page_points_there(self) -> None:
         hygiene = (PLUGIN / "skills/domain-memory-implementation-hygiene/SKILL.md").read_text(encoding="utf-8")

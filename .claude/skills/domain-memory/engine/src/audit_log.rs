@@ -9,6 +9,7 @@ use crate::okf::truthy;
 use crate::proposals::readable_packages;
 use crate::py;
 use crate::pyvalue::{equal, splitlines, str_of};
+use crate::records::reviewed_by;
 use crate::sha256::hex_digest;
 use crate::store::{has_registry, missing_registry, posix};
 use crate::transaction::with_writer_lock;
@@ -555,4 +556,23 @@ pub fn reconcile(root: &Path) -> Result<Object, String> {
         return Err(missing_registry(root)?);
     }
     with_writer_lock(root, || reconcile_locked(root))
+}
+
+pub struct ReviewingProposals {
+    events: Vec<Object>,
+}
+
+impl ReviewingProposals {
+    pub fn of(root: &Path) -> Result<Self, String> {
+        Ok(Self {
+            events: read_events(root)?,
+        })
+    }
+
+    pub fn proposal(&self, record: &str) -> Option<Value> {
+        self.events
+            .iter()
+            .flat_map(|event| reviewed_by(event, record))
+            .last()
+    }
 }

@@ -1,12 +1,11 @@
 use std::collections::BTreeSet;
 use std::path::Path;
 
-use crate::changes::{
-    ParsedUpdate, changed_fields_beyond_evidence, init_change_package, parsed_update,
-};
+use crate::changes::{ParsedUpdate, init_change_package, parsed_update};
 use crate::common::{OBLIGATIONS_FILE, REQUIREMENT_FILE};
 use crate::compare::contexts_named_by;
 use crate::coverage::all_references;
+use crate::evidence::fields_beyond_evidence;
 use crate::files::{PROPOSAL_FILE, load_json, write_json};
 use crate::git::toplevel;
 use crate::json::{Object, Value};
@@ -96,7 +95,7 @@ fn evidence_only_updates(
             .filter_map(|entry| entry.as_object().cloned())
             .find(|entry| entry.get("id").and_then(Value::as_str) == Some(record_id.as_str()))
             .unwrap_or_default();
-        let fields = changed_fields_beyond_evidence(&asset, &current, &record)?;
+        let fields = fields_beyond_evidence(&asset, &current, &record)?;
         if !fields.is_empty() {
             let added = reference_count(&record)? - reference_count(&current)?;
             return Err(format!(

@@ -4,7 +4,6 @@ import argparse
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -51,7 +50,7 @@ def committed(root: Path) -> None:
 
     def git(*args: str) -> None:
         done = subprocess.run(
-            ["git", "-C", str(root), "-c", "core.autocrlf=false", *args], capture_output=True, env=dated, check=False
+            ["git", "-C", str(root), "-c", "core.autocrlf=false", "-c", "maintenance.auto=false", *args], capture_output=True, env=dated, check=False
         )
         if done.returncode != 0:
             raise RuntimeError(f"fixture git {' '.join(args)} failed in {root}: {(done.stdout + done.stderr).decode('utf-8', 'replace')}")
@@ -121,7 +120,7 @@ def ran(case: dict, fixture: Path, argv: list[str]) -> dict:
 
 
 def compared(case: dict, binary: Path) -> list[str]:
-    with tempfile.TemporaryDirectory() as scratch:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as scratch:
         fixture = Path(scratch) / "f"
         fixture.mkdir()
         prepared(case, fixture)
@@ -129,7 +128,7 @@ def compared(case: dict, binary: Path) -> list[str]:
         problems: list[str] = []
         if case.get("writes"):
             python_tree = tree_of(fixture)
-            shutil.rmtree(fixture, onexc=lambda function, path, _: (os.chmod(path, 0o700), function(path)))
+            fixture.rename(Path(scratch) / "python")
             fixture.mkdir()
             prepared(case, fixture)
         rust = ran(case, fixture, [str(binary)])

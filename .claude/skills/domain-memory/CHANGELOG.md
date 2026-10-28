@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 5.0.13
+
+### Added
+
+- The Rust executable answers `submit-proposal`, `record-approval`, `supersede-proposal`, `verify-proposal`, `record-test-result`, `recite`, `relocate-evidence`, `harvest-candidates`, `harvest` and `discard-harvest`, with the same output, exit codes and written files as the script. It now answers every command of the script.
+
 ## 5.0.12
 
 ### Added

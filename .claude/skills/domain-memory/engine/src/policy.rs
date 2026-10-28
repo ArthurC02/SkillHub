@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
 use crate::audit_append::append;
@@ -82,18 +83,29 @@ pub fn review_governance(root: &Path) -> Result<Object, String> {
         .unwrap_or_default())
 }
 
-pub fn approved_command_profiles(root: Option<&Path>) -> Result<Vec<String>, String> {
+pub fn approved_command_profiles(root: Option<&Path>) -> Result<BTreeSet<String>, String> {
     let Some(policy) = root.map(valid_policy_if_any).transpose()?.flatten() else {
-        return Ok(Vec::new());
+        return Ok(BTreeSet::new());
     };
-    Ok(policy
-        .get("approved_command_profiles")
-        .and_then(Value::as_array)
-        .unwrap_or_default()
-        .iter()
-        .filter_map(Value::as_str)
+    let named: Vec<String> = match policy.get("approved_command_profiles") {
+        None => Vec::new(),
+        Some(Value::Array(profiles)) => profiles
+            .iter()
+            .filter_map(Value::as_str)
+            .map(str::to_string)
+            .collect(),
+        Some(Value::Object(profiles)) => profiles.iter().map(|(key, _)| key.clone()).collect(),
+        Some(Value::Str(text)) => text.chars().map(String::from).collect(),
+        Some(other) => {
+            return Err(format!(
+                "'{}' object is not iterable",
+                crate::audit_log::type_name(other)
+            ));
+        }
+    };
+    Ok(named
+        .into_iter()
         .filter(|profile| !py::strip(profile).is_empty())
-        .map(str::to_string)
         .collect())
 }
 

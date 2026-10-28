@@ -9,17 +9,18 @@ use crate::common::{
     OBLIGATION_SOURCE_TYPES, OBLIGATION_STATUSES, OBLIGATIONS_FILE, PROPOSAL_STATUSES,
     REQUIREMENT_FILE, RISK_FLAGS, invalid_choice, is_one_of, iso_timestamp, positive_whole_number,
 };
-use crate::coverage::{SourceKinds, all_references, with_references};
+use crate::coverage::{SourceKinds, all_references};
 use crate::crossrefs::cross_reference_errors;
-use crate::evidence::{self, Verifier};
+use crate::evidence::{self, Verifier, fields_beyond_evidence};
 use crate::files::{PROPOSAL_FILE, load_json, write_json};
 use crate::json::{Object, Value};
-use crate::okf::{review_field, truthy};
+use crate::okf::truthy;
 use crate::policy::approved_command_profiles;
 use crate::proposals::{completed_identifier, completed_identifiers, superseded_ids};
 use crate::py;
 use crate::pyregex;
 use crate::pyvalue::{equal, repr_of, str_of};
+use crate::registry_write::without;
 use crate::revision::{DIGEST_HEX_LENGTH, DIGEST_PREFIX, valid_digest, valid_registry_revision};
 use crate::store::{ASSETS, Registry};
 
@@ -411,7 +412,7 @@ fn reset_review_state(output: &Path, replaced: &Value) -> Result<(), String> {
         for field in fields {
             document.insert(*field, get(&template, field).clone());
         }
-        let mut document = without_keys(&document, &STATE_AFTER_SUBMISSION);
+        let mut document = without(&document, &STATE_AFTER_SUBMISSION);
         if name == PROPOSAL_FILE {
             let mut named: BTreeSet<String> = superseded_ids(&document).unwrap_or_default();
             if let Value::Str(text) = replaced {
@@ -427,16 +428,6 @@ fn reset_review_state(output: &Path, replaced: &Value) -> Result<(), String> {
         write_json(&output.join(name), &Value::Object(document))?;
     }
     Ok(())
-}
-
-fn without_keys(document: &Object, dropped: &[&str]) -> Object {
-    let mut kept = Object::new();
-    for (key, value) in document.iter() {
-        if !dropped.contains(&key.as_str()) {
-            kept.insert(key.clone(), value.clone());
-        }
-    }
-    kept
 }
 
 pub fn redraft_change_package(
@@ -1237,42 +1228,6 @@ fn decision_evidence_errors(proposal: &Object, repo_root: &Path) -> Vec<String> 
         }
     }
     errors
-}
-
-fn fields_beyond_evidence(
-    asset: &str,
-    before: &Object,
-    after: &Object,
-) -> Result<Vec<String>, String> {
-    let stripped = |record: &Object| -> Result<Object, String> {
-        let kept = without_keys(record, &["verified", review_field(asset)]);
-        let Value::Object(blanked) =
-            with_references(&Value::Object(kept), &mut |_| Ok(Value::Null), 0)?
-        else {
-            return Ok(Object::new());
-        };
-        Ok(blanked)
-    };
-    let (before, after) = (stripped(before)?, stripped(after)?);
-    let mut keys: BTreeSet<&str> = BTreeSet::new();
-    keys.extend(before.iter().map(|(key, _)| key.as_str()));
-    keys.extend(after.iter().map(|(key, _)| key.as_str()));
-    Ok(keys
-        .into_iter()
-        .filter(|key| match (before.get(key), after.get(key)) {
-            (Some(one), Some(other)) => !equal(one, other),
-            _ => true,
-        })
-        .map(str::to_string)
-        .collect())
-}
-
-pub fn changed_fields_beyond_evidence(
-    asset: &str,
-    before: &Object,
-    after: &Object,
-) -> Result<Vec<String>, String> {
-    fields_beyond_evidence(asset, before, after)
 }
 
 fn unverified_update_errors(current: &Staged, proposal: &Object) -> Result<Vec<String>, String> {

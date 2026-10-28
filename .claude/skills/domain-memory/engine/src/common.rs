@@ -1,6 +1,6 @@
-use crate::json::Value;
+use crate::json::{Object, Value};
 use crate::proposals::completed_identifier;
-use crate::pyvalue::repr_of;
+use crate::pyvalue::{equal, repr_of};
 
 pub const REQUIREMENT_FILE: &str = "requirement-normalization.json";
 pub const OBLIGATIONS_FILE: &str = "test-obligations.json";
@@ -46,6 +46,15 @@ pub fn invalid_choice(label: &str, field: &str, value: &Value, allowed: &[&str])
         repr_of(value),
         allowed.join(", ")
     )
+}
+
+pub fn find_record<'a>(records: &'a [Value], record_id: &Value) -> Option<&'a Object> {
+    records.iter().find_map(|entry| match entry {
+        Value::Object(object) if equal(object.get("id").unwrap_or(&Value::Null), record_id) => {
+            Some(object)
+        }
+        _ => None,
+    })
 }
 
 pub fn is_one_of(value: Option<&Value>, allowed: &[&str]) -> bool {

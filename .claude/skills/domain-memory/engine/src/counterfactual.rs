@@ -25,7 +25,7 @@ const SIDECAR_SUFFIX: &str = ".counterfactual-original";
 const DEFAULT_TIMEOUT_SECONDS: i64 = 600;
 const MTIME_STEP_SECONDS: u64 = 2;
 const RESTORE_DELAYS_MILLIS: [u64; 6] = [100, 250, 500, 1000, 2000, 4000];
-const OBLIGATION_PLACEHOLDER: &str = "<obligation-id>";
+pub const OBLIGATION_PLACEHOLDER: &str = "<obligation-id>";
 const LISTED_LINES: usize = 10;
 const PROPOSAL_FILE: &str = "domain-change-proposal.json";
 const OBLIGATIONS_FILE: &str = "test-obligations.json";
@@ -97,7 +97,7 @@ fn native(given: &str) -> String {
     PurePath::new(given).native()
 }
 
-fn decoded(output: Vec<u8>) -> String {
+pub fn decoded(output: Vec<u8>) -> String {
     match String::from_utf8(output) {
         Ok(text) => text,
         Err(error) => String::from_utf8_lossy(error.as_bytes()).into_owned(),
@@ -110,7 +110,7 @@ fn inside(root: &Path, path: &str) -> Option<PathBuf> {
     py::relative_to(&located, &top).ok().map(|_| located)
 }
 
-fn working_directory(root: &Path, cwd: Option<&str>) -> Outcome<PathBuf> {
+pub fn working_directory(root: &Path, cwd: Option<&str>) -> Outcome<PathBuf> {
     let Some(cwd) = cwd else {
         return Ok(root.to_path_buf());
     };
@@ -309,15 +309,28 @@ fn drained(pipe: Option<impl Read + Send + 'static>) -> thread::JoinHandle<Vec<u
     })
 }
 
-fn run_tests(directory: &Path, command: &str, timeout: i64) -> Outcome<TestRun> {
-    let argv = shlex::split(command)?;
+pub enum Ran {
+    Finished {
+        code: i64,
+        stdout: Vec<u8>,
+        stderr: Vec<u8>,
+    },
+    TimedOut,
+}
+
+pub enum RunFault {
+    Start(String),
+    Other(String),
+}
+
+pub fn run_captured(directory: &Path, argv: &[String], timeout: i64) -> Result<Ran, RunFault> {
     let Some(program) = argv.first() else {
         let error = if cfg!(windows) {
             "[WinError 87] The parameter is incorrect"
         } else {
             "list index out of range"
         };
-        return Err(start_failure(command, error).into());
+        return Err(RunFault::Start(error.to_string()));
     };
     let mut child = Command::new(program)
         .args(&argv[1..])
@@ -326,34 +339,58 @@ fn run_tests(directory: &Path, command: &str, timeout: i64) -> Outcome<TestRun> 
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .map_err(|error| start_failure(command, &spawn_failure(&error, program)))?;
+        .map_err(|error| RunFault::Start(spawn_failure(&error, program)))?;
     let stdout = drained(child.stdout.take());
     let stderr = drained(child.stderr.take());
     let seconds = u64::try_from(timeout).unwrap_or(0);
+    if timeout <= 0 {
+        let _ = child.kill();
+        let _ = child.wait();
+        return Ok(Ran::TimedOut);
+    }
     let deadline = Instant::now().checked_add(Duration::from_secs(seconds));
     let status = loop {
         if let Some(status) = child
             .try_wait()
-            .map_err(|error| py::os_error(&error, directory))?
+            .map_err(|error| RunFault::Other(py::os_error(&error, directory)))?
         {
             break status;
         }
         if deadline.is_some_and(|limit| Instant::now() >= limit) {
             let _ = child.kill();
             let _ = child.wait();
-            return Ok(TestRun {
-                exit_code: None,
-                output: format!("no result within {timeout} seconds"),
-            });
+            return Ok(Ran::TimedOut);
         }
         thread::sleep(POLL);
     };
-    let mut bytes = stdout.join().unwrap_or_default();
-    bytes.extend(stderr.join().unwrap_or_default());
-    Ok(TestRun {
-        exit_code: Some(i64::from(status.code().unwrap_or(-1))),
-        output: decoded(bytes),
+    Ok(Ran::Finished {
+        code: i64::from(status.code().unwrap_or(-1)),
+        stdout: stdout.join().unwrap_or_default(),
+        stderr: stderr.join().unwrap_or_default(),
     })
+}
+
+fn run_tests(directory: &Path, command: &str, timeout: i64) -> Outcome<TestRun> {
+    let argv = shlex::split(command)?;
+    match run_captured(directory, &argv, timeout) {
+        Err(RunFault::Start(error)) => Err(start_failure(command, &error).into()),
+        Err(RunFault::Other(error)) => Err(error.into()),
+        Ok(Ran::TimedOut) => Ok(TestRun {
+            exit_code: None,
+            output: format!("no result within {timeout} seconds"),
+        }),
+        Ok(Ran::Finished {
+            code,
+            mut stdout,
+            stderr,
+        }) => {
+            stdout.extend(stderr);
+            Ok(TestRun {
+                exit_code: Some(code),
+                output: decoded(stdout),
+            })
+        }
+    }
 }
 
 fn run_broken(
