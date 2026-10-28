@@ -143,7 +143,7 @@ func formatProblems(root, rangeSpec string) (problems, warnings []string, err er
 		if !ok || unavailable[f.name] {
 			continue
 		}
-		blob, err := gitOutput(root, "show", end+":"+file)
+		blob, err := gitOutput(root, "cat-file", "blob", end+":"+file)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -174,7 +174,7 @@ func committedCommentProblems(root, rangeSpec string) ([]string, error) {
 		if !ok || !commentBudgetCovers(file) {
 			continue
 		}
-		blob, err := gitOutput(root, "show", end+":"+file)
+		blob, err := gitOutput(root, "cat-file", "blob", end+":"+file)
 		if err != nil {
 			return nil, err
 		}

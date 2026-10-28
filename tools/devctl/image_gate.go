@@ -174,7 +174,7 @@ func (inputs imageInputs) include(file string) bool {
 }
 
 func imageBumpProblems(root, commit string) ([]string, error) {
-	dockerfile, err := gitOutput(root, "show", commit+":"+runtimeDockerfile)
+	dockerfile, err := gitOutput(root, "cat-file", "blob", commit+":"+runtimeDockerfile)
 	if err != nil {
 		return nil, err
 	}
@@ -214,7 +214,7 @@ func commitThatDeclared(root, commit, version string) (string, error) {
 	}
 	introduced := ""
 	for _, commit := range lines(history) {
-		dockerfile, err := gitOutput(root, "show", commit+":"+runtimeDockerfile)
+		dockerfile, err := gitOutput(root, "cat-file", "blob", commit+":"+runtimeDockerfile)
 		if err != nil {
 			return "", err
 		}

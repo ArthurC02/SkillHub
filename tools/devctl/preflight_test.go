@@ -245,6 +245,30 @@ func TestPreflightChecksTheCommentBudgetOfTheCommittedBytes(t *testing.T) {
 	}
 }
 
+func TestACommittedFileIsReadWhenItsRevisionPathOutgrowsTheWorkingDirectory(t *testing.T) {
+	t.Parallel()
+	const rootLength, fileLength, windowsPathLimit = 160, 75, 260
+	root := t.TempDir()
+	root = filepath.Join(root, strings.Repeat("d", rootLength-len(root)-1))
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	repo := gitRepo{root: root}
+	repo.git(t, "init", "-q", "-b", "main")
+	repo.commit(t, map[string]string{"README.md": "x\n"})
+	base := repo.head(t)
+	file := "apps/platform/" + strings.Repeat("f", fileLength-len("apps/platform/.go")) + ".go"
+	repo.commit(t, map[string]string{file: overlongGoComment})
+	pushed := repo.head(t)
+	if len(root)+1+len(file) >= windowsPathLimit || len(root)+1+len(pushed)+1+len(file) <= windowsPathLimit {
+		t.Fatalf("the fixture must fit a file under the limit and its revision path over it")
+	}
+	problems, err := committedCommentProblems(repo.root, base+".."+pushed)
+	if err != nil || len(problems) != 1 {
+		t.Fatalf("problems = %q, err = %v; want the one over-long comment found", problems, err)
+	}
+}
+
 func TestCommentBudgetCoversExactlyTheFilesTheTreeScanReads(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
