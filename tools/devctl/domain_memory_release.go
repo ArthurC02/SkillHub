@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -29,11 +28,12 @@ type domainMemoryRelease struct {
 }
 
 func isDomainMemoryDistributed(file string) bool {
-	if strings.HasPrefix(file, domainMemoryPluginDir+"/evals/") {
-		return false
+	for _, testOnly := range []string{"/engine/tests/", "/engine/parity/"} {
+		if strings.HasPrefix(file, domainMemoryPluginDir+testOnly) {
+			return false
+		}
 	}
-	base := path.Base(file)
-	return !strings.HasPrefix(base, "test_") || !strings.HasSuffix(base, ".py")
+	return true
 }
 
 func domainMemoryDistributedFiles(root string) ([]string, error) {

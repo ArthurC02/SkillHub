@@ -624,7 +624,7 @@ pub fn record_test_result(
         }
         Err(RunFault::Start(error)) => {
             return Err(format!(
-                "{command} could not start: {error}. The command runs as written, with no shell and no aliases, so give the full invocation, such as python3 <path>/registry_tools.py verify-audit --registry-root <root>; nothing recorded"
+                "{command} could not start: {error}. The command runs as written, with no shell and no aliases, so give the full invocation, such as <path>/domain-memory verify-audit --registry-root <root>; nothing recorded"
             ));
         }
         Err(RunFault::Other(error)) => return Err(error),

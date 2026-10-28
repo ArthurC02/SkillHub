@@ -16,10 +16,10 @@ func releasedPlugin(t *testing.T) gitRepo {
 	repo.commit(t, map[string]string{
 		".claude/skills/domain-memory/.claude-plugin/plugin.json": releasedManifest,
 		".claude/skills/domain-memory/SKILL.md":                   "# Domain Memory\nRead first.\n",
-		".claude/skills/domain-memory/scripts/registry.py":        "print('registry')\n",
-		".claude/skills/domain-memory/scripts/contest.py":         "print('contest')\n",
-		".claude/skills/domain-memory/scripts/test_registry.py":   "print('test')\n",
-		".claude/skills/domain-memory/evals/scenarios.json":       "{}\n",
+		".claude/skills/domain-memory/engine/src/main.rs":         "fn main() {}\n",
+		".claude/skills/domain-memory/engine/testing.md":          "how to test\n",
+		".claude/skills/domain-memory/engine/tests/cli.rs":        "#[test]\nfn runs() {}\n",
+		".claude/skills/domain-memory/engine/parity/cases.json":   "[]\n",
 		"tools/devctl/go.mod":                                     "module devctl\n",
 	})
 	if err := recordDomainMemoryRelease(repo.root, io.Discard); err != nil {
@@ -55,10 +55,10 @@ func TestADistributedFileChangedWithoutABumpNamesTheVersionToBump(t *testing.T) 
 	expectOneProblemContaining(t, domainMemoryReleaseProblems(repo.root), "still says version 0.1.0; bump the version")
 }
 
-func TestAScriptWhoseNameOnlyContainsTestIsStillDistributed(t *testing.T) {
+func TestAnEngineFileWhoseNameOnlyStartsWithTestIsStillDistributed(t *testing.T) {
 	t.Parallel()
 	repo := releasedPlugin(t)
-	editPlugin(t, repo, "scripts/contest.py", "print('changed')\n")
+	editPlugin(t, repo, "engine/testing.md", "how to test, changed\n")
 	expectOneProblemContaining(t, domainMemoryReleaseProblems(repo.root), "still says version 0.1.0")
 }
 
@@ -72,18 +72,18 @@ func TestANewFileNotYetCommittedIsAChange(t *testing.T) {
 func TestAnIgnoredFileIsNotAChange(t *testing.T) {
 	t.Parallel()
 	repo := releasedPlugin(t)
-	writeTestFile(t, repo.root, ".gitignore", "__pycache__/\n")
-	editPlugin(t, repo, "scripts/__pycache__/registry.cpython-310.pyc", "bytecode")
+	writeTestFile(t, repo.root, ".gitignore", "target/\n")
+	editPlugin(t, repo, "engine/target/release/domain-memory", "binary")
 	if problems := domainMemoryReleaseProblems(repo.root); len(problems) != 0 {
 		t.Fatalf("problems = %q, want none", problems)
 	}
 }
 
-func TestEvalsAndPythonTestsAreNotDistributed(t *testing.T) {
+func TestEngineTestsAndRecordedCasesAreNotDistributed(t *testing.T) {
 	t.Parallel()
 	repo := releasedPlugin(t)
-	editPlugin(t, repo, "evals/scenarios.json", `{"changed": true}`+"\n")
-	editPlugin(t, repo, "scripts/test_registry.py", "print('changed')\n")
+	editPlugin(t, repo, "engine/tests/cli.rs", "#[test]\nfn still_runs() {}\n")
+	editPlugin(t, repo, "engine/parity/cases.json", `[{"name": "new"}]`+"\n")
 	if problems := domainMemoryReleaseProblems(repo.root); len(problems) != 0 {
 		t.Fatalf("problems = %q, want none", problems)
 	}

@@ -1,13 +1,12 @@
 {
- "python": "3.13",
- "prog": "registry_tools.py",
- "usage": "usage: registry_tools.py [-h] command ...\n",
- "help": "usage: registry_tools.py [-h] command ...\n\nInitialize, validate, or assess a file-backed Domain Registry.\n\npositional arguments:\n  command\n    readiness           Assess project readiness\n    probe               Report Registry health\n    lookup              Search an asset\n    resolve-terms       Resolve vocabulary\n    get-context         Retrieve a Context model\n    get-record          Retrieve a record\n    dependents          Follow a record's relations\n    brief               Brief a change or a record\n    analyze-boundary    Inspect a boundary\n    boundary-impact     Find boundaries a change touches\n    validate            Validate the Registry\n    coverage            Report modelling gaps\n    verify-evidence     Verify citations\n    verify-sources      Verify selected sources\n    verify-audit        Verify audit trail\n    reconcile-audit     Reconcile audit trail\n    refresh-indexes     Rebuild concept indexes\n    cite                Build an evidence citation\n    recite              Re-cite one changed citation\n    relocate-evidence   Re-cite evidence after a move\n    upsert-candidate    Add or revise a candidate\n    retract-candidate   Withdraw a candidate\n    promote-candidate   Put a candidate into a draft proposal\n    harvest             Prove and package harvested rules\n    discard-harvest     Withdraw a Change Package that is not applied, written\n                        by harvest or by hand\n    init-change-package\n                        Start a Change Package\n    validate-change-package\n                        Validate a Change Package\n    submit-proposal     Submit for review\n    record-test-result  Record a test result\n    record-approval     Record human approval\n    verify-proposal     Verify test attestations\n    rebase-proposal     Restamp a stale proposal on the current Registry\n    ship-package        Attest, finalize and apply a verified package\n    supersede-proposal  Retire a proposal\n    list-proposals      List the Change Packages\n    quality-gates       Find the repository's own checks\n    counterfactual      Break one protection and restore it\n    discover-sources    Map repository sources\n    init-domain-memory  Start a Registry from human choices: the entry point\n    confirm-sources     Confirm the selected sources\n    refine-sources      Focus selected sources\n    refresh-sources     Re-snapshot the selected sources\n    refresh-listing     Refresh the discovered listing\n    recover-registry-update\n                        Recover an interrupted update\n    demote-local-reviews\n                        Withdraw local reviewed status\n    redraft-proposal    Redraft a retired proposal\n    export              Read the whole Registry from another tool\n    change-coupling     See which modules change together\n    compare-registry    Score an extracted Registry\n    harvest-candidates  Harvest a scratch extraction\n    governance-readiness\n                        Report what governance still needs\n    init-signing-key    Prepare a signing identity\n    amend-policy        Change governance fields\n    install-git-hitl-hook\n                        Enforce signatures on push\n    install-pre-commit-hook\n                        Check staged citations on commit\n    verify-git-governance\n                        Check commit signatures\n    validate-policy     Check a policy before adopting it\n    verify-scm-attestation\n                        Check SCM evidence alone\n    audit-attestations  Audit past attestations\n    scan-secrets        Scan for secrets\n    validate-contract   Check a contract schema file\n    mcp-serve           Serve the read commands to a host over MCP\n\noptions:\n  -h, --help            show this help message and exit\n\nEveryday commands: readiness, probe, lookup, resolve-terms, get-context, get-record, dependents,\n  brief, analyze-boundary, boundary-impact, validate, coverage, verify-evidence, verify-sources,\n  verify-audit, reconcile-audit, refresh-indexes, cite, recite, relocate-evidence, upsert-candidate,\n  retract-candidate, promote-candidate, harvest, discard-harvest, init-change-package,\n  validate-change-package, submit-proposal, record-test-result, record-approval, verify-proposal,\n  rebase-proposal, ship-package, supersede-proposal, list-proposals, quality-gates, counterfactual.\n\nAdvanced commands: discover-sources, init-domain-memory, confirm-sources, refine-sources,\n  refresh-sources, refresh-listing, recover-registry-update, demote-local-reviews, redraft-proposal,\n  export, change-coupling, compare-registry, harvest-candidates, governance-readiness,\n  init-signing-key, amend-policy, install-git-hitl-hook, install-pre-commit-hook,\n  verify-git-governance, validate-policy, verify-scm-attestation, audit-attestations, scan-secrets,\n  validate-contract, mcp-serve.\n",
+ "prog": "domain-memory",
+ "usage": "usage: domain-memory [-h] command ...\n",
+ "help": "usage: domain-memory [-h] command ...\n\nInitialize, validate, or assess a file-backed Domain Registry.\n\npositional arguments:\n  command\n    readiness           Assess project readiness\n    probe               Report Registry health\n    lookup              Search an asset\n    resolve-terms       Resolve vocabulary\n    get-context         Retrieve a Context model\n    get-record          Retrieve a record\n    dependents          Follow a record's relations\n    brief               Brief a change or a record\n    analyze-boundary    Inspect a boundary\n    boundary-impact     Find boundaries a change touches\n    validate            Validate the Registry\n    coverage            Report modelling gaps\n    verify-evidence     Verify citations\n    verify-sources      Verify selected sources\n    verify-audit        Verify audit trail\n    reconcile-audit     Reconcile audit trail\n    refresh-indexes     Rebuild concept indexes\n    cite                Build an evidence citation\n    recite              Re-cite one changed citation\n    relocate-evidence   Re-cite evidence after a move\n    upsert-candidate    Add or revise a candidate\n    retract-candidate   Withdraw a candidate\n    promote-candidate   Put a candidate into a draft proposal\n    harvest             Prove and package harvested rules\n    discard-harvest     Withdraw a Change Package that is not applied, written\n                        by harvest or by hand\n    init-change-package\n                        Start a Change Package\n    validate-change-package\n                        Validate a Change Package\n    submit-proposal     Submit for review\n    record-test-result  Record a test result\n    record-approval     Record human approval\n    verify-proposal     Verify test attestations\n    rebase-proposal     Restamp a stale proposal on the current Registry\n    ship-package        Attest, finalize and apply a verified package\n    supersede-proposal  Retire a proposal\n    list-proposals      List the Change Packages\n    quality-gates       Find the repository's own checks\n    counterfactual      Break one protection and restore it\n    discover-sources    Map repository sources\n    init-domain-memory  Start a Registry from human choices: the entry point\n    confirm-sources     Confirm the selected sources\n    refine-sources      Focus selected sources\n    refresh-sources     Re-snapshot the selected sources\n    refresh-listing     Refresh the discovered listing\n    recover-registry-update\n                        Recover an interrupted update\n    demote-local-reviews\n                        Withdraw local reviewed status\n    redraft-proposal    Redraft a retired proposal\n    export              Read the whole Registry from another tool\n    change-coupling     See which modules change together\n    compare-registry    Score an extracted Registry\n    harvest-candidates  Harvest a scratch extraction\n    governance-readiness\n                        Report what governance still needs\n    init-signing-key    Prepare a signing identity\n    amend-policy        Change governance fields\n    install-git-hitl-hook\n                        Enforce signatures on push\n    install-pre-commit-hook\n                        Check staged citations on commit\n    verify-git-governance\n                        Check commit signatures\n    validate-policy     Check a policy before adopting it\n    verify-scm-attestation\n                        Check SCM evidence alone\n    audit-attestations  Audit past attestations\n    scan-secrets        Scan for secrets\n    validate-contract   Check a contract schema file\n    mcp-serve           Serve the read commands to a host over MCP\n\noptions:\n  -h, --help            show this help message and exit\n\nEveryday commands: readiness, probe, lookup, resolve-terms, get-context, get-record, dependents,\n  brief, analyze-boundary, boundary-impact, validate, coverage, verify-evidence, verify-sources,\n  verify-audit, reconcile-audit, refresh-indexes, cite, recite, relocate-evidence, upsert-candidate,\n  retract-candidate, promote-candidate, harvest, discard-harvest, init-change-package,\n  validate-change-package, submit-proposal, record-test-result, record-approval, verify-proposal,\n  rebase-proposal, ship-package, supersede-proposal, list-proposals, quality-gates, counterfactual.\n\nAdvanced commands: discover-sources, init-domain-memory, confirm-sources, refine-sources,\n  refresh-sources, refresh-listing, recover-registry-update, demote-local-reviews, redraft-proposal,\n  export, change-coupling, compare-registry, harvest-candidates, governance-readiness,\n  init-signing-key, amend-policy, install-git-hitl-hook, install-pre-commit-hook,\n  verify-git-governance, validate-policy, verify-scm-attestation, audit-attestations, scan-secrets,\n  validate-contract, mcp-serve.\n",
  "commands": {
   "lookup": {
-   "prog": "registry_tools.py lookup",
-   "usage": "usage: registry_tools.py lookup [-h] --registry-root REGISTRY_ROOT\n                                --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n                                --query QUERY\n",
-   "help": "usage: registry_tools.py lookup [-h] --registry-root REGISTRY_ROOT\n                                --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n                                --query QUERY\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n  --query QUERY\n",
+   "prog": "domain-memory lookup",
+   "usage": "usage: domain-memory lookup [-h] --registry-root REGISTRY_ROOT\n                            --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n                            --query QUERY\n",
+   "help": "usage: domain-memory lookup [-h] --registry-root REGISTRY_ROOT\n                            --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n                            --query QUERY\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n  --query QUERY\n",
    "actions": [
     {
      "dest": "help",
@@ -70,9 +69,9 @@
    "mutex": []
   },
   "resolve-terms": {
-   "prog": "registry_tools.py resolve-terms",
-   "usage": "usage: registry_tools.py resolve-terms [-h] --registry-root REGISTRY_ROOT\n                                       --query QUERY [--context CONTEXT]\n                                       [--with-mentions]\n",
-   "help": "usage: registry_tools.py resolve-terms [-h] --registry-root REGISTRY_ROOT\n                                       --query QUERY [--context CONTEXT]\n                                       [--with-mentions]\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --query QUERY\n  --context CONTEXT\n  --with-mentions\n",
+   "prog": "domain-memory resolve-terms",
+   "usage": "usage: domain-memory resolve-terms [-h] --registry-root REGISTRY_ROOT\n                                   --query QUERY [--context CONTEXT]\n                                   [--with-mentions]\n",
+   "help": "usage: domain-memory resolve-terms [-h] --registry-root REGISTRY_ROOT\n                                   --query QUERY [--context CONTEXT]\n                                   [--with-mentions]\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --query QUERY\n  --context CONTEXT\n  --with-mentions\n",
    "actions": [
     {
      "dest": "help",
@@ -134,9 +133,9 @@
    "mutex": []
   },
   "get-context": {
-   "prog": "registry_tools.py get-context",
-   "usage": "usage: registry_tools.py get-context [-h] --registry-root REGISTRY_ROOT\n                                     --id ID [--summary]\n",
-   "help": "usage: registry_tools.py get-context [-h] --registry-root REGISTRY_ROOT\n                                     --id ID [--summary]\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --id ID\n  --summary             ids and one line each, without evidence\n",
+   "prog": "domain-memory get-context",
+   "usage": "usage: domain-memory get-context [-h] --registry-root REGISTRY_ROOT --id ID\n                                 [--summary]\n",
+   "help": "usage: domain-memory get-context [-h] --registry-root REGISTRY_ROOT --id ID\n                                 [--summary]\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --id ID\n  --summary             ids and one line each, without evidence\n",
    "actions": [
     {
      "dest": "help",
@@ -187,9 +186,9 @@
    "mutex": []
   },
   "get-record": {
-   "prog": "registry_tools.py get-record",
-   "usage": "usage: registry_tools.py get-record [-h] --registry-root REGISTRY_ROOT\n                                    --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n                                    --id ID [--changes-root CHANGES_ROOT]\n",
-   "help": "usage: registry_tools.py get-record [-h] --registry-root REGISTRY_ROOT\n                                    --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n                                    --id ID [--changes-root CHANGES_ROOT]\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n  --id ID\n  --changes-root CHANGES_ROOT\n",
+   "prog": "domain-memory get-record",
+   "usage": "usage: domain-memory get-record [-h] --registry-root REGISTRY_ROOT\n                                --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n                                --id ID [--changes-root CHANGES_ROOT]\n",
+   "help": "usage: domain-memory get-record [-h] --registry-root REGISTRY_ROOT\n                                --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n                                --id ID [--changes-root CHANGES_ROOT]\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n  --id ID\n  --changes-root CHANGES_ROOT\n",
    "actions": [
     {
      "dest": "help",
@@ -263,9 +262,9 @@
    "mutex": []
   },
   "dependents": {
-   "prog": "registry_tools.py dependents",
-   "usage": "usage: registry_tools.py dependents [-h] --registry-root REGISTRY_ROOT\n                                    --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n                                    --id ID\n",
-   "help": "usage: registry_tools.py dependents [-h] --registry-root REGISTRY_ROOT\n                                    --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n                                    --id ID\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n  --id ID\n",
+   "prog": "domain-memory dependents",
+   "usage": "usage: domain-memory dependents [-h] --registry-root REGISTRY_ROOT\n                                --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n                                --id ID\n",
+   "help": "usage: domain-memory dependents [-h] --registry-root REGISTRY_ROOT\n                                --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n                                --id ID\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n  --id ID\n",
    "actions": [
     {
      "dest": "help",
@@ -328,9 +327,9 @@
    "mutex": []
   },
   "brief": {
-   "prog": "registry_tools.py brief",
-   "usage": "usage: registry_tools.py brief [-h] --registry-root REGISTRY_ROOT\n                               --repo-root REPO_ROOT [--base BASE]\n                               [--asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}]\n                               [--id ID] [--markdown]\n",
-   "help": "usage: registry_tools.py brief [-h] --registry-root REGISTRY_ROOT\n                               --repo-root REPO_ROOT [--base BASE]\n                               [--asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}]\n                               [--id ID] [--markdown]\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --base BASE\n  --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n  --id ID\n  --markdown\n",
+   "prog": "domain-memory brief",
+   "usage": "usage: domain-memory brief [-h] --registry-root REGISTRY_ROOT\n                           --repo-root REPO_ROOT [--base BASE]\n                           [--asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}]\n                           [--id ID] [--markdown]\n",
+   "help": "usage: domain-memory brief [-h] --registry-root REGISTRY_ROOT\n                           --repo-root REPO_ROOT [--base BASE]\n                           [--asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}]\n                           [--id ID] [--markdown]\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --base BASE\n  --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n  --id ID\n  --markdown\n",
    "actions": [
     {
      "dest": "help",
@@ -426,9 +425,9 @@
    "mutex": []
   },
   "export": {
-   "prog": "registry_tools.py export",
-   "usage": "usage: registry_tools.py export [-h] --registry-root REGISTRY_ROOT\n                                [--repo-root REPO_ROOT] [--commit COMMIT]\n",
-   "help": "usage: registry_tools.py export [-h] --registry-root REGISTRY_ROOT\n                                [--repo-root REPO_ROOT] [--commit COMMIT]\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --commit COMMIT\n",
+   "prog": "domain-memory export",
+   "usage": "usage: domain-memory export [-h] --registry-root REGISTRY_ROOT\n                            [--repo-root REPO_ROOT] [--commit COMMIT]\n",
+   "help": "usage: domain-memory export [-h] --registry-root REGISTRY_ROOT\n                            [--repo-root REPO_ROOT] [--commit COMMIT]\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --commit COMMIT\n",
    "actions": [
     {
      "dest": "help",
@@ -479,9 +478,9 @@
    "mutex": []
   },
   "compare-registry": {
-   "prog": "registry_tools.py compare-registry",
-   "usage": "usage: registry_tools.py compare-registry [-h] --gold-root GOLD_ROOT\n                                          --candidate-root CANDIDATE_ROOT\n                                          [--repo-root REPO_ROOT]\n                                          [--gold-commit GOLD_COMMIT]\n                                          [--context CONTEXT]\n",
-   "help": "usage: registry_tools.py compare-registry [-h] --gold-root GOLD_ROOT\n                                          --candidate-root CANDIDATE_ROOT\n                                          [--repo-root REPO_ROOT]\n                                          [--gold-commit GOLD_COMMIT]\n                                          [--context CONTEXT]\n\noptions:\n  -h, --help            show this help message and exit\n  --gold-root GOLD_ROOT\n  --candidate-root CANDIDATE_ROOT\n  --repo-root REPO_ROOT\n  --gold-commit GOLD_COMMIT\n  --context CONTEXT\n",
+   "prog": "domain-memory compare-registry",
+   "usage": "usage: domain-memory compare-registry [-h] --gold-root GOLD_ROOT\n                                      --candidate-root CANDIDATE_ROOT\n                                      [--repo-root REPO_ROOT]\n                                      [--gold-commit GOLD_COMMIT]\n                                      [--context CONTEXT]\n",
+   "help": "usage: domain-memory compare-registry [-h] --gold-root GOLD_ROOT\n                                      --candidate-root CANDIDATE_ROOT\n                                      [--repo-root REPO_ROOT]\n                                      [--gold-commit GOLD_COMMIT]\n                                      [--context CONTEXT]\n\noptions:\n  -h, --help            show this help message and exit\n  --gold-root GOLD_ROOT\n  --candidate-root CANDIDATE_ROOT\n  --repo-root REPO_ROOT\n  --gold-commit GOLD_COMMIT\n  --context CONTEXT\n",
    "actions": [
     {
      "dest": "help",
@@ -554,9 +553,9 @@
    "mutex": []
   },
   "coverage": {
-   "prog": "registry_tools.py coverage",
-   "usage": "usage: registry_tools.py coverage [-h] --registry-root REGISTRY_ROOT\n                                  [--changes-root CHANGES_ROOT]\n                                  [--repo-root REPO_ROOT]\n",
-   "help": "usage: registry_tools.py coverage [-h] --registry-root REGISTRY_ROOT\n                                  [--changes-root CHANGES_ROOT]\n                                  [--repo-root REPO_ROOT]\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --changes-root CHANGES_ROOT\n  --repo-root REPO_ROOT\n",
+   "prog": "domain-memory coverage",
+   "usage": "usage: domain-memory coverage [-h] --registry-root REGISTRY_ROOT\n                              [--changes-root CHANGES_ROOT]\n                              [--repo-root REPO_ROOT]\n",
+   "help": "usage: domain-memory coverage [-h] --registry-root REGISTRY_ROOT\n                              [--changes-root CHANGES_ROOT]\n                              [--repo-root REPO_ROOT]\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --changes-root CHANGES_ROOT\n  --repo-root REPO_ROOT\n",
    "actions": [
     {
      "dest": "help",
@@ -607,9 +606,9 @@
    "mutex": []
   },
   "readiness": {
-   "prog": "registry_tools.py readiness",
-   "usage": "usage: registry_tools.py readiness [-h] --repo-root REPO_ROOT\n                                   [--registry-root REGISTRY_ROOT]\n",
-   "help": "usage: registry_tools.py readiness [-h] --repo-root REPO_ROOT\n                                   [--registry-root REGISTRY_ROOT]\n\noptions:\n  -h, --help            show this help message and exit\n  --repo-root REPO_ROOT\n  --registry-root REGISTRY_ROOT\n",
+   "prog": "domain-memory readiness",
+   "usage": "usage: domain-memory readiness [-h] --repo-root REPO_ROOT\n                               [--registry-root REGISTRY_ROOT]\n",
+   "help": "usage: domain-memory readiness [-h] --repo-root REPO_ROOT\n                               [--registry-root REGISTRY_ROOT]\n\noptions:\n  -h, --help            show this help message and exit\n  --repo-root REPO_ROOT\n  --registry-root REGISTRY_ROOT\n",
    "actions": [
     {
      "dest": "help",
@@ -649,9 +648,9 @@
    "mutex": []
   },
   "analyze-boundary": {
-   "prog": "registry_tools.py analyze-boundary",
-   "usage": "usage: registry_tools.py analyze-boundary [-h] --registry-root REGISTRY_ROOT\n                                          --source-context SOURCE_CONTEXT\n                                          --target-context TARGET_CONTEXT\n",
-   "help": "usage: registry_tools.py analyze-boundary [-h] --registry-root REGISTRY_ROOT\n                                          --source-context SOURCE_CONTEXT\n                                          --target-context TARGET_CONTEXT\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --source-context SOURCE_CONTEXT\n  --target-context TARGET_CONTEXT\n",
+   "prog": "domain-memory analyze-boundary",
+   "usage": "usage: domain-memory analyze-boundary [-h] --registry-root REGISTRY_ROOT\n                                      --source-context SOURCE_CONTEXT\n                                      --target-context TARGET_CONTEXT\n",
+   "help": "usage: domain-memory analyze-boundary [-h] --registry-root REGISTRY_ROOT\n                                      --source-context SOURCE_CONTEXT\n                                      --target-context TARGET_CONTEXT\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --source-context SOURCE_CONTEXT\n  --target-context TARGET_CONTEXT\n",
    "actions": [
     {
      "dest": "help",
@@ -702,9 +701,9 @@
    "mutex": []
   },
   "boundary-impact": {
-   "prog": "registry_tools.py boundary-impact",
-   "usage": "usage: registry_tools.py boundary-impact [-h] --registry-root REGISTRY_ROOT\n                                         --repo-root REPO_ROOT --base BASE\n",
-   "help": "usage: registry_tools.py boundary-impact [-h] --registry-root REGISTRY_ROOT\n                                         --repo-root REPO_ROOT --base BASE\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --base BASE\n",
+   "prog": "domain-memory boundary-impact",
+   "usage": "usage: domain-memory boundary-impact [-h] --registry-root REGISTRY_ROOT\n                                     --repo-root REPO_ROOT --base BASE\n",
+   "help": "usage: domain-memory boundary-impact [-h] --registry-root REGISTRY_ROOT\n                                     --repo-root REPO_ROOT --base BASE\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --base BASE\n",
    "actions": [
     {
      "dest": "help",
@@ -755,9 +754,9 @@
    "mutex": []
   },
   "probe": {
-   "prog": "registry_tools.py probe",
-   "usage": "usage: registry_tools.py probe [-h] --repo-root REPO_ROOT\n                               --registry-root REGISTRY_ROOT [--policy POLICY]\n",
-   "help": "usage: registry_tools.py probe [-h] --repo-root REPO_ROOT\n                               --registry-root REGISTRY_ROOT [--policy POLICY]\n\noptions:\n  -h, --help            show this help message and exit\n  --repo-root REPO_ROOT\n  --registry-root REGISTRY_ROOT\n  --policy POLICY\n",
+   "prog": "domain-memory probe",
+   "usage": "usage: domain-memory probe [-h] --repo-root REPO_ROOT\n                           --registry-root REGISTRY_ROOT [--policy POLICY]\n",
+   "help": "usage: domain-memory probe [-h] --repo-root REPO_ROOT\n                           --registry-root REGISTRY_ROOT [--policy POLICY]\n\noptions:\n  -h, --help            show this help message and exit\n  --repo-root REPO_ROOT\n  --registry-root REGISTRY_ROOT\n  --policy POLICY\n",
    "actions": [
     {
      "dest": "help",
@@ -808,9 +807,9 @@
    "mutex": []
   },
   "change-coupling": {
-   "prog": "registry_tools.py change-coupling",
-   "usage": "usage: registry_tools.py change-coupling [-h] --repo-root REPO_ROOT\n                                         [--root ROOT] [--depth DEPTH]\n                                         [--since SINCE]\n                                         [--exclude-subject EXCLUDE_SUBJECT]\n                                         [--max-modules MAX_MODULES]\n                                         [--registry-root REGISTRY_ROOT]\n                                         [--min-revisions MIN_REVISIONS]\n                                         [--min-shared MIN_SHARED]\n                                         [--min-degree MIN_DEGREE]\n                                         [--max-changeset MAX_CHANGESET]\n",
-   "help": "usage: registry_tools.py change-coupling [-h] --repo-root REPO_ROOT\n                                         [--root ROOT] [--depth DEPTH]\n                                         [--since SINCE]\n                                         [--exclude-subject EXCLUDE_SUBJECT]\n                                         [--max-modules MAX_MODULES]\n                                         [--registry-root REGISTRY_ROOT]\n                                         [--min-revisions MIN_REVISIONS]\n                                         [--min-shared MIN_SHARED]\n                                         [--min-degree MIN_DEGREE]\n                                         [--max-changeset MAX_CHANGESET]\n\noptions:\n  -h, --help            show this help message and exit\n  --repo-root REPO_ROOT\n  --root ROOT\n  --depth DEPTH\n  --since SINCE\n  --exclude-subject EXCLUDE_SUBJECT\n                        repeatable regex\n  --max-modules MAX_MODULES\n  --registry-root REGISTRY_ROOT\n  --min-revisions MIN_REVISIONS\n  --min-shared MIN_SHARED\n  --min-degree MIN_DEGREE\n  --max-changeset MAX_CHANGESET\n",
+   "prog": "domain-memory change-coupling",
+   "usage": "usage: domain-memory change-coupling [-h] --repo-root REPO_ROOT [--root ROOT]\n                                     [--depth DEPTH] [--since SINCE]\n                                     [--exclude-subject EXCLUDE_SUBJECT]\n                                     [--max-modules MAX_MODULES]\n                                     [--registry-root REGISTRY_ROOT]\n                                     [--min-revisions MIN_REVISIONS]\n                                     [--min-shared MIN_SHARED]\n                                     [--min-degree MIN_DEGREE]\n                                     [--max-changeset MAX_CHANGESET]\n",
+   "help": "usage: domain-memory change-coupling [-h] --repo-root REPO_ROOT [--root ROOT]\n                                     [--depth DEPTH] [--since SINCE]\n                                     [--exclude-subject EXCLUDE_SUBJECT]\n                                     [--max-modules MAX_MODULES]\n                                     [--registry-root REGISTRY_ROOT]\n                                     [--min-revisions MIN_REVISIONS]\n                                     [--min-shared MIN_SHARED]\n                                     [--min-degree MIN_DEGREE]\n                                     [--max-changeset MAX_CHANGESET]\n\noptions:\n  -h, --help            show this help message and exit\n  --repo-root REPO_ROOT\n  --root ROOT\n  --depth DEPTH\n  --since SINCE\n  --exclude-subject EXCLUDE_SUBJECT\n                        repeatable regex\n  --max-modules MAX_MODULES\n  --registry-root REGISTRY_ROOT\n  --min-revisions MIN_REVISIONS\n  --min-shared MIN_SHARED\n  --min-degree MIN_DEGREE\n  --max-changeset MAX_CHANGESET\n",
    "actions": [
     {
      "dest": "help",
@@ -949,9 +948,9 @@
    "mutex": []
   },
   "quality-gates": {
-   "prog": "registry_tools.py quality-gates",
-   "usage": "usage: registry_tools.py quality-gates [-h] --repo-root REPO_ROOT\n",
-   "help": "usage: registry_tools.py quality-gates [-h] --repo-root REPO_ROOT\n\noptions:\n  -h, --help            show this help message and exit\n  --repo-root REPO_ROOT\n",
+   "prog": "domain-memory quality-gates",
+   "usage": "usage: domain-memory quality-gates [-h] --repo-root REPO_ROOT\n",
+   "help": "usage: domain-memory quality-gates [-h] --repo-root REPO_ROOT\n\noptions:\n  -h, --help            show this help message and exit\n  --repo-root REPO_ROOT\n",
    "actions": [
     {
      "dest": "help",
@@ -980,9 +979,9 @@
    "mutex": []
   },
   "counterfactual": {
-   "prog": "registry_tools.py counterfactual",
-   "usage": "usage: registry_tools.py counterfactual [-h] --repo-root REPO_ROOT\n                                        [--file FILE] [--find FIND]\n                                        [--replace REPLACE]\n                                        [--test-command TEST_COMMAND]\n                                        [--suite SUITE] [--timeout TIMEOUT]\n                                        [--cwd CWD] [--expect EXPECT]\n                                        [--obligation-id OBLIGATION_ID]\n                                        [--package-root PACKAGE_ROOT]\n",
-   "help": "usage: registry_tools.py counterfactual [-h] --repo-root REPO_ROOT\n                                        [--file FILE] [--find FIND]\n                                        [--replace REPLACE]\n                                        [--test-command TEST_COMMAND]\n                                        [--suite SUITE] [--timeout TIMEOUT]\n                                        [--cwd CWD] [--expect EXPECT]\n                                        [--obligation-id OBLIGATION_ID]\n                                        [--package-root PACKAGE_ROOT]\n\noptions:\n  -h, --help            show this help message and exit\n  --repo-root REPO_ROOT\n  --file FILE\n  --find FIND\n  --replace REPLACE\n  --test-command TEST_COMMAND\n  --suite SUITE\n  --timeout TIMEOUT\n  --cwd CWD\n  --expect EXPECT       regular expression the failing output must match, such\n                        as the assertion message; write --expect=PATTERN when\n                        the pattern starts with -\n  --obligation-id OBLIGATION_ID\n  --package-root PACKAGE_ROOT\n",
+   "prog": "domain-memory counterfactual",
+   "usage": "usage: domain-memory counterfactual [-h] --repo-root REPO_ROOT [--file FILE]\n                                    [--find FIND] [--replace REPLACE]\n                                    [--test-command TEST_COMMAND]\n                                    [--suite SUITE] [--timeout TIMEOUT]\n                                    [--cwd CWD] [--expect EXPECT]\n                                    [--obligation-id OBLIGATION_ID]\n                                    [--package-root PACKAGE_ROOT]\n",
+   "help": "usage: domain-memory counterfactual [-h] --repo-root REPO_ROOT [--file FILE]\n                                    [--find FIND] [--replace REPLACE]\n                                    [--test-command TEST_COMMAND]\n                                    [--suite SUITE] [--timeout TIMEOUT]\n                                    [--cwd CWD] [--expect EXPECT]\n                                    [--obligation-id OBLIGATION_ID]\n                                    [--package-root PACKAGE_ROOT]\n\noptions:\n  -h, --help            show this help message and exit\n  --repo-root REPO_ROOT\n  --file FILE\n  --find FIND\n  --replace REPLACE\n  --test-command TEST_COMMAND\n  --suite SUITE\n  --timeout TIMEOUT\n  --cwd CWD\n  --expect EXPECT       regular expression the failing output must match, such\n                        as the assertion message; write --expect=PATTERN when\n                        the pattern starts with -\n  --obligation-id OBLIGATION_ID\n  --package-root PACKAGE_ROOT\n",
    "actions": [
     {
      "dest": "help",
@@ -1121,9 +1120,9 @@
    "mutex": []
   },
   "list-proposals": {
-   "prog": "registry_tools.py list-proposals",
-   "usage": "usage: registry_tools.py list-proposals [-h] --changes-root CHANGES_ROOT\n",
-   "help": "usage: registry_tools.py list-proposals [-h] --changes-root CHANGES_ROOT\n\noptions:\n  -h, --help            show this help message and exit\n  --changes-root CHANGES_ROOT\n",
+   "prog": "domain-memory list-proposals",
+   "usage": "usage: domain-memory list-proposals [-h] --changes-root CHANGES_ROOT\n",
+   "help": "usage: domain-memory list-proposals [-h] --changes-root CHANGES_ROOT\n\noptions:\n  -h, --help            show this help message and exit\n  --changes-root CHANGES_ROOT\n",
    "actions": [
     {
      "dest": "help",
@@ -1152,9 +1151,9 @@
    "mutex": []
   },
   "mcp-serve": {
-   "prog": "registry_tools.py mcp-serve",
-   "usage": "usage: registry_tools.py mcp-serve [-h] --registry-root REGISTRY_ROOT\n                                   --repo-root REPO_ROOT\n",
-   "help": "usage: registry_tools.py mcp-serve [-h] --registry-root REGISTRY_ROOT\n                                   --repo-root REPO_ROOT\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n",
+   "prog": "domain-memory mcp-serve",
+   "usage": "usage: domain-memory mcp-serve [-h] --registry-root REGISTRY_ROOT\n                               --repo-root REPO_ROOT\n",
+   "help": "usage: domain-memory mcp-serve [-h] --registry-root REGISTRY_ROOT\n                               --repo-root REPO_ROOT\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n",
    "actions": [
     {
      "dest": "help",
@@ -1194,9 +1193,9 @@
    "mutex": []
   },
   "cite": {
-   "prog": "registry_tools.py cite",
-   "usage": "usage: registry_tools.py cite [-h] --repo-root REPO_ROOT --path PATH\n                              [--lines LINES] [--function FUNCTION]\n                              [--registry-root REGISTRY_ROOT] [--show]\n",
-   "help": "usage: registry_tools.py cite [-h] --repo-root REPO_ROOT --path PATH\n                              [--lines LINES] [--function FUNCTION]\n                              [--registry-root REGISTRY_ROOT] [--show]\n\noptions:\n  -h, --help            show this help message and exit\n  --repo-root REPO_ROOT\n  --path PATH\n  --lines LINES         START-END\n  --function FUNCTION   a function defined in --path (Go, Python, TypeScript,\n                        JavaScript, Java, Kotlin, Rust); cites its whole body\n  --registry-root REGISTRY_ROOT\n  --show\n",
+   "prog": "domain-memory cite",
+   "usage": "usage: domain-memory cite [-h] --repo-root REPO_ROOT --path PATH\n                          [--lines LINES] [--function FUNCTION]\n                          [--registry-root REGISTRY_ROOT] [--show]\n",
+   "help": "usage: domain-memory cite [-h] --repo-root REPO_ROOT --path PATH\n                          [--lines LINES] [--function FUNCTION]\n                          [--registry-root REGISTRY_ROOT] [--show]\n\noptions:\n  -h, --help            show this help message and exit\n  --repo-root REPO_ROOT\n  --path PATH\n  --lines LINES         START-END\n  --function FUNCTION   a function defined in --path (Go, Python, TypeScript,\n                        JavaScript, Java, Kotlin, Rust); cites its whole body\n  --registry-root REGISTRY_ROOT\n  --show\n",
    "actions": [
     {
      "dest": "help",
@@ -1280,9 +1279,9 @@
    "mutex": []
   },
   "verify-evidence": {
-   "prog": "registry_tools.py verify-evidence",
-   "usage": "usage: registry_tools.py verify-evidence [-h] --registry-root REGISTRY_ROOT\n                                         --repo-root REPO_ROOT [--path PATH]\n                                         [--strict] [--staged]\n                                         [--package-root PACKAGE_ROOT]\n",
-   "help": "usage: registry_tools.py verify-evidence [-h] --registry-root REGISTRY_ROOT\n                                         --repo-root REPO_ROOT [--path PATH]\n                                         [--strict] [--staged]\n                                         [--package-root PACKAGE_ROOT]\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --path PATH\n  --strict\n  --staged\n  --package-root PACKAGE_ROOT\n",
+   "prog": "domain-memory verify-evidence",
+   "usage": "usage: domain-memory verify-evidence [-h] --registry-root REGISTRY_ROOT\n                                     --repo-root REPO_ROOT [--path PATH]\n                                     [--strict] [--staged]\n                                     [--package-root PACKAGE_ROOT]\n",
+   "help": "usage: domain-memory verify-evidence [-h] --registry-root REGISTRY_ROOT\n                                     --repo-root REPO_ROOT [--path PATH]\n                                     [--strict] [--staged]\n                                     [--package-root PACKAGE_ROOT]\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --path PATH\n  --strict\n  --staged\n  --package-root PACKAGE_ROOT\n",
    "actions": [
     {
      "dest": "help",
@@ -1366,9 +1365,9 @@
    "mutex": []
   },
   "recite": {
-   "prog": "registry_tools.py recite",
-   "usage": "usage: registry_tools.py recite [-h] --registry-root REGISTRY_ROOT\n                                --repo-root REPO_ROOT\n                                --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n                                --id ID --path PATH [--lines LINES]\n                                [--replace REPLACE] [--onto ONTO]\n",
-   "help": "usage: registry_tools.py recite [-h] --registry-root REGISTRY_ROOT\n                                --repo-root REPO_ROOT\n                                --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n                                --id ID --path PATH [--lines LINES]\n                                [--replace REPLACE] [--onto ONTO]\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n  --id ID\n  --path PATH\n  --lines LINES\n  --replace REPLACE\n  --onto ONTO\n",
+   "prog": "domain-memory recite",
+   "usage": "usage: domain-memory recite [-h] --registry-root REGISTRY_ROOT\n                            --repo-root REPO_ROOT\n                            --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n                            --id ID --path PATH [--lines LINES]\n                            [--replace REPLACE] [--onto ONTO]\n",
+   "help": "usage: domain-memory recite [-h] --registry-root REGISTRY_ROOT\n                            --repo-root REPO_ROOT\n                            --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n                            --id ID --path PATH [--lines LINES]\n                            [--replace REPLACE] [--onto ONTO]\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n  --id ID\n  --path PATH\n  --lines LINES\n  --replace REPLACE\n  --onto ONTO\n",
    "actions": [
     {
      "dest": "help",
@@ -1486,9 +1485,9 @@
    "mutex": []
   },
   "relocate-evidence": {
-   "prog": "registry_tools.py relocate-evidence",
-   "usage": "usage: registry_tools.py relocate-evidence [-h] --registry-root REGISTRY_ROOT\n                                           --repo-root REPO_ROOT\n                                           --from MOVED_FROM --to MOVED_TO\n",
-   "help": "usage: registry_tools.py relocate-evidence [-h] --registry-root REGISTRY_ROOT\n                                           --repo-root REPO_ROOT\n                                           --from MOVED_FROM --to MOVED_TO\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --from MOVED_FROM\n  --to MOVED_TO\n",
+   "prog": "domain-memory relocate-evidence",
+   "usage": "usage: domain-memory relocate-evidence [-h] --registry-root REGISTRY_ROOT\n                                       --repo-root REPO_ROOT --from MOVED_FROM\n                                       --to MOVED_TO\n",
+   "help": "usage: domain-memory relocate-evidence [-h] --registry-root REGISTRY_ROOT\n                                       --repo-root REPO_ROOT --from MOVED_FROM\n                                       --to MOVED_TO\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --from MOVED_FROM\n  --to MOVED_TO\n",
    "actions": [
     {
      "dest": "help",
@@ -1550,9 +1549,9 @@
    "mutex": []
   },
   "discover-sources": {
-   "prog": "registry_tools.py discover-sources",
-   "usage": "usage: registry_tools.py discover-sources [-h] --repo-root REPO_ROOT\n                                          [--output OUTPUT]\n                                          [--implementation-root IMPLEMENTATION_ROOT]\n                                          [--excluded-directory EXCLUDED_DIRECTORY]\n                                          [--decision-root DECISION_ROOT]\n                                          [--boundary-marker BOUNDARY_MARKER]\n",
-   "help": "usage: registry_tools.py discover-sources [-h] --repo-root REPO_ROOT\n                                          [--output OUTPUT]\n                                          [--implementation-root IMPLEMENTATION_ROOT]\n                                          [--excluded-directory EXCLUDED_DIRECTORY]\n                                          [--decision-root DECISION_ROOT]\n                                          [--boundary-marker BOUNDARY_MARKER]\n\noptions:\n  -h, --help            show this help message and exit\n  --repo-root REPO_ROOT\n  --output OUTPUT\n  --implementation-root IMPLEMENTATION_ROOT\n                        repeatable\n  --excluded-directory EXCLUDED_DIRECTORY\n                        repeatable\n  --decision-root DECISION_ROOT\n                        repeatable\n  --boundary-marker BOUNDARY_MARKER\n                        repeatable\n",
+   "prog": "domain-memory discover-sources",
+   "usage": "usage: domain-memory discover-sources [-h] --repo-root REPO_ROOT\n                                      [--output OUTPUT]\n                                      [--implementation-root IMPLEMENTATION_ROOT]\n                                      [--excluded-directory EXCLUDED_DIRECTORY]\n                                      [--decision-root DECISION_ROOT]\n                                      [--boundary-marker BOUNDARY_MARKER]\n",
+   "help": "usage: domain-memory discover-sources [-h] --repo-root REPO_ROOT\n                                      [--output OUTPUT]\n                                      [--implementation-root IMPLEMENTATION_ROOT]\n                                      [--excluded-directory EXCLUDED_DIRECTORY]\n                                      [--decision-root DECISION_ROOT]\n                                      [--boundary-marker BOUNDARY_MARKER]\n\noptions:\n  -h, --help            show this help message and exit\n  --repo-root REPO_ROOT\n  --output OUTPUT\n  --implementation-root IMPLEMENTATION_ROOT\n                        repeatable\n  --excluded-directory EXCLUDED_DIRECTORY\n                        repeatable\n  --decision-root DECISION_ROOT\n                        repeatable\n  --boundary-marker BOUNDARY_MARKER\n                        repeatable\n",
    "actions": [
     {
      "dest": "help",
@@ -1636,9 +1635,9 @@
    "mutex": []
   },
   "verify-sources": {
-   "prog": "registry_tools.py verify-sources",
-   "usage": "usage: registry_tools.py verify-sources [-h] --repo-root REPO_ROOT\n                                        --source-map SOURCE_MAP\n                                        [--policy POLICY]\n",
-   "help": "usage: registry_tools.py verify-sources [-h] --repo-root REPO_ROOT\n                                        --source-map SOURCE_MAP\n                                        [--policy POLICY]\n\noptions:\n  -h, --help            show this help message and exit\n  --repo-root REPO_ROOT\n  --source-map SOURCE_MAP\n  --policy POLICY\n",
+   "prog": "domain-memory verify-sources",
+   "usage": "usage: domain-memory verify-sources [-h] --repo-root REPO_ROOT\n                                    --source-map SOURCE_MAP [--policy POLICY]\n",
+   "help": "usage: domain-memory verify-sources [-h] --repo-root REPO_ROOT\n                                    --source-map SOURCE_MAP [--policy POLICY]\n\noptions:\n  -h, --help            show this help message and exit\n  --repo-root REPO_ROOT\n  --source-map SOURCE_MAP\n  --policy POLICY\n",
    "actions": [
     {
      "dest": "help",
@@ -1689,9 +1688,9 @@
    "mutex": []
   },
   "scan-secrets": {
-   "prog": "registry_tools.py scan-secrets",
-   "usage": "usage: registry_tools.py scan-secrets [-h] --repo-root REPO_ROOT\n",
-   "help": "usage: registry_tools.py scan-secrets [-h] --repo-root REPO_ROOT\n\noptions:\n  -h, --help            show this help message and exit\n  --repo-root REPO_ROOT\n",
+   "prog": "domain-memory scan-secrets",
+   "usage": "usage: domain-memory scan-secrets [-h] --repo-root REPO_ROOT\n",
+   "help": "usage: domain-memory scan-secrets [-h] --repo-root REPO_ROOT\n\noptions:\n  -h, --help            show this help message and exit\n  --repo-root REPO_ROOT\n",
    "actions": [
     {
      "dest": "help",
@@ -1720,9 +1719,9 @@
    "mutex": []
   },
   "init-domain-memory": {
-   "prog": "registry_tools.py init-domain-memory",
-   "usage": "usage: registry_tools.py init-domain-memory [-h] --repo-root REPO_ROOT\n                                            --output OUTPUT --source SOURCE\n                                            --storage-mode {tracked,ignored,external}\n                                            --data-classification {public,internal,confidential,restricted}\n                                            --review-mode {local-draft-only,scm-verified}\n                                            --source-authority SOURCE_AUTHORITY\n                                            [--review-verifier {git-signed-commit,none}]\n                                            [--review-trigger {git-commit,git-push,none}]\n                                            [--ci-requirement {required,optional,none}]\n                                            [--authorized-signer AUTHORIZED_SIGNER]\n                                            [--distinct-signer]\n                                            [--implementation-root IMPLEMENTATION_ROOT]\n                                            [--excluded-directory EXCLUDED_DIRECTORY]\n                                            [--decision-root DECISION_ROOT]\n                                            [--boundary-marker BOUNDARY_MARKER]\n                                            [--include INCLUDE]\n                                            [--exclude EXCLUDE]\n",
-   "help": "usage: registry_tools.py init-domain-memory [-h] --repo-root REPO_ROOT\n                                            --output OUTPUT --source SOURCE\n                                            --storage-mode {tracked,ignored,external}\n                                            --data-classification {public,internal,confidential,restricted}\n                                            --review-mode {local-draft-only,scm-verified}\n                                            --source-authority SOURCE_AUTHORITY\n                                            [--review-verifier {git-signed-commit,none}]\n                                            [--review-trigger {git-commit,git-push,none}]\n                                            [--ci-requirement {required,optional,none}]\n                                            [--authorized-signer AUTHORIZED_SIGNER]\n                                            [--distinct-signer]\n                                            [--implementation-root IMPLEMENTATION_ROOT]\n                                            [--excluded-directory EXCLUDED_DIRECTORY]\n                                            [--decision-root DECISION_ROOT]\n                                            [--boundary-marker BOUNDARY_MARKER]\n                                            [--include INCLUDE]\n                                            [--exclude EXCLUDE]\n\noptions:\n  -h, --help            show this help message and exit\n  --repo-root REPO_ROOT\n  --output OUTPUT       Registry directory to create, inside the repository\n  --source SOURCE       repeatable\n  --storage-mode {tracked,ignored,external}\n  --data-classification {public,internal,confidential,restricted}\n  --review-mode {local-draft-only,scm-verified}\n  --source-authority SOURCE_AUTHORITY\n                        who confirms the selected sources are the right ones,\n                        such as the domain owner's name\n  --review-verifier {git-signed-commit,none}\n  --review-trigger {git-commit,git-push,none}\n  --ci-requirement {required,optional,none}\n  --authorized-signer AUTHORIZED_SIGNER\n  --distinct-signer\n  --implementation-root IMPLEMENTATION_ROOT\n                        repeatable\n  --excluded-directory EXCLUDED_DIRECTORY\n                        repeatable\n  --decision-root DECISION_ROOT\n                        repeatable\n  --boundary-marker BOUNDARY_MARKER\n                        repeatable\n  --include INCLUDE\n  --exclude EXCLUDE\n",
+   "prog": "domain-memory init-domain-memory",
+   "usage": "usage: domain-memory init-domain-memory [-h] --repo-root REPO_ROOT\n                                        --output OUTPUT --source SOURCE\n                                        --storage-mode {tracked,ignored,external}\n                                        --data-classification {public,internal,confidential,restricted}\n                                        --review-mode {local-draft-only,scm-verified}\n                                        --source-authority SOURCE_AUTHORITY\n                                        [--review-verifier {git-signed-commit,none}]\n                                        [--review-trigger {git-commit,git-push,none}]\n                                        [--ci-requirement {required,optional,none}]\n                                        [--authorized-signer AUTHORIZED_SIGNER]\n                                        [--distinct-signer]\n                                        [--implementation-root IMPLEMENTATION_ROOT]\n                                        [--excluded-directory EXCLUDED_DIRECTORY]\n                                        [--decision-root DECISION_ROOT]\n                                        [--boundary-marker BOUNDARY_MARKER]\n                                        [--include INCLUDE]\n                                        [--exclude EXCLUDE]\n",
+   "help": "usage: domain-memory init-domain-memory [-h] --repo-root REPO_ROOT\n                                        --output OUTPUT --source SOURCE\n                                        --storage-mode {tracked,ignored,external}\n                                        --data-classification {public,internal,confidential,restricted}\n                                        --review-mode {local-draft-only,scm-verified}\n                                        --source-authority SOURCE_AUTHORITY\n                                        [--review-verifier {git-signed-commit,none}]\n                                        [--review-trigger {git-commit,git-push,none}]\n                                        [--ci-requirement {required,optional,none}]\n                                        [--authorized-signer AUTHORIZED_SIGNER]\n                                        [--distinct-signer]\n                                        [--implementation-root IMPLEMENTATION_ROOT]\n                                        [--excluded-directory EXCLUDED_DIRECTORY]\n                                        [--decision-root DECISION_ROOT]\n                                        [--boundary-marker BOUNDARY_MARKER]\n                                        [--include INCLUDE]\n                                        [--exclude EXCLUDE]\n\noptions:\n  -h, --help            show this help message and exit\n  --repo-root REPO_ROOT\n  --output OUTPUT       Registry directory to create, inside the repository\n  --source SOURCE       repeatable\n  --storage-mode {tracked,ignored,external}\n  --data-classification {public,internal,confidential,restricted}\n  --review-mode {local-draft-only,scm-verified}\n  --source-authority SOURCE_AUTHORITY\n                        who confirms the selected sources are the right ones,\n                        such as the domain owner's name\n  --review-verifier {git-signed-commit,none}\n  --review-trigger {git-commit,git-push,none}\n  --ci-requirement {required,optional,none}\n  --authorized-signer AUTHORIZED_SIGNER\n  --distinct-signer\n  --implementation-root IMPLEMENTATION_ROOT\n                        repeatable\n  --excluded-directory EXCLUDED_DIRECTORY\n                        repeatable\n  --decision-root DECISION_ROOT\n                        repeatable\n  --boundary-marker BOUNDARY_MARKER\n                        repeatable\n  --include INCLUDE\n  --exclude EXCLUDE\n",
    "actions": [
     {
      "dest": "help",
@@ -1961,9 +1960,9 @@
    "mutex": []
   },
   "confirm-sources": {
-   "prog": "registry_tools.py confirm-sources",
-   "usage": "usage: registry_tools.py confirm-sources [-h] --registry-root REGISTRY_ROOT\n                                         --repo-root REPO_ROOT\n                                         --confirmed-by CONFIRMED_BY\n",
-   "help": "usage: registry_tools.py confirm-sources [-h] --registry-root REGISTRY_ROOT\n                                         --repo-root REPO_ROOT\n                                         --confirmed-by CONFIRMED_BY\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --confirmed-by CONFIRMED_BY\n",
+   "prog": "domain-memory confirm-sources",
+   "usage": "usage: domain-memory confirm-sources [-h] --registry-root REGISTRY_ROOT\n                                     --repo-root REPO_ROOT\n                                     --confirmed-by CONFIRMED_BY\n",
+   "help": "usage: domain-memory confirm-sources [-h] --registry-root REGISTRY_ROOT\n                                     --repo-root REPO_ROOT\n                                     --confirmed-by CONFIRMED_BY\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --confirmed-by CONFIRMED_BY\n",
    "actions": [
     {
      "dest": "help",
@@ -2014,9 +2013,9 @@
    "mutex": []
   },
   "refresh-sources": {
-   "prog": "registry_tools.py refresh-sources",
-   "usage": "usage: registry_tools.py refresh-sources [-h] --registry-root REGISTRY_ROOT\n                                         --repo-root REPO_ROOT\n",
-   "help": "usage: registry_tools.py refresh-sources [-h] --registry-root REGISTRY_ROOT\n                                         --repo-root REPO_ROOT\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n",
+   "prog": "domain-memory refresh-sources",
+   "usage": "usage: domain-memory refresh-sources [-h] --registry-root REGISTRY_ROOT\n                                     --repo-root REPO_ROOT\n",
+   "help": "usage: domain-memory refresh-sources [-h] --registry-root REGISTRY_ROOT\n                                     --repo-root REPO_ROOT\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n",
    "actions": [
     {
      "dest": "help",
@@ -2056,9 +2055,9 @@
    "mutex": []
   },
   "refresh-listing": {
-   "prog": "registry_tools.py refresh-listing",
-   "usage": "usage: registry_tools.py refresh-listing [-h] --registry-root REGISTRY_ROOT\n                                         --repo-root REPO_ROOT\n",
-   "help": "usage: registry_tools.py refresh-listing [-h] --registry-root REGISTRY_ROOT\n                                         --repo-root REPO_ROOT\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n",
+   "prog": "domain-memory refresh-listing",
+   "usage": "usage: domain-memory refresh-listing [-h] --registry-root REGISTRY_ROOT\n                                     --repo-root REPO_ROOT\n",
+   "help": "usage: domain-memory refresh-listing [-h] --registry-root REGISTRY_ROOT\n                                     --repo-root REPO_ROOT\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n",
    "actions": [
     {
      "dest": "help",
@@ -2098,9 +2097,9 @@
    "mutex": []
   },
   "refine-sources": {
-   "prog": "registry_tools.py refine-sources",
-   "usage": "usage: registry_tools.py refine-sources [-h] --registry-root REGISTRY_ROOT\n                                        --repo-root REPO_ROOT\n                                        [--source SOURCE] [--add ADD]\n                                        [--remove REMOVE]\n",
-   "help": "usage: registry_tools.py refine-sources [-h] --registry-root REGISTRY_ROOT\n                                        --repo-root REPO_ROOT\n                                        [--source SOURCE] [--add ADD]\n                                        [--remove REMOVE]\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --source SOURCE       repeatable\n  --add ADD\n  --remove REMOVE\n",
+   "prog": "domain-memory refine-sources",
+   "usage": "usage: domain-memory refine-sources [-h] --registry-root REGISTRY_ROOT\n                                    --repo-root REPO_ROOT [--source SOURCE]\n                                    [--add ADD] [--remove REMOVE]\n",
+   "help": "usage: domain-memory refine-sources [-h] --registry-root REGISTRY_ROOT\n                                    --repo-root REPO_ROOT [--source SOURCE]\n                                    [--add ADD] [--remove REMOVE]\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --source SOURCE       repeatable\n  --add ADD\n  --remove REMOVE\n",
    "actions": [
     {
      "dest": "help",
@@ -2173,9 +2172,9 @@
    "mutex": []
   },
   "init-change-package": {
-   "prog": "registry_tools.py init-change-package",
-   "usage": "usage: registry_tools.py init-change-package [-h] --output OUTPUT\n                                             [--requirement-id REQUIREMENT_ID]\n                                             [--proposal-id PROPOSAL_ID]\n                                             [--proposer PROPOSER]\n                                             [--recitation RECITATION]\n                                             [--registry-root REGISTRY_ROOT]\n",
-   "help": "usage: registry_tools.py init-change-package [-h] --output OUTPUT\n                                             [--requirement-id REQUIREMENT_ID]\n                                             [--proposal-id PROPOSAL_ID]\n                                             [--proposer PROPOSER]\n                                             [--recitation RECITATION]\n                                             [--registry-root REGISTRY_ROOT]\n\noptions:\n  -h, --help            show this help message and exit\n  --output OUTPUT\n  --requirement-id REQUIREMENT_ID\n  --proposal-id PROPOSAL_ID\n  --proposer PROPOSER\n  --recitation RECITATION\n  --registry-root REGISTRY_ROOT\n",
+   "prog": "domain-memory init-change-package",
+   "usage": "usage: domain-memory init-change-package [-h] --output OUTPUT\n                                         [--requirement-id REQUIREMENT_ID]\n                                         [--proposal-id PROPOSAL_ID]\n                                         [--proposer PROPOSER]\n                                         [--recitation RECITATION]\n                                         [--registry-root REGISTRY_ROOT]\n",
+   "help": "usage: domain-memory init-change-package [-h] --output OUTPUT\n                                         [--requirement-id REQUIREMENT_ID]\n                                         [--proposal-id PROPOSAL_ID]\n                                         [--proposer PROPOSER]\n                                         [--recitation RECITATION]\n                                         [--registry-root REGISTRY_ROOT]\n\noptions:\n  -h, --help            show this help message and exit\n  --output OUTPUT\n  --requirement-id REQUIREMENT_ID\n  --proposal-id PROPOSAL_ID\n  --proposer PROPOSER\n  --recitation RECITATION\n  --registry-root REGISTRY_ROOT\n",
    "actions": [
     {
      "dest": "help",
@@ -2259,9 +2258,9 @@
    "mutex": []
   },
   "redraft-proposal": {
-   "prog": "registry_tools.py redraft-proposal",
-   "usage": "usage: registry_tools.py redraft-proposal [-h] --package-root PACKAGE_ROOT\n                                          --output OUTPUT\n                                          --proposal-id PROPOSAL_ID\n                                          [--registry-root REGISTRY_ROOT]\n                                          [--repo-root REPO_ROOT]\n",
-   "help": "usage: registry_tools.py redraft-proposal [-h] --package-root PACKAGE_ROOT\n                                          --output OUTPUT\n                                          --proposal-id PROPOSAL_ID\n                                          [--registry-root REGISTRY_ROOT]\n                                          [--repo-root REPO_ROOT]\n\noptions:\n  -h, --help            show this help message and exit\n  --package-root PACKAGE_ROOT\n  --output OUTPUT\n  --proposal-id PROPOSAL_ID\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n",
+   "prog": "domain-memory redraft-proposal",
+   "usage": "usage: domain-memory redraft-proposal [-h] --package-root PACKAGE_ROOT\n                                      --output OUTPUT\n                                      --proposal-id PROPOSAL_ID\n                                      [--registry-root REGISTRY_ROOT]\n                                      [--repo-root REPO_ROOT]\n",
+   "help": "usage: domain-memory redraft-proposal [-h] --package-root PACKAGE_ROOT\n                                      --output OUTPUT\n                                      --proposal-id PROPOSAL_ID\n                                      [--registry-root REGISTRY_ROOT]\n                                      [--repo-root REPO_ROOT]\n\noptions:\n  -h, --help            show this help message and exit\n  --package-root PACKAGE_ROOT\n  --output OUTPUT\n  --proposal-id PROPOSAL_ID\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n",
    "actions": [
     {
      "dest": "help",
@@ -2334,9 +2333,9 @@
    "mutex": []
   },
   "validate": {
-   "prog": "registry_tools.py validate",
-   "usage": "usage: registry_tools.py validate [-h] --registry-root REGISTRY_ROOT\n                                  [--repo-root REPO_ROOT] [--require-reviewed]\n",
-   "help": "usage: registry_tools.py validate [-h] --registry-root REGISTRY_ROOT\n                                  [--repo-root REPO_ROOT] [--require-reviewed]\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --require-reviewed\n",
+   "prog": "domain-memory validate",
+   "usage": "usage: domain-memory validate [-h] --registry-root REGISTRY_ROOT\n                              [--repo-root REPO_ROOT] [--require-reviewed]\n",
+   "help": "usage: domain-memory validate [-h] --registry-root REGISTRY_ROOT\n                              [--repo-root REPO_ROOT] [--require-reviewed]\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --require-reviewed\n",
    "actions": [
     {
      "dest": "help",
@@ -2387,9 +2386,9 @@
    "mutex": []
   },
   "recover-registry-update": {
-   "prog": "registry_tools.py recover-registry-update",
-   "usage": "usage: registry_tools.py recover-registry-update [-h]\n                                                 --registry-root REGISTRY_ROOT\n                                                 [--repo-root REPO_ROOT]\n                                                 [--force]\n",
-   "help": "usage: registry_tools.py recover-registry-update [-h]\n                                                 --registry-root REGISTRY_ROOT\n                                                 [--repo-root REPO_ROOT]\n                                                 [--force]\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --force\n",
+   "prog": "domain-memory recover-registry-update",
+   "usage": "usage: domain-memory recover-registry-update [-h]\n                                             --registry-root REGISTRY_ROOT\n                                             [--repo-root REPO_ROOT] [--force]\n",
+   "help": "usage: domain-memory recover-registry-update [-h]\n                                             --registry-root REGISTRY_ROOT\n                                             [--repo-root REPO_ROOT] [--force]\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --force\n",
    "actions": [
     {
      "dest": "help",
@@ -2440,9 +2439,9 @@
    "mutex": []
   },
   "demote-local-reviews": {
-   "prog": "registry_tools.py demote-local-reviews",
-   "usage": "usage: registry_tools.py demote-local-reviews [-h]\n                                              --registry-root REGISTRY_ROOT\n                                              --repo-root REPO_ROOT\n",
-   "help": "usage: registry_tools.py demote-local-reviews [-h]\n                                              --registry-root REGISTRY_ROOT\n                                              --repo-root REPO_ROOT\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n",
+   "prog": "domain-memory demote-local-reviews",
+   "usage": "usage: domain-memory demote-local-reviews [-h] --registry-root REGISTRY_ROOT\n                                          --repo-root REPO_ROOT\n",
+   "help": "usage: domain-memory demote-local-reviews [-h] --registry-root REGISTRY_ROOT\n                                          --repo-root REPO_ROOT\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n",
    "actions": [
     {
      "dest": "help",
@@ -2482,9 +2481,9 @@
    "mutex": []
   },
   "upsert-candidate": {
-   "prog": "registry_tools.py upsert-candidate",
-   "usage": "usage: registry_tools.py upsert-candidate [-h] --registry-root REGISTRY_ROOT\n                                          --repo-root REPO_ROOT\n                                          --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n                                          --record-file RECORD_FILE\n",
-   "help": "usage: registry_tools.py upsert-candidate [-h] --registry-root REGISTRY_ROOT\n                                          --repo-root REPO_ROOT\n                                          --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n                                          --record-file RECORD_FILE\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n  --record-file RECORD_FILE\n                        repeatable: one record per file\n",
+   "prog": "domain-memory upsert-candidate",
+   "usage": "usage: domain-memory upsert-candidate [-h] --registry-root REGISTRY_ROOT\n                                      --repo-root REPO_ROOT\n                                      --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n                                      --record-file RECORD_FILE\n",
+   "help": "usage: domain-memory upsert-candidate [-h] --registry-root REGISTRY_ROOT\n                                      --repo-root REPO_ROOT\n                                      --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n                                      --record-file RECORD_FILE\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n  --record-file RECORD_FILE\n                        repeatable: one record per file\n",
    "actions": [
     {
      "dest": "help",
@@ -2558,9 +2557,9 @@
    "mutex": []
   },
   "retract-candidate": {
-   "prog": "registry_tools.py retract-candidate",
-   "usage": "usage: registry_tools.py retract-candidate [-h] --registry-root REGISTRY_ROOT\n                                           --repo-root REPO_ROOT\n                                           --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n                                           --id ID --reason REASON\n",
-   "help": "usage: registry_tools.py retract-candidate [-h] --registry-root REGISTRY_ROOT\n                                           --repo-root REPO_ROOT\n                                           --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n                                           --id ID --reason REASON\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n  --id ID               repeatable: every record is withdrawn in one update\n  --reason REASON\n",
+   "prog": "domain-memory retract-candidate",
+   "usage": "usage: domain-memory retract-candidate [-h] --registry-root REGISTRY_ROOT\n                                       --repo-root REPO_ROOT\n                                       --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n                                       --id ID --reason REASON\n",
+   "help": "usage: domain-memory retract-candidate [-h] --registry-root REGISTRY_ROOT\n                                       --repo-root REPO_ROOT\n                                       --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n                                       --id ID --reason REASON\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n  --id ID               repeatable: every record is withdrawn in one update\n  --reason REASON\n",
    "actions": [
     {
      "dest": "help",
@@ -2645,9 +2644,9 @@
    "mutex": []
   },
   "promote-candidate": {
-   "prog": "registry_tools.py promote-candidate",
-   "usage": "usage: registry_tools.py promote-candidate [-h] --package-root PACKAGE_ROOT\n                                           --registry-root REGISTRY_ROOT\n                                           --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n                                           --id ID [--amend]\n                                           [--repo-root REPO_ROOT]\n                                           [--cite CITE]\n                                           [--cite-function CITE_FUNCTION]\n                                           [--drop-cite DROP_CITE]\n",
-   "help": "usage: registry_tools.py promote-candidate [-h] --package-root PACKAGE_ROOT\n                                           --registry-root REGISTRY_ROOT\n                                           --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n                                           --id ID [--amend]\n                                           [--repo-root REPO_ROOT]\n                                           [--cite CITE]\n                                           [--cite-function CITE_FUNCTION]\n                                           [--drop-cite DROP_CITE]\n\noptions:\n  -h, --help            show this help message and exit\n  --package-root PACKAGE_ROOT\n  --registry-root REGISTRY_ROOT\n  --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n  --id ID\n  --amend               a reviewed record: copy it without its review fields\n                        and supersede the proposal that reviewed it\n  --repo-root REPO_ROOT\n  --cite CITE           repeatable PATH:START-END to add to the promoted\n                        record's evidence\n  --cite-function CITE_FUNCTION\n                        repeatable PATH:NAME, a function the file defines, to\n                        add as evidence\n  --drop-cite DROP_CITE\n                        repeatable PATH:START-END to remove from the promoted\n                        record's evidence\n",
+   "prog": "domain-memory promote-candidate",
+   "usage": "usage: domain-memory promote-candidate [-h] --package-root PACKAGE_ROOT\n                                       --registry-root REGISTRY_ROOT\n                                       --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n                                       --id ID [--amend]\n                                       [--repo-root REPO_ROOT] [--cite CITE]\n                                       [--cite-function CITE_FUNCTION]\n                                       [--drop-cite DROP_CITE]\n",
+   "help": "usage: domain-memory promote-candidate [-h] --package-root PACKAGE_ROOT\n                                       --registry-root REGISTRY_ROOT\n                                       --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n                                       --id ID [--amend]\n                                       [--repo-root REPO_ROOT] [--cite CITE]\n                                       [--cite-function CITE_FUNCTION]\n                                       [--drop-cite DROP_CITE]\n\noptions:\n  -h, --help            show this help message and exit\n  --package-root PACKAGE_ROOT\n  --registry-root REGISTRY_ROOT\n  --asset {contexts,vocabulary,aggregates,rules,contracts,interactions,decisions,events,capabilities,value-objects,dependency-policies}\n  --id ID\n  --amend               a reviewed record: copy it without its review fields\n                        and supersede the proposal that reviewed it\n  --repo-root REPO_ROOT\n  --cite CITE           repeatable PATH:START-END to add to the promoted\n                        record's evidence\n  --cite-function CITE_FUNCTION\n                        repeatable PATH:NAME, a function the file defines, to\n                        add as evidence\n  --drop-cite DROP_CITE\n                        repeatable PATH:START-END to remove from the promoted\n                        record's evidence\n",
    "actions": [
     {
      "dest": "help",
@@ -2776,9 +2775,9 @@
    "mutex": []
   },
   "harvest-candidates": {
-   "prog": "registry_tools.py harvest-candidates",
-   "usage": "usage: registry_tools.py harvest-candidates [-h] --registry-root REGISTRY_ROOT\n                                            --repo-root REPO_ROOT\n                                            --from-root FROM_ROOT\n                                            [--context-map CONTEXT_MAP]\n                                            [--keep-duplicates]\n",
-   "help": "usage: registry_tools.py harvest-candidates [-h] --registry-root REGISTRY_ROOT\n                                            --repo-root REPO_ROOT\n                                            --from-root FROM_ROOT\n                                            [--context-map CONTEXT_MAP]\n                                            [--keep-duplicates]\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --from-root FROM_ROOT\n  --context-map CONTEXT_MAP\n                        repeatable CANDIDATE=GOLD, over the pairing found by\n                        path or name\n  --keep-duplicates\n",
+   "prog": "domain-memory harvest-candidates",
+   "usage": "usage: domain-memory harvest-candidates [-h] --registry-root REGISTRY_ROOT\n                                        --repo-root REPO_ROOT\n                                        --from-root FROM_ROOT\n                                        [--context-map CONTEXT_MAP]\n                                        [--keep-duplicates]\n",
+   "help": "usage: domain-memory harvest-candidates [-h] --registry-root REGISTRY_ROOT\n                                        --repo-root REPO_ROOT\n                                        --from-root FROM_ROOT\n                                        [--context-map CONTEXT_MAP]\n                                        [--keep-duplicates]\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --from-root FROM_ROOT\n  --context-map CONTEXT_MAP\n                        repeatable CANDIDATE=GOLD, over the pairing found by\n                        path or name\n  --keep-duplicates\n",
    "actions": [
     {
      "dest": "help",
@@ -2851,9 +2850,9 @@
    "mutex": []
   },
   "harvest": {
-   "prog": "registry_tools.py harvest",
-   "usage": "usage: registry_tools.py harvest [-h] --registry-root REGISTRY_ROOT\n                                 --repo-root REPO_ROOT --spec SPEC\n                                 [--changes-root CHANGES_ROOT]\n                                 [--through {draft,verified}]\n",
-   "help": "usage: registry_tools.py harvest [-h] --registry-root REGISTRY_ROOT\n                                 --repo-root REPO_ROOT --spec SPEC\n                                 [--changes-root CHANGES_ROOT]\n                                 [--through {draft,verified}]\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --spec SPEC\n  --changes-root CHANGES_ROOT\n  --through {draft,verified}\n",
+   "prog": "domain-memory harvest",
+   "usage": "usage: domain-memory harvest [-h] --registry-root REGISTRY_ROOT\n                             --repo-root REPO_ROOT --spec SPEC\n                             [--changes-root CHANGES_ROOT]\n                             [--through {draft,verified}]\n",
+   "help": "usage: domain-memory harvest [-h] --registry-root REGISTRY_ROOT\n                             --repo-root REPO_ROOT --spec SPEC\n                             [--changes-root CHANGES_ROOT]\n                             [--through {draft,verified}]\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --spec SPEC\n  --changes-root CHANGES_ROOT\n  --through {draft,verified}\n",
    "actions": [
     {
      "dest": "help",
@@ -2929,9 +2928,9 @@
    "mutex": []
   },
   "discard-harvest": {
-   "prog": "registry_tools.py discard-harvest",
-   "usage": "usage: registry_tools.py discard-harvest [-h] [--package-root PACKAGE_ROOT]\n                                         [--spec SPEC]\n                                         [--changes-root CHANGES_ROOT]\n                                         --registry-root REGISTRY_ROOT\n                                         --repo-root REPO_ROOT --reason REASON\n",
-   "help": "usage: registry_tools.py discard-harvest [-h] [--package-root PACKAGE_ROOT]\n                                         [--spec SPEC]\n                                         [--changes-root CHANGES_ROOT]\n                                         --registry-root REGISTRY_ROOT\n                                         --repo-root REPO_ROOT --reason REASON\n\noptions:\n  -h, --help            show this help message and exit\n  --package-root PACKAGE_ROOT\n  --spec SPEC\n  --changes-root CHANGES_ROOT\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --reason REASON\n",
+   "prog": "domain-memory discard-harvest",
+   "usage": "usage: domain-memory discard-harvest [-h] [--package-root PACKAGE_ROOT]\n                                     [--spec SPEC]\n                                     [--changes-root CHANGES_ROOT]\n                                     --registry-root REGISTRY_ROOT\n                                     --repo-root REPO_ROOT --reason REASON\n",
+   "help": "usage: domain-memory discard-harvest [-h] [--package-root PACKAGE_ROOT]\n                                     [--spec SPEC]\n                                     [--changes-root CHANGES_ROOT]\n                                     --registry-root REGISTRY_ROOT\n                                     --repo-root REPO_ROOT --reason REASON\n\noptions:\n  -h, --help            show this help message and exit\n  --package-root PACKAGE_ROOT\n  --spec SPEC\n  --changes-root CHANGES_ROOT\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --reason REASON\n",
    "actions": [
     {
      "dest": "help",
@@ -3015,9 +3014,9 @@
    "mutex": []
   },
   "submit-proposal": {
-   "prog": "registry_tools.py submit-proposal",
-   "usage": "usage: registry_tools.py submit-proposal [-h] --package-root PACKAGE_ROOT\n                                         --registry-root REGISTRY_ROOT\n                                         --repo-root REPO_ROOT\n",
-   "help": "usage: registry_tools.py submit-proposal [-h] --package-root PACKAGE_ROOT\n                                         --registry-root REGISTRY_ROOT\n                                         --repo-root REPO_ROOT\n\noptions:\n  -h, --help            show this help message and exit\n  --package-root PACKAGE_ROOT\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n",
+   "prog": "domain-memory submit-proposal",
+   "usage": "usage: domain-memory submit-proposal [-h] --package-root PACKAGE_ROOT\n                                     --registry-root REGISTRY_ROOT\n                                     --repo-root REPO_ROOT\n",
+   "help": "usage: domain-memory submit-proposal [-h] --package-root PACKAGE_ROOT\n                                     --registry-root REGISTRY_ROOT\n                                     --repo-root REPO_ROOT\n\noptions:\n  -h, --help            show this help message and exit\n  --package-root PACKAGE_ROOT\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n",
    "actions": [
     {
      "dest": "help",
@@ -3068,9 +3067,9 @@
    "mutex": []
   },
   "record-approval": {
-   "prog": "registry_tools.py record-approval",
-   "usage": "usage: registry_tools.py record-approval [-h] --package-root PACKAGE_ROOT\n                                         --role ROLE --reviewer REVIEWER\n                                         --scope SCOPE\n                                         [--approved-at APPROVED_AT]\n                                         [--registry-root REGISTRY_ROOT]\n                                         [--repo-root REPO_ROOT]\n",
-   "help": "usage: registry_tools.py record-approval [-h] --package-root PACKAGE_ROOT\n                                         --role ROLE --reviewer REVIEWER\n                                         --scope SCOPE\n                                         [--approved-at APPROVED_AT]\n                                         [--registry-root REGISTRY_ROOT]\n                                         [--repo-root REPO_ROOT]\n\noptions:\n  -h, --help            show this help message and exit\n  --package-root PACKAGE_ROOT\n  --role ROLE\n  --reviewer REVIEWER\n  --scope SCOPE\n  --approved-at APPROVED_AT\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n",
+   "prog": "domain-memory record-approval",
+   "usage": "usage: domain-memory record-approval [-h] --package-root PACKAGE_ROOT\n                                     --role ROLE --reviewer REVIEWER\n                                     --scope SCOPE [--approved-at APPROVED_AT]\n                                     [--registry-root REGISTRY_ROOT]\n                                     [--repo-root REPO_ROOT]\n",
+   "help": "usage: domain-memory record-approval [-h] --package-root PACKAGE_ROOT\n                                     --role ROLE --reviewer REVIEWER\n                                     --scope SCOPE [--approved-at APPROVED_AT]\n                                     [--registry-root REGISTRY_ROOT]\n                                     [--repo-root REPO_ROOT]\n\noptions:\n  -h, --help            show this help message and exit\n  --package-root PACKAGE_ROOT\n  --role ROLE\n  --reviewer REVIEWER\n  --scope SCOPE\n  --approved-at APPROVED_AT\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n",
    "actions": [
     {
      "dest": "help",
@@ -3165,9 +3164,9 @@
    "mutex": []
   },
   "supersede-proposal": {
-   "prog": "registry_tools.py supersede-proposal",
-   "usage": "usage: registry_tools.py supersede-proposal [-h] --package-root PACKAGE_ROOT\n                                            --reason REASON\n                                            [--superseded-by SUPERSEDED_BY]\n                                            [--registry-root REGISTRY_ROOT]\n                                            [--repo-root REPO_ROOT]\n",
-   "help": "usage: registry_tools.py supersede-proposal [-h] --package-root PACKAGE_ROOT\n                                            --reason REASON\n                                            [--superseded-by SUPERSEDED_BY]\n                                            [--registry-root REGISTRY_ROOT]\n                                            [--repo-root REPO_ROOT]\n\noptions:\n  -h, --help            show this help message and exit\n  --package-root PACKAGE_ROOT\n  --reason REASON\n  --superseded-by SUPERSEDED_BY\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n",
+   "prog": "domain-memory supersede-proposal",
+   "usage": "usage: domain-memory supersede-proposal [-h] --package-root PACKAGE_ROOT\n                                        --reason REASON\n                                        [--superseded-by SUPERSEDED_BY]\n                                        [--registry-root REGISTRY_ROOT]\n                                        [--repo-root REPO_ROOT]\n",
+   "help": "usage: domain-memory supersede-proposal [-h] --package-root PACKAGE_ROOT\n                                        --reason REASON\n                                        [--superseded-by SUPERSEDED_BY]\n                                        [--registry-root REGISTRY_ROOT]\n                                        [--repo-root REPO_ROOT]\n\noptions:\n  -h, --help            show this help message and exit\n  --package-root PACKAGE_ROOT\n  --reason REASON\n  --superseded-by SUPERSEDED_BY\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n",
    "actions": [
     {
      "dest": "help",
@@ -3240,9 +3239,9 @@
    "mutex": []
   },
   "verify-proposal": {
-   "prog": "registry_tools.py verify-proposal",
-   "usage": "usage: registry_tools.py verify-proposal [-h] --package-root PACKAGE_ROOT\n                                         --registry-root REGISTRY_ROOT\n                                         --repo-root REPO_ROOT\n",
-   "help": "usage: registry_tools.py verify-proposal [-h] --package-root PACKAGE_ROOT\n                                         --registry-root REGISTRY_ROOT\n                                         --repo-root REPO_ROOT\n\noptions:\n  -h, --help            show this help message and exit\n  --package-root PACKAGE_ROOT\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n",
+   "prog": "domain-memory verify-proposal",
+   "usage": "usage: domain-memory verify-proposal [-h] --package-root PACKAGE_ROOT\n                                     --registry-root REGISTRY_ROOT\n                                     --repo-root REPO_ROOT\n",
+   "help": "usage: domain-memory verify-proposal [-h] --package-root PACKAGE_ROOT\n                                     --registry-root REGISTRY_ROOT\n                                     --repo-root REPO_ROOT\n\noptions:\n  -h, --help            show this help message and exit\n  --package-root PACKAGE_ROOT\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n",
    "actions": [
     {
      "dest": "help",
@@ -3293,9 +3292,9 @@
    "mutex": []
   },
   "rebase-proposal": {
-   "prog": "registry_tools.py rebase-proposal",
-   "usage": "usage: registry_tools.py rebase-proposal [-h] --package-root PACKAGE_ROOT\n                                         --registry-root REGISTRY_ROOT\n                                         --repo-root REPO_ROOT\n",
-   "help": "usage: registry_tools.py rebase-proposal [-h] --package-root PACKAGE_ROOT\n                                         --registry-root REGISTRY_ROOT\n                                         --repo-root REPO_ROOT\n\noptions:\n  -h, --help            show this help message and exit\n  --package-root PACKAGE_ROOT\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n",
+   "prog": "domain-memory rebase-proposal",
+   "usage": "usage: domain-memory rebase-proposal [-h] --package-root PACKAGE_ROOT\n                                     --registry-root REGISTRY_ROOT\n                                     --repo-root REPO_ROOT\n",
+   "help": "usage: domain-memory rebase-proposal [-h] --package-root PACKAGE_ROOT\n                                     --registry-root REGISTRY_ROOT\n                                     --repo-root REPO_ROOT\n\noptions:\n  -h, --help            show this help message and exit\n  --package-root PACKAGE_ROOT\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n",
    "actions": [
     {
      "dest": "help",
@@ -3346,9 +3345,9 @@
    "mutex": []
   },
   "record-test-result": {
-   "prog": "registry_tools.py record-test-result",
-   "usage": "usage: registry_tools.py record-test-result [-h] --package-root PACKAGE_ROOT\n                                            --registry-root REGISTRY_ROOT\n                                            --repo-root REPO_ROOT\n                                            --obligation OBLIGATION\n                                            --command-profile COMMAND_PROFILE\n                                            [--timeout TIMEOUT] [--cwd CWD]\n",
-   "help": "usage: registry_tools.py record-test-result [-h] --package-root PACKAGE_ROOT\n                                            --registry-root REGISTRY_ROOT\n                                            --repo-root REPO_ROOT\n                                            --obligation OBLIGATION\n                                            --command-profile COMMAND_PROFILE\n                                            [--timeout TIMEOUT] [--cwd CWD]\n\noptions:\n  -h, --help            show this help message and exit\n  --package-root PACKAGE_ROOT\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --obligation OBLIGATION\n  --command-profile COMMAND_PROFILE\n                        a label for the kind of run, one of the policy's\n                        approved_command_profiles; it never expands into a\n                        command\n  --timeout TIMEOUT\n  --cwd CWD\n",
+   "prog": "domain-memory record-test-result",
+   "usage": "usage: domain-memory record-test-result [-h] --package-root PACKAGE_ROOT\n                                        --registry-root REGISTRY_ROOT\n                                        --repo-root REPO_ROOT\n                                        --obligation OBLIGATION\n                                        --command-profile COMMAND_PROFILE\n                                        [--timeout TIMEOUT] [--cwd CWD]\n",
+   "help": "usage: domain-memory record-test-result [-h] --package-root PACKAGE_ROOT\n                                        --registry-root REGISTRY_ROOT\n                                        --repo-root REPO_ROOT\n                                        --obligation OBLIGATION\n                                        --command-profile COMMAND_PROFILE\n                                        [--timeout TIMEOUT] [--cwd CWD]\n\noptions:\n  -h, --help            show this help message and exit\n  --package-root PACKAGE_ROOT\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --obligation OBLIGATION\n  --command-profile COMMAND_PROFILE\n                        a label for the kind of run, one of the policy's\n                        approved_command_profiles; it never expands into a\n                        command\n  --timeout TIMEOUT\n  --cwd CWD\n",
    "actions": [
     {
      "dest": "help",
@@ -3443,9 +3442,9 @@
    "mutex": []
   },
   "ship-package": {
-   "prog": "registry_tools.py ship-package",
-   "usage": "usage: registry_tools.py ship-package [-h] --package-root PACKAGE_ROOT\n                                      --registry-root REGISTRY_ROOT\n                                      --repo-root REPO_ROOT [--commit COMMIT]\n",
-   "help": "usage: registry_tools.py ship-package [-h] --package-root PACKAGE_ROOT\n                                      --registry-root REGISTRY_ROOT\n                                      --repo-root REPO_ROOT [--commit COMMIT]\n\noptions:\n  -h, --help            show this help message and exit\n  --package-root PACKAGE_ROOT\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --commit COMMIT\n",
+   "prog": "domain-memory ship-package",
+   "usage": "usage: domain-memory ship-package [-h] --package-root PACKAGE_ROOT\n                                  --registry-root REGISTRY_ROOT\n                                  --repo-root REPO_ROOT [--commit COMMIT]\n",
+   "help": "usage: domain-memory ship-package [-h] --package-root PACKAGE_ROOT\n                                  --registry-root REGISTRY_ROOT\n                                  --repo-root REPO_ROOT [--commit COMMIT]\n\noptions:\n  -h, --help            show this help message and exit\n  --package-root PACKAGE_ROOT\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --commit COMMIT\n",
    "actions": [
     {
      "dest": "help",
@@ -3507,9 +3506,9 @@
    "mutex": []
   },
   "validate-change-package": {
-   "prog": "registry_tools.py validate-change-package",
-   "usage": "usage: registry_tools.py validate-change-package [-h]\n                                                 --package-root PACKAGE_ROOT\n                                                 [--registry-root REGISTRY_ROOT]\n                                                 [--as-status {submitted,verified,approved,applied}]\n                                                 [--repo-root REPO_ROOT]\n",
-   "help": "usage: registry_tools.py validate-change-package [-h]\n                                                 --package-root PACKAGE_ROOT\n                                                 [--registry-root REGISTRY_ROOT]\n                                                 [--as-status {submitted,verified,approved,applied}]\n                                                 [--repo-root REPO_ROOT]\n\noptions:\n  -h, --help            show this help message and exit\n  --package-root PACKAGE_ROOT\n  --registry-root REGISTRY_ROOT\n  --as-status {submitted,verified,approved,applied}\n  --repo-root REPO_ROOT\n",
+   "prog": "domain-memory validate-change-package",
+   "usage": "usage: domain-memory validate-change-package [-h] --package-root PACKAGE_ROOT\n                                             [--registry-root REGISTRY_ROOT]\n                                             [--as-status {submitted,verified,approved,applied}]\n                                             [--repo-root REPO_ROOT]\n",
+   "help": "usage: domain-memory validate-change-package [-h] --package-root PACKAGE_ROOT\n                                             [--registry-root REGISTRY_ROOT]\n                                             [--as-status {submitted,verified,approved,applied}]\n                                             [--repo-root REPO_ROOT]\n\noptions:\n  -h, --help            show this help message and exit\n  --package-root PACKAGE_ROOT\n  --registry-root REGISTRY_ROOT\n  --as-status {submitted,verified,approved,applied}\n  --repo-root REPO_ROOT\n",
    "actions": [
     {
      "dest": "help",
@@ -3576,9 +3575,9 @@
    "mutex": []
   },
   "amend-policy": {
-   "prog": "registry_tools.py amend-policy",
-   "usage": "usage: registry_tools.py amend-policy [-h] --registry-root REGISTRY_ROOT\n                                      [--set FIELD=VALUE] --reason REASON\n                                      [--verifier VERIFIER]\n",
-   "help": "usage: registry_tools.py amend-policy [-h] --registry-root REGISTRY_ROOT\n                                      [--set FIELD=VALUE] --reason REASON\n                                      [--verifier VERIFIER]\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --set FIELD=VALUE\n  --reason REASON\n  --verifier VERIFIER\n",
+   "prog": "domain-memory amend-policy",
+   "usage": "usage: domain-memory amend-policy [-h] --registry-root REGISTRY_ROOT\n                                  [--set FIELD=VALUE] --reason REASON\n                                  [--verifier VERIFIER]\n",
+   "help": "usage: domain-memory amend-policy [-h] --registry-root REGISTRY_ROOT\n                                  [--set FIELD=VALUE] --reason REASON\n                                  [--verifier VERIFIER]\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --set FIELD=VALUE\n  --reason REASON\n  --verifier VERIFIER\n",
    "actions": [
     {
      "dest": "help",
@@ -3640,9 +3639,9 @@
    "mutex": []
   },
   "init-signing-key": {
-   "prog": "registry_tools.py init-signing-key",
-   "usage": "usage: registry_tools.py init-signing-key [-h] --repo-root REPO_ROOT\n                                          --principal PRINCIPAL\n                                          [--key-file KEY_FILE] [--force]\n                                          [--sign-every-commit]\n",
-   "help": "usage: registry_tools.py init-signing-key [-h] --repo-root REPO_ROOT\n                                          --principal PRINCIPAL\n                                          [--key-file KEY_FILE] [--force]\n                                          [--sign-every-commit]\n\noptions:\n  -h, --help            show this help message and exit\n  --repo-root REPO_ROOT\n  --principal PRINCIPAL\n  --key-file KEY_FILE\n  --force\n  --sign-every-commit\n",
+   "prog": "domain-memory init-signing-key",
+   "usage": "usage: domain-memory init-signing-key [-h] --repo-root REPO_ROOT\n                                      --principal PRINCIPAL\n                                      [--key-file KEY_FILE] [--force]\n                                      [--sign-every-commit]\n",
+   "help": "usage: domain-memory init-signing-key [-h] --repo-root REPO_ROOT\n                                      --principal PRINCIPAL\n                                      [--key-file KEY_FILE] [--force]\n                                      [--sign-every-commit]\n\noptions:\n  -h, --help            show this help message and exit\n  --repo-root REPO_ROOT\n  --principal PRINCIPAL\n  --key-file KEY_FILE\n  --force\n  --sign-every-commit\n",
    "actions": [
     {
      "dest": "help",
@@ -3715,9 +3714,9 @@
    "mutex": []
   },
   "validate-policy": {
-   "prog": "registry_tools.py validate-policy",
-   "usage": "usage: registry_tools.py validate-policy [-h] --policy POLICY\n",
-   "help": "usage: registry_tools.py validate-policy [-h] --policy POLICY\n\noptions:\n  -h, --help       show this help message and exit\n  --policy POLICY\n",
+   "prog": "domain-memory validate-policy",
+   "usage": "usage: domain-memory validate-policy [-h] --policy POLICY\n",
+   "help": "usage: domain-memory validate-policy [-h] --policy POLICY\n\noptions:\n  -h, --help       show this help message and exit\n  --policy POLICY\n",
    "actions": [
     {
      "dest": "help",
@@ -3746,9 +3745,9 @@
    "mutex": []
   },
   "validate-contract": {
-   "prog": "registry_tools.py validate-contract",
-   "usage": "usage: registry_tools.py validate-contract [-h] --schema SCHEMA\n",
-   "help": "usage: registry_tools.py validate-contract [-h] --schema SCHEMA\n\noptions:\n  -h, --help       show this help message and exit\n  --schema SCHEMA\n",
+   "prog": "domain-memory validate-contract",
+   "usage": "usage: domain-memory validate-contract [-h] --schema SCHEMA\n",
+   "help": "usage: domain-memory validate-contract [-h] --schema SCHEMA\n\noptions:\n  -h, --help       show this help message and exit\n  --schema SCHEMA\n",
    "actions": [
     {
      "dest": "help",
@@ -3777,9 +3776,9 @@
    "mutex": []
   },
   "verify-scm-attestation": {
-   "prog": "registry_tools.py verify-scm-attestation",
-   "usage": "usage: registry_tools.py verify-scm-attestation [-h] --attestation ATTESTATION\n                                                --package-root PACKAGE_ROOT\n",
-   "help": "usage: registry_tools.py verify-scm-attestation [-h] --attestation ATTESTATION\n                                                --package-root PACKAGE_ROOT\n\noptions:\n  -h, --help            show this help message and exit\n  --attestation ATTESTATION\n  --package-root PACKAGE_ROOT\n",
+   "prog": "domain-memory verify-scm-attestation",
+   "usage": "usage: domain-memory verify-scm-attestation [-h] --attestation ATTESTATION\n                                            --package-root PACKAGE_ROOT\n",
+   "help": "usage: domain-memory verify-scm-attestation [-h] --attestation ATTESTATION\n                                            --package-root PACKAGE_ROOT\n\noptions:\n  -h, --help            show this help message and exit\n  --attestation ATTESTATION\n  --package-root PACKAGE_ROOT\n",
    "actions": [
     {
      "dest": "help",
@@ -3819,9 +3818,9 @@
    "mutex": []
   },
   "verify-git-governance": {
-   "prog": "registry_tools.py verify-git-governance",
-   "usage": "usage: registry_tools.py verify-git-governance [-h]\n                                               --registry-root REGISTRY_ROOT\n                                               --repo-root REPO_ROOT\n                                               (--commit COMMIT | --stdin)\n",
-   "help": "usage: registry_tools.py verify-git-governance [-h]\n                                               --registry-root REGISTRY_ROOT\n                                               --repo-root REPO_ROOT\n                                               (--commit COMMIT | --stdin)\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --commit COMMIT\n  --stdin               Read the commits, one per line, from standard input\n",
+   "prog": "domain-memory verify-git-governance",
+   "usage": "usage: domain-memory verify-git-governance [-h] --registry-root REGISTRY_ROOT\n                                           --repo-root REPO_ROOT\n                                           (--commit COMMIT | --stdin)\n",
+   "help": "usage: domain-memory verify-git-governance [-h] --registry-root REGISTRY_ROOT\n                                           --repo-root REPO_ROOT\n                                           (--commit COMMIT | --stdin)\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n  --commit COMMIT\n  --stdin               Read the commits, one per line, from standard input\n",
    "actions": [
     {
      "dest": "help",
@@ -3891,9 +3890,9 @@
    ]
   },
   "audit-attestations": {
-   "prog": "registry_tools.py audit-attestations",
-   "usage": "usage: registry_tools.py audit-attestations [-h] --repo-root REPO_ROOT\n                                            --changes-root CHANGES_ROOT\n",
-   "help": "usage: registry_tools.py audit-attestations [-h] --repo-root REPO_ROOT\n                                            --changes-root CHANGES_ROOT\n\noptions:\n  -h, --help            show this help message and exit\n  --repo-root REPO_ROOT\n  --changes-root CHANGES_ROOT\n",
+   "prog": "domain-memory audit-attestations",
+   "usage": "usage: domain-memory audit-attestations [-h] --repo-root REPO_ROOT\n                                        --changes-root CHANGES_ROOT\n",
+   "help": "usage: domain-memory audit-attestations [-h] --repo-root REPO_ROOT\n                                        --changes-root CHANGES_ROOT\n\noptions:\n  -h, --help            show this help message and exit\n  --repo-root REPO_ROOT\n  --changes-root CHANGES_ROOT\n",
    "actions": [
     {
      "dest": "help",
@@ -3933,9 +3932,9 @@
    "mutex": []
   },
   "verify-audit": {
-   "prog": "registry_tools.py verify-audit",
-   "usage": "usage: registry_tools.py verify-audit [-h] --registry-root REGISTRY_ROOT\n                                      [--changes-root CHANGES_ROOT]\n                                      [--against AGAINST]\n",
-   "help": "usage: registry_tools.py verify-audit [-h] --registry-root REGISTRY_ROOT\n                                      [--changes-root CHANGES_ROOT]\n                                      [--against AGAINST]\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --changes-root CHANGES_ROOT\n  --against AGAINST\n",
+   "prog": "domain-memory verify-audit",
+   "usage": "usage: domain-memory verify-audit [-h] --registry-root REGISTRY_ROOT\n                                  [--changes-root CHANGES_ROOT]\n                                  [--against AGAINST]\n",
+   "help": "usage: domain-memory verify-audit [-h] --registry-root REGISTRY_ROOT\n                                  [--changes-root CHANGES_ROOT]\n                                  [--against AGAINST]\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --changes-root CHANGES_ROOT\n  --against AGAINST\n",
    "actions": [
     {
      "dest": "help",
@@ -3986,9 +3985,9 @@
    "mutex": []
   },
   "reconcile-audit": {
-   "prog": "registry_tools.py reconcile-audit",
-   "usage": "usage: registry_tools.py reconcile-audit [-h] --registry-root REGISTRY_ROOT\n",
-   "help": "usage: registry_tools.py reconcile-audit [-h] --registry-root REGISTRY_ROOT\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n",
+   "prog": "domain-memory reconcile-audit",
+   "usage": "usage: domain-memory reconcile-audit [-h] --registry-root REGISTRY_ROOT\n",
+   "help": "usage: domain-memory reconcile-audit [-h] --registry-root REGISTRY_ROOT\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n",
    "actions": [
     {
      "dest": "help",
@@ -4017,9 +4016,9 @@
    "mutex": []
   },
   "refresh-indexes": {
-   "prog": "registry_tools.py refresh-indexes",
-   "usage": "usage: registry_tools.py refresh-indexes [-h] --registry-root REGISTRY_ROOT\n",
-   "help": "usage: registry_tools.py refresh-indexes [-h] --registry-root REGISTRY_ROOT\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n",
+   "prog": "domain-memory refresh-indexes",
+   "usage": "usage: domain-memory refresh-indexes [-h] --registry-root REGISTRY_ROOT\n",
+   "help": "usage: domain-memory refresh-indexes [-h] --registry-root REGISTRY_ROOT\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n",
    "actions": [
     {
      "dest": "help",
@@ -4048,9 +4047,9 @@
    "mutex": []
   },
   "install-git-hitl-hook": {
-   "prog": "registry_tools.py install-git-hitl-hook",
-   "usage": "usage: registry_tools.py install-git-hitl-hook [-h]\n                                               --registry-root REGISTRY_ROOT\n                                               --repo-root REPO_ROOT\n",
-   "help": "usage: registry_tools.py install-git-hitl-hook [-h]\n                                               --registry-root REGISTRY_ROOT\n                                               --repo-root REPO_ROOT\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n",
+   "prog": "domain-memory install-git-hitl-hook",
+   "usage": "usage: domain-memory install-git-hitl-hook [-h] --registry-root REGISTRY_ROOT\n                                           --repo-root REPO_ROOT\n",
+   "help": "usage: domain-memory install-git-hitl-hook [-h] --registry-root REGISTRY_ROOT\n                                           --repo-root REPO_ROOT\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n",
    "actions": [
     {
      "dest": "help",
@@ -4090,9 +4089,9 @@
    "mutex": []
   },
   "install-pre-commit-hook": {
-   "prog": "registry_tools.py install-pre-commit-hook",
-   "usage": "usage: registry_tools.py install-pre-commit-hook [-h]\n                                                 --registry-root REGISTRY_ROOT\n                                                 --repo-root REPO_ROOT\n",
-   "help": "usage: registry_tools.py install-pre-commit-hook [-h]\n                                                 --registry-root REGISTRY_ROOT\n                                                 --repo-root REPO_ROOT\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n",
+   "prog": "domain-memory install-pre-commit-hook",
+   "usage": "usage: domain-memory install-pre-commit-hook [-h]\n                                             --registry-root REGISTRY_ROOT\n                                             --repo-root REPO_ROOT\n",
+   "help": "usage: domain-memory install-pre-commit-hook [-h]\n                                             --registry-root REGISTRY_ROOT\n                                             --repo-root REPO_ROOT\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n",
    "actions": [
     {
      "dest": "help",
@@ -4132,9 +4131,9 @@
    "mutex": []
   },
   "governance-readiness": {
-   "prog": "registry_tools.py governance-readiness",
-   "usage": "usage: registry_tools.py governance-readiness [-h]\n                                              --registry-root REGISTRY_ROOT\n                                              --repo-root REPO_ROOT\n",
-   "help": "usage: registry_tools.py governance-readiness [-h]\n                                              --registry-root REGISTRY_ROOT\n                                              --repo-root REPO_ROOT\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n",
+   "prog": "domain-memory governance-readiness",
+   "usage": "usage: domain-memory governance-readiness [-h] --registry-root REGISTRY_ROOT\n                                          --repo-root REPO_ROOT\n",
+   "help": "usage: domain-memory governance-readiness [-h] --registry-root REGISTRY_ROOT\n                                          --repo-root REPO_ROOT\n\noptions:\n  -h, --help            show this help message and exit\n  --registry-root REGISTRY_ROOT\n  --repo-root REPO_ROOT\n",
    "actions": [
     {
      "dest": "help",

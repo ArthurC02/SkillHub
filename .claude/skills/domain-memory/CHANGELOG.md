@@ -2,6 +2,20 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 6.0.0
+
+### Removed
+
+- The Python implementation: `scripts/registry_tools.py`, the `domain_registry` package and its tests. Every command runs through the `domain-memory` executable under `engine/bin/`, which the hooks, AGENTS.md, SKILL.md and the command reference already call. A caller that still runs `python3 scripts/registry_tools.py <command>` runs `engine/bin/<platform>/domain-memory <command>` instead, with the same options and output.
+- `evals/` moves out of the plugin to the repository that develops it. Its check runs each scenario's Python project, so it needs Python whatever the plugin is written in.
+
+### Changed
+
+- Usage, help and argument errors name the program `domain-memory` instead of `registry_tools.py`, so a usage line that wrapped may wrap at a different word.
+- A test command that cannot start suggests the executable's full path as the invocation to record, where it suggested `python3 <path>/registry_tools.py`.
+- `contract/cli.json` is the source of the command line, edited by hand; it no longer names a Python version.
+- `cargo run --example build_binaries` builds the committed executables, and `-- --check` compares them, the source and the manifest's own text without building.
+
 ## 5.1.4
 
 ### Changed

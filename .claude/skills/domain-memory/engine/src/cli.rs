@@ -691,7 +691,7 @@ mod tests {
     fn an_abbreviation_shared_by_several_options_is_ambiguous() {
         assert_eq!(
             refused("validate --re ."),
-            "registry_tools.py validate: error: ambiguous option: --re could match --registry-root, --repo-root, --require-reviewed"
+            "domain-memory validate: error: ambiguous option: --re could match --registry-root, --repo-root, --require-reviewed"
         );
     }
 
@@ -724,7 +724,7 @@ mod tests {
     fn a_required_mutually_exclusive_group_names_every_member() {
         assert_eq!(
             refused("verify-git-governance --registry-root r --repo-root r"),
-            "registry_tools.py verify-git-governance: error: one of the arguments --commit --stdin is required"
+            "domain-memory verify-git-governance: error: one of the arguments --commit --stdin is required"
         );
     }
 
@@ -732,7 +732,7 @@ mod tests {
     fn a_second_member_of_a_mutually_exclusive_group_is_refused() {
         assert_eq!(
             refused("verify-git-governance --registry-root r --repo-root r --commit c --stdin"),
-            "registry_tools.py verify-git-governance: error: argument --stdin: not allowed with argument --commit"
+            "domain-memory verify-git-governance: error: argument --stdin: not allowed with argument --commit"
         );
     }
 }

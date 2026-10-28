@@ -7,7 +7,8 @@ from pathlib import Path
 import measure_usage as mu
 
 KNOWN = {"validate", "cite", "verify-audit"}
-PLUGIN = Path(__file__).resolve().parents[2] / ".claude/skills/domain-memory/scripts/registry_tools.py"
+PLUGIN = Path(__file__).resolve().parents[2] / mu.DEFAULT_PLUGIN
+EXECUTABLE = ".claude/skills/domain-memory/engine/bin/linux-x86_64/domain-memory"
 
 
 def call(call_id, command, timestamp="2026-10-10T00:00:00Z"):
@@ -109,6 +110,26 @@ def test_calls_before_since_are_left_out_and_calls_at_since_are_kept():
     ]
     summary = scanned(entries, since="2026-10-10T00:00:00Z")
     assert [entry["command"] for entry in summary["commands"]] == ["cite"]
+
+
+def test_the_executable_is_counted_like_the_script():
+    summary = scanned([call("a", f"{EXECUTABLE} validate --registry-root r"),
+                       result("a", "usage: x\ndomain-memory validate: error: argument --top: invalid int", True),
+                       call("b", "bin/windows-x86_64/domain-memory.exe cite --file x"), result("b", "ok")])
+    assert (row(summary, "validate")["top_failures"][0]["signature"], row(summary, "cite")["calls"],
+            summary["compound_calls"]) == ("domain-memory validate: error: argument --top: invalid int", 1, 0)
+
+
+def test_the_executable_piped_into_python_is_counted_but_not_judged():
+    command = f"{EXECUTABLE} validate | python -c \"import json, sys; json.load(sys.stdin)\""
+    summary = scanned([call("a", command), result("a", "ERROR: broken", True)])
+    assert (summary["compound_calls"], summary["failures"], row(summary, "validate")["calls"]) == (1, 0, 1)
+
+
+def test_a_path_through_the_plugin_directory_is_not_a_call():
+    summary = scanned([call("a", "cat .claude/skills/domain-memory/validate"), result("a", "ok"),
+                       call("b", "my-domain-memory validate"), result("b", "ok")])
+    assert summary["calls"] == 0
 
 
 def test_a_signature_carries_no_path_quoted_text_digest_or_number():

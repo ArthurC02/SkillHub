@@ -29,7 +29,6 @@ jobs:
       pglite: ${{ steps.scope.outputs.all == 'true' || steps.filter.outputs.pglite == 'true' }}
       images: ${{ steps.scope.outputs.all == 'true' || steps.filter.outputs.images == 'true' }}
       deploy: ${{ steps.scope.outputs.all == 'true' || steps.filter.outputs.deploy == 'true' }}
-      domain-memory: ${{ steps.scope.outputs.all == 'true' || steps.filter.outputs.domain-memory == 'true' }}
       domain-memory-engine: ${{ steps.scope.outputs.all == 'true' || steps.filter.outputs.domain-memory-engine == 'true' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -116,9 +115,6 @@ jobs:
               - 'tools/sec009/t8-node-probe.py'
               - 'tools/deploy/**'
               - 'tools/ci/deploy-config-check.sh'
-              - '.github/workflows/ci.yml'
-            domain-memory:
-              - '.claude/skills/domain-memory/**'
               - '.github/workflows/ci.yml'
             domain-memory-engine:
               - '.claude/skills/domain-memory/**'
@@ -518,24 +514,6 @@ jobs:
             bash "$GITHUB_WORKSPACE/tools/ci/with-delegated-cgroup.sh" \
             /tmp/localdrv.test -test.run Ceiling -test.v
 
-  domain-memory-windows:
-    needs: changes
-    if: needs.changes.outputs.domain-memory == 'true'
-    runs-on: windows-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: '3.10'
-      - name: Domain Memory plugin tests on Windows
-        shell: bash
-        run: >-
-          bash tools/ci/report-failure.sh 'Domain Memory plugin tests on Windows'
-          python .claude/skills/domain-memory/scripts/run_tests.py --jobs 4
-
   sandbox-windows:
     needs: changes
     if: needs.changes.outputs.sandbox == 'true'
@@ -706,32 +684,6 @@ jobs:
           .claude/skills/domain-memory/engine/bin/linux-x86_64/domain-memory audit-attestations
           --repo-root . --changes-root docs/domain-memory/changes
 
-  domain-memory:
-    needs: changes
-    if: needs.changes.outputs.domain-memory == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        python: ['3.10', '3.13']
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: ${{ matrix.python }}
-      - name: Domain Memory plugin tests
-        run: >-
-          bash tools/ci/report-failure.sh "Domain Memory plugin tests on Python ${{ matrix.python }}"
-          python .claude/skills/domain-memory/scripts/run_tests.py --jobs 4
-      - name: Domain Memory plugin lint
-        if: matrix.python == '3.13'
-        run: |
-          pip install ruff==0.16.7
-          bash tools/ci/report-failure.sh 'Domain Memory plugin lint' ruff check .claude/skills/domain-memory
-
   domain-memory-engine:
     needs: changes
     if: needs.changes.outputs.domain-memory-engine == 'true'
@@ -756,9 +708,6 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: '3.13'
       - name: Install the pinned Rust toolchain
         run: rustup toolchain install
       - name: Rust format
@@ -769,10 +718,8 @@ jobs:
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Rust tests' cargo test --locked
       - name: Release build
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Release build' cargo build --release --locked
-      - name: CLI contract matches the plugin
-        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'CLI contract drift' python parity/extract_cli_contract.py --check
       - name: Committed binaries match the source
-        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Committed binaries' python build_binaries.py --check
+        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Committed binaries' cargo run --locked --example build_binaries -- --check
       - name: Committed binary matches the recorded output
         env:
           DOMAIN_MEMORY_BINARY: ${{ matrix.binary }}

@@ -12,11 +12,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-INVOCATION = re.compile(r"registry_tools\.py[\"']?\s+([a-z][a-z0-9-]*)")
-INTERPRETER = re.compile(r"(?<![\w-])python[\d.]*(?:\.exe)?(?![\w-])")
+PROGRAM_NAME = r"(?:registry_tools\.py|(?<![\w-])domain-memory(?:\.exe)?)"
+INVOCATION = re.compile(PROGRAM_NAME + r"[\"']?\s+([a-z][a-z0-9-]*)")
+RUNNER = re.compile(r"(?<![\w-])(?:python[\d.]*|domain-memory)(?:\.exe)?(?![\w/\\-])")
 COMMAND_LINE = re.compile(r"^ {4}([a-z][a-z0-9-]*)(?=\s|$)", re.MULTILINE)
 FAILURE_LINE = re.compile(
-    r"^(ERROR: .*|registry_tools\.py [a-z0-9-]+: error: .*|[\w.]*(?:Error|Exception): .*)$", re.MULTILINE
+    r"^(ERROR: .*|" + PROGRAM_NAME + r" [a-z0-9-]+: error: .*|[\w.]*(?:Error|Exception): .*)$", re.MULTILINE
 )
 HOST_REFUSALS = (
     "Permission to use",
@@ -31,7 +32,13 @@ REDACTIONS = (
     (re.compile(r"\d+"), "<n>"),
 )
 SIGNATURE_LIMIT = 140
-DEFAULT_PLUGIN = Path(".claude/skills/domain-memory/scripts/registry_tools.py")
+PLATFORM_EXECUTABLES = {
+    "win32": "windows-x86_64/domain-memory.exe",
+    "darwin": "macos-universal/domain-memory",
+}
+DEFAULT_PLUGIN = Path(".claude/skills/domain-memory/engine/bin") / PLATFORM_EXECUTABLES.get(
+    sys.platform, "linux-x86_64/domain-memory"
+)
 
 
 @dataclass
@@ -122,7 +129,7 @@ def scan(projects_root: Path, known: set[str], since: str | None = None) -> Usag
         names = [name for name in INVOCATION.findall(command) if name in known]
         if not names:
             continue
-        if len(names) > 1 or len(INTERPRETER.findall(command)) > 1:
+        if len(names) > 1 or len(RUNNER.findall(command)) > 1:
             usage.compound_calls += 1
             for name in names:
                 usage.commands[name].calls += 1
@@ -185,9 +192,7 @@ def render(summary: dict[str, Any]) -> str:
 
 
 def plugin_commands(plugin: Path) -> set[str]:
-    shown = subprocess.run(
-        [sys.executable, str(plugin), "--help"], capture_output=True, text=True, check=True
-    )
+    shown = subprocess.run([str(plugin), "--help"], capture_output=True, text=True, check=True)
     found = set(COMMAND_LINE.findall(shown.stdout))
     if not found:
         raise SystemExit(f"{plugin} --help lists no commands")

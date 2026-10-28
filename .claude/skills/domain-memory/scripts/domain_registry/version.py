@@ -1,1 +1,0 @@
-PLUGIN_VERSION = "5.1.4"

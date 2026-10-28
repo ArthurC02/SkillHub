@@ -680,7 +680,9 @@ fn expected_cases(directory: &Path) -> (String, Object) {
             continue;
         }
         let recording = read_json(&recorded);
-        pin = text(&recording, "pin").to_string();
+        if platform == "posix" {
+            pin = text(&recording, "pin").to_string();
+        }
         if let Some(recorded_cases) = field(&recording, "cases").and_then(Value::as_object) {
             for (name, outcome) in recorded_cases.iter() {
                 cases.insert(name.clone(), outcome.clone());

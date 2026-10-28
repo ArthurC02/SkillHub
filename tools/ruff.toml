@@ -1,4 +1,5 @@
 line-length = 100
+extend-exclude = ["**/domain-memory-evals/*/fixtures"]
 
 [lint]
 select = ["C90", "PLR", "SIM", "B", "RET", "ARG", "PLW", "PERF", "N", "FBT", "C4", "PIE"]
