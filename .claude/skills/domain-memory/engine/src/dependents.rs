@@ -26,58 +26,83 @@ pub fn dependents(root: &Path, asset: &str, identifier: &str) -> Result<Value, S
             did_you_mean(identifier, &known)
         ));
     }
-    let mut by_key: HashMap<Key, Object> = HashMap::new();
-    let mut edges: HashMap<Key, Vec<(Key, String)>> = HashMap::new();
     let registry = Registry::open(root)?;
+    let mut records: Vec<(&str, Vec<Object>)> = Vec::new();
     for (name, _, _) in ASSETS {
-        for entry in registry.records(name)? {
-            let Value::Object(entry) = entry else {
-                continue;
-            };
-            let id = entry.get("id").and_then(Value::as_str).unwrap_or_default();
-            let source = ((*name).to_string(), id.to_string());
-            link(&mut edges, &source, &entry);
-            by_key.insert(source, entry);
-        }
+        let entries = registry
+            .records(name)?
+            .into_iter()
+            .filter_map(|entry| match entry {
+                Value::Object(entry) => Some(entry),
+                _ => None,
+            })
+            .collect();
+        records.push((name, entries));
     }
-    let start = (asset.to_string(), identifier.to_string());
-    let mut seen: HashSet<Key> = HashSet::new();
-    let mut reached: Vec<(usize, Key, Object)> = Vec::new();
-    let mut queue = VecDeque::from([(start.clone(), 0)]);
-    while let Some((key, depth)) = queue.pop_front() {
-        if key.0 == HUB_ASSET && key != start {
-            continue;
-        }
-        for (other, through) in edges.get(&key).map(Vec::as_slice).unwrap_or_default() {
-            if *other == start || seen.contains(other) {
-                continue;
-            }
-            let Some(entry) = by_key.get(other) else {
-                continue;
-            };
-            let mut item = summarized(entry);
-            item.insert("asset", Value::Str(other.0.clone()));
-            item.insert("through", Value::Str(through.clone()));
-            item.insert("depth", Value::int(depth + 1));
-            seen.insert(other.clone());
-            reached.push((depth + 1, other.clone(), item));
-            queue.push_back((other.clone(), depth + 1));
-        }
-    }
-    reached.sort_by(|left, right| (left.0, &left.1).cmp(&(right.0, &right.1)));
+    let reached = DependencyGraph::from_records(&records).reached(asset, identifier);
     let mut reply = Object::new();
     reply.insert("asset", Value::Str(asset.to_string()));
     reply.insert("id", Value::Str(identifier.to_string()));
     reply.insert(
         "reached",
-        Value::Array(
-            reached
-                .into_iter()
-                .map(|(_, _, item)| Value::Object(item))
-                .collect(),
-        ),
+        Value::Array(reached.into_iter().map(Value::Object).collect()),
     );
     Ok(Value::Object(reply))
+}
+
+pub struct DependencyGraph {
+    by_key: HashMap<Key, Object>,
+    edges: HashMap<Key, Vec<(Key, String)>>,
+}
+
+impl DependencyGraph {
+    pub fn from_records(records: &[(&str, Vec<Object>)]) -> Self {
+        let mut by_key: HashMap<Key, Object> = HashMap::new();
+        let mut edges: HashMap<Key, Vec<(Key, String)>> = HashMap::new();
+        for (name, entries) in records {
+            for entry in entries {
+                let id = entry.get("id").and_then(Value::as_str).unwrap_or_default();
+                let source = ((*name).to_string(), id.to_string());
+                link(&mut edges, &source, entry);
+                by_key.insert(source, entry.clone());
+            }
+        }
+        Self { by_key, edges }
+    }
+
+    pub fn record(&self, asset: &str, identifier: &str) -> Option<&Object> {
+        self.by_key
+            .get(&(asset.to_string(), identifier.to_string()))
+    }
+
+    pub fn reached(&self, asset: &str, identifier: &str) -> Vec<Object> {
+        let start = (asset.to_string(), identifier.to_string());
+        let mut seen: HashSet<Key> = HashSet::new();
+        let mut reached: Vec<(usize, Key, Object)> = Vec::new();
+        let mut queue = VecDeque::from([(start.clone(), 0)]);
+        while let Some((key, depth)) = queue.pop_front() {
+            if key.0 == HUB_ASSET && key != start {
+                continue;
+            }
+            for (other, through) in self.edges.get(&key).map(Vec::as_slice).unwrap_or_default() {
+                if *other == start || seen.contains(other) {
+                    continue;
+                }
+                let Some(entry) = self.by_key.get(other) else {
+                    continue;
+                };
+                let mut item = summarized(entry);
+                item.insert("asset", Value::Str(other.0.clone()));
+                item.insert("through", Value::Str(through.clone()));
+                item.insert("depth", Value::int(depth + 1));
+                seen.insert(other.clone());
+                reached.push((depth + 1, other.clone(), item));
+                queue.push_back((other.clone(), depth + 1));
+            }
+        }
+        reached.sort_by(|left, right| (left.0, &left.1).cmp(&(right.0, &right.1)));
+        reached.into_iter().map(|(_, _, item)| item).collect()
+    }
 }
 
 fn link(edges: &mut HashMap<Key, Vec<(Key, String)>>, source: &Key, entry: &Object) {

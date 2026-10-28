@@ -265,7 +265,7 @@ fn file_name(package: &Path) -> String {
         .unwrap_or_default()
 }
 
-fn obligations_proving(
+pub fn obligations_proving(
     packages: &[(PathBuf, Object)],
     proposal_id: &Value,
     source: (&str, &str),

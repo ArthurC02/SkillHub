@@ -2,11 +2,13 @@ mod attestations;
 mod audit_append;
 mod audit_commands;
 mod audit_log;
+mod brief;
 mod candidate_evidence;
 mod cite;
 mod cli;
 mod compare;
 mod context;
+mod counterfactual;
 mod coupling;
 mod coverage;
 mod crossrefs;
@@ -16,8 +18,10 @@ mod digits;
 mod evidence;
 mod files;
 mod fnmatch;
+mod gates;
 mod git;
 mod git_governance;
+mod impact;
 mod indexes;
 mod json;
 mod listing;
@@ -34,14 +38,17 @@ mod readiness;
 mod reconciliation;
 mod records;
 mod registry_write;
+mod review_commands;
 mod revision;
 mod search;
 mod secret_patterns;
 mod secrets;
 mod sha256;
+mod shlex;
 mod sources;
 mod store;
 mod tar;
+mod test_output;
 mod transaction;
 mod unicode;
 mod updates;
@@ -242,6 +249,10 @@ fn execute(invocation: &Invocation) -> Result<i32, String> {
         "promote-candidate" => write_commands::promote(invocation),
         "demote-local-reviews" => write_commands::demote(invocation),
         "recover-registry-update" => write_commands::recover(invocation),
+        "quality-gates" => review_commands::quality_gates(invocation),
+        "boundary-impact" => review_commands::boundary_impact(invocation),
+        "brief" => review_commands::brief(invocation),
+        "counterfactual" => review_commands::counterfactual(invocation),
         other => Err(format!("{other} is not available in the Rust engine yet")),
     }
 }

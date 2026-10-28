@@ -168,12 +168,12 @@ fn run_bounded(argv: &[&str], input: Option<&[u8]>) -> Result<Output, GitError> 
         .stderr(Stdio::piped())
         .spawn()
         .map_err(|error| GitError::new(Failure::Spawn, spawn_failure(&error, argv[0])))?;
-    let feeder = fed(child.stdin.take(), input);
-    let stdout = drained(child.stdout.take());
-    let stderr = drained(child.stderr.take());
     let deadline = Duration::try_from_secs_f64(seconds)
         .ok()
         .and_then(|span| Instant::now().checked_add(span));
+    let feeder = fed(child.stdin.take(), input);
+    let stdout = drained(child.stdout.take());
+    let stderr = drained(child.stderr.take());
     let status = loop {
         if deadline.is_some_and(|limit| Instant::now() >= limit) {
             kill_tree(&mut child);
@@ -231,7 +231,7 @@ fn kill_tree(child: &mut Child) {
     let _ = child.wait();
 }
 
-fn spawn_failure(error: &std::io::Error, program: &str) -> String {
+pub fn spawn_failure(error: &std::io::Error, program: &str) -> String {
     if error.raw_os_error().is_none() && error.kind() == std::io::ErrorKind::NotFound {
         return spawn_failure(&std::io::Error::from_raw_os_error(NOT_FOUND_CODE), program);
     }

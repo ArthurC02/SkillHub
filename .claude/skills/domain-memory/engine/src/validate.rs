@@ -298,7 +298,7 @@ pub struct Unplaced {
     pub reviewed: bool,
 }
 
-fn owned_directory(implementation_path: &str) -> String {
+pub fn owned_directory(implementation_path: &str) -> String {
     let parts: Vec<&str> = implementation_path
         .trim_matches('/')
         .split('/')

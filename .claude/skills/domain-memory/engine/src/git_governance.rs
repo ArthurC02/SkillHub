@@ -13,7 +13,7 @@ pub struct Readiness {
     pub blocks: Vec<String>,
 }
 
-fn hooks_dir(repo_root: &Path) -> Result<PathBuf, String> {
+pub fn hooks_dir(repo_root: &Path) -> Result<PathBuf, String> {
     let located = git::run_git_text(repo_root, &["rev-parse", "--git-path", "hooks"])?;
     if located.code != 0 {
         return Ok(repo_root.join(".git").join("hooks"));

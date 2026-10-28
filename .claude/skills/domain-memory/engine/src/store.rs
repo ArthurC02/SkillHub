@@ -28,7 +28,7 @@ pub const ASSETS: &[(&str, &str, &str)] = &[
 ];
 
 const INDEX: &str = "index.md";
-const DEFAULT_STATUS: &str = "candidate";
+pub const DEFAULT_STATUS: &str = "candidate";
 pub const SOURCE_MAP_FORMAT: &str = "domain-source-map/v1";
 const DOMAIN_MEMORY_HINT: &str = "check --registry-root (a Registry holds registry/index.md, \
      or a domain-source-map/v1 source-map.json); initialize one only if this repository has none yet";

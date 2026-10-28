@@ -25,7 +25,8 @@ pub fn get_context(root: &Path, identifier: &str, summary: bool) -> Result<Value
             did_you_mean(identifier, &known)
         ));
     };
-    let model = context_model(root, identifier, context)?;
+    let registry = Registry::open(root)?;
+    let model = context_model(&registry, root, identifier, context)?;
     Ok(Value::Object(if summary {
         context_summary(&model)
     } else {
@@ -67,30 +68,34 @@ fn objects(entries: Vec<Object>) -> Value {
     Value::Array(entries.into_iter().map(Value::Object).collect())
 }
 
-fn context_model(root: &Path, identifier: &str, context: Object) -> Result<Object, String> {
-    let registry = Registry::open(root)?;
-    let contracts = keep(records(&registry, "contracts")?, |entry| {
+pub fn context_model(
+    registry: &Registry,
+    root: &Path,
+    identifier: &str,
+    context: Object,
+) -> Result<Object, String> {
+    let contracts = keep(records(registry, "contracts")?, |entry| {
         is(entry, "producer_context", identifier) || names(entry, "consumer_contexts", identifier)
     });
-    let interactions = keep(records(&registry, "interactions")?, |entry| {
+    let interactions = keep(records(registry, "interactions")?, |entry| {
         is(entry, "producer_context", identifier) || is(entry, "consumer_context", identifier)
     });
-    let rules = records(&registry, "rules")?;
+    let rules = records(registry, "rules")?;
     let mode = review_mode(root)?;
-    let vocabulary = keep(records(&registry, "vocabulary")?, |entry| {
+    let vocabulary = keep(records(registry, "vocabulary")?, |entry| {
         names(entry, "contexts", identifier)
     });
-    let aggregates = keep(records(&registry, "aggregates")?, |entry| {
+    let aggregates = keep(records(registry, "aggregates")?, |entry| {
         is(entry, "context", identifier)
     });
     let own_rules = keep(rules.clone(), |entry| names(entry, "contexts", identifier));
-    let events = keep(records(&registry, "events")?, |entry| {
+    let events = keep(records(registry, "events")?, |entry| {
         is(entry, "owner_context", identifier) || names(entry, "consumers", identifier)
     });
-    let capabilities = keep(records(&registry, "capabilities")?, |entry| {
+    let capabilities = keep(records(registry, "capabilities")?, |entry| {
         is(entry, "context", identifier)
     });
-    let value_objects = keep(records(&registry, "value-objects")?, |entry| {
+    let value_objects = keep(records(registry, "value-objects")?, |entry| {
         is(entry, "context", identifier)
     });
     let bound = bound_rules(identifier, &contracts, &interactions, &rules)?;
@@ -160,7 +165,7 @@ fn bound_rules(
     Ok(bound)
 }
 
-fn cited_paths(record: &Object) -> Result<BTreeSet<String>, String> {
+pub fn cited_paths(record: &Object) -> Result<BTreeSet<String>, String> {
     let references = all_references(&Value::Object(record.clone()), 0)?;
     Ok(references
         .iter()
@@ -191,7 +196,7 @@ pub fn summarized(entry: &Object) -> Object {
     out
 }
 
-fn context_summary(model: &Object) -> Object {
+pub fn context_summary(model: &Object) -> Object {
     let mut out = Object::new();
     for (key, value) in model.iter() {
         let shown = match value {

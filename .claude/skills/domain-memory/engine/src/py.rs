@@ -298,6 +298,16 @@ impl PurePath {
         Self::new(&Path::new(&own).join(relative).to_string_lossy())
     }
 
+    pub fn native(&self) -> String {
+        let separator = if cfg!(windows) { "\\" } else { "/" };
+        let joined = format!("{}{}", self.anchor, self.parts.join(separator));
+        if joined.is_empty() {
+            ".".to_string()
+        } else {
+            joined
+        }
+    }
+
     pub fn as_posix(&self) -> String {
         let separator = if cfg!(windows) { "\\" } else { "/" };
         let joined = format!("{}{}", self.anchor, self.parts.join(separator));
