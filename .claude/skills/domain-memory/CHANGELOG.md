@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 5.0.7
+
+### Fixed
+
+- The plugin no longer carries text that a secret scanner reports: the engine's parity fixtures that hold credential-shaped strings are stored as hex, so importing the plugin as a Skill package no longer fails on `engine/parity/cases.json`.
+
 ## 5.0.6
 
 ### Fixed
