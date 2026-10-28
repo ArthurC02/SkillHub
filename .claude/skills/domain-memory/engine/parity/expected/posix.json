@@ -15281,7 +15281,7 @@
   },
   "init-signing-key the default key file in an unusable home": {
    "exit": 1,
-   "stderr": "ERROR: [OS error] ~: '/proc/dm-no-home'\n",
+   "stderr": "ERROR: [OS error] ~: '/dev/null/dm-no-home/.domain-memory'\n",
    "stdout": ""
   },
   "init-signing-key the key file is a directory": {
@@ -25932,7 +25932,7 @@
     "changes/p1/draft-pr.md": "# Draft\n",
     "changes/p1/evidence-bundle.json": "{\n  \"format\": \"domain-evidence-bundle/v1\",\n  \"requirement_id\": \"R-1\",\n  \"proposal_id\": \"P-1\",\n  \"registry_revision\": null,\n  \"approvals\": [],\n  \"scm_attestation\": null,\n  \"counterfactual_check\": null,\n  \"sources\": [],\n  \"test_results\": [],\n  \"contract_checks\": [],\n  \"architecture_checks\": [],\n  \"security_checks\": [],\n  \"residual_risks\": []\n}\n",
     "changes/p1/requirement-normalization.json": "{\n  \"format\": \"domain-requirement/v1\",\n  \"requirement_id\": \"R-1\",\n  \"status\": \"draft\",\n  \"intent\": \"intent\",\n  \"actor\": \"actor\",\n  \"observable_outcome\": \"outcome\",\n  \"acceptance_criteria\": [\n    {\n      \"id\": \"AC-1\",\n      \"statement\": \"statement\"\n    }\n  ],\n  \"candidate_terms\": [],\n  \"open_questions\": [],\n  \"risk_flags\": [],\n  \"required_approval_roles\": [\n    \"domain-owner\"\n  ],\n  \"sources\": []\n}\n",
-    "changes/p1/test-obligations.json": "{\n  \"format\": \"domain-test-obligations/v1\",\n  \"requirement_id\": \"R-1\",\n  \"proposal_id\": \"P-1\",\n  \"obligations\": [\n    {\n      \"id\": \"O-1\",\n      \"source_type\": \"acceptance-criterion\",\n      \"source_id\": \"AC-1\",\n      \"expected_outcome\": \"outcome\",\n      \"level\": \"unit\",\n      \"status\": \"planned\",\n      \"check\": \"git -c 'alias.t=!ls a.go' t\"\n    }\n  ]\n}\n",
+    "changes/p1/test-obligations.json": "{\n  \"format\": \"domain-test-obligations/v1\",\n  \"requirement_id\": \"R-1\",\n  \"proposal_id\": \"P-1\",\n  \"obligations\": [\n    {\n      \"id\": \"O-1\",\n      \"source_type\": \"acceptance-criterion\",\n      \"source_id\": \"AC-1\",\n      \"expected_outcome\": \"outcome\",\n      \"level\": \"unit\",\n      \"status\": \"planned\",\n      \"check\": \"git -c 'alias.t=!test -e a.go' t\"\n    }\n  ]\n}\n",
     "m/registry/aggregates/index.md": "# Aggregates\n\n",
     "m/registry/capabilities/index.md": "# Capabilities\n\n",
     "m/registry/contexts/billing.md": "---\ntype: Bounded Context\ntitle: Billing\nstatus: draft\n---\nOwns billing.\n",
@@ -25949,7 +25949,7 @@
     "m/registry/vocabulary/index.md": "# Vocabulary\n\n",
     "src/a.go": "package a\nfunc A() {}\n"
    },
-   "stderr": "ERROR: git -c 'alias.t=!ls a.go' t exited 2; only a passing run is recorded, and nothing was written:\nls: cannot access 'a.go': No such file or directory\n\n",
+   "stderr": "ERROR: git -c 'alias.t=!test -e a.go' t exited 1; only a passing run is recorded, and nothing was written:\n\n",
    "stdout": ""
   },
   "record-test-result refuses a command whose escape ends the text": {
@@ -57181,7 +57181,7 @@
   "verify-sources unicode and spaces in selected file names": {
    "exit": 1,
    "stderr": "",
-   "stdout": "{\n  \"status\": \"stale\",\n  \"selection_status\": \"agent-asserted\",\n  \"changed_sources\": [\n    {\n      \"path\": \"src\",\n      \"status\": \"changed\",\n      \"expected\": {\n        \"path\": \"src\",\n        \"file_count\": 5,\n        \"digest\": \"sha256:24382001bc9fdb39ef1ce15a65f1b4e3ca9b82acbf2f7c8540129ba1561b6c66\",\n        \"listing_sha256\": \"sha256:5af1aeea1524033d087d67fc66a69d219ccd6d8dcd5bd3fdd7e72df490857dda\"\n      },\n      \"actual\": {\n        \"path\": \"src\",\n        \"file_count\": 6,\n        \"digest\": \"sha256:593be40c312130ed7d6382f551daf8db1d6bcb80c0d1c494384c11fe60a5e64a\",\n        \"listing_sha256\": \"sha256:55442fa72d65310a49811ef6666da0e8ec679154f4d545faa172154bdb8250d1\"\n      }\n    }\n  ],\n  \"content_changed\": [],\n  \"discovered_but_gone\": [],\n  \"discovered_but_unlisted\": []\n}\n"
+   "stdout": "{\n  \"status\": \"stale\",\n  \"selection_status\": \"agent-asserted\",\n  \"changed_sources\": [\n    {\n      \"path\": \"src\",\n      \"status\": \"changed\",\n      \"expected\": {\n        \"path\": \"src\",\n        \"file_count\": 5,\n        \"digest\": \"sha256:24382001bc9fdb39ef1ce15a65f1b4e3ca9b82acbf2f7c8540129ba1561b6c66\",\n        \"listing_sha256\": \"sha256:5af1aeea1524033d087d67fc66a69d219ccd6d8dcd5bd3fdd7e72df490857dda\"\n      },\n      \"actual\": {\n        \"path\": \"src\",\n        \"file_count\": 5,\n        \"digest\": \"sha256:7af05156f2c46e0fd0f7ba3f1e060279d0ec5152241e25e387aa77b9e08bec83\",\n        \"listing_sha256\": \"sha256:f50c2881069d0713054037b94dc48e0fe46e6e818107fdb74a462241fa66244a\"\n      }\n    }\n  ],\n  \"content_changed\": [],\n  \"discovered_but_gone\": [],\n  \"discovered_but_unlisted\": []\n}\n"
   },
   "verify-sources unknown option": {
    "exit": 2,

@@ -2,6 +2,14 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 5.1.4
+
+### Changed
+
+- `cargo test --test expected_output -- --bless` writes the executable's output into `engine/parity/expected/`: every case on Linux and macOS, and on Windows only the cases whose output differs from the posix recording. Text shaped like a credential, and bytes that are not UTF-8, are stored as hex.
+- Three recorded cases no longer depend on the file system or the tools of the machine: no two file names that differ only by case, a home directory under `/dev/null` instead of `/proc`, and `test -e` instead of `ls` for a missing file.
+- The recorded cases run git with a 300-second deadline unless the case sets its own, so a slow machine does not turn a history read into a timeout.
+
 ## 5.1.3
 
 ### Fixed

@@ -18,6 +18,7 @@ use json::{Object, Value};
 
 const RUN_SECONDS: u64 = 120;
 const FIXED_GIT_DATE: &str = "2026-01-01T00:00:00Z";
+const UNHURRIED_GIT_SECONDS: &str = "300";
 const UNKNOWN_OPTION: &str = "--not-an-option-of-any-command";
 const PLATFORM: &str = if cfg!(windows) { "windows" } else { "posix" };
 const VOLATILE_FIELDS: [&str; 5] = [
@@ -496,7 +497,8 @@ impl Suite {
         command
             .args(args)
             .current_dir(&self.snapshot)
-            .env("COLUMNS", "80");
+            .env("COLUMNS", "80")
+            .env("DOMAIN_MEMORY_GIT_TIMEOUT", UNHURRIED_GIT_SECONDS);
         if let Some(environment) = field(case, "env").and_then(Value::as_object) {
             for (name, value) in environment.iter() {
                 command.env(name, value.as_str().unwrap_or(""));
@@ -688,6 +690,146 @@ fn expected_cases(directory: &Path) -> (String, Object) {
     (pin, cases)
 }
 
+fn run_of(data: &[u8], at: usize, accepted: fn(u8) -> bool) -> usize {
+    data.get(at..).map_or(0, |rest| {
+        rest.iter().take_while(|&&byte| accepted(byte)).count()
+    })
+}
+
+fn private_key_at(data: &[u8], at: usize) -> bool {
+    const OPENING: &[u8] = b"-----BEGIN ";
+    if !data[at..].starts_with(OPENING) {
+        return false;
+    }
+    let start = at + OPENING.len();
+    let run = run_of(data, start, |byte| {
+        byte.is_ascii_uppercase() || byte == b' '
+    });
+    data[start..start + run].ends_with(b"PRIVATE KEY") && data[start + run..].starts_with(b"-----")
+}
+
+fn aws_secret_at(data: &[u8], at: usize) -> bool {
+    const KEY: &[u8] = b"aws_secret_access_key";
+    if !data
+        .get(at..at + KEY.len())
+        .is_some_and(|word| word.eq_ignore_ascii_case(KEY))
+    {
+        return false;
+    }
+    let mut cursor = at + KEY.len();
+    cursor += run_of(data, cursor, |byte| byte.is_ascii_whitespace());
+    if data.get(cursor) != Some(&b'=') {
+        return false;
+    }
+    cursor += 1;
+    cursor += run_of(data, cursor, |byte| byte.is_ascii_whitespace());
+    run_of(data, cursor, |byte| !byte.is_ascii_whitespace()) >= 20
+}
+
+fn token_at(data: &[u8], at: usize) -> bool {
+    let rest = &data[at..];
+    let alphanumeric = |byte: u8| byte.is_ascii_alphanumeric();
+    (rest.starts_with(b"AKIA")
+        && run_of(data, at + 4, |byte| {
+            byte.is_ascii_uppercase() || byte.is_ascii_digit()
+        }) >= 16)
+        || (rest.starts_with(b"gh")
+            && rest.get(2).is_some_and(|kind| b"pousr".contains(kind))
+            && rest.get(3) == Some(&b'_')
+            && run_of(data, at + 4, alphanumeric) >= 36)
+        || (rest.starts_with(b"sk-")
+            && run_of(data, at + 3, |byte| {
+                byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-'
+            }) >= 32)
+        || (rest.starts_with(b"xox")
+            && rest.get(3).is_some_and(|kind| b"baprs".contains(kind))
+            && rest.get(4) == Some(&b'-')
+            && run_of(data, at + 5, |byte| {
+                byte.is_ascii_alphanumeric() || byte == b'-'
+            }) >= 10)
+}
+
+fn credential_shaped(data: &[u8]) -> bool {
+    (0..data.len())
+        .any(|at| token_at(data, at) || private_key_at(data, at) || aws_secret_at(data, at))
+}
+
+fn stored_value(data: &[u8]) -> Value {
+    match std::str::from_utf8(data) {
+        Ok(text) if !credential_shaped(data) => Value::Str(text.to_string()),
+        _ => {
+            let mut hex = Object::new();
+            let digits: String = data.iter().map(|byte| format!("{byte:02x}")).collect();
+            hex.insert("hex", Value::Str(digits));
+            Value::Object(hex)
+        }
+    }
+}
+
+fn recorded_value(outcome: &Outcome) -> Value {
+    let mut recorded = Object::new();
+    recorded.insert(
+        "exit",
+        if outcome.exit.parse::<i64>().is_ok() {
+            Value::Int(outcome.exit.clone())
+        } else {
+            Value::Str(outcome.exit.clone())
+        },
+    );
+    if let Some(files) = &outcome.files {
+        let mut written = Object::new();
+        for (name, data) in files {
+            written.insert(name.clone(), stored_value(data));
+        }
+        recorded.insert("files", Value::Object(written));
+    }
+    recorded.insert("stderr", stored_value(&outcome.stderr));
+    recorded.insert("stdout", stored_value(&outcome.stdout));
+    Value::Object(recorded)
+}
+
+fn recorded_cases(path: &Path) -> (String, Object) {
+    if !path.exists() {
+        return (String::new(), Object::new());
+    }
+    let recording = read_json(path);
+    let cases = field(&recording, "cases")
+        .and_then(Value::as_object)
+        .cloned()
+        .unwrap_or_default();
+    (text(&recording, "pin").to_string(), cases)
+}
+
+fn blessed(directory: &Path, pin: &str, outcomes: Vec<(String, Value)>) {
+    let (_, posix) = recorded_cases(&directory.join("posix.json"));
+    let target = directory.join(format!("{PLATFORM}.json"));
+    let (_, existing) = recorded_cases(&target);
+    let mut cases = Object::new();
+    for (name, outcome) in existing.iter() {
+        if !outcomes.iter().any(|(blessed, _)| blessed == name) {
+            cases.insert(name.clone(), outcome.clone());
+        }
+    }
+    for (name, outcome) in outcomes {
+        if PLATFORM == "posix" || posix.get(&name) != Some(&outcome) {
+            cases.insert(name, outcome);
+        }
+    }
+    let mut recording = Object::new();
+    recording.insert("cases", Value::Object(cases));
+    recording.insert("pin", Value::Str(pin.to_string()));
+    let style = json::Style {
+        indent: Some(1),
+        sort_keys: true,
+        ensure_ascii: false,
+        compact: false,
+    };
+    let text = json::dumps(&Value::Object(recording), style) + "\n";
+    std::fs::write(&target, text)
+        .unwrap_or_else(|error| panic!("cannot write {}: {error}", target.display()));
+    println!("wrote {}", target.display());
+}
+
 fn option_value(name: &str) -> Option<String> {
     let args: Vec<String> = std::env::args().collect();
     args.iter()
@@ -748,7 +890,9 @@ fn main() {
         scratch_root: scratch_root.join("cases"),
         next_scratch: AtomicUsize::new(0),
     };
+    let bless = std::env::args().any(|arg| arg == "--bless");
     let results: Vec<Mutex<Vec<String>>> = chosen.iter().map(|_| Mutex::new(Vec::new())).collect();
+    let outcomes: Vec<Mutex<Option<Value>>> = chosen.iter().map(|_| Mutex::new(None)).collect();
     let next = AtomicUsize::new(0);
     let workers = std::thread::available_parallelism().map_or(1, usize::from);
     std::thread::scope(|scope| {
@@ -757,13 +901,41 @@ fn main() {
                 loop {
                     let at = next.fetch_add(1, Ordering::Relaxed);
                     let Some(case) = chosen.get(at) else { break };
-                    let problems = suite.against(case, expected.get(text(case, "name")));
+                    let problems = if bless {
+                        let (outcome, problems) = suite.observed(case);
+                        *outcomes[at].lock().expect("outcome slot") =
+                            Some(recorded_value(&outcome));
+                        problems
+                    } else {
+                        suite.against(case, expected.get(text(case, "name")))
+                    };
                     *results[at].lock().expect("result slot") = problems;
                 }
             });
         }
     });
     let _ = std::fs::remove_dir_all(&scratch_root);
+    let no_problems = results
+        .iter()
+        .all(|problems| problems.lock().expect("result slot").is_empty());
+    if bless && no_problems {
+        let blessed_outcomes = chosen
+            .iter()
+            .zip(outcomes)
+            .filter_map(|(case, outcome)| {
+                outcome
+                    .into_inner()
+                    .expect("outcome slot")
+                    .map(|outcome| (text(case, "name").to_string(), outcome))
+            })
+            .collect();
+        blessed(
+            &engine.join("parity").join("expected"),
+            &pin,
+            blessed_outcomes,
+        );
+        return;
+    }
     let mut failed = Vec::new();
     for (case, problems) in chosen.iter().zip(&results) {
         let problems = problems.lock().expect("result slot");

@@ -76,7 +76,7 @@ def expanded(args: list[str], fixture: Path, repo: Path) -> list[str]:
 
 
 def run(argv: list[str], extra: dict[str, str], stdin: bytes, cwd: Path) -> dict:
-    environment = {**os.environ, "COLUMNS": "80", "PYTHONIOENCODING": "utf-8", **extra}
+    environment = {**os.environ, "COLUMNS": "80", "DOMAIN_MEMORY_GIT_TIMEOUT": "300", "PYTHONIOENCODING": "utf-8", **extra}
     try:
         done = subprocess.run(
             argv, cwd=cwd, input=stdin, capture_output=True, env=environment, check=False, timeout=RUN_SECONDS
