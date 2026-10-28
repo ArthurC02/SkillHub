@@ -84,7 +84,7 @@ func committedEvidenceProblems(root, rangeSpec string) (problems, warnings []str
 func parsedEvidenceReport(output string) (evidenceReport, bool) {
 	var report evidenceReport
 	start := strings.Index(output, "{")
-	return report, start >= 0 && json.Unmarshal([]byte(output[start:]), &report) == nil && report.Results != nil
+	return report, start >= 0 && json.NewDecoder(strings.NewReader(output[start:])).Decode(&report) == nil && report.Results != nil
 }
 
 func citedChanges(root, rangeSpec, end string) ([]string, error) {

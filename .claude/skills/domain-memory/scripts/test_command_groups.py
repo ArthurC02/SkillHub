@@ -17,7 +17,7 @@ from domain_registry.cli_parser import (
 )
 from domain_registry.cli_commands import COMMANDS_BY_MODULE
 from domain_registry.commands import evidence, governance, lifecycle, read
-from test_support import RegistryTestCase
+from test_support import ENGINE, RegistryTestCase
 
 THEMES = {
     "read": (read, _add_read_commands),
@@ -129,14 +129,13 @@ class CommandGroupsTest(RegistryTestCase):
             {theme: sorted(commands) for theme, commands in COMMANDS_BY_MODULE.items()},
         )
 
-    def test_each_hook_installing_command_points_the_hook_at_the_entry_script(self) -> None:
+    def test_each_hook_installing_command_points_the_hook_at_the_plugin_engine(self) -> None:
         (self.repo / ".git" / "hooks").mkdir(parents=True, exist_ok=True)
-        entry_script = (Path(__file__).resolve().parent / "registry_tools.py").as_posix()
         for command, hook_name in (("install-git-hitl-hook", "pre-push"), ("install-pre-commit-hook", "pre-commit")):
             result = self.run_cli(command, "--registry-root", str(self.repo / "memory"), "--repo-root", str(self.repo))
             hook = self.repo / ".git" / "hooks" / hook_name
             self.assertEqual(
-                (0, f"tool='{entry_script}'"),
+                (0, f"engine='{ENGINE.as_posix()}'"),
                 (result.returncode, hook.read_text(encoding="utf-8").splitlines()[2]),
             )
 

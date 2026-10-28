@@ -1,12 +1,11 @@
 # Domain Memory engine
 
-The plugin's commands, rewritten in Rust as one executable, `domain-memory`. It takes over from `scripts/registry_tools.py` one command at a time; the [domain-memory-cli](../skills/domain-memory-cli/SKILL.md) Skill tells an Agent how to build and call it. When every command is here, the Python script shrinks to nothing, and MCP becomes the same executable's `mcp-serve` speaking JSON-RPC over stdio.
+The plugin's commands, rewritten in Rust as one executable, `domain-memory`. It answers every command of `scripts/registry_tools.py`, including `mcp-serve`, which speaks JSON-RPC over stdio; [running the commands](../AGENTS.md#running-the-commands) tells an Agent which executable to call. The script stays only as the reference the parity check compares against, until that check moves to recorded expected output.
 
 ## Rules
 
 - The Python script defines the behaviour until a command moves. The engine reproduces its output, not a version of its own: a change to the script makes the parity check below fail until the engine follows.
 - A command counts as moved when every output branch it has — the answer, each refusal, each read failure — has a parity case and matches. Run a new case against the script first, to see that it reaches the branch it names.
-- A command that has not moved parses its arguments, then exits 1 with `ERROR: <command> is not available in the Rust engine yet`.
 - The engine uses the standard library only; `Cargo.lock` stays without dependencies.
 
 ## The command-line contract
@@ -19,13 +18,13 @@ Known differences: help always wraps at 80 columns, where the script follows the
 
 ## Parity
 
-`parity/parity.py` runs the same arguments through the script and the engine and compares stdout, stderr and the exit code byte for byte; run it with Python 3.13. Each command gets a generated `-h` case and an unknown-option case, and `parity/cases.json` holds the written ones. A case may build files in a temporary directory with `files`, which `{fixture}` in its arguments names; `git: true` commits the fixture as a repository; `env` sets environment variables. A run that does not finish in 120 seconds counts as a mismatch.
+`parity/parity.py` runs the same arguments through the script and the engine and compares stdout, stderr and the exit code byte for byte; run it with Python 3.13. Each command gets a generated `-h` case and an unknown-option case, and `parity/cases.json` holds the written ones. A case may build files in a temporary directory with `files`, which `{fixture}` in its arguments names; `git: true` commits the fixture as a repository; `env` sets environment variables; `stdin` is fed to standard input, with `{fixture}` in it written as a JSON string body; `writes: true` runs each side in a fresh fixture at the same path and compares the files it leaves. A run that does not finish in 120 seconds counts as a mismatch.
 
 Python's `\d` follows Python 3.13's Unicode data; the table is `src/digits.rs`. Search uses NFKC, case folding and word characters from `src/unicode_data.rs`, which `parity/generate_unicode.py` generates with Python 3.13; regenerate it, never edit it, when the Python version changes.
 
 ## Committed binaries
 
-`bin/` holds an executable per platform, committed so a copy of the plugin runs it without a Rust toolchain: `linux-x86_64/domain-memory`, static against musl; `macos-universal/domain-memory`, one file for Apple silicon and Intel, ad-hoc signed; and `windows-x86_64/domain-memory.exe`, which needs only the C runtime every supported Windows ships. `bin/manifest.json` records each one's SHA-256 and the SHA-256 of the source that built it: `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `contract/cli.json` and `src/`.
+`bin/` holds an executable per platform, committed so a copy of the plugin runs it without a Rust toolchain: `linux-x86_64/domain-memory`, static against musl; `macos-universal/domain-memory`, one file for Apple silicon and Intel, ad-hoc signed; and `windows-x86_64/domain-memory.exe`, which needs only the C runtime every supported Windows ships. `bin/manifest.json` records each one's SHA-256 and the SHA-256 of the source that built it: `Cargo.toml`, `Cargo.lock`, `rust-toolchain.toml`, `contract/cli.json`, `src/`, and the plugin's `templates/` and `.claude-plugin/plugin.json`, which the engine embeds.
 
 Every change to that source rebuilds all three in the same commit:
 

@@ -108,13 +108,17 @@ pub fn verify_git_governance(
 
 const EMPTY_SHA: &str = "0000000000000000000000000000000000000000";
 
-fn python_for_tool(name: &str) -> String {
+fn tool_for_hook(name: &str) -> String {
     format!(
-        r##"python_for_tool() {{
-  for candidate in python3 python; do
-    "$candidate" -c 'import sys; sys.exit(sys.version_info < (3, 10))' 2>/dev/null && echo "$candidate" && return 0
-  done
-  echo 'domain-memory {name}: no Python 3.10 or later on PATH as python3 or python' >&2
+        r##"tool_for_hook() {{
+  case "$(uname -s)-$(uname -m)" in
+    Linux-x86_64) tool="$engine/bin/linux-x86_64/domain-memory" ;;
+    Darwin-*) tool="$engine/bin/macos-universal/domain-memory" ;;
+    MINGW*-x86_64|MSYS*-x86_64|CYGWIN*-x86_64) tool="$engine/bin/windows-x86_64/domain-memory.exe" ;;
+    *) tool="$engine/target/release/domain-memory" ;;
+  esac
+  test -x "$tool" && return 0
+  echo "domain-memory {name}: no Domain Memory executable at $tool; build one with cargo build --release --manifest-path $engine/Cargo.toml" >&2
   return 1
 }}
 "##
@@ -138,7 +142,7 @@ fn pre_push_body() -> String {
     let chained = run_existing_hook("pre-push", r##"printf '%s\n' "$refs" | "$existing" "$@""##);
     format!(
         r##"refs=$(cat)
-{python}py=''
+{finder}tool=''
 {chained}printf '%s\n' "$refs" | while read local_ref local_sha remote_ref remote_sha; do
   test -n "$local_sha" || continue
   test "$local_sha" = "{EMPTY_SHA}" && continue
@@ -146,11 +150,11 @@ fn pre_push_body() -> String {
   test "$remote_sha" = "{EMPTY_SHA}" || range=$remote_sha..$local_sha
   commits=$(git rev-list $range -- "$memory") || exit 1
   test -n "$commits" || continue
-  test -n "$py" || py=$(python_for_tool) || exit 1
-  printf '%s\n' "$commits" | "$py" "$tool" verify-git-governance --registry-root "$memory" --repo-root . --stdin || exit 1
+  test -n "$tool" || tool_for_hook || exit 1
+  printf '%s\n' "$commits" | "$tool" verify-git-governance --registry-root "$memory" --repo-root . --stdin || exit 1
 done || exit 1
 "##,
-        python = python_for_tool("pre-push")
+        finder = tool_for_hook("pre-push")
     )
 }
 
@@ -169,15 +173,15 @@ set --
 while IFS= read -r path; do set -- "$@" --path "$path"; done <<EOF
 $staged
 EOF
-py=$(python_for_tool) || exit 1
-if ! report=$("$py" "$tool" verify-evidence --registry-root "$memory" --repo-root . --staged "$@"); then
+tool_for_hook || exit 1
+if ! report=$("$tool" verify-evidence --registry-root "$memory" --repo-root . --staged "$@"); then
   test -z "$DOMAIN_MEMORY_HOOK_VERBOSE" || printf '%s\n' "$report" >&2
   printf '%s\n' "$changes" | awk -F'\t' '$1 ~ /^R/ { print $2 " is renamed to " $3 " in this commit; run relocate-evidence --from " $2 " --to " $3 }' >&2
   echo "domain-memory pre-commit: a staged file no longer matches what the Registry cites from it; details: verify-evidence --registry-root $memory --repo-root . --staged $* prints the full report, as this hook does when DOMAIN_MEMORY_HOOK_VERBOSE is set" >&2
   exit 1
 fi
 git rev-parse -q --verify HEAD >/dev/null || exit 0
-if ! impact=$("$py" "$tool" boundary-impact --registry-root "$memory" --repo-root . --base HEAD); then
+if ! impact=$("$tool" boundary-impact --registry-root "$memory" --repo-root . --base HEAD); then
   echo 'NOTE: domain-memory pre-commit: boundary-impact against HEAD did not run; the commit goes ahead' >&2
   exit 0
 fi
@@ -189,18 +193,18 @@ exit 0
 fn pre_commit_body() -> String {
     format!(
         "{}{}{PRE_COMMIT_CHECKS}",
-        python_for_tool("pre-commit"),
+        tool_for_hook("pre-commit"),
         run_existing_hook("pre-commit", r##""$existing" "$@""##)
     )
 }
 
-fn tool_script() -> Result<PathBuf, String> {
+fn engine_directory() -> Result<PathBuf, String> {
     let executable = std::env::current_exe().map_err(|error| error.to_string())?;
-    let plugin = executable
+    executable
         .ancestors()
-        .nth(4)
-        .ok_or("the engine is not installed inside the plugin")?;
-    Ok(plugin.join("scripts").join("registry_tools.py"))
+        .nth(3)
+        .map(Path::to_path_buf)
+        .ok_or_else(|| "the executable is not inside the engine directory".to_string())
 }
 
 #[cfg(unix)]
@@ -254,10 +258,10 @@ fn install_hook(
         rename_retrying(&hook, &backup).map_err(|error| replace_error(&error, &hook, &backup))?;
     }
     let header = format!(
-        "#!/bin/sh\n# {marker}\ntool='{}'\nmemory='{relative}'\nexisting=\"$(git rev-parse --git-path hooks)/{backup_name}\" || exit 1\n\
+        "#!/bin/sh\n# {marker}\nengine='{}'\nmemory='{relative}'\nexisting=\"$(git rev-parse --git-path hooks)/{backup_name}\" || exit 1\n\
          test -n \"$DOMAIN_MEMORY_GIT_TIMEOUT\" || DOMAIN_MEMORY_GIT_TIMEOUT=$(git config --get domain-memory.git-timeout) || unset DOMAIN_MEMORY_GIT_TIMEOUT\n\
          export DOMAIN_MEMORY_GIT_TIMEOUT\n",
-        shown_path(&tool_script()?, Some(repo_root)),
+        shown_path(&engine_directory()?, Some(repo_root)),
     );
     std::fs::write(&hook, format!("{header}{body}"))
         .map_err(|error| py::open_error(&error, &hook))?;

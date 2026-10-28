@@ -9,7 +9,7 @@ Use this after Domain Memory Read or Design and before handing off an implementa
 
 The repository's automation owns formatting and every numeric limit. This check owns how a change meets them: whether the code that turned a check green states the domain more clearly, or only differently.
 
-The commands are run as `<python> <path>/scripts/registry_tools.py <command>`. The seven rules every change to source must meet are in [AGENTS.md](../../AGENTS.md#when-you-are-the-one-writing-the-code); this page is how to check a change against them.
+The commands are run through the executable [running the commands](../../AGENTS.md#running-the-commands) names. The seven rules every change to source must meet are in [AGENTS.md](../../AGENTS.md#when-you-are-the-one-writing-the-code); this page is how to check a change against them.
 
 ## Inputs
 

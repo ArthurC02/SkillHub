@@ -13,10 +13,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from domain_registry.evidence import citation
 from domain_registry.git_hooks import EMPTY_SHA, hooks_dir, install_pre_commit_hook, install_pre_push_hook
-from test_support import RegistryTestCase, orders_context
+from test_support import ENGINE, RegistryTestCase, no_executable_message, orders_context
 
-TOOL = Path(__file__).resolve().parent / "registry_tools.py"
-REAL_PYTHON = Path(sys.executable).as_posix()
 REFUSED_STALE = "domain-memory pre-commit: a staged file no longer matches what the Registry cites from it"
 FULL_REPORT_OF_A = (
     f"{REFUSED_STALE}; details: verify-evidence --registry-root memory --repo-root . --staged "
@@ -32,7 +30,6 @@ MISSING_LINE_OF_A = (
 )
 REFUSAL_OF_A =f"{STALE_FIRST_LINE_OF_A}\nverify-evidence failed: 1 stale citation\n{FULL_REPORT_OF_A}\n"
 EXISTING_FROM_GIT = '="$(git rev-parse --git-path hooks)/pre-commit.domain-memory-existing" || exit 1\n'
-NO_PYTHON = "no Python 3.10 or later on PATH as python3 or python"
 NOTE = "NOTE: domain-memory pre-commit:"
 UNMAPPED_NOTE = (
     f"{NOTE} boundary-impact against HEAD reports unknown; "
@@ -41,29 +38,22 @@ UNMAPPED_NOTE = (
 
 
 class PreCommitHookTest(RegistryTestCase):
-    def install(self) -> Path:
+    def install(self, engine: Path = ENGINE) -> Path:
         (self.repo / ".git" / "hooks").mkdir(parents=True, exist_ok=True)
-        return install_pre_commit_hook(self.repo / "memory", self.repo, TOOL)
+        return install_pre_commit_hook(self.repo / "memory", self.repo, engine)
 
-    def shims(self, python_body: str, git_body: str | None = None) -> dict[str, str]:
+    def git_shim(self, body: str) -> dict[str, str]:
         shims = self.repo.parent / f"{self.repo.name}-shims"
         shims.mkdir()
         self.addCleanup(shutil.rmtree, shims)
-        bodies = {"python": python_body, "python3": python_body}
-        if git_body is not None:
-            bodies["git"] = git_body
-        for name, body in bodies.items():
-            shim = shims / name
-            shim.write_bytes(f"#!/bin/sh\n{body}\n".encode())
-            shim.chmod(0o755)
+        shim = shims / "git"
+        shim.write_bytes(f"#!/bin/sh\n{body}\n".encode())
+        shim.chmod(0o755)
         return {**os.environ, "PATH": str(shims) + os.pathsep + os.environ["PATH"]}
-
-    def working_python(self) -> dict[str, str]:
-        return self.shims(f'exec "{REAL_PYTHON}" "$@"')
 
     def commit_hook(self, hook: Path, environment: dict[str, str] | None = None) -> subprocess.CompletedProcess:
         return subprocess.run(
-            ["sh", str(hook)], cwd=self.repo, env=environment or self.working_python(),
+            ["sh", str(hook)], cwd=self.repo, env=environment,
             capture_output=True, text=True, encoding="utf-8", check=False,
         )
 
@@ -90,27 +80,27 @@ class PreCommitHookTest(RegistryTestCase):
         hook = self.install()
         content = hook.read_bytes().decode("utf-8")
         self.assertEqual(self.repo / ".git" / "hooks" / "pre-commit", hook)
-        self.assertEqual("#!/bin/sh\n# domain-memory-pre-commit\n", content[: content.index("tool=")])
+        self.assertEqual("#!/bin/sh\n# domain-memory-pre-commit\n", content[: content.index("engine=")])
         self.assertNotIn("\r", content)
         self.assertEqual((True, True), ("memory='memory'\n" in content, f"existing{EXISTING_FROM_GIT}" in content))
 
     def test_a_configured_hooks_path_that_does_not_exist_is_refused_by_name(self) -> None:
         self.git("config", "core.hooksPath", ".githooks")
         with self.assertRaises(ValueError) as refused:
-            install_pre_commit_hook(self.repo / "memory", self.repo, self.repo / "registry_tools.py")
+            install_pre_commit_hook(self.repo / "memory", self.repo, self.repo / "engine")
         self.assertEqual(f"Git hooks require an existing hooks directory at {self.repo / '.githooks'}", str(refused.exception))
 
     def test_the_hook_installs_where_a_configured_hooks_path_points(self) -> None:
         (self.repo / ".githooks").mkdir()
         self.git("config", "core.hooksPath", ".githooks")
-        hook = install_pre_commit_hook(self.repo / "memory", self.repo, self.repo / "registry_tools.py")
+        hook = install_pre_commit_hook(self.repo / "memory", self.repo, self.repo / "engine")
         content = hook.read_text(encoding="utf-8")
         self.assertEqual(self.repo / ".githooks" / "pre-commit", hook)
         self.assertFalse((self.repo / ".git" / "hooks" / "pre-commit").exists())
         self.assertNotIn(self.repo.resolve().as_posix(), content)
         self.assertEqual(
             (True, True, True),
-            ("tool='registry_tools.py'\n" in content, "memory='memory'\n" in content, f"existing{EXISTING_FROM_GIT}" in content),
+            ("engine='engine'\n" in content, "memory='memory'\n" in content, f"existing{EXISTING_FROM_GIT}" in content),
         )
 
     @unittest.skipUnless(os.name == "posix", "only a POSIX file system records the executable bit")
@@ -139,7 +129,7 @@ class PreCommitHookTest(RegistryTestCase):
         self.cited_source()
         hook = self.install()
         self.stage("src/a.py", "changed\ntwo\n")
-        result = self.commit_hook(hook, {**self.working_python(), "DOMAIN_MEMORY_HOOK_VERBOSE": "1"})
+        result = self.commit_hook(hook, {**os.environ, "DOMAIN_MEMORY_HOOK_VERBOSE": "1"})
         lines = result.stderr.splitlines()
         self.assertEqual(
             (1, STALE_FIRST_LINE_OF_A, "verify-evidence failed: 1 stale citation", "{", FULL_REPORT_OF_A),
@@ -152,12 +142,9 @@ class PreCommitHookTest(RegistryTestCase):
 
     def test_a_refusal_the_check_prints_as_an_error_is_shown_without_the_verbose_variable(self) -> None:
         self.cited_source()
-        hook = self.install()
+        hook = self.install(self.engine_replacing("verify-evidence", 'echo "ERROR: index unreadable" >&2; exit 1'))
         self.stage("src/a.py", "changed\ntwo\n")
-        environment = self.shims(
-            f'test "$2" = verify-evidence && {{ echo "ERROR: index unreadable" >&2; exit 1; }}\nexec "{REAL_PYTHON}" "$@"'
-        )
-        result = self.commit_hook(hook, environment)
+        result = self.commit_hook(hook)
         self.assertEqual((1, f"ERROR: index unreadable\n{FULL_REPORT_OF_A}\n"), (result.returncode, result.stderr))
 
     def test_a_cited_path_holding_a_space_or_non_ascii_letters_is_still_checked(self) -> None:
@@ -212,14 +199,14 @@ class PreCommitHookTest(RegistryTestCase):
         hook = self.install()
         self.stage("notes/uncited.md", "anything\n")
         real_git = Path(shutil.which("git")).as_posix()
-        result = self.commit_hook(hook, self.shims("exit 1", f'test "$3" = diff && exit 128\nexec "{real_git}" "$@"'))
+        result = self.commit_hook(hook, self.git_shim(f'test "$3" = diff && exit 128\nexec "{real_git}" "$@"'))
         self.assertEqual((1, ""), (result.returncode, result.stderr))
 
-    def test_a_commit_staging_only_uncited_files_needs_no_python(self) -> None:
+    def test_a_commit_staging_only_uncited_files_needs_no_executable(self) -> None:
         self.cited_source()
-        hook = self.install()
+        hook = self.install(self.engine_without_executable())
         self.stage("notes/uncited.md", "anything\n")
-        result = self.commit_hook(hook, self.shims("exit 1"))
+        result = self.commit_hook(hook)
         self.assertEqual((0, ""), (result.returncode, result.stderr))
 
     def test_deleting_a_cited_file_stops_the_commit_and_names_the_record_and_path(self) -> None:
@@ -270,26 +257,30 @@ class PreCommitHookTest(RegistryTestCase):
         result = self.commit_hook(hook)
         self.assertEqual((0, f"{UNMAPPED_NOTE}\n"), (result.returncode, result.stderr))
 
-    def test_a_cited_file_staged_where_no_python_works_stops_the_commit(self) -> None:
+    def assert_refused_for_missing_executable(self, engine: Path, result: subprocess.CompletedProcess) -> None:
+        self.assertEqual(1, result.returncode)
+        self.assertRegex(result.stderr, no_executable_message("pre-commit", engine.resolve().as_posix()))
+
+    def test_a_cited_file_staged_where_no_executable_is_found_stops_the_commit(self) -> None:
         self.cited_source()
-        hook = self.install()
+        engine = self.engine_without_executable()
+        hook = self.install(engine)
         self.stage("src/a.py", "one\nchanged\n")
-        result = self.commit_hook(hook, self.shims("exit 1"))
-        self.assertEqual((1, f"domain-memory pre-commit: {NO_PYTHON}\n"), (result.returncode, result.stderr))
+        self.assert_refused_for_missing_executable(engine, self.commit_hook(hook))
 
     def test_a_registry_search_that_fails_stops_the_commit(self) -> None:
         self.cited_source()
         hook = self.install()
         self.stage("notes/uncited.md", "anything\n")
         real_git = Path(shutil.which("git")).as_posix()
-        environment = self.shims("exit 1", f'test "$1" = grep && exit 128\nexec "{real_git}" "$@"')
+        environment = self.git_shim(f'test "$1" = grep && exit 128\nexec "{real_git}" "$@"')
         result = self.commit_hook(hook, environment)
         self.assertEqual(
             (1, "domain-memory pre-commit: could not search the Registry for the staged files\n"),
             (result.returncode, result.stderr),
         )
 
-    def test_a_staged_file_named_only_in_prose_needs_no_python(self) -> None:
+    def test_a_staged_file_named_only_in_prose_needs_no_executable(self) -> None:
         self.cited_source()
         (self.repo / "memory" / "changes" / "old").mkdir(parents=True)
         (self.repo / "memory" / "changes" / "old" / "requirement-normalization.json").write_text(
@@ -299,24 +290,24 @@ class PreCommitHookTest(RegistryTestCase):
             "evidence": [citation(self.repo, "src/a.py", 1, 1)],
         }])
         self.commit_all("prose")
-        hook = self.install()
+        hook = self.install(self.engine_without_executable())
         self.stage("README.md", "anything\n")
-        result = self.commit_hook(hook, self.shims("exit 1"))
+        result = self.commit_hook(hook)
         self.assertEqual((0, ""), (result.returncode, result.stderr))
 
-    def test_a_staged_file_whose_path_begins_a_cited_path_needs_no_python(self) -> None:
+    def test_a_staged_file_whose_path_begins_a_cited_path_needs_no_executable(self) -> None:
         self.cited_source()
-        hook = self.install()
+        hook = self.install(self.engine_without_executable())
         self.stage("src/a", "anything\n")
-        result = self.commit_hook(hook, self.shims("exit 1"))
+        result = self.commit_hook(hook)
         self.assertEqual((0, ""), (result.returncode, result.stderr))
 
-    def assert_staging_needs_python(self, staged: str) -> None:
+    def assert_staging_needs_executable(self, staged: str) -> None:
         self.commit_all("arranged")
-        hook = self.install()
+        engine = self.engine_without_executable()
+        hook = self.install(engine)
         self.stage(staged, "one\nchanged\n")
-        result = self.commit_hook(hook, self.shims("exit 1"))
-        self.assertEqual((1, f"domain-memory pre-commit: {NO_PYTHON}\n"), (result.returncode, result.stderr))
+        self.assert_refused_for_missing_executable(engine, self.commit_hook(hook))
 
     def mixed_with_a_plain_text_citation(self, relative: str) -> None:
         self.cited_source()
@@ -327,19 +318,19 @@ class PreCommitHookTest(RegistryTestCase):
             "evidence": [f"{relative}:2", citation(self.repo, relative, 1, 1)],
         }])
 
-    def test_a_file_named_in_the_source_map_needs_python(self) -> None:
+    def test_a_file_named_in_the_source_map_needs_executable(self) -> None:
         self.cited_source()
         (self.repo / "memory" / "source-map.json").write_text(
             '{"sources": [{"path": "docs/selected.md"}]}\n', encoding="utf-8")
-        self.assert_staging_needs_python("docs/selected.md")
+        self.assert_staging_needs_executable("docs/selected.md")
 
-    def test_a_plain_path_kept_beside_a_plain_text_citation_needs_python(self) -> None:
+    def test_a_plain_path_kept_beside_a_plain_text_citation_needs_executable(self) -> None:
         self.mixed_with_a_plain_text_citation("src/b.py")
-        self.assert_staging_needs_python("src/b.py")
+        self.assert_staging_needs_executable("src/b.py")
 
-    def test_a_quoted_path_kept_beside_a_plain_text_citation_needs_python(self) -> None:
+    def test_a_quoted_path_kept_beside_a_plain_text_citation_needs_executable(self) -> None:
         self.mixed_with_a_plain_text_citation(".hidden/b.py")
-        self.assert_staging_needs_python(".hidden/b.py")
+        self.assert_staging_needs_executable(".hidden/b.py")
 
     def mapped_contexts_with_a_cited_port(self) -> None:
         self.two_mapped_contexts()
@@ -372,14 +363,14 @@ class PreCommitHookTest(RegistryTestCase):
         result = self.commit_hook(hook)
         self.assertEqual((0, ""), (result.returncode, result.stderr))
 
-    def boundary_impact_replaced_by(self, behaviour: str) -> dict[str, str]:
-        return self.shims(f'test "$2" = boundary-impact && {{ {behaviour}; }}\nexec "{REAL_PYTHON}" "$@"')
+    def boundary_impact_replaced_by(self, behaviour: str) -> Path:
+        return self.engine_replacing("boundary-impact", behaviour)
 
     def test_a_boundary_check_that_fails_notes_it_and_commits(self) -> None:
         self.mapped_contexts_with_a_cited_port()
-        hook = self.install()
+        hook = self.install(self.boundary_impact_replaced_by("exit 1"))
         self.stage("src/orders/port.py", "v1\nadded\n")
-        result = self.commit_hook(hook, self.boundary_impact_replaced_by("exit 1"))
+        result = self.commit_hook(hook)
         self.assertEqual(
             (0, f"{NOTE} boundary-impact against HEAD did not run; the commit goes ahead\n"),
             (result.returncode, result.stderr),
@@ -387,9 +378,9 @@ class PreCommitHookTest(RegistryTestCase):
 
     def test_a_boundary_check_without_a_verdict_notes_that_it_has_none(self) -> None:
         self.mapped_contexts_with_a_cited_port()
-        hook = self.install()
+        hook = self.install(self.boundary_impact_replaced_by("echo '{}'; exit 0"))
         self.stage("src/orders/port.py", "v1\nadded\n")
-        result = self.commit_hook(hook, self.boundary_impact_replaced_by("echo '{}'; exit 0"))
+        result = self.commit_hook(hook)
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertIn(f"{NOTE} boundary-impact against HEAD reports no verdict;", result.stderr)
 
@@ -430,7 +421,7 @@ class PreCommitHookTest(RegistryTestCase):
         hook = self.install()
         linked = self.linked_worktree()
         result = subprocess.run(
-            ["sh", str(hook)], cwd=linked, env=self.working_python(),
+            ["sh", str(hook)], cwd=linked,
             capture_output=True, text=True, encoding="utf-8", check=False,
         )
         self.assertEqual((1, "existing-hook-refused\n"), (result.returncode, result.stderr))
@@ -441,7 +432,7 @@ class PreCommitHookTest(RegistryTestCase):
         with open(hooks / "pre-push", "w", encoding="utf-8", newline="\n") as handle:
             handle.write("#!/bin/sh\necho existing-push-refused >&2\nexit 1\n")
         (hooks / "pre-push").chmod(0o755)
-        hook = install_pre_push_hook(self.repo / "memory", self.repo, TOOL)
+        hook = install_pre_push_hook(self.repo / "memory", self.repo, ENGINE)
         linked = self.linked_worktree()
         result = subprocess.run(
             ["sh", str(hook), "origin", "https://example.com/repo.git"], cwd=linked, input="",
@@ -451,14 +442,14 @@ class PreCommitHookTest(RegistryTestCase):
 
     def test_the_pre_push_hook_takes_the_git_timeout_from_git_config_unless_the_environment_sets_it(self) -> None:
         (self.repo / ".git" / "hooks").mkdir(parents=True, exist_ok=True)
-        hook = install_pre_push_hook(self.repo / "memory", self.repo, TOOL)
+        engine = self.engine_running('echo "timeout=$DOMAIN_MEMORY_GIT_TIMEOUT" >&2\nexit 1')
+        hook = install_pre_push_hook(self.repo / "memory", self.repo, engine)
         self.stage("memory/registry/rules.json", "{}\n")
         subprocess.run(
             ["git", "-c", "user.name=T", "-c", "user.email=t@example.com", "-c", "commit.gpgsign=false",
              "commit", "-qm", "registry change"], cwd=self.repo, check=True,
         )
         head = self.head()
-        shims = self.shims('case $1 in -c) exit 0 ;; esac\necho "timeout=$DOMAIN_MEMORY_GIT_TIMEOUT" >&2\nexit 1')
         for label, configured, environment, expected in (
             ("config only", "42", {}, "timeout=42\n"),
             ("environment wins", "42", {"DOMAIN_MEMORY_GIT_TIMEOUT": "7"}, "timeout=7\n"),
@@ -468,7 +459,7 @@ class PreCommitHookTest(RegistryTestCase):
                 subprocess.run(["git", "config", "--unset", "domain-memory.git-timeout"], cwd=self.repo, check=False)
                 if configured is not None:
                     subprocess.run(["git", "config", "domain-memory.git-timeout", configured], cwd=self.repo, check=True)
-                inherited = {name: value for name, value in shims.items() if name != "DOMAIN_MEMORY_GIT_TIMEOUT"}
+                inherited = {name: value for name, value in os.environ.items() if name != "DOMAIN_MEMORY_GIT_TIMEOUT"}
                 result = subprocess.run(
                     ["sh", str(hook), "origin", "https://example.com/repo.git"], cwd=self.repo,
                     input=f"refs/heads/main {head} refs/heads/main {EMPTY_SHA}\n",
@@ -492,7 +483,7 @@ class PreCommitHookTest(RegistryTestCase):
             named = hooks_dir(self.repo)
             shutil.rmtree(self.repo / ".git" / "hooks", ignore_errors=True)
             with self.assertRaises(ValueError) as refused:
-                install_pre_push_hook(self.repo / "memory", self.repo, Path("registry_tools.py"))
+                install_pre_push_hook(self.repo / "memory", self.repo, Path("engine"))
         self.assertEqual(
             (self.repo / ".git" / "hooks", f"Git hooks require an existing hooks directory at {self.repo / '.git' / 'hooks'}"),
             (named, str(refused.exception)),
@@ -502,7 +493,7 @@ class PreCommitHookTest(RegistryTestCase):
         hook = self.install()
         self.stage("notes/uncited.md", "anything\n")
         real_git = Path(shutil.which("git")).as_posix()
-        result = self.commit_hook(hook, self.shims("exit 1", f'test "$1" = rev-parse && exit 128\nexec "{real_git}" "$@"'))
+        result = self.commit_hook(hook, self.git_shim(f'test "$1" = rev-parse && exit 128\nexec "{real_git}" "$@"'))
         self.assertEqual((1, ""), (result.returncode, result.stderr))
 
     def test_a_chained_hook_that_is_not_executable_stops_the_commit(self) -> None:

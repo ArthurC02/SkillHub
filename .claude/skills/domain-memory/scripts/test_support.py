@@ -3,6 +3,7 @@ from __future__ import annotations
 import functools
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -60,6 +61,26 @@ from domain_registry.updates import (
 
 
 VERIFIED = [{"by": "human:Reviewer", "at": "2026-01-01T00:00:00Z"}]
+ENGINE = Path(__file__).resolve().parent.parent / "engine"
+COMMITTED_EXECUTABLE = ENGINE / "bin" / (
+    "windows-x86_64/domain-memory.exe" if sys.platform == "win32"
+    else "macos-universal/domain-memory" if sys.platform == "darwin"
+    else "linux-x86_64/domain-memory"
+)
+EXECUTABLE_LOCATIONS = (
+    "bin/linux-x86_64/domain-memory",
+    "bin/macos-universal/domain-memory",
+    "bin/windows-x86_64/domain-memory.exe",
+    "target/release/domain-memory",
+)
+
+
+def no_executable_message(hook: str, engine: str) -> re.Pattern[str]:
+    location = "(?:bin/[a-z0-9_-]+/domain-memory(?:\\.exe)?|target/release/domain-memory)"
+    return re.compile(
+        f"domain-memory {hook}: no Domain Memory executable at {re.escape(engine)}/{location}; "
+        f"build one with cargo build --release --manifest-path {re.escape(engine)}/Cargo.toml\n"
+    )
 
 
 def append_audit(root: Path, event: dict) -> None:
@@ -315,7 +336,27 @@ class RegistryTestCase(unittest.TestCase):
         evidence = {"scm_attestation": attestation}
         (package / "evidence-bundle.json").write_text(json.dumps(evidence), encoding="utf-8")
 
-    def push_fixture(self) -> tuple[Path, str]:
+    def engine_without_executable(self) -> Path:
+        engine = self.repo.parent / f"{self.repo.name}-no-engine"
+        engine.mkdir()
+        self.addCleanup(shutil.rmtree, engine, ignore_errors=True)
+        return engine
+
+    def engine_running(self, script: str) -> Path:
+        engine = self.repo.parent / f"{self.repo.name}-engine"
+        self.addCleanup(shutil.rmtree, engine, ignore_errors=True)
+        for location in EXECUTABLE_LOCATIONS:
+            executable = engine / location
+            executable.parent.mkdir(parents=True, exist_ok=True)
+            executable.write_bytes(f"#!/bin/sh\n{script}\n".encode())
+            executable.chmod(0o755)
+        return engine
+
+    def engine_replacing(self, command: str, behaviour: str) -> Path:
+        real = COMMITTED_EXECUTABLE.as_posix()
+        return self.engine_running(f'test "$1" = {command} && {{ {behaviour}; }}\nexec "{real}" "$@"')
+
+    def push_fixture(self, engine: Path = ENGINE) -> tuple[Path, str]:
         amend_policy(self.repo / "memory", "authorized_signers", "SHA256:NOBODY", "A key.")
         amend_policy(self.repo / "memory", "review_trigger", "git-push", "On push.")
         amend_policy(
@@ -330,11 +371,7 @@ class RegistryTestCase(unittest.TestCase):
         self.git("fetch", "-q", "origin")
         hooks = self.repo / ".git" / "hooks"
         hooks.mkdir(parents=True, exist_ok=True)
-        hook = install_pre_push_hook(
-            self.repo / "memory",
-            self.repo,
-            Path(__file__).resolve().parent / "registry_tools.py",
-        )
+        hook = install_pre_push_hook(self.repo / "memory", self.repo, engine)
         return hook, self.git("rev-parse", "HEAD")
 
     def git(self, *args: str) -> str:
@@ -357,22 +394,11 @@ class RegistryTestCase(unittest.TestCase):
             cwd=self.repo, input=refs, capture_output=True, text=True, check=False,
         )
 
-    def interpreters_on_path(self, *, python: bool, python3: bool) -> dict[str, str]:
-        shims = self.repo / "shims"
-        shims.mkdir()
-        real = Path(sys.executable).as_posix()
-        for name, works in (("python", python), ("python3", python3)):
-            body = f'#!/bin/sh\nexec "{real}" "$@"\n' if works else "#!/bin/sh\nexit 1\n"
-            shim = shims / name
-            shim.write_bytes(body.encode("utf-8"))
-            shim.chmod(0o755)
-        return {**os.environ, "PATH": str(shims) + os.pathsep + os.environ["PATH"]}
-
-    def pushed_with(self, environment: dict[str, str]) -> subprocess.CompletedProcess:
-        hook, _ = self.push_fixture()
+    def pushed_with(self, engine: Path) -> subprocess.CompletedProcess:
+        hook, _ = self.push_fixture(engine)
         head = self.commit_file("memory/registry/extra.json")
         return subprocess.run(
-            ["sh", str(hook), "origin", "unused"], cwd=self.repo, env=environment,
+            ["sh", str(hook), "origin", "unused"], cwd=self.repo,
             input=f"refs/heads/feature {head} refs/heads/feature {'0' * 40}\n",
             capture_output=True, text=True, check=False,
         )

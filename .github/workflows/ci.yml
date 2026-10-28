@@ -703,7 +703,7 @@ jobs:
       - name: Domain Memory attested commits carry their packages
         run: >-
           bash tools/ci/report-failure.sh 'Domain Memory attestation audit'
-          python .claude/skills/domain-memory/scripts/registry_tools.py audit-attestations
+          .claude/skills/domain-memory/engine/bin/linux-x86_64/domain-memory audit-attestations
           --repo-root . --changes-root docs/domain-memory/changes
 
   domain-memory:
@@ -736,7 +736,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.domain-memory-engine == 'true'
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:

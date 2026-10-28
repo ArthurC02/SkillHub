@@ -48,7 +48,7 @@ def verify_git_governance(registry_root: Path, repo_root: Path, commits: list[st
     ]
 
 
-def _install_hook(name: str, registry_root: Path, repo_root: Path, script: Path, body: str) -> Path:
+def _install_hook(name: str, registry_root: Path, repo_root: Path, engine: Path, body: str) -> Path:
     hooks = hooks_dir(repo_root)
     if not hooks.is_dir():
         raise ValueError(f"Git hooks require an existing hooks directory at {hooks}")
@@ -63,7 +63,7 @@ def _install_hook(name: str, registry_root: Path, repo_root: Path, script: Path,
     header = (
         "#!/bin/sh\n"
         f"# {marker}\n"
-        f"tool='{shown_path(script, repo_root)}'\n"
+        f"engine='{shown_path(engine, repo_root)}'\n"
         f"memory='{relative}'\n"
         f"existing=\"$(git rev-parse --git-path hooks)/{backup.name}\" || exit 1\n"
         "test -n \"$DOMAIN_MEMORY_GIT_TIMEOUT\" || DOMAIN_MEMORY_GIT_TIMEOUT=$(git config --get domain-memory.git-timeout)"
@@ -75,13 +75,18 @@ def _install_hook(name: str, registry_root: Path, repo_root: Path, script: Path,
     return hook
 
 
-def _python_for_tool(name: str) -> str:
+def _tool_for_hook(name: str) -> str:
     return (
-        "python_for_tool() {\n"
-        "  for candidate in python3 python; do\n"
-        "    \"$candidate\" -c 'import sys; sys.exit(sys.version_info < (3, 10))' 2>/dev/null && echo \"$candidate\" && return 0\n"
-        "  done\n"
-        f"  echo 'domain-memory {name}: no Python 3.10 or later on PATH as python3 or python' >&2\n"
+        "tool_for_hook() {\n"
+        "  case \"$(uname -s)-$(uname -m)\" in\n"
+        "    Linux-x86_64) tool=\"$engine/bin/linux-x86_64/domain-memory\" ;;\n"
+        "    Darwin-*) tool=\"$engine/bin/macos-universal/domain-memory\" ;;\n"
+        "    MINGW*-x86_64|MSYS*-x86_64|CYGWIN*-x86_64) tool=\"$engine/bin/windows-x86_64/domain-memory.exe\" ;;\n"
+        "    *) tool=\"$engine/target/release/domain-memory\" ;;\n"
+        "  esac\n"
+        "  test -x \"$tool\" && return 0\n"
+        f"  echo \"domain-memory {name}: no Domain Memory executable at $tool;"
+        " build one with cargo build --release --manifest-path $engine/Cargo.toml\" >&2\n"
         "  return 1\n"
         "}\n"
     )
@@ -99,11 +104,11 @@ def _run_existing_hook(name: str, invocation: str) -> str:
     )
 
 
-def install_pre_push_hook(registry_root: Path, repo_root: Path, script: Path) -> Path:
+def install_pre_push_hook(registry_root: Path, repo_root: Path, engine: Path) -> Path:
     body = (
         "refs=$(cat)\n"
-        + _python_for_tool("pre-push")
-        + "py=''\n"
+        + _tool_for_hook("pre-push")
+        + "tool=''\n"
         + _run_existing_hook("pre-push", "printf '%s\\n' \"$refs\" | \"$existing\" \"$@\"")
         + "printf '%s\\n' \"$refs\" | while read local_ref local_sha remote_ref remote_sha; do\n"
         "  test -n \"$local_sha\" || continue\n"
@@ -112,16 +117,16 @@ def install_pre_push_hook(registry_root: Path, repo_root: Path, script: Path) ->
         f"  test \"$remote_sha\" = \"{EMPTY_SHA}\" || range=$remote_sha..$local_sha\n"
         "  commits=$(git rev-list $range -- \"$memory\") || exit 1\n"
         "  test -n \"$commits\" || continue\n"
-        "  test -n \"$py\" || py=$(python_for_tool) || exit 1\n"
-        "  printf '%s\\n' \"$commits\" | \"$py\" \"$tool\" verify-git-governance --registry-root \"$memory\" --repo-root . --stdin || exit 1\n"
+        "  test -n \"$tool\" || tool_for_hook || exit 1\n"
+        "  printf '%s\\n' \"$commits\" | \"$tool\" verify-git-governance --registry-root \"$memory\" --repo-root . --stdin || exit 1\n"
         "done || exit 1\n"
     )
-    return _install_hook("pre-push", registry_root, repo_root, script, body)
+    return _install_hook("pre-push", registry_root, repo_root, engine, body)
 
 
-def install_pre_commit_hook(registry_root: Path, repo_root: Path, script: Path) -> Path:
+def install_pre_commit_hook(registry_root: Path, repo_root: Path, engine: Path) -> Path:
     body = (
-        _python_for_tool("pre-commit")
+        _tool_for_hook("pre-commit")
         + _run_existing_hook("pre-commit", "\"$existing\" \"$@\"")
         + "changes=$(git -c core.quotepath=false diff --cached --name-status --find-renames --diff-filter=ACMRD) || exit 1\n"
         "test -n \"$changes\" || exit 0\n"
@@ -138,8 +143,8 @@ def install_pre_commit_hook(registry_root: Path, repo_root: Path, script: Path) 
         "while IFS= read -r path; do set -- \"$@\" --path \"$path\"; done <<EOF\n"
         "$staged\n"
         "EOF\n"
-        "py=$(python_for_tool) || exit 1\n"
-        "if ! report=$(\"$py\" \"$tool\" verify-evidence --registry-root \"$memory\" --repo-root . --staged \"$@\"); then\n"
+        "tool_for_hook || exit 1\n"
+        "if ! report=$(\"$tool\" verify-evidence --registry-root \"$memory\" --repo-root . --staged \"$@\"); then\n"
         "  test -z \"$DOMAIN_MEMORY_HOOK_VERBOSE\" || printf '%s\\n' \"$report\" >&2\n"
         "  printf '%s\\n' \"$changes\" | awk -F'\\t' '$1 ~ /^R/ { print $2 \" is renamed to \" $3 \" in this commit;"
         " run relocate-evidence --from \" $2 \" --to \" $3 }' >&2\n"
@@ -149,7 +154,7 @@ def install_pre_commit_hook(registry_root: Path, repo_root: Path, script: Path) 
         "  exit 1\n"
         "fi\n"
         "git rev-parse -q --verify HEAD >/dev/null || exit 0\n"
-        "if ! impact=$(\"$py\" \"$tool\" boundary-impact --registry-root \"$memory\" --repo-root . --base HEAD); then\n"
+        "if ! impact=$(\"$tool\" boundary-impact --registry-root \"$memory\" --repo-root . --base HEAD); then\n"
         "  echo 'NOTE: domain-memory pre-commit: boundary-impact against HEAD did not run; the commit goes ahead' >&2\n"
         "  exit 0\n"
         "fi\n"
@@ -158,4 +163,4 @@ def install_pre_commit_hook(registry_root: Path, repo_root: Path, script: Path) 
         " reports ${verdict:-no verdict}; run boundary-impact --base HEAD to see the Contexts this change touches\" >&2\n"
         "exit 0\n"
     )
-    return _install_hook("pre-commit", registry_root, repo_root, script, body)
+    return _install_hook("pre-commit", registry_root, repo_root, engine, body)

@@ -251,6 +251,17 @@ func TestAnUnknownEvidenceStatusIsAProblem(t *testing.T) {
 	}
 }
 
+func TestAStaleReportFollowedByTheToolsSummaryLineIsAProblem(t *testing.T) {
+	repo, base := evidenceRepo(t)
+	editCitedLine(t, repo)
+	stubEvidenceTool(`{"results":[{"asset":"rules","id":"rule","path":"src/a.py","status":"stale","cited_lines":{"start":1,"end":1}}]}`+"\nverify-evidence failed: 1 stale citation; run recite on each to cite its current lines", errors.New("exit status 1"))
+	problems, warnings, err := committedEvidenceProblems(repo.root, base+"..HEAD")
+	want := "Domain Memory evidence: rules/rule cites src/a.py:1-1, which is stale as committed; check the fact still holds, then re-cite it (verify-evidence --path src/a.py)"
+	if err != nil || len(warnings) != 0 || len(problems) != 1 || problems[0] != want {
+		t.Fatalf("a stale report with a trailing summary was not a problem: %v %v %v", problems, warnings, err)
+	}
+}
+
 func TestAReportWithoutResultsWarnsInsteadOfPassing(t *testing.T) {
 	repo, base := evidenceRepo(t)
 	editCitedLine(t, repo)

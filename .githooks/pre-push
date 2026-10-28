@@ -1,17 +1,23 @@
 #!/bin/sh
 # domain-memory-pre-push
-tool='.claude/skills/domain-memory/scripts/registry_tools.py'
+engine='.claude/skills/domain-memory/engine'
 memory='docs/domain-memory'
 existing="$(git rev-parse --git-path hooks)/pre-push.domain-memory-existing" || exit 1
+test -n "$DOMAIN_MEMORY_GIT_TIMEOUT" || DOMAIN_MEMORY_GIT_TIMEOUT=$(git config --get domain-memory.git-timeout) || unset DOMAIN_MEMORY_GIT_TIMEOUT
+export DOMAIN_MEMORY_GIT_TIMEOUT
 refs=$(cat)
-python_for_tool() {
-  for candidate in python3 python; do
-    "$candidate" -c 'import sys; sys.exit(sys.version_info < (3, 10))' 2>/dev/null && echo "$candidate" && return 0
-  done
-  echo 'domain-memory pre-push: no Python 3.10 or later on PATH as python3 or python' >&2
+tool_for_hook() {
+  case "$(uname -s)-$(uname -m)" in
+    Linux-x86_64) tool="$engine/bin/linux-x86_64/domain-memory" ;;
+    Darwin-*) tool="$engine/bin/macos-universal/domain-memory" ;;
+    MINGW*-x86_64|MSYS*-x86_64|CYGWIN*-x86_64) tool="$engine/bin/windows-x86_64/domain-memory.exe" ;;
+    *) tool="$engine/target/release/domain-memory" ;;
+  esac
+  test -x "$tool" && return 0
+  echo "domain-memory pre-push: no Domain Memory executable at $tool; build one with cargo build --release --manifest-path $engine/Cargo.toml" >&2
   return 1
 }
-py=''
+tool=''
 if [ -e "$existing" ]; then
   if [ ! -x "$existing" ]; then
     echo "domain-memory pre-push: the chained hook $existing is not executable, so it would not run; make it executable (chmod +x) or delete it" >&2
@@ -26,6 +32,6 @@ printf '%s\n' "$refs" | while read local_ref local_sha remote_ref remote_sha; do
   test "$remote_sha" = "0000000000000000000000000000000000000000" || range=$remote_sha..$local_sha
   commits=$(git rev-list $range -- "$memory") || exit 1
   test -n "$commits" || continue
-  test -n "$py" || py=$(python_for_tool) || exit 1
-  printf '%s\n' "$commits" | "$py" "$tool" verify-git-governance --registry-root "$memory" --repo-root . --stdin || exit 1
+  test -n "$tool" || tool_for_hook || exit 1
+  printf '%s\n' "$commits" | "$tool" verify-git-governance --registry-root "$memory" --repo-root . --stdin || exit 1
 done || exit 1

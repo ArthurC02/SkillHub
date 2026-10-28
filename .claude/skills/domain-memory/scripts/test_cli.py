@@ -20,7 +20,7 @@ from domain_registry.cli_parser import build_parser
 from domain_registry.git import GitDeadline
 from domain_registry.git_hooks import governance_readiness, install_pre_push_hook
 from domain_registry.store import has_registry, write_document
-from test_support import RegistryTestCase, amend_policy, stored_policy_of
+from test_support import ENGINE, RegistryTestCase, amend_policy, stored_policy_of
 
 UNNEEDED_BY_COVERAGE = (
     "domain_registry.commands.evidence", "domain_registry.commands.governance", "domain_registry.commands.lifecycle",
@@ -148,7 +148,7 @@ class CliTest(RegistryTestCase):
         existing = self.repo / ".git" / "hooks" / "pre-push"
         existing.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
         hook = install_pre_push_hook(
-            self.repo / "docs" / "domain-memory", self.repo, self.repo / "registry_tools.py"
+            self.repo / "docs" / "domain-memory", self.repo, self.repo / "engine"
         )
         content = hook.read_text(encoding="utf-8")
         self.assertIn("git rev-list $range -- \"$memory\"", content)
@@ -180,7 +180,7 @@ class CliTest(RegistryTestCase):
             governance_readiness(self.repo / "memory", self.repo)["blocks"],
         )
         hook = install_pre_push_hook(
-            self.repo / "memory", self.repo, self.repo / "registry_tools.py"
+            self.repo / "memory", self.repo, self.repo / "engine"
         )
         self.assertEqual(self.repo / ".githooks" / "pre-push", hook)
         self.assertFalse((self.repo / ".git" / "hooks" / "pre-push").exists())
@@ -197,12 +197,12 @@ class CliTest(RegistryTestCase):
             "#!/bin/sh\nexit 0\n", encoding="utf-8"
         )
         hook = install_pre_push_hook(
-            self.repo / "memory", self.repo, self.repo / "registry_tools.py"
+            self.repo / "memory", self.repo, self.repo / "engine"
         )
         content = hook.read_bytes().decode("utf-8")
         self.assertNotIn("\r", content)
         self.assertNotIn(self.repo.resolve().as_posix(), content)
-        self.assertIn("tool='registry_tools.py'", content)
+        self.assertIn("engine='engine'", content)
         self.assertIn(
             'existing="$(git rev-parse --git-path hooks)/pre-push.domain-memory-existing" || exit 1\n', content
         )
@@ -226,7 +226,7 @@ class CliTest(RegistryTestCase):
         hook = install_pre_push_hook(
             self.repo / "memory",
             self.repo,
-            Path(__file__).resolve().parent / "registry_tools.py",
+            ENGINE,
         )
         write_document(
             self.repo / "memory", "rules.json",
@@ -264,7 +264,7 @@ class CliTest(RegistryTestCase):
             handle.write("exit 0\n")
         (hooks / "pre-push").chmod(0o644)
         hook = install_pre_push_hook(
-            self.repo / "memory", self.repo, Path(__file__).resolve().parent / "registry_tools.py"
+            self.repo / "memory", self.repo, ENGINE
         )
         result = subprocess.run(
             ["sh", str(hook), "origin", "https://example.com/repo.git"],

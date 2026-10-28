@@ -22,7 +22,7 @@ from domain_registry.hitl import (
 from domain_registry.git import run_git
 from domain_registry.git_hooks import governance_readiness, install_pre_push_hook
 from domain_registry.signing import SIGNING_KEY_ENV, init_signing_key
-from test_support import RegistryTestCase, amend_policy
+from test_support import ENGINE, RegistryTestCase, amend_policy, no_executable_message
 
 
 class ReviewSigningTest(RegistryTestCase):
@@ -71,7 +71,7 @@ class ReviewSigningTest(RegistryTestCase):
         self.sign_a_commit_changing("memory/a.txt")
         tip = self.sign_a_commit_changing("memory/b.txt")
         outside = self.sign_a_commit_changing("src/c.txt")
-        hook = install_pre_push_hook(self.repo / "memory", self.repo, Path(__file__).resolve().parent / "registry_tools.py")
+        hook = install_pre_push_hook(self.repo / "memory", self.repo, ENGINE)
         for remote, local, expected in ((base, tip, "Git governance is valid for 2 commits."), (tip, outside, "")):
             with self.subTest(expected):
                 pushed = subprocess.run(
@@ -427,29 +427,21 @@ class ReviewSigningTest(RegistryTestCase):
         self.assertNotEqual(0, result.returncode)
         self.assertIn("Git commit signature is invalid", result.stdout + result.stderr)
 
-    def test_the_pre_push_hook_runs_python3_where_python_does_not_work(self) -> None:
-        result = self.pushed_with(self.interpreters_on_path(python=False, python3=True))
-        self.assertIn("Git commit signature is invalid", result.stdout + result.stderr)
-
-    def test_the_pre_push_hook_runs_python_where_python3_does_not_work(self) -> None:
-        result = self.pushed_with(self.interpreters_on_path(python=True, python3=False))
-        self.assertIn("Git commit signature is invalid", result.stdout + result.stderr)
-
-    def test_a_push_without_memory_commits_needs_no_interpreter(self) -> None:
-        environment = self.interpreters_on_path(python=False, python3=False)
-        hook, _ = self.push_fixture()
+    def test_a_push_without_memory_commits_needs_no_executable(self) -> None:
+        hook, _ = self.push_fixture(self.engine_without_executable())
         head = self.commit_file("elsewhere/readme.txt")
         result = subprocess.run(
-            ["sh", str(hook), "origin", "unused"], cwd=self.repo, env=environment,
+            ["sh", str(hook), "origin", "unused"], cwd=self.repo,
             input=f"refs/heads/feature {head} refs/heads/feature {'0' * 40}\n",
             capture_output=True, text=True, check=False,
         )
-        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual((0, ""), (result.returncode, result.stderr))
 
-    def test_the_pre_push_hook_names_a_missing_interpreter(self) -> None:
-        result = self.pushed_with(self.interpreters_on_path(python=False, python3=False))
+    def test_the_pre_push_hook_names_a_missing_executable_and_refuses_the_push(self) -> None:
+        engine = self.engine_without_executable()
+        result = self.pushed_with(engine)
         self.assertEqual(1, result.returncode)
-        self.assertIn("no Python 3.10 or later on PATH as python3 or python", result.stderr)
+        self.assertRegex(result.stderr, no_executable_message("pre-push", engine.resolve().as_posix()))
 
     def test_local_working_memory_needs_no_governance_setup(self) -> None:
         amend_policy(self.repo / "memory", "review_mode", "local-draft-only", "Drafting only.")

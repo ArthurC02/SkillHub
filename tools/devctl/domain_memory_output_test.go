@@ -2,8 +2,31 @@ package main
 
 import (
 	"errors"
+	"path/filepath"
 	"testing"
 )
+
+func TestDomainMemoryExecutablePicksTheCommittedBinaryForThePlatform(t *testing.T) {
+	engine := filepath.Join("repo", ".claude", "skills", "domain-memory", "engine")
+	cases := []struct {
+		name, goos, goarch, want string
+	}{
+		{"linux on x86-64", "linux", "amd64", filepath.Join(engine, "bin", "linux-x86_64", "domain-memory")},
+		{"linux on arm builds its own", "linux", "arm64", filepath.Join(engine, "target", "release", "domain-memory")},
+		{"macOS on apple silicon", "darwin", "arm64", filepath.Join(engine, "bin", "macos-universal", "domain-memory")},
+		{"macOS on intel", "darwin", "amd64", filepath.Join(engine, "bin", "macos-universal", "domain-memory")},
+		{"windows on x86-64", "windows", "amd64", filepath.Join(engine, "bin", "windows-x86_64", "domain-memory.exe")},
+		{"windows on arm builds its own", "windows", "arm64", filepath.Join(engine, "target", "release", "domain-memory")},
+		{"another system builds its own", "freebsd", "amd64", filepath.Join(engine, "target", "release", "domain-memory")},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := domainMemoryExecutable("repo", c.goos, c.goarch); got != c.want {
+				t.Errorf("executable = %q, want %q", got, c.want)
+			}
+		})
+	}
+}
 
 func TestDomainMemoryOutput(t *testing.T) {
 	commandErr := errors.New("exit status 1")

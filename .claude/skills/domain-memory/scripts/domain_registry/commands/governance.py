@@ -84,7 +84,7 @@ def handle_install_git_hitl_hook(args: argparse.Namespace) -> int:
     hook = install_pre_push_hook(
         args.registry_root.resolve(),
         args.repo_root.resolve(),
-        Path(__file__).parents[2] / "registry_tools.py",
+        Path(__file__).parents[3] / "engine",
     )
     print(f"Installed Git HITL pre-push hook: {hook}")
     return 0
@@ -94,7 +94,7 @@ def handle_install_pre_commit_hook(args: argparse.Namespace) -> int:
     hook = install_pre_commit_hook(
         args.registry_root.resolve(),
         args.repo_root.resolve(),
-        Path(__file__).parents[2] / "registry_tools.py",
+        Path(__file__).parents[3] / "engine",
     )
     print(f"Installed Domain Memory pre-commit hook: {hook}")
     return 0

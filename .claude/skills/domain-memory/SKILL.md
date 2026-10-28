@@ -21,7 +21,7 @@ Then choose one capability:
 - **Review a change** when asked to review a pull request or a branch, from one `brief`, to decide whether it needs a Change Package, a recite, or nothing: [domain-memory-review-change](skills/domain-memory-review-change/SKILL.md).
 - **Implementation hygiene** while writing code from a handoff, when a repository check forces a change, or when an external system is added or replaced: [domain-memory-implementation-hygiene](skills/domain-memory-implementation-hygiene/SKILL.md).
 
-Every capability runs the same commands. To run them through the compiled Rust executable instead of the Python script, see [domain-memory-cli](skills/domain-memory-cli/SKILL.md).
+Every capability runs the same commands, through the executable that [running the commands](AGENTS.md#running-the-commands) names for each platform.
 
 A brownfield refactoring that preserves the reviewed model takes the [brownfield refactoring fast path](references/brownfield-refactoring.md) before anyone opens a Change Package: it is a proof of preservation, not a way around unknown ownership or a changed contract.
 

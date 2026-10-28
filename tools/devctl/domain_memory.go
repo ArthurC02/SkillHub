@@ -5,14 +5,28 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
 var domainMemoryTool = func(root string, args ...string) (string, error) {
-	command := exec.Command("uv", append([]string{cmdRun, "--no-project", ecosystemPython, filepath.Join(root, ".claude", "skills", "domain-memory", "scripts", "registry_tools.py")}, args...)...)
+	command := exec.Command(domainMemoryExecutable(root, runtime.GOOS, runtime.GOARCH), args...)
 	command.Dir = root
 	output, err := command.CombinedOutput()
 	return domainMemoryOutput(string(output), err), err
+}
+
+func domainMemoryExecutable(root, goos, goarch string) string {
+	engine := filepath.Join(root, ".claude", "skills", "domain-memory", "engine")
+	switch {
+	case goos == "linux" && goarch == "amd64":
+		return filepath.Join(engine, "bin", "linux-x86_64", "domain-memory")
+	case goos == "darwin":
+		return filepath.Join(engine, "bin", "macos-universal", "domain-memory")
+	case goos == "windows" && goarch == "amd64":
+		return filepath.Join(engine, "bin", "windows-x86_64", "domain-memory.exe")
+	}
+	return filepath.Join(engine, "target", "release", "domain-memory")
 }
 
 func domainMemoryOutput(output string, commandErr error) string {

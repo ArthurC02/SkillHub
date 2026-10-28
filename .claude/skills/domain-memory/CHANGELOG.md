@@ -2,6 +2,17 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 5.1.0
+
+### Changed
+
+- The pre-push and pre-commit hooks run the committed executable for the platform instead of looking for a Python interpreter, and fall back to `engine/target/release/domain-memory`. When neither exists, the hook refuses and names the path and the `cargo build` command; a hook installed by an earlier version keeps calling the script until `install-git-hitl-hook` or `install-pre-commit-hook` runs again.
+- AGENTS.md, SKILL.md and the command reference run every command through the executable.
+
+### Removed
+
+- The `domain-memory-cli` skill. How to run the commands is in AGENTS.md under "Running the commands".
+
 ## 5.0.13
 
 ### Added
