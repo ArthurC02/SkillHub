@@ -753,19 +753,29 @@ fn main() {
         }
     });
     let _ = std::fs::remove_dir_all(&scratch_root);
-    let mut failed = 0;
+    let mut failed = Vec::new();
     for (case, problems) in chosen.iter().zip(&results) {
         let problems = problems.lock().expect("result slot");
         if !problems.is_empty() {
-            failed += 1;
+            failed.push(text(case, "name"));
             println!("DIFF {}", text(case, "name"));
             for problem in problems.iter() {
                 println!("     {problem}");
             }
         }
     }
-    println!("{} of {} cases match", chosen.len() - failed, chosen.len());
-    if failed > 0 || chosen.is_empty() {
+    if !failed.is_empty() {
+        println!("Cases that differ:");
+        for name in &failed {
+            println!("  {name}");
+        }
+    }
+    println!(
+        "{} of {} cases match",
+        chosen.len() - failed.len(),
+        chosen.len()
+    );
+    if !failed.is_empty() || chosen.is_empty() {
         std::process::exit(1);
     }
 }

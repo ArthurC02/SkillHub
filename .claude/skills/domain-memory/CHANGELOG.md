@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 5.1.2
+
+### Fixed
+
+- A git command or a test command that leaves a process holding its output open is stopped at the deadline. The executable stopped counting once the command itself exited and then waited, without limit, for the pipe to close. On Linux and macOS a git command now runs in its own process group, and the deadline kills that whole group, as the script did; on Windows the call returns at the deadline, and `taskkill /T` stops what is still attached to the command.
+
 ## 5.1.1
 
 ### Changed

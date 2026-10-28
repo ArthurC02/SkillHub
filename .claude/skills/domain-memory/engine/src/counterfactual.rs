@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 use std::fs;
-use std::io::{Read, Write};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime};
 
 use crate::files::{load_json, write_json};
-use crate::git::spawn_failure;
+use crate::git::{finished_by, spawn_failure};
 use crate::json::{Object, Value};
 use crate::listing::EXCLUDED_DIRECTORIES;
 use crate::py::{self, PurePath};
@@ -31,7 +31,6 @@ const PROPOSAL_FILE: &str = "domain-change-proposal.json";
 const OBLIGATIONS_FILE: &str = "test-obligations.json";
 const EVIDENCE_FILE: &str = "evidence-bundle.json";
 const RECORDABLE_STATUSES: [&str; 2] = ["draft", "submitted"];
-const POLL: Duration = Duration::from_millis(5);
 const VERDICT_WORDS: [&str; 8] = [
     "fail", "failed", "failure", "pass", "passed", "killed", "survived", "error",
 ];
@@ -299,16 +298,6 @@ fn start_failure(command: &str, error: &str) -> String {
     )
 }
 
-fn drained(pipe: Option<impl Read + Send + 'static>) -> thread::JoinHandle<Vec<u8>> {
-    thread::spawn(move || {
-        let mut bytes = Vec::new();
-        if let Some(mut pipe) = pipe {
-            let _ = pipe.read_to_end(&mut bytes);
-        }
-        bytes
-    })
-}
-
 pub enum Ran {
     Finished {
         code: i64,
@@ -340,34 +329,23 @@ pub fn run_captured(directory: &Path, argv: &[String], timeout: i64) -> Result<R
         .stderr(Stdio::piped())
         .spawn()
         .map_err(|error| RunFault::Start(spawn_failure(&error, program)))?;
-    let stdout = drained(child.stdout.take());
-    let stderr = drained(child.stderr.take());
-    let seconds = u64::try_from(timeout).unwrap_or(0);
     if timeout <= 0 {
         let _ = child.kill();
         let _ = child.wait();
         return Ok(Ran::TimedOut);
     }
+    let seconds = u64::try_from(timeout).unwrap_or(0);
     let deadline = Instant::now().checked_add(Duration::from_secs(seconds));
-    let status = loop {
-        if let Some(status) = child
-            .try_wait()
-            .map_err(|error| RunFault::Other(py::os_error(&error, directory)))?
-        {
-            break status;
-        }
-        if deadline.is_some_and(|limit| Instant::now() >= limit) {
-            let _ = child.kill();
-            let _ = child.wait();
-            return Ok(Ran::TimedOut);
-        }
-        thread::sleep(POLL);
-    };
-    Ok(Ran::Finished {
-        code: i64::from(status.code().unwrap_or(-1)),
-        stdout: stdout.join().unwrap_or_default(),
-        stderr: stderr.join().unwrap_or_default(),
-    })
+    match finished_by(child, deadline)
+        .map_err(|error| RunFault::Other(py::os_error(&error, directory)))?
+    {
+        Some(finished) => Ok(Ran::Finished {
+            code: i64::from(finished.status.code().unwrap_or(-1)),
+            stdout: finished.stdout,
+            stderr: finished.stderr,
+        }),
+        None => Ok(Ran::TimedOut),
+    }
 }
 
 fn run_tests(directory: &Path, command: &str, timeout: i64) -> Outcome<TestRun> {
