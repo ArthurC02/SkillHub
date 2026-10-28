@@ -576,3 +576,65 @@ impl ReviewingProposals {
             .last()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn registry_root(label: &str) -> PathBuf {
+        let root = std::env::temp_dir().join(format!("dm-audit-{label}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("registry")).unwrap();
+        std::fs::write(root.join("registry").join("index.md"), "x\n").unwrap();
+        root
+    }
+
+    fn event(operation: &str, padding: usize) -> Object {
+        let mut event = Object::new();
+        event.insert("operation", Value::Str(operation.to_string()));
+        event.insert("padding", Value::Str("x".repeat(padding)));
+        event
+    }
+
+    fn log_size(root: &Path) -> u64 {
+        events_path(root).metadata().unwrap().len()
+    }
+
+    fn root_with_log_of_size(label: &str, size: u64) -> PathBuf {
+        let probe = registry_root(&format!("{label}-probe"));
+        append(&probe, &event("first", 0)).unwrap();
+        let probe_padding = 1000;
+        append(&probe, &event("padded", probe_padding)).unwrap();
+        let padding = probe_padding + (size - log_size(&probe)) as usize;
+        let _ = std::fs::remove_dir_all(&probe);
+        let root = registry_root(label);
+        append(&root, &event("first", 0)).unwrap();
+        append(&root, &event("padded", padding)).unwrap();
+        assert_eq!(log_size(&root), size);
+        root
+    }
+
+    #[test]
+    fn an_event_is_appended_to_an_audit_log_of_exactly_the_size_limit() {
+        let root = root_with_log_of_size("at", MAX_JSON_BYTES);
+        let outcome = append(&root, &event("at the limit", 0));
+        let size = log_size(&root);
+        let _ = std::fs::remove_dir_all(&root);
+        assert_eq!((outcome, size > MAX_JSON_BYTES), (Ok(()), true));
+    }
+
+    #[test]
+    fn nothing_is_appended_to_an_audit_log_one_byte_past_the_size_limit() {
+        let root = root_with_log_of_size("over", MAX_JSON_BYTES + 1);
+        let before = std::fs::read(events_path(&root)).unwrap();
+        let outcome = append(&root, &event("past the limit", 0));
+        let after = std::fs::read(events_path(&root)).unwrap();
+        let _ = std::fs::remove_dir_all(&root);
+        let message = outcome.unwrap_err();
+        assert!(
+            message.starts_with("audit log is invalid: audit log exceeds 16777216 bytes: "),
+            "{message}"
+        );
+        assert!(before == after, "the audit log changed");
+    }
+}

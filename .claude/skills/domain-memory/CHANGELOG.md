@@ -2,6 +2,13 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 5.1.3
+
+### Fixed
+
+- `init-change-package --recitation` stops at a git deadline and writes nothing, as the script did; it treated the deadline as "no repository" and wrote the package.
+- `scan-secrets` without git reads a repository's files in name order, so its findings come out in the same order on every file system.
+
 ## 5.1.2
 
 ### Fixed

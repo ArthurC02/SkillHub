@@ -170,18 +170,24 @@ def spellings(path: Path) -> list[bytes]:
     return sorted((text.encode("utf-8") for text in found), key=len, reverse=True)
 
 
-def os_wording(code: int) -> bytes:
-    import ctypes
-
-    return ctypes.FormatError(code).rstrip("".join(map(chr, range(33))) + ".").encode("utf-8")
+OS_ERROR = re.compile(rb"\[(?:Errno|WinError) \d+\] ")
+OS_WORDING_ENDS = (b": ", b". ", b"\n", b"\\n", b'"', b"'")
 
 
-def unlocalized(data: bytes) -> bytes:
-    if os.name != "nt":
-        return data
-    for code in sorted({int(found) for found in re.findall(rb"\[WinError (\d+)\] ", data)}):
-        label = f"[WinError {code}] ".encode()
-        data = data.replace(label + os_wording(code), label + b"~")
+def without_os_wording(data: bytes) -> bytes:
+    kept, at = bytearray(), 0
+    while found := OS_ERROR.search(data, at):
+        kept += data[at : found.start()] + b"[OS error] ~"
+        ends = [end for end in (data.find(mark, found.end()) for mark in OS_WORDING_ENDS) if end >= 0]
+        at = min(ends) if ends else len(data)
+    return bytes(kept + data[at:])
+
+
+def tool_output_cut(data: bytes, prefixes: list[str]) -> bytes:
+    for prefix in prefixes:
+        found = data.find(prefix.encode("utf-8"))
+        if found >= 0:
+            data = data[: found + len(prefix.encode("utf-8"))] + b"~"
     return data
 
 
@@ -194,7 +200,7 @@ def placed(data: bytes, places: list[tuple[bytes, Path]]) -> bytes:
         for spelling in spellings(path):
             data = data.replace(spelling, token)
     version = json.loads((PLUGIN / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))["version"]
-    return unlocalized(data.replace(server_info(version), server_info("{version}")))
+    return without_os_wording(data.replace(server_info(version), server_info("{version}")))
 
 
 def stored(data: bytes) -> str | dict[str, str]:
@@ -216,7 +222,7 @@ def observed(case: dict, argv: list[str], snapshot: Path) -> tuple[dict, list[st
         prepared(case, fixture)
         result = ran(case, fixture, argv, snapshot)
         places = [(b"{fixture}", fixture), (b"{scratch}", fixture.parent), (b"{repo}", snapshot), (b"{plugin}", PLUGIN)]
-        streams = {stream: placed(result[stream], places) for stream in ("stdout", "stderr")}
+        streams = {stream: tool_output_cut(placed(result[stream], places), case.get("tool_output_after", [])) for stream in ("stdout", "stderr")}
         outcome: dict = {"exit": result["exit"]}
         problems: list[str] = []
         if case.get("writes"):

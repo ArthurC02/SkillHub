@@ -7,7 +7,7 @@ use crate::compare::contexts_named_by;
 use crate::coverage::all_references;
 use crate::evidence::fields_beyond_evidence;
 use crate::files::{PROPOSAL_FILE, load_json, write_json};
-use crate::git::toplevel;
+use crate::git::{Failure, toplevel_found};
 use crate::json::{Object, Value};
 use crate::shlex::join;
 use crate::store::{asset_records, shown_path};
@@ -108,8 +108,20 @@ fn evidence_only_updates(
     Ok(updates)
 }
 
-fn verify_command(registry_root: &Path, package_root: &Path, cited: &[String]) -> String {
-    let top = toplevel(registry_root).ok().flatten();
+fn repository_top(registry_root: &Path) -> Result<Option<std::path::PathBuf>, String> {
+    match toplevel_found(registry_root) {
+        Ok(top) => Ok(top),
+        Err(error) if error.kind == Failure::Spawn => Ok(None),
+        Err(error) => Err(error.message),
+    }
+}
+
+fn verify_command(
+    registry_root: &Path,
+    package_root: &Path,
+    cited: &[String],
+) -> Result<String, String> {
+    let top = repository_top(registry_root)?;
     let top = top.as_deref();
     let executable = std::env::current_exe().unwrap_or_default();
     let mut arguments = vec![
@@ -126,7 +138,7 @@ fn verify_command(registry_root: &Path, package_root: &Path, cited: &[String]) -
         arguments.push("--path".to_string());
         arguments.push(path.clone());
     }
-    join(&arguments)
+    Ok(join(&arguments))
 }
 
 pub fn recitation_package(
@@ -153,7 +165,7 @@ pub fn recitation_package(
         }
     }
     let cited: Vec<String> = cited.into_iter().collect();
-    let check = verify_command(registry_root, output, &cited);
+    let check = verify_command(registry_root, output, &cited)?;
     let [requirement_id, proposal_id, proposer] = identifiers;
     let names: Vec<String> = updates
         .iter()

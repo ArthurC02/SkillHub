@@ -730,3 +730,47 @@ impl Source {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn source_of_size(label: &str, size: u64) -> PathBuf {
+        let root = std::env::temp_dir().join(format!("dm-cite-{label}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).unwrap();
+        let mut content = b"one\n".to_vec();
+        content.resize(size as usize, b'x');
+        std::fs::write(root.join("rule.md"), content).unwrap();
+        py::resolve_path(&root)
+    }
+
+    #[test]
+    fn a_citation_of_a_source_of_exactly_the_evidence_size_limit_is_built() {
+        let root = source_of_size("at", MAX_EVIDENCE_BYTES);
+        let reference = citation(&root, "rule.md", "1", "1").unwrap();
+        let lines = reference.get("lines");
+        let _ = std::fs::remove_dir_all(&root);
+        let Some(Value::Object(lines)) = lines else {
+            panic!("no lines in the citation");
+        };
+        assert_eq!(
+            (lines.get("start"), lines.get("end")),
+            (
+                Some(&Value::Int("1".to_string())),
+                Some(&Value::Int("1".to_string()))
+            )
+        );
+    }
+
+    #[test]
+    fn a_citation_of_a_source_one_byte_over_the_evidence_size_limit_is_refused() {
+        let root = source_of_size("over", MAX_EVIDENCE_BYTES + 1);
+        let outcome = citation(&root, "rule.md", "1", "1");
+        let _ = std::fs::remove_dir_all(&root);
+        assert_eq!(
+            outcome.unwrap_err(),
+            "evidence source exceeds 16777216 bytes: rule.md"
+        );
+    }
+}

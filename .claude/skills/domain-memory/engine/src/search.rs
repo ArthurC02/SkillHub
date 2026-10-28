@@ -464,4 +464,96 @@ mod tests {
         assert_eq!(stem("runs"), "run");
         assert_eq!(stem("ages"), "age");
     }
+
+    fn stems_of(text: &str) -> Vec<String> {
+        let mut stems: Vec<String> = words(text).iter().map(|word| stem(word)).collect();
+        stems.sort();
+        stems.dedup();
+        stems
+    }
+
+    #[test]
+    fn forms_of_one_word_share_one_stem() {
+        let rows = [
+            (
+                "concurrency and concurrent",
+                "concurrency",
+                "concurrent",
+                "concurr",
+            ),
+            ("licensing and license", "licensing", "license", "licens"),
+            ("deleted and deletion", "deleted", "deletion", "delet"),
+            ("plural and singular", "runs", "run", "run"),
+            ("participle in en and base", "taken", "take", "tak"),
+            (
+                "plural of a participle in en and base",
+                "tokens",
+                "token",
+                "tok",
+            ),
+            ("noun in ure and past form", "exposure", "exposed", "expos"),
+            (
+                "noun in ure and past participle",
+                "failure",
+                "failed",
+                "fail",
+            ),
+            ("verb and its plural in ure", "measure", "measures", "meas"),
+            (
+                "verb in ure and its past form",
+                "measure",
+                "measured",
+                "meas",
+            ),
+        ];
+        for (name, left, right, stem_shared) in rows {
+            assert_eq!(
+                (stems_of(left), stems_of(right)),
+                (vec![stem_shared.to_string()], vec![stem_shared.to_string()]),
+                "{name}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_word_with_a_longer_stem_is_not_joined_with_its_ending() {
+        let rows = [
+            ("prefix kept", "precheck", "precheck"),
+            ("short word kept whole", "open", "open"),
+            ("suffix leaving two characters kept whole", "ring", "ring"),
+            ("past ending leaving one character kept whole", "bed", "bed"),
+        ];
+        for (name, word, expected) in rows {
+            assert_eq!(stems_of(word), vec![expected.to_string()], "{name}");
+        }
+    }
+
+    #[test]
+    fn question_words_are_not_searched() {
+        assert_eq!(
+            stems_of("who can see what it does, how and when that is"),
+            vec!["see".to_string()]
+        );
+    }
+
+    #[test]
+    fn a_query_spells_out_ideographs_folds_width_and_keeps_accents() {
+        assert_eq!(
+            query_words("訂單狀態 Ｃａｆé order"),
+            ["訂", "單", "狀", "態", "café", "order"]
+        );
+    }
+
+    #[test]
+    fn a_word_is_common_from_three_holders_above_a_quarter_of_the_records() {
+        let rows = [
+            ("three of eleven", 3, 11, true),
+            ("three of twelve is exactly a quarter", 3, 12, false),
+            ("two of seven is under three holders", 2, 7, false),
+            ("three of three", 3, 3, true),
+        ];
+        for (name, holders, records, expected) in rows {
+            assert_eq!(is_common(holders, records), expected, "{name}");
+        }
+    }
 }

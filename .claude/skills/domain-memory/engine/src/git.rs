@@ -87,8 +87,12 @@ pub fn resolve_commit(repo_root: &Path, reference: &str) -> Result<Option<String
 }
 
 pub fn toplevel(repo_root: &Path) -> Result<Option<PathBuf>, String> {
-    let found = run_git_text(repo_root, &["rev-parse", "--show-toplevel"])?;
-    Ok((found.code == 0).then(|| py::resolve(py::strip(&found.stdout))))
+    toplevel_found(repo_root).map_err(|error| error.message)
+}
+
+pub fn toplevel_found(repo_root: &Path) -> Result<Option<PathBuf>, GitError> {
+    let found = run_git(repo_root, &["rev-parse", "--show-toplevel"], None)?;
+    Ok((found.code == 0).then(|| py::resolve(py::strip(&universal_newlines(&found.stdout)))))
 }
 
 pub fn universal_newlines(bytes: &[u8]) -> String {

@@ -368,48 +368,53 @@ fn replaced(data: &[u8], from: &[u8], to: &[u8]) -> Vec<u8> {
     out
 }
 
-fn os_wording(code: i32) -> String {
-    let text = std::io::Error::from_raw_os_error(code).to_string();
-    text.strip_suffix(&format!(" (os error {code})"))
-        .unwrap_or(&text)
-        .trim_end_matches(|c: char| c <= ' ' || c == '.')
-        .to_string()
+const OS_ERROR_LABELS: [&[u8]; 2] = [b"[Errno ", b"[WinError "];
+const OS_WORDING_ENDS: [&[u8]; 6] = [b": ", b". ", b"\n", b"\\n", b"\"", b"'"];
+
+fn found_in(data: &[u8], mark: &[u8]) -> Option<usize> {
+    data.windows(mark.len()).position(|window| window == mark)
 }
 
-fn error_codes(data: &[u8]) -> BTreeSet<i32> {
-    const LABEL: &[u8] = b"[WinError ";
-    let mut codes = BTreeSet::new();
-    for at in 0..data.len() {
-        if !data[at..].starts_with(LABEL) {
-            continue;
+fn os_wording_start(data: &[u8], at: usize) -> Option<usize> {
+    OS_ERROR_LABELS.iter().find_map(|label| {
+        if !data[at..].starts_with(label) {
+            return None;
         }
-        let digits: Vec<u8> = data[at + LABEL.len()..]
+        let digits_start = at + label.len();
+        let digits = data[digits_start..]
             .iter()
-            .copied()
-            .take_while(u8::is_ascii_digit)
-            .collect();
-        let end = at + LABEL.len() + digits.len();
-        if !digits.is_empty() && data[end..].starts_with(b"] ") {
-            if let Ok(code) = String::from_utf8_lossy(&digits).parse() {
-                codes.insert(code);
-            }
-        }
-    }
-    codes
+            .take_while(|byte| byte.is_ascii_digit())
+            .count();
+        let close = digits_start + digits;
+        (digits > 0 && data[close..].starts_with(b"] ")).then_some(close + 2)
+    })
 }
 
-fn unlocalized(data: Vec<u8>) -> Vec<u8> {
-    if !cfg!(windows) {
-        return data;
+fn without_os_wording(data: Vec<u8>) -> Vec<u8> {
+    let mut kept = Vec::with_capacity(data.len());
+    let mut at = 0;
+    while at < data.len() {
+        if let Some(wording) = os_wording_start(&data, at) {
+            kept.extend_from_slice(b"[OS error] ~");
+            at = OS_WORDING_ENDS
+                .iter()
+                .filter_map(|mark| found_in(&data[wording..], mark).map(|end| wording + end))
+                .min()
+                .unwrap_or(data.len());
+        } else {
+            kept.push(data[at]);
+            at += 1;
+        }
     }
-    let mut data = data;
-    for code in error_codes(&data) {
-        let label = format!("[WinError {code}] ");
-        data = replaced(
-            &data,
-            format!("{label}{}", os_wording(code)).as_bytes(),
-            format!("{label}~").as_bytes(),
-        );
+    kept
+}
+
+fn tool_output_cut(mut data: Vec<u8>, prefixes: &[String]) -> Vec<u8> {
+    for prefix in prefixes {
+        if let Some(at) = found_in(&data, prefix.as_bytes()) {
+            data.truncate(at + prefix.len());
+            data.push(b'~');
+        }
     }
     data
 }
@@ -435,7 +440,7 @@ fn placed(data: &[u8], places: &[(&[u8], Vec<Vec<u8>>)]) -> Vec<u8> {
         &server_info(&plugin_version()),
         &server_info("{version}"),
     );
-    unlocalized(data)
+    without_os_wording(data)
 }
 
 fn tree_of(root: &Path) -> BTreeMap<String, Vec<u8>> {
@@ -557,8 +562,14 @@ impl Suite {
             (b"{repo}", spellings(&self.snapshot)),
             (b"{plugin}", spellings(&self.plugin)),
         ];
-        let mut stdout = placed(&result.stdout, &places);
-        let mut stderr = placed(&result.stderr, &places);
+        let tool_output: Vec<String> = field(case, "tool_output_after")
+            .and_then(Value::as_array)
+            .unwrap_or_default()
+            .iter()
+            .filter_map(|prefix| prefix.as_str().map(str::to_string))
+            .collect();
+        let mut stdout = tool_output_cut(placed(&result.stdout, &places), &tool_output);
+        let mut stderr = tool_output_cut(placed(&result.stderr, &places), &tool_output);
         let mut files = None;
         let mut problems = Vec::new();
         if flag(case, "writes") {

@@ -276,3 +276,23 @@ pub fn install_pre_push_hook(registry_root: &Path, repo_root: &Path) -> Result<P
 pub fn install_pre_commit_hook(registry_root: &Path, repo_root: &Path) -> Result<PathBuf, String> {
     install_hook("pre-commit", registry_root, repo_root, &pre_commit_body())
 }
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+    use std::os::unix::fs::PermissionsExt;
+
+    #[test]
+    fn the_installed_hook_is_executable() {
+        let root = std::env::temp_dir().join(format!("dm-hook-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join(".git").join("hooks")).unwrap();
+        let hook = install_pre_commit_hook(&root.join("memory"), &root);
+        let mode = hook
+            .as_ref()
+            .ok()
+            .map(|hook| std::fs::metadata(hook).unwrap().permissions().mode() & 0o111);
+        let _ = std::fs::remove_dir_all(&root);
+        assert_eq!(mode, Some(0o111), "{hook:?}");
+    }
+}

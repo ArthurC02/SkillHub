@@ -97,7 +97,7 @@ def _walked_files(root: Path, scan: Scan):
     for directory, children, files in os.walk(root):
         here = Path(directory)
         kept = []
-        for name in children:
+        for name in sorted(children):
             if name in UNSCANNED_DIRECTORIES:
                 continue
             if (here / name).is_symlink():
@@ -105,7 +105,7 @@ def _walked_files(root: Path, scan: Scan):
             else:
                 kept.append(name)
         children[:] = kept
-        for name in files:
+        for name in sorted(files):
             path = here / name
             if name in UNSCANNED_DIRECTORIES:
                 continue

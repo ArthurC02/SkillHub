@@ -722,7 +722,10 @@ pub fn fields_beyond_evidence(
 
 #[cfg(test)]
 mod tests {
-    use super::{compare, posix_path, span};
+    use super::{MAX_EVIDENCE_BYTES, Verifier, compare, posix_path, span};
+    use crate::cite::citation;
+    use crate::json::{Object, Value};
+    use crate::py;
     use std::cmp::Ordering;
 
     #[test]
@@ -772,5 +775,67 @@ mod tests {
         for (given, expected) in cases {
             assert_eq!(expected, posix_path(given), "{given:?}");
         }
+    }
+
+    fn source_of_size(label: &str, size: u64) -> std::path::PathBuf {
+        let root = std::env::temp_dir().join(format!("dm-evidence-{label}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).unwrap();
+        let mut content = b"one
+"
+        .to_vec();
+        content.resize(size as usize, b'x');
+        std::fs::write(root.join("rule.md"), content).unwrap();
+        py::resolve_path(&root)
+    }
+
+    fn field(verdict: &Object, key: &str) -> Option<String> {
+        match verdict.get(key) {
+            Some(Value::Str(text)) => Some(text.clone()),
+            _ => None,
+        }
+    }
+
+    fn reference_to_first_line() -> Value {
+        let mut lines = Object::new();
+        lines.insert("start", Value::Int("1".to_string()));
+        lines.insert("end", Value::Int("1".to_string()));
+        let mut reference = Object::new();
+        reference.insert("path", Value::Str("rule.md".to_string()));
+        reference.insert("lines", Value::Object(lines));
+        Value::Object(reference)
+    }
+
+    #[test]
+    fn a_source_of_exactly_the_evidence_size_limit_is_accepted() {
+        let root = source_of_size("at", MAX_EVIDENCE_BYTES);
+        let reference = citation(&root, "rule.md", "1", "1").unwrap();
+        let verdict = Verifier::new(&root, false).check(&Value::Object(reference));
+        let _ = std::fs::remove_dir_all(&root);
+        assert_eq!(
+            field(&verdict.unwrap(), "status"),
+            Some("current".to_string())
+        );
+    }
+
+    #[test]
+    fn a_source_one_byte_over_the_evidence_size_limit_is_refused() {
+        let root = source_of_size("over", MAX_EVIDENCE_BYTES + 1);
+        let verdict = Verifier::new(&root, false)
+            .check(&reference_to_first_line())
+            .unwrap();
+        let _ = std::fs::remove_dir_all(&root);
+        assert_eq!(
+            (
+                field(&verdict, "status"),
+                field(&verdict, "reason"),
+                field(&verdict, "path")
+            ),
+            (
+                Some("invalid".to_string()),
+                Some("evidence source exceeds 16777216 bytes".to_string()),
+                Some("rule.md".to_string())
+            )
+        );
     }
 }

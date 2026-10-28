@@ -136,6 +136,8 @@ impl Scan {
                 files.push(name);
             }
         }
+        directories.sort();
+        files.sort();
         let mut kept = Vec::new();
         for name in directories {
             if UNSCANNED_DIRECTORIES.contains(&name.as_str()) {
@@ -341,5 +343,76 @@ mod tests {
             ("incomplete".into(), "1".into(), "1".into())
         );
         let _ = fs::remove_dir_all(&root);
+    }
+
+    #[cfg(unix)]
+    fn skipped_files(report: &Object) -> Vec<(String, String)> {
+        let Some(Value::Array(skipped)) = report.get("skipped") else {
+            panic!("the report lists no skipped files");
+        };
+        skipped
+            .iter()
+            .map(|skip| {
+                let Value::Object(skip) = skip else {
+                    panic!("a skipped entry is not an object");
+                };
+                let text = |key: &str| match skip.get(key) {
+                    Some(Value::Str(text)) => text.clone(),
+                    _ => String::new(),
+                };
+                (text("path"), text("reason"))
+            })
+            .collect()
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_symlinked_file_is_skipped_as_a_symlink_and_the_scan_is_incomplete() {
+        let root = fixture("symlink");
+        fs::write(
+            root.join("target.md"),
+            "one
+",
+        )
+        .unwrap();
+        std::os::unix::fs::symlink(root.join("target.md"), root.join("link.md")).unwrap();
+        let (report, _) = scan_report(&root, LIMITS).unwrap();
+        let _ = fs::remove_dir_all(&root);
+        assert_eq!(
+            (status_and_counts(&report), skipped_files(&report)),
+            (
+                ("incomplete".into(), "1".into(), "1".into()),
+                vec![("link.md".to_string(), "symlink".to_string())]
+            )
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_file_the_scanner_may_not_read_is_skipped_as_unreadable() {
+        use std::os::unix::fs::PermissionsExt;
+        let root = fixture("unreadable");
+        let locked = root.join("locked.env");
+        fs::write(
+            &locked, "one
+",
+        )
+        .unwrap();
+        fs::set_permissions(&locked, fs::Permissions::from_mode(0o000)).unwrap();
+        if fs::read(&locked).is_ok() {
+            eprintln!("running as root: permissions do not stop the read, assertion skipped");
+            let _ = fs::remove_dir_all(&root);
+            return;
+        }
+        let (report, _) = scan_report(&root, LIMITS).unwrap();
+        fs::set_permissions(&locked, fs::Permissions::from_mode(0o600)).unwrap();
+        let _ = fs::remove_dir_all(&root);
+        assert_eq!(
+            (status_and_counts(&report), skipped_files(&report)),
+            (
+                ("incomplete".into(), "1".into(), "1".into()),
+                vec![("locked.env".to_string(), "unreadable".to_string())]
+            )
+        );
     }
 }

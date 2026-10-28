@@ -425,4 +425,33 @@ mod tests {
         assert!(!lock_path(&root).exists());
         std::fs::remove_dir_all(&root).unwrap();
     }
+
+    fn journal_of_size(label: &str, size: u64) -> PathBuf {
+        let root = scratch_root(label);
+        let mut content = vec![b' '; size as usize];
+        content[0] = b'[';
+        content[size as usize - 1] = b']';
+        let journal = root.join("journal.json");
+        std::fs::write(&journal, content).unwrap();
+        journal
+    }
+
+    #[test]
+    fn a_recovery_journal_of_exactly_the_size_limit_is_read() {
+        let journal = journal_of_size("journal-at", MAX_JSON_BYTES);
+        let outcome = journal_document(&journal);
+        let _ = std::fs::remove_dir_all(journal.parent().unwrap());
+        assert_eq!(outcome, Ok(Value::Array(Vec::new())));
+    }
+
+    #[test]
+    fn a_recovery_journal_one_byte_over_the_size_limit_is_refused() {
+        let journal = journal_of_size("journal-over", MAX_JSON_BYTES + 1);
+        let outcome = journal_document(&journal);
+        let _ = std::fs::remove_dir_all(journal.parent().unwrap());
+        assert_eq!(
+            outcome,
+            Err("registry recovery journal is too large".to_string())
+        );
+    }
 }

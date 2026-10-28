@@ -239,3 +239,21 @@ pub fn init_signing_key(request: &SigningKey) -> Result<Object, String> {
     result.insert("signs_every_commit", Value::Bool(request.sign_every_commit));
     Ok(result)
 }
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+    use std::os::unix::fs::PermissionsExt;
+
+    #[test]
+    fn a_key_written_from_the_environment_is_created_readable_by_its_owner_alone() {
+        let root = std::env::temp_dir().join(format!("dm-signing-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).unwrap();
+        let key = root.join("signing-key");
+        write_private(&key, "material").unwrap();
+        let mode = std::fs::metadata(&key).unwrap().permissions().mode() & 0o777;
+        let _ = std::fs::remove_dir_all(&root);
+        assert_eq!(mode, 0o600);
+    }
+}
