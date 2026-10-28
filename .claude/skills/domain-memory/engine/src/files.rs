@@ -57,7 +57,7 @@ pub fn write_source_file(path: &Path, value: &Value) -> Result<(), String> {
     write_json(path, value)
 }
 
-fn make_directories(path: &Path) -> Result<(), String> {
+pub fn make_directories(path: &Path) -> Result<(), String> {
     match std::fs::create_dir(path) {
         Ok(()) => Ok(()),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {

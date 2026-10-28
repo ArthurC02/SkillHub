@@ -26,7 +26,7 @@ fn replaced(source: &Path, target: &Path) -> Result<(), String> {
     rename_retrying(source, target).map_err(|error| replace_error(&error, source, target))
 }
 
-fn remove_tree(path: &Path) -> Result<(), String> {
+pub fn remove_tree(path: &Path) -> Result<(), String> {
     std::fs::remove_dir_all(path).map_err(|error| py::os_error(&error, path))
 }
 
@@ -61,7 +61,10 @@ fn copy_tree(source: &Path, target: &Path) -> Result<(), String> {
     Ok(())
 }
 
-fn with_writer_lock<T>(root: &Path, work: impl FnOnce() -> Result<T, String>) -> Result<T, String> {
+pub fn with_writer_lock<T>(
+    root: &Path,
+    work: impl FnOnce() -> Result<T, String>,
+) -> Result<T, String> {
     let lock = lock_path(root);
     match std::fs::create_dir(&lock) {
         Ok(()) => {}

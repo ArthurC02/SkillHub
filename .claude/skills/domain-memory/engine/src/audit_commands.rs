@@ -19,7 +19,7 @@ const INLINE: Style = Style {
     compact: false,
 };
 
-fn print_inline(value: &Value) {
+pub fn print_inline(value: &Value) {
     emit_stdout(&format!("{}\n", json::dumps(value, INLINE)));
 }
 

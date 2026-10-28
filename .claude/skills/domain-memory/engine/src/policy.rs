@@ -1,10 +1,12 @@
 use std::path::{Path, PathBuf};
 
+use crate::audit_append::append;
 use crate::difflib::close_matches;
-use crate::files::load_json;
-use crate::json::{Object, Value};
-use crate::py;
+use crate::files::{load_json, write_json};
+use crate::json::{self, Object, Value};
+use crate::py::{self, Raised};
 use crate::pyvalue::{kind_of, repr_of};
+use crate::transaction::with_writer_lock;
 
 pub const POLICY_FILE: &str = "domain-memory-policy.json";
 const REVIEW_MODES: &[&str] = &["local-draft-only", "scm-verified"];
@@ -334,4 +336,280 @@ fn entry_errors(key: &str, items: &[Value]) -> Vec<String> {
             }
         })
         .collect()
+}
+
+const POLICY_TEMPLATE: &str = include_str!("../../templates/domain-memory-policy.json");
+
+pub struct NewPolicy<'a> {
+    pub storage_mode: &'a str,
+    pub data_classification: &'a str,
+    pub review_mode: &'a str,
+    pub authority: &'a str,
+    pub include: &'a [String],
+    pub exclude: &'a [String],
+    pub governance: Object,
+    pub profile: Value,
+}
+
+fn strings(items: &[String]) -> Value {
+    Value::Array(items.iter().map(|item| Value::Str(item.clone())).collect())
+}
+
+pub fn write_policy(root: &Path, selected_paths: &Value, new: NewPolicy) -> Result<(), Raised> {
+    let Ok(Value::Object(mut value)) = json::parse(POLICY_TEMPLATE) else {
+        return Err(Raised::Value("the policy template is not JSON".to_string()));
+    };
+    let text = |item: &str| Value::Str(item.to_string());
+    value.insert("storage_mode", text(new.storage_mode));
+    value.insert("data_classification", text(new.data_classification));
+    value.insert("review_mode", text(new.review_mode));
+    value.insert("review_governance", Value::Object(new.governance));
+    match value.get_mut("source_policy") {
+        Some(Value::Object(section)) => {
+            section.insert("selected_paths", selected_paths.clone());
+            section.insert("authority", text(new.authority));
+            section.insert("include", strings(new.include));
+            section.insert("exclude", strings(new.exclude));
+        }
+        _ => {
+            return Err(Raised::Value(
+                "the policy template has no source_policy".to_string(),
+            ));
+        }
+    }
+    value.insert("project_profile", new.profile);
+    let errors = validate_policy(&value);
+    if !errors.is_empty() {
+        return Err(Raised::Value(format!(
+            "invalid policy: {}",
+            errors.join("; ")
+        )));
+    }
+    write_json(&policy_path(root), &Value::Object(value)).map_err(Raised::Os)
+}
+
+const AMENDABLE_FIELDS: &[(&str, &[&str])] = &[
+    ("review_mode", &["review_mode"]),
+    ("storage_mode", &["storage_mode"]),
+    ("data_classification", &["data_classification"]),
+    ("source_authority", &["source_policy", "authority"]),
+    ("review_verifier", &["review_governance", "verifier"]),
+    ("review_trigger", &["review_governance", "trigger"]),
+    ("ci_requirement", &["review_governance", "ci_requirement"]),
+    (
+        "authorized_signers",
+        &["review_governance", "authorized_signers"],
+    ),
+    ("distinct_signer", &["review_governance", "distinct_signer"]),
+    (
+        "implementation_roots",
+        &["project_profile", "implementation_roots"],
+    ),
+    (
+        "excluded_directories",
+        &["project_profile", "excluded_directories"],
+    ),
+    ("decision_roots", &["project_profile", "decision_roots"]),
+    ("boundary_markers", &["project_profile", "boundary_markers"]),
+];
+const LIST_FIELDS: &[&str] = &[
+    "authorized_signers",
+    "implementation_roots",
+    "excluded_directories",
+    "decision_roots",
+    "boundary_markers",
+];
+const NO_VERIFIER: &str = "leaving local-draft-only requires the verifier that replaces it, one of git-signed-commit: a review mode and the authority that backs it move together";
+
+fn field_path(field: &str) -> Option<&'static [&'static str]> {
+    AMENDABLE_FIELDS
+        .iter()
+        .find(|(name, _)| *name == field)
+        .map(|(_, path)| *path)
+}
+
+fn amended_value(field: &str, value: &str) -> Result<Value, String> {
+    if LIST_FIELDS.contains(&field) {
+        return Ok(Value::Array(
+            value
+                .split(',')
+                .map(py::strip)
+                .filter(|entry| !entry.is_empty())
+                .map(|entry| Value::Str(entry.to_string()))
+                .collect(),
+        ));
+    }
+    if field == "distinct_signer" {
+        return match py::strip(value).to_lowercase().as_str() {
+            "true" => Ok(Value::Bool(true)),
+            "false" => Ok(Value::Bool(false)),
+            _ => Err(format!(
+                "{field} takes true or false, got {}",
+                py::repr(value)
+            )),
+        };
+    }
+    Ok(Value::Str(value.to_string()))
+}
+
+fn field_parent<'a>(document: &'a mut Object, field: &str) -> Result<&'a mut Object, String> {
+    let path = field_path(field).unwrap_or_default();
+    let mut target = document;
+    for key in &path[..path.len().saturating_sub(1)] {
+        if target.get(key).is_none() {
+            target.insert(*key, Value::Object(Object::new()));
+        }
+        let Some(Value::Object(inner)) = target.get_mut(key) else {
+            return Err(format!("policy {key} is not an object"));
+        };
+        target = inner;
+    }
+    Ok(target)
+}
+
+fn default_governance(review_mode: &str) -> Object {
+    let local = review_mode == "local-draft-only";
+    let mut governance = Object::new();
+    governance.insert(
+        "verifier",
+        Value::Str(if local { "none" } else { "git-signed-commit" }.to_string()),
+    );
+    governance.insert(
+        "trigger",
+        Value::Str(if local { "none" } else { "git-commit" }.to_string()),
+    );
+    governance.insert("ci_requirement", Value::Str("none".to_string()));
+    governance.insert("authorized_signers", Value::Array(Vec::new()));
+    governance
+}
+
+fn apply_field(
+    document: &mut Object,
+    field: &str,
+    value: &str,
+    verifier: Option<&str>,
+) -> Result<Object, String> {
+    let key = field_path(field)
+        .and_then(|path| path.last())
+        .copied()
+        .unwrap_or_default();
+    let parent = field_parent(document, field)?;
+    let amended = amended_value(field, value)?;
+    let mut change = Object::new();
+    change.insert("operation", Value::Str("amend-policy".to_string()));
+    change.insert("field", Value::Str(field.to_string()));
+    change.insert("to", amended.clone());
+    parent.insert(key, amended);
+    if field == "review_mode" && value == "local-draft-only" {
+        document.insert(
+            "review_governance",
+            Value::Object(default_governance(value)),
+        );
+    } else if field == "review_mode" && value == "scm-verified" {
+        let replacement = verifier
+            .map(py::strip)
+            .filter(|verifier| !verifier.is_empty())
+            .ok_or_else(|| NO_VERIFIER.to_string())?;
+        match document.get_mut("review_governance") {
+            Some(Value::Object(governance)) => {
+                governance.insert("verifier", Value::Str(replacement.to_string()));
+            }
+            _ => return Err("policy review_governance is not an object".to_string()),
+        }
+        change.insert("verifier", Value::Str(replacement.to_string()));
+    }
+    Ok(change)
+}
+
+fn refused_fields(assignments: &[(String, String)]) -> Option<String> {
+    let fields: Vec<&str> = assignments
+        .iter()
+        .map(|(field, _)| field.as_str())
+        .collect();
+    let unknown: Vec<&str> = fields
+        .iter()
+        .copied()
+        .filter(|field| field_path(field).is_none())
+        .collect();
+    if assignments.is_empty() || !unknown.is_empty() {
+        let mut amendable: Vec<&str> = AMENDABLE_FIELDS.iter().map(|(name, _)| *name).collect();
+        amendable.sort_unstable();
+        let named = if unknown.is_empty() {
+            "nothing".to_string()
+        } else {
+            unknown.join(", ")
+        };
+        return Some(format!(
+            "{named} is not an amendable policy field; amend one of {}. \
+             Selected source paths and limits are settled when a Domain Memory is initialized.",
+            amendable.join(", ")
+        ));
+    }
+    let mut repeated: Vec<&str> = fields
+        .iter()
+        .copied()
+        .filter(|field| fields.iter().filter(|other| *other == field).count() > 1)
+        .collect();
+    repeated.sort_unstable();
+    repeated.dedup();
+    (!repeated.is_empty()).then(|| {
+        format!(
+            "{} is named more than once; give each field one value",
+            repeated.join(", ")
+        )
+    })
+}
+
+pub fn amend_policy_fields(
+    root: &Path,
+    assignments: &[(String, String)],
+    reason: &str,
+    verifier: Option<&str>,
+) -> Result<Vec<Object>, String> {
+    if let Some(refusal) = refused_fields(assignments) {
+        return Err(refusal);
+    }
+    let reason = py::strip(reason);
+    if reason.is_empty() {
+        return Err("amending a Domain Memory policy requires a reason: the policy decides what the Registry may become".to_string());
+    }
+    let path = policy_path(root);
+    if !path.is_file() {
+        return Err(format!("no Domain Memory policy at {}", py::shown(&path)));
+    }
+    let mut document = load_json(&path)?;
+    let mut before = load_json(&path)?;
+    let named_verifier = assignments
+        .iter()
+        .find(|(field, _)| field == "review_verifier")
+        .map(|(_, value)| value.as_str());
+    let verifier = verifier
+        .filter(|given| !given.is_empty())
+        .or(named_verifier);
+    let mut ordered: Vec<&(String, String)> = assignments.iter().collect();
+    ordered.sort_by_key(|(field, _)| field != "review_mode");
+    let mut changes = Vec::new();
+    for (field, value) in ordered {
+        let mut change = apply_field(&mut document, field, value, verifier)?;
+        let key = field_path(field)
+            .and_then(|path| path.last())
+            .copied()
+            .unwrap_or_default();
+        let from = field_parent(&mut before, field)?
+            .get(key)
+            .cloned()
+            .unwrap_or(Value::Null);
+        change.insert("from", from);
+        change.insert("reason", Value::Str(reason.to_string()));
+        changes.push(change);
+    }
+    let errors = validate_policy(&document);
+    if !errors.is_empty() {
+        return Err(format!("amended policy is invalid: {}", errors.join("; ")));
+    }
+    with_writer_lock(root, || {
+        write_json(&path, &Value::Object(document))?;
+        changes.iter().try_for_each(|change| append(root, change))
+    })?;
+    Ok(changes)
 }

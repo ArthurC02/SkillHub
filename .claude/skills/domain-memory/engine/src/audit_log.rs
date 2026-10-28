@@ -1,5 +1,7 @@
+use std::cmp::Ordering;
 use std::path::{Path, PathBuf};
 
+use crate::audit_append::{LOG_LINE, append, write_manifest};
 use crate::files::{MAX_JSON_BYTES, load_json};
 use crate::git;
 use crate::json::{self, Object, Style, Value};
@@ -9,6 +11,7 @@ use crate::py;
 use crate::pyvalue::{equal, splitlines, str_of};
 use crate::sha256::hex_digest;
 use crate::store::{has_registry, missing_registry, posix};
+use crate::transaction::with_writer_lock;
 
 pub const MANIFEST_FORMAT: &str = "domain-memory-audit/v1";
 pub const APPLY_OPERATION: &str = "apply-approved-updates";
@@ -435,4 +438,121 @@ fn whole_number(value: &Value) -> Option<f64> {
         Value::Int(_) => Some(number_of(value)),
         _ => None,
     }
+}
+
+fn compare_whole(left: &str, right: &str) -> Ordering {
+    let magnitude = |text: &str| -> (bool, String) {
+        let digits = text.trim_start_matches('-').trim_start_matches('0');
+        (
+            text.starts_with('-') && !digits.is_empty(),
+            digits.to_string(),
+        )
+    };
+    let (left_negative, left_digits) = magnitude(left);
+    let (right_negative, right_digits) = magnitude(right);
+    let by_size = left_digits
+        .len()
+        .cmp(&right_digits.len())
+        .then_with(|| left_digits.cmp(&right_digits));
+    match (left_negative, right_negative) {
+        (false, false) => by_size,
+        (true, true) => by_size.reverse(),
+        (true, false) => Ordering::Less,
+        (false, true) => Ordering::Greater,
+    }
+}
+
+fn sequence_key(event: &Object) -> &str {
+    match event.get("sequence") {
+        Some(Value::Int(digits)) => digits,
+        _ => "0",
+    }
+}
+
+fn reconciliation_summary(
+    events: usize,
+    markers: usize,
+    duplicates: usize,
+    joined: &[String],
+    written: bool,
+) -> Object {
+    let mut summary = Object::new();
+    summary.insert("events", Value::int(events));
+    summary.insert("conflict_markers_removed", Value::int(markers));
+    summary.insert("duplicates_dropped", Value::int(duplicates));
+    summary.insert("joined", head_strings(joined));
+    summary.insert("written", Value::Bool(written));
+    summary
+}
+
+fn without_repeats(parsed: Vec<(usize, Object)>) -> Vec<Object> {
+    let mut seen = std::collections::HashSet::new();
+    let mut unique = Vec::new();
+    for (_, event) in parsed {
+        let key = event
+            .get("event_sha256")
+            .map_or_else(|| "None".to_string(), str_of);
+        if seen.insert(key) {
+            unique.push(event);
+        }
+    }
+    unique
+}
+
+fn reconcile_locked(root: &Path) -> Result<Object, String> {
+    let lines = event_lines(root)?;
+    if lines.is_empty() {
+        return Ok(reconciliation_summary(0, 0, 0, &[], false));
+    }
+    let kept: Vec<String> = lines
+        .iter()
+        .filter(|line| !conflict_marker(line))
+        .cloned()
+        .collect();
+    let mut ordered = without_repeats(parsed_events(&kept, root)?);
+    ordered.sort_by(|left, right| compare_whole(sequence_key(left), sequence_key(right)));
+    let heads = match dag_heads(&ordered) {
+        Ok((heads, _)) => heads,
+        Err(Halt::Invalid(reason) | Halt::Crash(reason)) => return Err(reason),
+    };
+    let text: String = ordered
+        .iter()
+        .map(|event| format!("{}\n", json::dumps(&Value::Object(event.clone()), LOG_LINE)))
+        .collect();
+    let previous: String = lines.iter().map(|line| format!("{line}\n")).collect();
+    let rewritten = text != previous;
+    if rewritten {
+        let path = events_path(root);
+        std::fs::write(&path, &text).map_err(|error| py::open_error(&error, &path))?;
+    }
+    let manifest = audit_manifest_path(root);
+    let before = manifest
+        .is_file()
+        .then(|| std::fs::read(&manifest))
+        .transpose()
+        .map_err(|error| py::open_error(&error, &manifest))?;
+    write_manifest(root, Value::int(ordered.len()), &heads)?;
+    let after = std::fs::read(&manifest).map_err(|error| py::open_error(&error, &manifest))?;
+    let manifest_rewritten = before.as_deref() != Some(after.as_slice());
+    let joined = if heads.len() > 1 { heads } else { Vec::new() };
+    if !joined.is_empty() {
+        let mut event = Object::new();
+        event.insert("operation", Value::Str("reconcile-audit".to_string()));
+        event.insert("joined", head_strings(&joined));
+        append(root, &event)?;
+    }
+    Ok(reconciliation_summary(
+        ordered.len() + usize::from(!joined.is_empty()),
+        lines.len() - kept.len(),
+        kept.len() - ordered.len(),
+        &joined,
+        rewritten || manifest_rewritten || !joined.is_empty(),
+    ))
+}
+
+pub fn reconcile(root: &Path) -> Result<Object, String> {
+    if !has_registry(root) {
+        return Err(missing_registry(root)?);
+    }
+    with_writer_lock(root, || reconcile_locked(root))
 }

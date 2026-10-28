@@ -155,7 +155,7 @@ pub fn deadline_message(argv: &[&str], seconds: f64) -> String {
     )
 }
 
-fn run_bounded(argv: &[&str], input: Option<&[u8]>) -> Result<Output, GitError> {
+pub fn run_bounded(argv: &[&str], input: Option<&[u8]>) -> Result<Output, GitError> {
     let seconds = deadline_seconds().map_err(|message| GitError::new(Failure::Invalid, message))?;
     let mut child = Command::new(argv[0])
         .args(&argv[1..])

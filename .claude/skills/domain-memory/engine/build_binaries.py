@@ -29,10 +29,11 @@ PLATFORMS = {
 
 
 def source_sha256() -> str:
-    paths = [*(ENGINE / name for name in SOURCES), *sorted((ENGINE / "src").rglob("*.rs"))]
+    embedded = (ENGINE / "src", ENGINE.parent / "templates")
+    paths = [*(ENGINE / name for name in SOURCES), *(path for root in embedded for path in root.rglob("*") if path.is_file())]
     digest = hashlib.sha256()
-    for path in sorted(paths, key=lambda path: path.relative_to(ENGINE).as_posix()):
-        digest.update(path.relative_to(ENGINE).as_posix().encode() + b"\0" + path.read_bytes() + b"\0")
+    for path in sorted(paths, key=lambda path: path.relative_to(ENGINE.parent).as_posix()):
+        digest.update(path.relative_to(ENGINE.parent).as_posix().encode() + b"\0" + path.read_bytes() + b"\0")
     return digest.hexdigest()
 
 

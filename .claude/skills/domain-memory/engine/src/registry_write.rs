@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use crate::candidate_evidence::without_derived_keys;
-use crate::indexes::asset_index;
+use crate::indexes::{asset_index, root_index};
 use crate::json::{Object, Value};
 use crate::okf_write::encode;
 use crate::py;
@@ -96,4 +96,25 @@ pub fn without(record: &Object, dropped: &[&str]) -> Object {
         }
     }
     kept
+}
+
+fn create_concept_layout(root: &Path) -> Result<(), String> {
+    let registry = registry_dir(root);
+    std::fs::create_dir_all(&registry).map_err(|error| py::os_error(&error, &registry))?;
+    write_text(&registry.join(INDEX), &root_index())?;
+    asset_names().try_for_each(|asset| write_records(root, asset, &[]))
+}
+
+pub fn init_registry(output: &Path) -> Result<(), String> {
+    if output.exists() {
+        let mut entries =
+            std::fs::read_dir(output).map_err(|error| py::os_error(&error, output))?;
+        if entries.next().is_some() {
+            return Err(format!(
+                "output directory is not empty: {}",
+                py::shown(output)
+            ));
+        }
+    }
+    create_concept_layout(output)
 }

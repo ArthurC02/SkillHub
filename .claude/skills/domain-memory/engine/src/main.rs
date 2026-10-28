@@ -21,6 +21,7 @@ mod fnmatch;
 mod gates;
 mod git;
 mod git_governance;
+mod governance_commands;
 mod impact;
 mod indexes;
 mod json;
@@ -45,6 +46,8 @@ mod secret_patterns;
 mod secrets;
 mod sha256;
 mod shlex;
+mod signing;
+mod source_commands;
 mod sources;
 mod store;
 mod tar;
@@ -253,6 +256,17 @@ fn execute(invocation: &Invocation) -> Result<i32, String> {
         "boundary-impact" => review_commands::boundary_impact(invocation),
         "brief" => review_commands::brief(invocation),
         "counterfactual" => review_commands::counterfactual(invocation),
+        "init-domain-memory" => source_commands::init_domain_memory(invocation),
+        "confirm-sources" => source_commands::confirm_sources(invocation),
+        "refresh-sources" => source_commands::refresh_sources(invocation),
+        "refresh-listing" => source_commands::refresh_listing(invocation),
+        "refine-sources" => source_commands::refine_sources(invocation),
+        "amend-policy" => governance_commands::amend_policy(invocation),
+        "validate-contract" => governance_commands::validate_contract(invocation),
+        "reconcile-audit" => governance_commands::reconcile_audit(invocation),
+        "init-signing-key" => governance_commands::init_signing_key(invocation),
+        "install-git-hitl-hook" => governance_commands::install_git_hitl_hook(invocation),
+        "install-pre-commit-hook" => governance_commands::install_pre_commit_hook(invocation),
         other => Err(format!("{other} is not available in the Rust engine yet")),
     }
 }

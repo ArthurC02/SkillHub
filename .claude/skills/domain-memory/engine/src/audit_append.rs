@@ -16,7 +16,7 @@ const RESERVED_FIELDS: [&str; 4] = [
     "event_sha256",
 ];
 
-const LOG_LINE: Style = Style {
+pub const LOG_LINE: Style = Style {
     indent: None,
     sort_keys: true,
     ensure_ascii: false,
@@ -133,15 +133,27 @@ pub fn append(root: &Path, event: &Object) -> Result<(), String> {
         .and_then(|()| output.sync_all())
         .map_err(|error| py::os_error(&error, &path))?;
     drop(output);
-    write_manifest(root, &existing, &digest)
+    write_manifest(
+        root,
+        successor(existing.get("events").unwrap_or(&Value::Null)),
+        &[digest],
+    )
 }
 
-fn write_manifest(root: &Path, existing: &Object, head: &str) -> Result<(), String> {
-    let events = successor(existing.get("events").unwrap_or(&Value::Null));
+pub fn write_manifest(root: &Path, events: Value, heads: &[String]) -> Result<(), String> {
     let mut manifest = Object::new();
     manifest.insert("format", Value::Str(MANIFEST_FORMAT.to_string()));
     manifest.insert("events", events);
-    manifest.insert("head_sha256", Value::Str(head.to_string()));
-    manifest.insert("heads", Value::Array(vec![Value::Str(head.to_string())]));
+    manifest.insert(
+        "head_sha256",
+        match heads {
+            [only] => Value::Str(only.clone()),
+            _ => Value::Null,
+        },
+    );
+    manifest.insert(
+        "heads",
+        Value::Array(heads.iter().cloned().map(Value::Str).collect()),
+    );
     write_json(&audit_manifest_path(root), &Value::Object(manifest))
 }
