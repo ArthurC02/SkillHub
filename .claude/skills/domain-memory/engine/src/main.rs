@@ -30,6 +30,7 @@ mod indexes;
 mod json;
 mod lifecycle;
 mod listing;
+mod mcp;
 mod okf;
 mod okf_write;
 mod policy;
@@ -66,6 +67,7 @@ mod write_commands;
 #[rustfmt::skip]
 mod unicode_data;
 
+use std::cell::RefCell;
 use std::io::Write;
 
 use cli::{Contract, Invocation, Outcome};
@@ -74,6 +76,10 @@ use pyvalue::str_of;
 
 const COUNTERFACTUAL_FORMAT: &str = "domain-memory-counterfactual/v1";
 const COUNTERFACTUAL_USAGE_EXIT: i32 = 3;
+
+thread_local! {
+    static CAPTURED: RefCell<Option<(String, String)>> = const { RefCell::new(None) };
+}
 
 fn main() {
     let args: Vec<String> = std::env::args_os()
@@ -278,6 +284,14 @@ fn execute(invocation: &Invocation) -> Result<i32, String> {
         "init-signing-key" => governance_commands::init_signing_key(invocation),
         "install-git-hitl-hook" => governance_commands::install_git_hitl_hook(invocation),
         "install-pre-commit-hook" => governance_commands::install_pre_commit_hook(invocation),
+        "mcp-serve" => {
+            mcp::serve(
+                py::resolve(invocation.text("registry_root").unwrap_or(".")),
+                py::resolve(invocation.text("repo_root").unwrap_or(".")),
+                run_captured,
+            );
+            Ok(0)
+        }
         other => Err(format!("{other} is not available in the Rust engine yet")),
     }
 }
@@ -526,13 +540,53 @@ fn print_json(value: &Value) {
     emit_stdout(&format!("{}\n", json::dumps(value, Style::PRINTED)));
 }
 
+fn run_captured(words: &[String]) -> (i32, String, String) {
+    CAPTURED.with(|captured| *captured.borrow_mut() = Some((String::new(), String::new())));
+    let exit_code = match cli::parse(&Contract::embedded(), words) {
+        Outcome::Help(text) => {
+            emit_stdout(&text);
+            0
+        }
+        Outcome::Usage { prog, message, .. } => {
+            emit_stdout(&format!("ERROR: {prog}: error: {message}\n"));
+            1
+        }
+        Outcome::Run(invocation) => execute(&invocation).unwrap_or_else(|error| {
+            emit_stdout(&format!("ERROR: {error}\n"));
+            1
+        }),
+    };
+    let (printed, noted) = CAPTURED
+        .with(|captured| captured.borrow_mut().take())
+        .unwrap_or_default();
+    (exit_code, printed, noted)
+}
+
+fn captured(text: &str, into_printed: bool) -> bool {
+    CAPTURED.with(|captured| {
+        captured
+            .borrow_mut()
+            .as_mut()
+            .is_some_and(|(printed, noted)| {
+                if into_printed { printed } else { noted }.push_str(text);
+                true
+            })
+    })
+}
+
 fn emit_stdout(text: &str) {
+    if captured(text, true) {
+        return;
+    }
     let mut out = std::io::stdout().lock();
     let _ = out.write_all(text.as_bytes());
     let _ = out.flush();
 }
 
 fn emit_stderr(text: &str) {
+    if captured(text, false) {
+        return;
+    }
     let mut err = std::io::stderr().lock();
     let _ = err.write_all(text.as_bytes());
     let _ = err.flush();

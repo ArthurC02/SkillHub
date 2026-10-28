@@ -102,6 +102,31 @@ fn parsed(text: &str, last_duplicate_wins: bool) -> Result<Value, ()> {
     Parser::over(text, last_duplicate_wins).document()
 }
 
+pub fn loads(text: &str) -> Result<Value, String> {
+    if text.starts_with('\u{feff}') {
+        return Err(decode_error(
+            text,
+            "Unexpected UTF-8 BOM (decode using utf-8-sig)",
+            0,
+        ));
+    }
+    let mut parser = Parser::over(text, true);
+    parser.document().map_err(|()| {
+        let (message, at) = parser.fault.unwrap_or(("Expecting value", parser.at));
+        decode_error(text, message, at)
+    })
+}
+
+fn decode_error(text: &str, message: &str, at: usize) -> String {
+    let before = &text[..at];
+    let position = before.chars().count();
+    let line = before.matches('\n').count() + 1;
+    let column = before.rfind('\n').map_or(position + 1, |newline| {
+        before[newline + 1..].chars().count() + 1
+    });
+    format!("{message}: line {line} column {column} (char {position})")
+}
+
 pub fn number_prefix(text: &str) -> Option<usize> {
     let mut parser = Parser {
         bytes: text.as_bytes(),
@@ -109,6 +134,7 @@ pub fn number_prefix(text: &str) -> Option<usize> {
         at: 0,
         last_duplicate_wins: false,
         duplicate: None,
+        fault: None,
     };
     parser.scan_number().ok()?;
     Some(parser.at)
@@ -120,6 +146,7 @@ struct Parser<'a> {
     at: usize,
     last_duplicate_wins: bool,
     duplicate: Option<String>,
+    fault: Option<(&'static str, usize)>,
 }
 
 impl<'a> Parser<'a> {
@@ -130,7 +157,13 @@ impl<'a> Parser<'a> {
             at: 0,
             last_duplicate_wins,
             duplicate: None,
+            fault: None,
         }
+    }
+
+    fn fail<T>(&mut self, message: &'static str, at: usize) -> Result<T, ()> {
+        self.fault.get_or_insert((message, at));
+        Err(())
     }
 
     fn document(&mut self) -> Result<Value, ()> {
@@ -140,7 +173,7 @@ impl<'a> Parser<'a> {
         if self.at == self.bytes.len() {
             Ok(value)
         } else {
-            Err(())
+            self.fail("Extra data", self.at)
         }
     }
 
@@ -161,9 +194,12 @@ impl<'a> Parser<'a> {
 
     fn value(&mut self, depth: usize) -> Result<Value, ()> {
         if depth > MAX_DEPTH {
-            return Err(());
+            return self.fail("maximum recursion depth exceeded", self.at);
         }
-        match self.bytes.get(self.at).ok_or(())? {
+        let Some(first) = self.bytes.get(self.at) else {
+            return self.fail("Expecting value", self.at);
+        };
+        match first {
             b'{' => self.object(depth),
             b'[' => self.array(depth),
             b'"' => self.string().map(Value::Str),
@@ -173,8 +209,12 @@ impl<'a> Parser<'a> {
             b'N' if self.eat("NaN") => Ok(Value::Float(f64::NAN)),
             b'I' if self.eat("Infinity") => Ok(Value::Float(f64::INFINITY)),
             b'-' if self.eat("-Infinity") => Ok(Value::Float(f64::NEG_INFINITY)),
-            b'-' | b'0'..=b'9' => self.number(),
-            _ => Err(()),
+            b'-' | b'0'..=b'9' => {
+                let start = self.at;
+                self.number()
+                    .or_else(|()| self.fail("Expecting value", start))
+            }
+            _ => self.fail("Expecting value", self.at),
         }
     }
 
@@ -187,15 +227,21 @@ impl<'a> Parser<'a> {
             return Ok(Value::Object(object));
         }
         let mut repeated: Option<String> = None;
+        let mut comma: Option<usize> = None;
         loop {
             self.skip_whitespace();
             if self.bytes.get(self.at) != Some(&b'"') {
-                return Err(());
+                return match comma {
+                    Some(at) if self.bytes.get(self.at) == Some(&b'}') => {
+                        self.fail("Illegal trailing comma before end of object", at)
+                    }
+                    _ => self.fail("Expecting property name enclosed in double quotes", self.at),
+                };
             }
             let key = self.string()?;
             self.skip_whitespace();
             if self.bytes.get(self.at) != Some(&b':') {
-                return Err(());
+                return self.fail("Expecting ':' delimiter", self.at);
             }
             self.at += 1;
             self.skip_whitespace();
@@ -206,7 +252,10 @@ impl<'a> Parser<'a> {
             object.insert(key, value);
             self.skip_whitespace();
             match self.bytes.get(self.at) {
-                Some(b',') => self.at += 1,
+                Some(b',') => {
+                    comma = Some(self.at);
+                    self.at += 1;
+                }
                 Some(b'}') => {
                     self.at += 1;
                     if repeated.is_some() {
@@ -215,7 +264,7 @@ impl<'a> Parser<'a> {
                     }
                     return Ok(Value::Object(object));
                 }
-                _ => return Err(()),
+                _ => return self.fail("Expecting ',' delimiter", self.at),
             }
         }
     }
@@ -233,35 +282,50 @@ impl<'a> Parser<'a> {
             items.push(self.value(depth + 1)?);
             self.skip_whitespace();
             match self.bytes.get(self.at) {
-                Some(b',') => self.at += 1,
+                Some(b',') => {
+                    let comma = self.at;
+                    self.at += 1;
+                    self.skip_whitespace();
+                    if self.bytes.get(self.at) == Some(&b']') {
+                        return self.fail("Illegal trailing comma before end of array", comma);
+                    }
+                }
                 Some(b']') => {
                     self.at += 1;
                     return Ok(Value::Array(items));
                 }
-                _ => return Err(()),
+                _ => return self.fail("Expecting ',' delimiter", self.at),
             }
         }
     }
 
     fn string(&mut self) -> Result<String, ()> {
+        let start = self.at;
         self.at += 1;
         let mut out = String::new();
         loop {
             let rest = &self.text[self.at..];
             let mut chars = rest.chars();
-            let next = chars.next().ok_or(())?;
+            let Some(next) = chars.next() else {
+                return self.fail("Unterminated string starting at", start);
+            };
+            let here = self.at;
             self.at += next.len_utf8();
             match next {
                 '"' => return Ok(out),
-                '\\' => self.escape(&mut out)?,
-                control if (control as u32) < 0x20 => return Err(()),
+                '\\' => self.escape(&mut out, start)?,
+                control if (control as u32) < 0x20 => {
+                    return self.fail("Invalid control character at", here);
+                }
                 other => out.push(other),
             }
         }
     }
 
-    fn escape(&mut self, out: &mut String) -> Result<(), ()> {
-        let code = *self.bytes.get(self.at).ok_or(())?;
+    fn escape(&mut self, out: &mut String, start: usize) -> Result<(), ()> {
+        let Some(&code) = self.bytes.get(self.at) else {
+            return self.fail("Unterminated string starting at", start);
+        };
         self.at += 1;
         match code {
             b'"' => out.push('"'),
@@ -287,16 +351,16 @@ impl<'a> Parser<'a> {
                 }
                 out.push(char::from_u32(first).unwrap_or('\u{FFFD}'));
             }
-            _ => return Err(()),
+            _ => return self.fail("Invalid \\escape", self.at - 2),
         }
         Ok(())
     }
 
     fn hex4(&mut self) -> Result<u32, ()> {
-        let digits = self.text.get(self.at..self.at + 4).ok_or(())?;
-        if !digits.bytes().all(|byte| byte.is_ascii_hexdigit()) {
-            return Err(());
-        }
+        let digits = match self.text.get(self.at..self.at + 4) {
+            Some(digits) if digits.bytes().all(|byte| byte.is_ascii_hexdigit()) => digits,
+            _ => return self.fail("Invalid \\uXXXX escape", self.at - 1),
+        };
         self.at += 4;
         u32::from_str_radix(digits, 16).map_err(|_| ())
     }

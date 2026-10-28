@@ -65,10 +65,12 @@ def expanded(args: list[str], fixture: Path) -> list[str]:
     return [arg.replace("{fixture}", str(fixture)).replace("{repo}", str(REPO)) for arg in args]
 
 
-def run(argv: list[str], extra: dict[str, str]) -> dict:
+def run(argv: list[str], extra: dict[str, str], stdin: bytes = b"") -> dict:
     environment = {**os.environ, "COLUMNS": "80", "PYTHONIOENCODING": "utf-8", **extra}
     try:
-        done = subprocess.run(argv, cwd=REPO, capture_output=True, env=environment, check=False, timeout=RUN_SECONDS)
+        done = subprocess.run(
+            argv, cwd=REPO, input=stdin, capture_output=True, env=environment, check=False, timeout=RUN_SECONDS
+        )
     except subprocess.TimeoutExpired as expired:
         return {"exit": f"killed after {RUN_SECONDS} s", "stdout": expired.stdout or b"", "stderr": expired.stderr or b""}
     return {"exit": done.returncode, "stdout": done.stdout, "stderr": done.stderr}
@@ -114,7 +116,8 @@ def prepared(case: dict, fixture: Path) -> None:
 
 
 def ran(case: dict, fixture: Path, argv: list[str]) -> dict:
-    return run([*argv, *expanded(case["args"], fixture)], case.get("env", {}))
+    stdin = case.get("stdin", "").replace("{fixture}", json.dumps(str(fixture))[1:-1])
+    return run([*argv, *expanded(case["args"], fixture)], case.get("env", {}), stdin.encode("utf-8"))
 
 
 def compared(case: dict, binary: Path) -> list[str]:

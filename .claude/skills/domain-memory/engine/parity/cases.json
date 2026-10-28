@@ -97248,5 +97248,443 @@
       "pkg/evidence-bundle.json": "{\n  \"format\": \"domain-evidence-bundle/v1\",\n  \"requirement_id\": \"REQ-1\",\n  \"proposal_id\": \"P-1\",\n  \"registry_revision\": null,\n  \"approvals\": [],\n  \"scm_attestation\": null,\n  \"counterfactual_check\": null,\n  \"sources\": [],\n  \"test_results\": [],\n  \"contract_checks\": [],\n  \"architecture_checks\": [],\n  \"security_checks\": [],\n  \"residual_risks\": []\n}\n",
       "pkg/draft-pr.md": "# Draft\n"
     }
+  },
+  {
+    "name": "mcp-serve answers initialize, ping, discovery and the tool listing",
+    "args": [
+      "mcp-serve",
+      "--registry-root",
+      "{fixture}/m",
+      "--repo-root",
+      "{fixture}"
+    ],
+    "git": true,
+    "files": {
+      "m/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n",
+      "m/registry/contexts/a.md": "---\ntype: Bounded Context\nimplementation_path: pkg/a\n---\n",
+      "m/registry/contexts/b.md": "---\ntype: Bounded Context\nimplementation_path: pkg/b\n---\n",
+      "m/registry/contexts/c.md": "---\ntype: Bounded Context\nname: Cee\nimplementation_path: pkg/c\n---\nCee is the third context.\n",
+      "m/registry/aggregates/ag1.md": "---\ntype: Aggregate\ncontext: a\nevidence:\n  - path: pkg/a/x.go\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\n",
+      "m/registry/rules/r1.md": "---\ntype: Business Rule\ncontexts:\n  - a\naggregate: ag1\nstatus: reviewed\nverified: true\nevidence:\n  - path: pkg/a/x.go\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule one holds.\n",
+      "m/registry/rules/r2.md": "---\ntype: Business Rule\ncontexts:\n  - b\naggregate: ag1\nstatus: candidate\n---\nRule two.\n",
+      "m/registry/rules/r3.md": "---\ntype: Business Rule\ncontexts:\n  - a\n  - ghost\n---\nRule three has no status.\n",
+      "m/registry/vocabulary/t1.md": "---\ntype: Term\ncontexts:\n  - a\nnot_same_as:\n  - t2\n---\nTerm one.\n",
+      "m/registry/vocabulary/t2.md": "---\ntype: Term\ncontexts:\n  - b\n---\nTerm two.\n",
+      "m/registry/decisions/d1.md": "---\ntype: Decision\nreview_status: reviewed\nsupersedes:\n  - d0\n---\nDecision one.\n",
+      "m/registry/decisions/d0.md": "---\ntype: Decision\n---\nDecision zero.\n",
+      "m/registry/interactions/ab.md": "---\ntype: Interaction\nproducer_context: a\nconsumer_context: b\nstatus: stable\n---\n",
+      "m/registry/contracts/k1.md": "---\ntype: Contract\nproducer_context: a\nconsumer_contexts:\n  - b\n  - c\nevidence:\n  - path: pkg/a/x.go\n    lines:\n      start: 2\n      end: 2\n    excerpt_sha256: sha256:1111111111111111111111111111111111111111111111111111111111111111\n  - README.md\n  - path: pkg/b/y.go\n    lines:\n      start: 1\n      end: 1\n---\n",
+      "m/registry/events/e1.md": "---\ntype: Domain Event\nowner_context: c\nconsumers:\n  - a\n---\nE one.\n",
+      "m/registry/dependency-policies/p1.md": "---\ntype: Dependency Policy\nfrom_context: a\nto_context: c\n---\nWhy.\n",
+      "m/registry/capabilities/cap.md": "---\ntype: Capability\ncontext: a\n---\nCap.\n",
+      "m/registry/value-objects/vo.md": "---\ntype: Value Object\ncontext: b\n---\nVO.\n",
+      "pkg/a/x.go": "alpha\nbeta\n",
+      "pkg/b/y.go": "alpha\nbeta\n",
+      "README.md": "alpha\n",
+      "pkg/c/z.go": "alpha\n",
+      "changes/p1/domain-change-proposal.json": "{\"proposal_id\": \"p1\", \"status\": \"draft\"}\n"
+    },
+    "stdin": "{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"initialize\", \"params\": {\"protocolVersion\": \"2025-06-18\"}}\n{\"jsonrpc\": \"2.0\", \"id\": 2, \"method\": \"initialize\", \"params\": {\"protocolVersion\": \"2024-11-05\"}}\n{\"jsonrpc\": \"2.0\", \"id\": 3, \"method\": \"initialize\", \"params\": {\"protocolVersion\": \"2026-07-28\"}}\n{\"jsonrpc\": \"2.0\", \"id\": 4, \"method\": \"initialize\", \"params\": {\"protocolVersion\": 5}}\n{\"jsonrpc\": \"2.0\", \"id\": 5, \"method\": \"initialize\"}\n{\"jsonrpc\": \"2.0\", \"id\": 6, \"method\": \"ping\"}\n{\"jsonrpc\": \"2.0\", \"id\": 7, \"method\": \"ping\", \"params\": {\"_meta\": {\"io.modelcontextprotocol/protocolVersion\": \"2026-07-28\", \"io.modelcontextprotocol/clientCapabilities\": {}}}}\n{\"jsonrpc\": \"2.0\", \"id\": 8, \"method\": \"tools/list\"}\n{\"jsonrpc\": \"2.0\", \"id\": 9, \"method\": \"tools/list\", \"params\": {\"_meta\": {\"io.modelcontextprotocol/protocolVersion\": \"2026-07-28\", \"io.modelcontextprotocol/clientCapabilities\": {}}}}\n{\"jsonrpc\": \"2.0\", \"id\": 10, \"method\": \"server/discover\", \"params\": {\"_meta\": {\"io.modelcontextprotocol/protocolVersion\": \"2026-07-28\", \"io.modelcontextprotocol/clientCapabilities\": {}}}}\n{\"jsonrpc\": \"2.0\", \"id\": 11, \"method\": \"nope\"}\n{\"jsonrpc\": \"2.0\", \"id\": 12, \"method\": \"nope\", \"params\": {\"_meta\": {\"io.modelcontextprotocol/protocolVersion\": \"2026-07-28\", \"io.modelcontextprotocol/clientCapabilities\": {}}}}\n{\"jsonrpc\": \"2.0\", \"method\": \"ping\"}\n{\"jsonrpc\": \"2.0\", \"method\": \"nope\", \"params\": {}}\n",
+    "env": {
+      "GIT_INDEX_FILE": "no-such-index"
+    }
+  },
+  {
+    "name": "mcp-serve refuses a request that does not declare a supported protocol version",
+    "args": [
+      "mcp-serve",
+      "--registry-root",
+      "{fixture}/m",
+      "--repo-root",
+      "{fixture}"
+    ],
+    "git": true,
+    "files": {
+      "m/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n",
+      "m/registry/contexts/a.md": "---\ntype: Bounded Context\nimplementation_path: pkg/a\n---\n",
+      "m/registry/contexts/b.md": "---\ntype: Bounded Context\nimplementation_path: pkg/b\n---\n",
+      "m/registry/contexts/c.md": "---\ntype: Bounded Context\nname: Cee\nimplementation_path: pkg/c\n---\nCee is the third context.\n",
+      "m/registry/aggregates/ag1.md": "---\ntype: Aggregate\ncontext: a\nevidence:\n  - path: pkg/a/x.go\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\n",
+      "m/registry/rules/r1.md": "---\ntype: Business Rule\ncontexts:\n  - a\naggregate: ag1\nstatus: reviewed\nverified: true\nevidence:\n  - path: pkg/a/x.go\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule one holds.\n",
+      "m/registry/rules/r2.md": "---\ntype: Business Rule\ncontexts:\n  - b\naggregate: ag1\nstatus: candidate\n---\nRule two.\n",
+      "m/registry/rules/r3.md": "---\ntype: Business Rule\ncontexts:\n  - a\n  - ghost\n---\nRule three has no status.\n",
+      "m/registry/vocabulary/t1.md": "---\ntype: Term\ncontexts:\n  - a\nnot_same_as:\n  - t2\n---\nTerm one.\n",
+      "m/registry/vocabulary/t2.md": "---\ntype: Term\ncontexts:\n  - b\n---\nTerm two.\n",
+      "m/registry/decisions/d1.md": "---\ntype: Decision\nreview_status: reviewed\nsupersedes:\n  - d0\n---\nDecision one.\n",
+      "m/registry/decisions/d0.md": "---\ntype: Decision\n---\nDecision zero.\n",
+      "m/registry/interactions/ab.md": "---\ntype: Interaction\nproducer_context: a\nconsumer_context: b\nstatus: stable\n---\n",
+      "m/registry/contracts/k1.md": "---\ntype: Contract\nproducer_context: a\nconsumer_contexts:\n  - b\n  - c\nevidence:\n  - path: pkg/a/x.go\n    lines:\n      start: 2\n      end: 2\n    excerpt_sha256: sha256:1111111111111111111111111111111111111111111111111111111111111111\n  - README.md\n  - path: pkg/b/y.go\n    lines:\n      start: 1\n      end: 1\n---\n",
+      "m/registry/events/e1.md": "---\ntype: Domain Event\nowner_context: c\nconsumers:\n  - a\n---\nE one.\n",
+      "m/registry/dependency-policies/p1.md": "---\ntype: Dependency Policy\nfrom_context: a\nto_context: c\n---\nWhy.\n",
+      "m/registry/capabilities/cap.md": "---\ntype: Capability\ncontext: a\n---\nCap.\n",
+      "m/registry/value-objects/vo.md": "---\ntype: Value Object\ncontext: b\n---\nVO.\n",
+      "pkg/a/x.go": "alpha\nbeta\n",
+      "pkg/b/y.go": "alpha\nbeta\n",
+      "README.md": "alpha\n",
+      "pkg/c/z.go": "alpha\n",
+      "changes/p1/domain-change-proposal.json": "{\"proposal_id\": \"p1\", \"status\": \"draft\"}\n"
+    },
+    "stdin": "{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"server/discover\"}\n{\"jsonrpc\": \"2.0\", \"id\": 2, \"method\": \"server/discover\", \"params\": {\"_meta\": {\"io.modelcontextprotocol/protocolVersion\": \"2026-07-28\"}}}\n{\"jsonrpc\": \"2.0\", \"id\": 3, \"method\": \"server/discover\", \"params\": {\"_meta\": {\"io.modelcontextprotocol/protocolVersion\": \"1.0\", \"io.modelcontextprotocol/clientCapabilities\": {}}}}\n{\"jsonrpc\": \"2.0\", \"id\": 4, \"method\": \"server/discover\", \"params\": {\"_meta\": {\"io.modelcontextprotocol/protocolVersion\": [\"2026-07-28\"], \"io.modelcontextprotocol/clientCapabilities\": {}}}}\n{\"jsonrpc\": \"2.0\", \"id\": 5, \"method\": \"ping\", \"params\": {\"_meta\": {\"io.modelcontextprotocol/protocolVersion\": null, \"io.modelcontextprotocol/clientCapabilities\": {}}}}\n{\"jsonrpc\": \"2.0\", \"id\": 6, \"method\": \"ping\", \"params\": {\"_meta\": \"x\"}}\n{\"jsonrpc\": \"2.0\", \"id\": 7, \"method\": \"ping\", \"params\": {\"_meta\": {\"io.modelcontextprotocol/protocolVersion\": \"2025-06-18\"}}}\n{\"jsonrpc\": \"2.0\", \"id\": 8, \"method\": \"ping\", \"params\": {\"_meta\": {\"io.modelcontextprotocol/protocolVersion\": \"2025-06-18\", \"io.modelcontextprotocol/clientCapabilities\": null}}}\n{\"jsonrpc\": \"2.0\", \"id\": 9, \"method\": \"tools/call\", \"params\": {\"name\": \"coverage\", \"_meta\": {\"io.modelcontextprotocol/protocolVersion\": \"x\", \"io.modelcontextprotocol/clientCapabilities\": {}}}}\n",
+    "env": {
+      "GIT_INDEX_FILE": "no-such-index"
+    }
+  },
+  {
+    "name": "mcp-serve echoes any id and refuses what is not a request",
+    "args": [
+      "mcp-serve",
+      "--registry-root",
+      "{fixture}/m",
+      "--repo-root",
+      "{fixture}"
+    ],
+    "git": true,
+    "files": {
+      "m/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n",
+      "m/registry/contexts/a.md": "---\ntype: Bounded Context\nimplementation_path: pkg/a\n---\n",
+      "m/registry/contexts/b.md": "---\ntype: Bounded Context\nimplementation_path: pkg/b\n---\n",
+      "m/registry/contexts/c.md": "---\ntype: Bounded Context\nname: Cee\nimplementation_path: pkg/c\n---\nCee is the third context.\n",
+      "m/registry/aggregates/ag1.md": "---\ntype: Aggregate\ncontext: a\nevidence:\n  - path: pkg/a/x.go\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\n",
+      "m/registry/rules/r1.md": "---\ntype: Business Rule\ncontexts:\n  - a\naggregate: ag1\nstatus: reviewed\nverified: true\nevidence:\n  - path: pkg/a/x.go\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule one holds.\n",
+      "m/registry/rules/r2.md": "---\ntype: Business Rule\ncontexts:\n  - b\naggregate: ag1\nstatus: candidate\n---\nRule two.\n",
+      "m/registry/rules/r3.md": "---\ntype: Business Rule\ncontexts:\n  - a\n  - ghost\n---\nRule three has no status.\n",
+      "m/registry/vocabulary/t1.md": "---\ntype: Term\ncontexts:\n  - a\nnot_same_as:\n  - t2\n---\nTerm one.\n",
+      "m/registry/vocabulary/t2.md": "---\ntype: Term\ncontexts:\n  - b\n---\nTerm two.\n",
+      "m/registry/decisions/d1.md": "---\ntype: Decision\nreview_status: reviewed\nsupersedes:\n  - d0\n---\nDecision one.\n",
+      "m/registry/decisions/d0.md": "---\ntype: Decision\n---\nDecision zero.\n",
+      "m/registry/interactions/ab.md": "---\ntype: Interaction\nproducer_context: a\nconsumer_context: b\nstatus: stable\n---\n",
+      "m/registry/contracts/k1.md": "---\ntype: Contract\nproducer_context: a\nconsumer_contexts:\n  - b\n  - c\nevidence:\n  - path: pkg/a/x.go\n    lines:\n      start: 2\n      end: 2\n    excerpt_sha256: sha256:1111111111111111111111111111111111111111111111111111111111111111\n  - README.md\n  - path: pkg/b/y.go\n    lines:\n      start: 1\n      end: 1\n---\n",
+      "m/registry/events/e1.md": "---\ntype: Domain Event\nowner_context: c\nconsumers:\n  - a\n---\nE one.\n",
+      "m/registry/dependency-policies/p1.md": "---\ntype: Dependency Policy\nfrom_context: a\nto_context: c\n---\nWhy.\n",
+      "m/registry/capabilities/cap.md": "---\ntype: Capability\ncontext: a\n---\nCap.\n",
+      "m/registry/value-objects/vo.md": "---\ntype: Value Object\ncontext: b\n---\nVO.\n",
+      "pkg/a/x.go": "alpha\nbeta\n",
+      "pkg/b/y.go": "alpha\nbeta\n",
+      "README.md": "alpha\n",
+      "pkg/c/z.go": "alpha\n",
+      "changes/p1/domain-change-proposal.json": "{\"proposal_id\": \"p1\", \"status\": \"draft\"}\n"
+    },
+    "stdin": "{\"jsonrpc\": \"2.0\", \"id\": null, \"method\": \"ping\"}\n{\"jsonrpc\": \"2.0\", \"id\": 1.5, \"method\": \"ping\"}\n{\"jsonrpc\": \"2.0\", \"id\": -0.0, \"method\": \"ping\"}\n{\"jsonrpc\": \"2.0\", \"id\": [1, \"a\"], \"method\": \"ping\"}\n{\"jsonrpc\": \"2.0\", \"id\": {\"a\": {\"b\": null}}, \"method\": \"ping\"}\n{\"jsonrpc\": \"2.0\", \"id\": true, \"method\": \"ping\"}\n{\"jsonrpc\": \"2.0\", \"id\": 1000000000000000000000000000000, \"method\": \"ping\"}\n{\"jsonrpc\": \"2.0\", \"id\": \"é中\", \"method\": \"ping\"}\n{\"id\": 1, \"id\": 2, \"method\": \"ping\"}\n{\"id\": 1, \"method\": 5}\n{\"id\": 2, \"params\": {}}\n{\"id\": 3, \"method\": \"ping\", \"params\": null}\n{\"id\": 4, \"method\": \"ping\", \"params\": [1]}\n{\"method\": \"ping\", \"params\": 3}\n[1, 2]\n\"text\"\nnull\n3\n",
+    "env": {
+      "GIT_INDEX_FILE": "no-such-index"
+    }
+  },
+  {
+    "name": "mcp-serve names where a line stops being JSON",
+    "args": [
+      "mcp-serve",
+      "--registry-root",
+      "{fixture}/m",
+      "--repo-root",
+      "{fixture}"
+    ],
+    "git": true,
+    "files": {
+      "m/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n",
+      "m/registry/contexts/a.md": "---\ntype: Bounded Context\nimplementation_path: pkg/a\n---\n",
+      "m/registry/contexts/b.md": "---\ntype: Bounded Context\nimplementation_path: pkg/b\n---\n",
+      "m/registry/contexts/c.md": "---\ntype: Bounded Context\nname: Cee\nimplementation_path: pkg/c\n---\nCee is the third context.\n",
+      "m/registry/aggregates/ag1.md": "---\ntype: Aggregate\ncontext: a\nevidence:\n  - path: pkg/a/x.go\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\n",
+      "m/registry/rules/r1.md": "---\ntype: Business Rule\ncontexts:\n  - a\naggregate: ag1\nstatus: reviewed\nverified: true\nevidence:\n  - path: pkg/a/x.go\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule one holds.\n",
+      "m/registry/rules/r2.md": "---\ntype: Business Rule\ncontexts:\n  - b\naggregate: ag1\nstatus: candidate\n---\nRule two.\n",
+      "m/registry/rules/r3.md": "---\ntype: Business Rule\ncontexts:\n  - a\n  - ghost\n---\nRule three has no status.\n",
+      "m/registry/vocabulary/t1.md": "---\ntype: Term\ncontexts:\n  - a\nnot_same_as:\n  - t2\n---\nTerm one.\n",
+      "m/registry/vocabulary/t2.md": "---\ntype: Term\ncontexts:\n  - b\n---\nTerm two.\n",
+      "m/registry/decisions/d1.md": "---\ntype: Decision\nreview_status: reviewed\nsupersedes:\n  - d0\n---\nDecision one.\n",
+      "m/registry/decisions/d0.md": "---\ntype: Decision\n---\nDecision zero.\n",
+      "m/registry/interactions/ab.md": "---\ntype: Interaction\nproducer_context: a\nconsumer_context: b\nstatus: stable\n---\n",
+      "m/registry/contracts/k1.md": "---\ntype: Contract\nproducer_context: a\nconsumer_contexts:\n  - b\n  - c\nevidence:\n  - path: pkg/a/x.go\n    lines:\n      start: 2\n      end: 2\n    excerpt_sha256: sha256:1111111111111111111111111111111111111111111111111111111111111111\n  - README.md\n  - path: pkg/b/y.go\n    lines:\n      start: 1\n      end: 1\n---\n",
+      "m/registry/events/e1.md": "---\ntype: Domain Event\nowner_context: c\nconsumers:\n  - a\n---\nE one.\n",
+      "m/registry/dependency-policies/p1.md": "---\ntype: Dependency Policy\nfrom_context: a\nto_context: c\n---\nWhy.\n",
+      "m/registry/capabilities/cap.md": "---\ntype: Capability\ncontext: a\n---\nCap.\n",
+      "m/registry/value-objects/vo.md": "---\ntype: Value Object\ncontext: b\n---\nVO.\n",
+      "pkg/a/x.go": "alpha\nbeta\n",
+      "pkg/b/y.go": "alpha\nbeta\n",
+      "README.md": "alpha\n",
+      "pkg/c/z.go": "alpha\n",
+      "changes/p1/domain-change-proposal.json": "{\"proposal_id\": \"p1\", \"status\": \"draft\"}\n"
+    },
+    "stdin": "\n   \n﻿{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"ping\"}\n{\n[\n{\"id\": 1,}\n[1, 2,]\n[1 2]\n{\"id\" 1}\n{1: 2}\n{\"id\": 1} x\n\"tab\there\"\n\"bad \\x escape\"\n\"\\u12G4\"\n\"\\ud800\\uZZZZ\"\n\"\\ud800\\udc00 pair\"\nnul\n-\n-Infinity\n1.\n01\n[é]\n{\"a\": \"é中\", \"b\": ]}\n\"unterminated at the end",
+    "env": {
+      "GIT_INDEX_FILE": "no-such-index"
+    }
+  },
+  {
+    "name": "mcp-serve treats a carriage return as the end of a line",
+    "args": [
+      "mcp-serve",
+      "--registry-root",
+      "{fixture}/m",
+      "--repo-root",
+      "{fixture}"
+    ],
+    "git": true,
+    "files": {
+      "m/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n",
+      "m/registry/contexts/a.md": "---\ntype: Bounded Context\nimplementation_path: pkg/a\n---\n",
+      "m/registry/contexts/b.md": "---\ntype: Bounded Context\nimplementation_path: pkg/b\n---\n",
+      "m/registry/contexts/c.md": "---\ntype: Bounded Context\nname: Cee\nimplementation_path: pkg/c\n---\nCee is the third context.\n",
+      "m/registry/aggregates/ag1.md": "---\ntype: Aggregate\ncontext: a\nevidence:\n  - path: pkg/a/x.go\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\n",
+      "m/registry/rules/r1.md": "---\ntype: Business Rule\ncontexts:\n  - a\naggregate: ag1\nstatus: reviewed\nverified: true\nevidence:\n  - path: pkg/a/x.go\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule one holds.\n",
+      "m/registry/rules/r2.md": "---\ntype: Business Rule\ncontexts:\n  - b\naggregate: ag1\nstatus: candidate\n---\nRule two.\n",
+      "m/registry/rules/r3.md": "---\ntype: Business Rule\ncontexts:\n  - a\n  - ghost\n---\nRule three has no status.\n",
+      "m/registry/vocabulary/t1.md": "---\ntype: Term\ncontexts:\n  - a\nnot_same_as:\n  - t2\n---\nTerm one.\n",
+      "m/registry/vocabulary/t2.md": "---\ntype: Term\ncontexts:\n  - b\n---\nTerm two.\n",
+      "m/registry/decisions/d1.md": "---\ntype: Decision\nreview_status: reviewed\nsupersedes:\n  - d0\n---\nDecision one.\n",
+      "m/registry/decisions/d0.md": "---\ntype: Decision\n---\nDecision zero.\n",
+      "m/registry/interactions/ab.md": "---\ntype: Interaction\nproducer_context: a\nconsumer_context: b\nstatus: stable\n---\n",
+      "m/registry/contracts/k1.md": "---\ntype: Contract\nproducer_context: a\nconsumer_contexts:\n  - b\n  - c\nevidence:\n  - path: pkg/a/x.go\n    lines:\n      start: 2\n      end: 2\n    excerpt_sha256: sha256:1111111111111111111111111111111111111111111111111111111111111111\n  - README.md\n  - path: pkg/b/y.go\n    lines:\n      start: 1\n      end: 1\n---\n",
+      "m/registry/events/e1.md": "---\ntype: Domain Event\nowner_context: c\nconsumers:\n  - a\n---\nE one.\n",
+      "m/registry/dependency-policies/p1.md": "---\ntype: Dependency Policy\nfrom_context: a\nto_context: c\n---\nWhy.\n",
+      "m/registry/capabilities/cap.md": "---\ntype: Capability\ncontext: a\n---\nCap.\n",
+      "m/registry/value-objects/vo.md": "---\ntype: Value Object\ncontext: b\n---\nVO.\n",
+      "pkg/a/x.go": "alpha\nbeta\n",
+      "pkg/b/y.go": "alpha\nbeta\n",
+      "README.md": "alpha\n",
+      "pkg/c/z.go": "alpha\n",
+      "changes/p1/domain-change-proposal.json": "{\"proposal_id\": \"p1\", \"status\": \"draft\"}\n"
+    },
+    "stdin": "{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"ping\"}\r{\"jsonrpc\": \"2.0\", \"id\": 2, \"method\": \"ping\"}\r\nping\r\n{\"jsonrpc\": \"2.0\", \"id\": 3, \"method\": \"ping\"}\n",
+    "env": {
+      "GIT_INDEX_FILE": "no-such-index"
+    }
+  },
+  {
+    "name": "mcp-serve checks a tool name and its arguments before running it",
+    "args": [
+      "mcp-serve",
+      "--registry-root",
+      "{fixture}/m",
+      "--repo-root",
+      "{fixture}"
+    ],
+    "git": true,
+    "files": {
+      "m/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n",
+      "m/registry/contexts/a.md": "---\ntype: Bounded Context\nimplementation_path: pkg/a\n---\n",
+      "m/registry/contexts/b.md": "---\ntype: Bounded Context\nimplementation_path: pkg/b\n---\n",
+      "m/registry/contexts/c.md": "---\ntype: Bounded Context\nname: Cee\nimplementation_path: pkg/c\n---\nCee is the third context.\n",
+      "m/registry/aggregates/ag1.md": "---\ntype: Aggregate\ncontext: a\nevidence:\n  - path: pkg/a/x.go\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\n",
+      "m/registry/rules/r1.md": "---\ntype: Business Rule\ncontexts:\n  - a\naggregate: ag1\nstatus: reviewed\nverified: true\nevidence:\n  - path: pkg/a/x.go\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule one holds.\n",
+      "m/registry/rules/r2.md": "---\ntype: Business Rule\ncontexts:\n  - b\naggregate: ag1\nstatus: candidate\n---\nRule two.\n",
+      "m/registry/rules/r3.md": "---\ntype: Business Rule\ncontexts:\n  - a\n  - ghost\n---\nRule three has no status.\n",
+      "m/registry/vocabulary/t1.md": "---\ntype: Term\ncontexts:\n  - a\nnot_same_as:\n  - t2\n---\nTerm one.\n",
+      "m/registry/vocabulary/t2.md": "---\ntype: Term\ncontexts:\n  - b\n---\nTerm two.\n",
+      "m/registry/decisions/d1.md": "---\ntype: Decision\nreview_status: reviewed\nsupersedes:\n  - d0\n---\nDecision one.\n",
+      "m/registry/decisions/d0.md": "---\ntype: Decision\n---\nDecision zero.\n",
+      "m/registry/interactions/ab.md": "---\ntype: Interaction\nproducer_context: a\nconsumer_context: b\nstatus: stable\n---\n",
+      "m/registry/contracts/k1.md": "---\ntype: Contract\nproducer_context: a\nconsumer_contexts:\n  - b\n  - c\nevidence:\n  - path: pkg/a/x.go\n    lines:\n      start: 2\n      end: 2\n    excerpt_sha256: sha256:1111111111111111111111111111111111111111111111111111111111111111\n  - README.md\n  - path: pkg/b/y.go\n    lines:\n      start: 1\n      end: 1\n---\n",
+      "m/registry/events/e1.md": "---\ntype: Domain Event\nowner_context: c\nconsumers:\n  - a\n---\nE one.\n",
+      "m/registry/dependency-policies/p1.md": "---\ntype: Dependency Policy\nfrom_context: a\nto_context: c\n---\nWhy.\n",
+      "m/registry/capabilities/cap.md": "---\ntype: Capability\ncontext: a\n---\nCap.\n",
+      "m/registry/value-objects/vo.md": "---\ntype: Value Object\ncontext: b\n---\nVO.\n",
+      "pkg/a/x.go": "alpha\nbeta\n",
+      "pkg/b/y.go": "alpha\nbeta\n",
+      "README.md": "alpha\n",
+      "pkg/c/z.go": "alpha\n",
+      "changes/p1/domain-change-proposal.json": "{\"proposal_id\": \"p1\", \"status\": \"draft\"}\n"
+    },
+    "stdin": "{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"tools/call\", \"params\": {\"name\": \"nope\"}}\n{\"jsonrpc\": \"2.0\", \"id\": 2, \"method\": \"tools/call\", \"params\": {\"name\": 5}}\n{\"jsonrpc\": \"2.0\", \"id\": 3, \"method\": \"tools/call\", \"params\": {\"name\": null}}\n{\"jsonrpc\": \"2.0\", \"id\": 4, \"method\": \"tools/call\", \"params\": {\"name\": [\"coverage\"]}}\n{\"jsonrpc\": \"2.0\", \"id\": 5, \"method\": \"tools/call\", \"params\": {\"name\": {\"a\": 1.5, \"b\": [true, null]}}}\n{\"jsonrpc\": \"2.0\", \"id\": 6, \"method\": \"tools/call\", \"params\": {}}\n{\"jsonrpc\": \"2.0\", \"id\": 7, \"method\": \"tools/call\", \"params\": {\"name\": \"coverage\", \"arguments\": null}}\n{\"jsonrpc\": \"2.0\", \"id\": 8, \"method\": \"tools/call\", \"params\": {\"name\": \"coverage\", \"arguments\": [1]}}\n{\"jsonrpc\": \"2.0\", \"id\": 9, \"method\": \"tools/call\", \"params\": {\"name\": \"coverage\", \"arguments\": {\"z\": 1, \"a\": 2}}}\n{\"jsonrpc\": \"2.0\", \"id\": 10, \"method\": \"tools/call\", \"params\": {\"name\": \"get_record\", \"arguments\": {}}}\n{\"jsonrpc\": \"2.0\", \"id\": 11, \"method\": \"tools/call\", \"params\": {\"name\": \"get_record\", \"arguments\": {\"asset\": \"rules\"}}}\n{\"jsonrpc\": \"2.0\", \"id\": 12, \"method\": \"tools/call\", \"params\": {\"name\": \"get_record\", \"arguments\": {\"asset\": \"nope\", \"id\": \"x\"}}}\n{\"jsonrpc\": \"2.0\", \"id\": 13, \"method\": \"tools/call\", \"params\": {\"name\": \"get_record\", \"arguments\": {\"asset\": \"rules\", \"id\": 5}}}\n{\"jsonrpc\": \"2.0\", \"id\": 14, \"method\": \"tools/call\", \"params\": {\"name\": \"get_record\", \"arguments\": {\"asset\": \"rules\", \"id\": \"-x\"}}}\n{\"jsonrpc\": \"2.0\", \"id\": 15, \"method\": \"tools/call\", \"params\": {\"name\": \"get_context\", \"arguments\": {\"id\": \"a\", \"summary\": \"yes\"}}}\n{\"jsonrpc\": \"2.0\", \"id\": 16, \"method\": \"tools/call\", \"params\": {\"name\": \"resolve_terms\", \"arguments\": {\"query\": \"x\"}}}\n{\"jsonrpc\": \"2.0\", \"id\": 17, \"method\": \"tools/call\", \"params\": {\"name\": \"resolve_terms\", \"arguments\": {\"query\": [\"x\", 1]}}}\n{\"jsonrpc\": \"2.0\", \"id\": 18, \"method\": \"tools/call\", \"params\": {\"name\": \"list_proposals\", \"arguments\": {\"changes_root\": \"../outside\"}}}\n{\"jsonrpc\": \"2.0\", \"id\": 19, \"method\": \"tools/call\", \"params\": {\"name\": \"validate_change_package\", \"arguments\": {\"package_root\": \"../x\"}}}\n{\"jsonrpc\": \"2.0\", \"id\": 20, \"method\": \"tools/call\", \"params\": {\"name\": \"validate_change_package\", \"arguments\": {\"package_root\": \"changes/p1\", \"as_status\": \"drafted\"}}}\n{\"jsonrpc\": \"2.0\", \"id\": 21, \"method\": \"tools/call\", \"params\": {\"name\": \"get_record\", \"arguments\": {\"asset\": \"rules\", \"id\": \"r1\", \"nope\": true}}}\n{\"jsonrpc\": \"2.0\", \"id\": 22, \"method\": \"tools/call\", \"params\": {\"name\": \"lookup\", \"arguments\": {}}}\n{\"jsonrpc\": \"2.0\", \"id\": 23, \"method\": \"tools/call\", \"params\": {\"name\": \"get_record\", \"arguments\": {\"asset\": \"rules\", \"id\": \"zz\", \"id\": \"r1\"}}}\n",
+    "env": {
+      "GIT_INDEX_FILE": "no-such-index"
+    }
+  },
+  {
+    "name": "mcp-serve runs each read tool against the Registry",
+    "args": [
+      "mcp-serve",
+      "--registry-root",
+      "{fixture}/m",
+      "--repo-root",
+      "{fixture}"
+    ],
+    "git": true,
+    "files": {
+      "m/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n",
+      "m/registry/contexts/a.md": "---\ntype: Bounded Context\nimplementation_path: pkg/a\n---\n",
+      "m/registry/contexts/b.md": "---\ntype: Bounded Context\nimplementation_path: pkg/b\n---\n",
+      "m/registry/contexts/c.md": "---\ntype: Bounded Context\nname: Cee\nimplementation_path: pkg/c\n---\nCee is the third context.\n",
+      "m/registry/aggregates/ag1.md": "---\ntype: Aggregate\ncontext: a\nevidence:\n  - path: pkg/a/x.go\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\n",
+      "m/registry/rules/r1.md": "---\ntype: Business Rule\ncontexts:\n  - a\naggregate: ag1\nstatus: reviewed\nverified: true\nevidence:\n  - path: pkg/a/x.go\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule one holds.\n",
+      "m/registry/rules/r2.md": "---\ntype: Business Rule\ncontexts:\n  - b\naggregate: ag1\nstatus: candidate\n---\nRule two.\n",
+      "m/registry/rules/r3.md": "---\ntype: Business Rule\ncontexts:\n  - a\n  - ghost\n---\nRule three has no status.\n",
+      "m/registry/vocabulary/t1.md": "---\ntype: Term\ncontexts:\n  - a\nnot_same_as:\n  - t2\n---\nTerm one.\n",
+      "m/registry/vocabulary/t2.md": "---\ntype: Term\ncontexts:\n  - b\n---\nTerm two.\n",
+      "m/registry/decisions/d1.md": "---\ntype: Decision\nreview_status: reviewed\nsupersedes:\n  - d0\n---\nDecision one.\n",
+      "m/registry/decisions/d0.md": "---\ntype: Decision\n---\nDecision zero.\n",
+      "m/registry/interactions/ab.md": "---\ntype: Interaction\nproducer_context: a\nconsumer_context: b\nstatus: stable\n---\n",
+      "m/registry/contracts/k1.md": "---\ntype: Contract\nproducer_context: a\nconsumer_contexts:\n  - b\n  - c\nevidence:\n  - path: pkg/a/x.go\n    lines:\n      start: 2\n      end: 2\n    excerpt_sha256: sha256:1111111111111111111111111111111111111111111111111111111111111111\n  - README.md\n  - path: pkg/b/y.go\n    lines:\n      start: 1\n      end: 1\n---\n",
+      "m/registry/events/e1.md": "---\ntype: Domain Event\nowner_context: c\nconsumers:\n  - a\n---\nE one.\n",
+      "m/registry/dependency-policies/p1.md": "---\ntype: Dependency Policy\nfrom_context: a\nto_context: c\n---\nWhy.\n",
+      "m/registry/capabilities/cap.md": "---\ntype: Capability\ncontext: a\n---\nCap.\n",
+      "m/registry/value-objects/vo.md": "---\ntype: Value Object\ncontext: b\n---\nVO.\n",
+      "pkg/a/x.go": "alpha\nbeta\n",
+      "pkg/b/y.go": "alpha\nbeta\n",
+      "README.md": "alpha\n",
+      "pkg/c/z.go": "alpha\n",
+      "changes/p1/domain-change-proposal.json": "{\"proposal_id\": \"p1\", \"status\": \"draft\"}\n"
+    },
+    "stdin": "{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"tools/call\", \"params\": {\"name\": \"get_record\", \"arguments\": {\"asset\": \"rules\", \"id\": \"r1\"}}}\n{\"jsonrpc\": \"2.0\", \"id\": 2, \"method\": \"tools/call\", \"params\": {\"name\": \"get_record\", \"arguments\": {\"asset\": \"rules\", \"id\": \"no-such\"}, \"_meta\": {\"io.modelcontextprotocol/protocolVersion\": \"2026-07-28\", \"io.modelcontextprotocol/clientCapabilities\": {}}}}\n{\"jsonrpc\": \"2.0\", \"id\": 3, \"method\": \"tools/call\", \"params\": {\"name\": \"get_context\", \"arguments\": {\"id\": \"a\"}}}\n{\"jsonrpc\": \"2.0\", \"id\": 4, \"method\": \"tools/call\", \"params\": {\"name\": \"get_context\", \"arguments\": {\"id\": \"a\", \"summary\": true}}}\n{\"jsonrpc\": \"2.0\", \"id\": 5, \"method\": \"tools/call\", \"params\": {\"name\": \"get_context\", \"arguments\": {\"id\": \"no-such\", \"summary\": false}}}\n{\"jsonrpc\": \"2.0\", \"id\": 6, \"method\": \"tools/call\", \"params\": {\"name\": \"resolve_terms\", \"arguments\": {\"query\": [\"t1\", \"nothing\"], \"with_mentions\": true}}}\n{\"jsonrpc\": \"2.0\", \"id\": 7, \"method\": \"tools/call\", \"params\": {\"name\": \"resolve_terms\", \"arguments\": {\"query\": [\"t2\"], \"context\": \"a\"}}}\n{\"jsonrpc\": \"2.0\", \"id\": 8, \"method\": \"tools/call\", \"params\": {\"name\": \"lookup\", \"arguments\": {\"asset\": \"rules\", \"query\": \"rule\"}}}\n{\"jsonrpc\": \"2.0\", \"id\": 9, \"method\": \"tools/call\", \"params\": {\"name\": \"dependents\", \"arguments\": {\"asset\": \"contexts\", \"id\": \"a\"}}}\n{\"jsonrpc\": \"2.0\", \"id\": 10, \"method\": \"tools/call\", \"params\": {\"name\": \"coverage\"}}\n{\"jsonrpc\": \"2.0\", \"id\": 11, \"method\": \"tools/call\", \"params\": {\"name\": \"coverage\", \"arguments\": {}, \"_meta\": {\"io.modelcontextprotocol/protocolVersion\": \"2026-07-28\", \"io.modelcontextprotocol/clientCapabilities\": {}}}}\n{\"jsonrpc\": \"2.0\", \"id\": 12, \"method\": \"tools/call\", \"params\": {\"name\": \"brief\", \"arguments\": {\"asset\": \"rules\", \"id\": \"r1\"}}}\n{\"jsonrpc\": \"2.0\", \"id\": 13, \"method\": \"tools/call\", \"params\": {\"name\": \"brief\", \"arguments\": {\"asset\": \"rules\", \"id\": \"r1\", \"markdown\": true}}}\n{\"jsonrpc\": \"2.0\", \"id\": 14, \"method\": \"tools/call\", \"params\": {\"name\": \"brief\", \"arguments\": {}}}\n{\"jsonrpc\": \"2.0\", \"id\": 15, \"method\": \"tools/call\", \"params\": {\"name\": \"boundary_impact\", \"arguments\": {\"base\": \"HEAD\"}}}\n{\"jsonrpc\": \"2.0\", \"id\": 16, \"method\": \"tools/call\", \"params\": {\"name\": \"boundary_impact\", \"arguments\": {\"base\": \"no-such-revision\"}}}\n{\"jsonrpc\": \"2.0\", \"id\": 17, \"method\": \"tools/call\", \"params\": {\"name\": \"verify_evidence\", \"arguments\": {}}}\n{\"jsonrpc\": \"2.0\", \"id\": 18, \"method\": \"tools/call\", \"params\": {\"name\": \"verify_evidence\", \"arguments\": {\"path\": [\"pkg/a/x.go\"], \"strict\": true}}}\n{\"jsonrpc\": \"2.0\", \"id\": 19, \"method\": \"tools/call\", \"params\": {\"name\": \"validate\", \"arguments\": {\"require_reviewed\": false}}}\n{\"jsonrpc\": \"2.0\", \"id\": 20, \"method\": \"tools/call\", \"params\": {\"name\": \"validate\", \"arguments\": {\"require_reviewed\": true}}}\n{\"jsonrpc\": \"2.0\", \"id\": 21, \"method\": \"tools/call\", \"params\": {\"name\": \"readiness\"}}\n{\"jsonrpc\": \"2.0\", \"id\": 22, \"method\": \"tools/call\", \"params\": {\"name\": \"list_proposals\", \"arguments\": {\"changes_root\": \"changes\"}}}\n{\"jsonrpc\": \"2.0\", \"id\": 23, \"method\": \"tools/call\", \"params\": {\"name\": \"list_proposals\", \"arguments\": {\"changes_root\": \"no-such\"}}}\n{\"jsonrpc\": \"2.0\", \"id\": 24, \"method\": \"tools/call\", \"params\": {\"name\": \"validate_change_package\", \"arguments\": {\"package_root\": \"changes/p1\"}}}\n{\"jsonrpc\": \"2.0\", \"id\": 25, \"method\": \"tools/call\", \"params\": {\"name\": \"validate_change_package\", \"arguments\": {\"package_root\": \"changes/p1\", \"as_status\": \"verified\"}}}\n",
+    "env": {
+      "GIT_INDEX_FILE": "no-such-index"
+    }
+  },
+  {
+    "name": "mcp-serve needs both roots",
+    "args": [
+      "mcp-serve",
+      "--registry-root",
+      "{fixture}/m"
+    ],
+    "git": true,
+    "files": {
+      "m/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n",
+      "m/registry/contexts/a.md": "---\ntype: Bounded Context\nimplementation_path: pkg/a\n---\n",
+      "m/registry/contexts/b.md": "---\ntype: Bounded Context\nimplementation_path: pkg/b\n---\n",
+      "m/registry/contexts/c.md": "---\ntype: Bounded Context\nname: Cee\nimplementation_path: pkg/c\n---\nCee is the third context.\n",
+      "m/registry/aggregates/ag1.md": "---\ntype: Aggregate\ncontext: a\nevidence:\n  - path: pkg/a/x.go\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\n",
+      "m/registry/rules/r1.md": "---\ntype: Business Rule\ncontexts:\n  - a\naggregate: ag1\nstatus: reviewed\nverified: true\nevidence:\n  - path: pkg/a/x.go\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule one holds.\n",
+      "m/registry/rules/r2.md": "---\ntype: Business Rule\ncontexts:\n  - b\naggregate: ag1\nstatus: candidate\n---\nRule two.\n",
+      "m/registry/rules/r3.md": "---\ntype: Business Rule\ncontexts:\n  - a\n  - ghost\n---\nRule three has no status.\n",
+      "m/registry/vocabulary/t1.md": "---\ntype: Term\ncontexts:\n  - a\nnot_same_as:\n  - t2\n---\nTerm one.\n",
+      "m/registry/vocabulary/t2.md": "---\ntype: Term\ncontexts:\n  - b\n---\nTerm two.\n",
+      "m/registry/decisions/d1.md": "---\ntype: Decision\nreview_status: reviewed\nsupersedes:\n  - d0\n---\nDecision one.\n",
+      "m/registry/decisions/d0.md": "---\ntype: Decision\n---\nDecision zero.\n",
+      "m/registry/interactions/ab.md": "---\ntype: Interaction\nproducer_context: a\nconsumer_context: b\nstatus: stable\n---\n",
+      "m/registry/contracts/k1.md": "---\ntype: Contract\nproducer_context: a\nconsumer_contexts:\n  - b\n  - c\nevidence:\n  - path: pkg/a/x.go\n    lines:\n      start: 2\n      end: 2\n    excerpt_sha256: sha256:1111111111111111111111111111111111111111111111111111111111111111\n  - README.md\n  - path: pkg/b/y.go\n    lines:\n      start: 1\n      end: 1\n---\n",
+      "m/registry/events/e1.md": "---\ntype: Domain Event\nowner_context: c\nconsumers:\n  - a\n---\nE one.\n",
+      "m/registry/dependency-policies/p1.md": "---\ntype: Dependency Policy\nfrom_context: a\nto_context: c\n---\nWhy.\n",
+      "m/registry/capabilities/cap.md": "---\ntype: Capability\ncontext: a\n---\nCap.\n",
+      "m/registry/value-objects/vo.md": "---\ntype: Value Object\ncontext: b\n---\nVO.\n",
+      "pkg/a/x.go": "alpha\nbeta\n",
+      "pkg/b/y.go": "alpha\nbeta\n",
+      "README.md": "alpha\n",
+      "pkg/c/z.go": "alpha\n",
+      "changes/p1/domain-change-proposal.json": "{\"proposal_id\": \"p1\", \"status\": \"draft\"}\n"
+    },
+    "stdin": "{\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"ping\"}\n",
+    "env": {
+      "GIT_INDEX_FILE": "no-such-index"
+    }
+  },
+  {
+    "name": "mcp-serve ends quietly on empty input",
+    "args": [
+      "mcp-serve",
+      "--registry-root",
+      "{fixture}/m",
+      "--repo-root",
+      "{fixture}"
+    ],
+    "git": true,
+    "files": {
+      "m/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n",
+      "m/registry/contexts/a.md": "---\ntype: Bounded Context\nimplementation_path: pkg/a\n---\n",
+      "m/registry/contexts/b.md": "---\ntype: Bounded Context\nimplementation_path: pkg/b\n---\n",
+      "m/registry/contexts/c.md": "---\ntype: Bounded Context\nname: Cee\nimplementation_path: pkg/c\n---\nCee is the third context.\n",
+      "m/registry/aggregates/ag1.md": "---\ntype: Aggregate\ncontext: a\nevidence:\n  - path: pkg/a/x.go\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\n",
+      "m/registry/rules/r1.md": "---\ntype: Business Rule\ncontexts:\n  - a\naggregate: ag1\nstatus: reviewed\nverified: true\nevidence:\n  - path: pkg/a/x.go\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule one holds.\n",
+      "m/registry/rules/r2.md": "---\ntype: Business Rule\ncontexts:\n  - b\naggregate: ag1\nstatus: candidate\n---\nRule two.\n",
+      "m/registry/rules/r3.md": "---\ntype: Business Rule\ncontexts:\n  - a\n  - ghost\n---\nRule three has no status.\n",
+      "m/registry/vocabulary/t1.md": "---\ntype: Term\ncontexts:\n  - a\nnot_same_as:\n  - t2\n---\nTerm one.\n",
+      "m/registry/vocabulary/t2.md": "---\ntype: Term\ncontexts:\n  - b\n---\nTerm two.\n",
+      "m/registry/decisions/d1.md": "---\ntype: Decision\nreview_status: reviewed\nsupersedes:\n  - d0\n---\nDecision one.\n",
+      "m/registry/decisions/d0.md": "---\ntype: Decision\n---\nDecision zero.\n",
+      "m/registry/interactions/ab.md": "---\ntype: Interaction\nproducer_context: a\nconsumer_context: b\nstatus: stable\n---\n",
+      "m/registry/contracts/k1.md": "---\ntype: Contract\nproducer_context: a\nconsumer_contexts:\n  - b\n  - c\nevidence:\n  - path: pkg/a/x.go\n    lines:\n      start: 2\n      end: 2\n    excerpt_sha256: sha256:1111111111111111111111111111111111111111111111111111111111111111\n  - README.md\n  - path: pkg/b/y.go\n    lines:\n      start: 1\n      end: 1\n---\n",
+      "m/registry/events/e1.md": "---\ntype: Domain Event\nowner_context: c\nconsumers:\n  - a\n---\nE one.\n",
+      "m/registry/dependency-policies/p1.md": "---\ntype: Dependency Policy\nfrom_context: a\nto_context: c\n---\nWhy.\n",
+      "m/registry/capabilities/cap.md": "---\ntype: Capability\ncontext: a\n---\nCap.\n",
+      "m/registry/value-objects/vo.md": "---\ntype: Value Object\ncontext: b\n---\nVO.\n",
+      "pkg/a/x.go": "alpha\nbeta\n",
+      "pkg/b/y.go": "alpha\nbeta\n",
+      "README.md": "alpha\n",
+      "pkg/c/z.go": "alpha\n",
+      "changes/p1/domain-change-proposal.json": "{\"proposal_id\": \"p1\", \"status\": \"draft\"}\n"
+    },
+    "stdin": "",
+    "env": {
+      "GIT_INDEX_FILE": "no-such-index"
+    }
+  },
+  {
+    "name": "mcp-serve reads a whole unicode escape at the end of the input, then names the string unterminated",
+    "args": [
+      "mcp-serve",
+      "--registry-root",
+      "{fixture}/m",
+      "--repo-root",
+      "{fixture}"
+    ],
+    "git": true,
+    "files": {
+      "m/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n",
+      "m/registry/contexts/a.md": "---\ntype: Bounded Context\nimplementation_path: pkg/a\n---\n",
+      "m/registry/contexts/b.md": "---\ntype: Bounded Context\nimplementation_path: pkg/b\n---\n",
+      "m/registry/contexts/c.md": "---\ntype: Bounded Context\nname: Cee\nimplementation_path: pkg/c\n---\nCee is the third context.\n",
+      "m/registry/aggregates/ag1.md": "---\ntype: Aggregate\ncontext: a\nevidence:\n  - path: pkg/a/x.go\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\n",
+      "m/registry/rules/r1.md": "---\ntype: Business Rule\ncontexts:\n  - a\naggregate: ag1\nstatus: reviewed\nverified: true\nevidence:\n  - path: pkg/a/x.go\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule one holds.\n",
+      "m/registry/rules/r2.md": "---\ntype: Business Rule\ncontexts:\n  - b\naggregate: ag1\nstatus: candidate\n---\nRule two.\n",
+      "m/registry/rules/r3.md": "---\ntype: Business Rule\ncontexts:\n  - a\n  - ghost\n---\nRule three has no status.\n",
+      "m/registry/vocabulary/t1.md": "---\ntype: Term\ncontexts:\n  - a\nnot_same_as:\n  - t2\n---\nTerm one.\n",
+      "m/registry/vocabulary/t2.md": "---\ntype: Term\ncontexts:\n  - b\n---\nTerm two.\n",
+      "m/registry/decisions/d1.md": "---\ntype: Decision\nreview_status: reviewed\nsupersedes:\n  - d0\n---\nDecision one.\n",
+      "m/registry/decisions/d0.md": "---\ntype: Decision\n---\nDecision zero.\n",
+      "m/registry/interactions/ab.md": "---\ntype: Interaction\nproducer_context: a\nconsumer_context: b\nstatus: stable\n---\n",
+      "m/registry/contracts/k1.md": "---\ntype: Contract\nproducer_context: a\nconsumer_contexts:\n  - b\n  - c\nevidence:\n  - path: pkg/a/x.go\n    lines:\n      start: 2\n      end: 2\n    excerpt_sha256: sha256:1111111111111111111111111111111111111111111111111111111111111111\n  - README.md\n  - path: pkg/b/y.go\n    lines:\n      start: 1\n      end: 1\n---\n",
+      "m/registry/events/e1.md": "---\ntype: Domain Event\nowner_context: c\nconsumers:\n  - a\n---\nE one.\n",
+      "m/registry/dependency-policies/p1.md": "---\ntype: Dependency Policy\nfrom_context: a\nto_context: c\n---\nWhy.\n",
+      "m/registry/capabilities/cap.md": "---\ntype: Capability\ncontext: a\n---\nCap.\n",
+      "m/registry/value-objects/vo.md": "---\ntype: Value Object\ncontext: b\n---\nVO.\n",
+      "pkg/a/x.go": "alpha\nbeta\n",
+      "pkg/b/y.go": "alpha\nbeta\n",
+      "README.md": "alpha\n",
+      "pkg/c/z.go": "alpha\n",
+      "changes/p1/domain-change-proposal.json": "{\"proposal_id\": \"p1\", \"status\": \"draft\"}\n"
+    },
+    "stdin": "\"\\u1234",
+    "env": {
+      "GIT_INDEX_FILE": "no-such-index"
+    }
+  },
+  {
+    "name": "mcp-serve names a unicode escape cut short by the end of the input",
+    "args": [
+      "mcp-serve",
+      "--registry-root",
+      "{fixture}/m",
+      "--repo-root",
+      "{fixture}"
+    ],
+    "git": true,
+    "files": {
+      "m/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n",
+      "m/registry/contexts/a.md": "---\ntype: Bounded Context\nimplementation_path: pkg/a\n---\n",
+      "m/registry/contexts/b.md": "---\ntype: Bounded Context\nimplementation_path: pkg/b\n---\n",
+      "m/registry/contexts/c.md": "---\ntype: Bounded Context\nname: Cee\nimplementation_path: pkg/c\n---\nCee is the third context.\n",
+      "m/registry/aggregates/ag1.md": "---\ntype: Aggregate\ncontext: a\nevidence:\n  - path: pkg/a/x.go\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\n",
+      "m/registry/rules/r1.md": "---\ntype: Business Rule\ncontexts:\n  - a\naggregate: ag1\nstatus: reviewed\nverified: true\nevidence:\n  - path: pkg/a/x.go\n    lines:\n      start: 1\n      end: 1\n    excerpt_sha256: sha256:b6a98d9ce9a2d9149288fa3df42d377c3e42737afdcdaf714e33c0a100b51060\n---\nRule one holds.\n",
+      "m/registry/rules/r2.md": "---\ntype: Business Rule\ncontexts:\n  - b\naggregate: ag1\nstatus: candidate\n---\nRule two.\n",
+      "m/registry/rules/r3.md": "---\ntype: Business Rule\ncontexts:\n  - a\n  - ghost\n---\nRule three has no status.\n",
+      "m/registry/vocabulary/t1.md": "---\ntype: Term\ncontexts:\n  - a\nnot_same_as:\n  - t2\n---\nTerm one.\n",
+      "m/registry/vocabulary/t2.md": "---\ntype: Term\ncontexts:\n  - b\n---\nTerm two.\n",
+      "m/registry/decisions/d1.md": "---\ntype: Decision\nreview_status: reviewed\nsupersedes:\n  - d0\n---\nDecision one.\n",
+      "m/registry/decisions/d0.md": "---\ntype: Decision\n---\nDecision zero.\n",
+      "m/registry/interactions/ab.md": "---\ntype: Interaction\nproducer_context: a\nconsumer_context: b\nstatus: stable\n---\n",
+      "m/registry/contracts/k1.md": "---\ntype: Contract\nproducer_context: a\nconsumer_contexts:\n  - b\n  - c\nevidence:\n  - path: pkg/a/x.go\n    lines:\n      start: 2\n      end: 2\n    excerpt_sha256: sha256:1111111111111111111111111111111111111111111111111111111111111111\n  - README.md\n  - path: pkg/b/y.go\n    lines:\n      start: 1\n      end: 1\n---\n",
+      "m/registry/events/e1.md": "---\ntype: Domain Event\nowner_context: c\nconsumers:\n  - a\n---\nE one.\n",
+      "m/registry/dependency-policies/p1.md": "---\ntype: Dependency Policy\nfrom_context: a\nto_context: c\n---\nWhy.\n",
+      "m/registry/capabilities/cap.md": "---\ntype: Capability\ncontext: a\n---\nCap.\n",
+      "m/registry/value-objects/vo.md": "---\ntype: Value Object\ncontext: b\n---\nVO.\n",
+      "pkg/a/x.go": "alpha\nbeta\n",
+      "pkg/b/y.go": "alpha\nbeta\n",
+      "README.md": "alpha\n",
+      "pkg/c/z.go": "alpha\n",
+      "changes/p1/domain-change-proposal.json": "{\"proposal_id\": \"p1\", \"status\": \"draft\"}\n"
+    },
+    "stdin": "\"\\ud800\\udc0",
+    "env": {
+      "GIT_INDEX_FILE": "no-such-index"
+    }
   }
 ]

@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 5.0.12
+
+### Added
+
+- The Rust executable answers `mcp-serve`: the same JSON-RPC replies, tool listing, tool results and parse-error messages as the script, one reply per line.
+
 ## 5.0.11
 
 ### Added
