@@ -116,7 +116,7 @@ fn with_superseded(supersedes: Option<&Value>, proposal_id: &Value) -> Value {
     Value::Array(named)
 }
 
-fn reviewing_proposal(registry_root: &Path, key: &str) -> Result<Option<Value>, String> {
+pub fn reviewing_proposal(registry_root: &Path, key: &str) -> Result<Option<Value>, String> {
     let events = read_events(registry_root)?;
     Ok(events
         .iter()

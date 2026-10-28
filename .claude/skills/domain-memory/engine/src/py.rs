@@ -283,6 +283,10 @@ impl PurePath {
         }
     }
 
+    pub fn name(&self) -> String {
+        self.parts.last().cloned().unwrap_or_default()
+    }
+
     pub fn parent(&self) -> Self {
         let mut parts = self.parts.clone();
         parts.pop();

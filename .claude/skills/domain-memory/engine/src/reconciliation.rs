@@ -13,7 +13,7 @@ pub fn reconciliation_path(root: &Path) -> PathBuf {
     root.join(".domain-registry-reconciliation.json")
 }
 
-fn was_applied(registry_root: &Path, proposal_id: &Value) -> Result<bool, String> {
+pub fn was_applied(registry_root: &Path, proposal_id: &Value) -> Result<bool, String> {
     Ok(read_events(registry_root)?.iter().any(|event| {
         event.get("operation").and_then(Value::as_str) == Some(APPLY_OPERATION)
             && equal(
@@ -23,7 +23,7 @@ fn was_applied(registry_root: &Path, proposal_id: &Value) -> Result<bool, String
     }))
 }
 
-fn mark_applied(
+pub fn mark_applied(
     proposal_path: &Path,
     proposal: &mut Object,
     registry_root: &Path,

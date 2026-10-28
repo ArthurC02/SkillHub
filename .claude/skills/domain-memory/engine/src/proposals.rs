@@ -21,7 +21,7 @@ pub fn completed_identifier(value: &Value) -> bool {
         .is_some_and(|text| !py::strip(text).is_empty() && !text.starts_with('<'))
 }
 
-fn completed_identifiers(value: &Value) -> bool {
+pub fn completed_identifiers(value: &Value) -> bool {
     value
         .as_array()
         .is_some_and(|items| items.iter().all(completed_identifier))
@@ -63,7 +63,7 @@ pub fn readable_packages(changes_root: &Path) -> Result<Vec<(PathBuf, Object)>, 
         .collect()
 }
 
-fn superseded_ids(row: &Object) -> Option<BTreeSet<String>> {
+pub fn superseded_ids(row: &Object) -> Option<BTreeSet<String>> {
     match row.get("supersedes") {
         None | Some(Value::Null) => Some(BTreeSet::new()),
         Some(value) if completed_identifier(value) => value

@@ -94,7 +94,8 @@ pub fn verify_git_governance(
     let authorized = signers(&governance);
     let mut errors = Vec::new();
     for commit in commits {
-        for error in verify_git_signed_commit(commit, repo_root, registry_root, &authorized)? {
+        for error in verify_git_signed_commit(commit, repo_root, registry_root, &authorized, false)?
+        {
             errors.push(if error.contains(commit.as_str()) {
                 error
             } else {

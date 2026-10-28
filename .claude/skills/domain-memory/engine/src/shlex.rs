@@ -16,6 +16,25 @@ enum EscapedFrom {
     Quote(char),
 }
 
+fn quote(argument: &str) -> String {
+    let safe = |c: char| c.is_ascii_alphanumeric() || "@%+=:,./-_".contains(c);
+    if argument.is_empty() {
+        return "''".to_string();
+    }
+    if argument.chars().all(safe) {
+        return argument.to_string();
+    }
+    format!("'{}'", argument.replace('\'', "'\"'\"'"))
+}
+
+pub fn join(arguments: &[String]) -> String {
+    arguments
+        .iter()
+        .map(|argument| quote(argument))
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 pub fn split(command: &str) -> Result<Vec<String>, String> {
     let mut tokens = Vec::new();
     let mut token = String::new();

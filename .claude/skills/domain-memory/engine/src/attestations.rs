@@ -7,6 +7,7 @@ use crate::json::{self, Object, Value};
 use crate::proposals::{completed_identifier, readable_packages};
 use crate::py;
 use crate::pyvalue::{equal, splitlines, str_of};
+use crate::unicode::casefold;
 
 const EVIDENCE_FILE: &str = "evidence-bundle.json";
 const UNRUNNABLE_PROGRAM: [&str; 2] = ["cannot spawn ", "cannot run "];
@@ -105,6 +106,7 @@ pub fn verify_git_signed_commit(
     repo_root: &Path,
     registry_root: &Path,
     authorized_signers: &[String],
+    distinct_signer: bool,
 ) -> Result<Vec<String>, String> {
     let verified = git::run_git_text(repo_root, &["verify-commit", "--raw", commit])?;
     if verified.code != 0 {
@@ -122,6 +124,9 @@ pub fn verify_git_signed_commit(
         return Ok(vec![
             "Git commit signer is not authorized by Domain Memory policy".to_string(),
         ]);
+    }
+    if distinct_signer && let Some(same) = author_is_signer(repo_root, commit)? {
+        return Ok(vec![same]);
     }
     let changed = git::run_git_text(
         repo_root,
@@ -151,6 +156,46 @@ pub fn verify_git_signed_commit(
     Ok(Vec::new())
 }
 
+fn author_is_signer(repo_root: &Path, commit: &str) -> Result<Option<String>, String> {
+    let logged = git::run_git_text(repo_root, &["log", "-1", "--format=%ae%n%GS", commit])?;
+    let identities = splitlines(&logged.stdout);
+    let identity = |index: usize| identities.get(index).map_or("", |line| py::strip(line));
+    let (author, signer) = (identity(0), identity(1));
+    if author.is_empty() || signer.is_empty() {
+        return Ok(Some(format!(
+            "Git commit {commit} author or signer identity could not be read, so a signer other than the author cannot be confirmed; the policy requires distinct_signer"
+        )));
+    }
+    if casefold(signer).contains(&casefold(author)) {
+        return Ok(Some(format!(
+            "Git commit author {author} is also its signer; the policy requires distinct_signer, a reviewer other than the author signing the commit that carries the package"
+        )));
+    }
+    Ok(None)
+}
+
+pub fn verify_attested_commit(
+    attestation: &Object,
+    repo_root: &Path,
+    registry_root: &Path,
+    governance: &Object,
+) -> Result<Vec<String>, String> {
+    let Some(commit) = attestation.get("commit").and_then(Value::as_str) else {
+        return Ok(vec!["Git commit attestation requires a commit".to_string()]);
+    };
+    let signers: Vec<String> = governance
+        .get("authorized_signers")
+        .and_then(Value::as_array)
+        .unwrap_or_default()
+        .iter()
+        .filter_map(|signer| signer.as_str().map(str::to_string))
+        .collect();
+    let distinct = governance
+        .get("distinct_signer")
+        .is_some_and(crate::okf::truthy);
+    verify_git_signed_commit(commit, repo_root, registry_root, &signers, distinct)
+}
+
 fn relative_posix(path: &Path, top: &Path) -> Result<String, String> {
     let relative = py::relative_to(path, top)?;
     Ok(if relative.is_empty() {
@@ -164,6 +209,26 @@ pub fn package_path_in(repo_root: &Path, package_root: &Path) -> Option<String> 
     let top = py::resolve_path(repo_root);
     let located = py::resolve_path(&top.join(package_root));
     relative_posix(&located, &top).ok()
+}
+
+pub fn commit_carries_proposal(
+    repo_root: &Path,
+    commit: &str,
+    package_root: &Path,
+    proposal: &Object,
+) -> Result<Vec<String>, String> {
+    let Some(relative) = package_path_in(repo_root, package_root) else {
+        return Ok(vec![OUTSIDE_THE_REPOSITORY.to_string()]);
+    };
+    let shown = git::run_git_text(
+        repo_root,
+        &["show", &format!("{commit}:{relative}/{PROPOSAL_FILE}")],
+    )?;
+    Ok(carried_proposal_errors(
+        (shown.code == 0).then_some(shown.stdout.as_str()),
+        &relative,
+        proposal,
+    ))
 }
 
 pub fn carried_proposal_errors(

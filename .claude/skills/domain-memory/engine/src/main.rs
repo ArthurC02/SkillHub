@@ -4,8 +4,10 @@ mod audit_commands;
 mod audit_log;
 mod brief;
 mod candidate_evidence;
+mod changes;
 mod cite;
 mod cli;
+mod common;
 mod compare;
 mod context;
 mod counterfactual;
@@ -22,9 +24,11 @@ mod gates;
 mod git;
 mod git_governance;
 mod governance_commands;
+mod hitl;
 mod impact;
 mod indexes;
 mod json;
+mod lifecycle;
 mod listing;
 mod okf;
 mod okf_write;
@@ -36,6 +40,7 @@ mod pyregex;
 mod pyvalue;
 mod read_commands;
 mod readiness;
+mod recitation_package;
 mod reconciliation;
 mod records;
 mod registry_write;
@@ -45,6 +50,7 @@ mod search;
 mod secret_patterns;
 mod secrets;
 mod sha256;
+mod ship;
 mod shlex;
 mod signing;
 mod source_commands;
@@ -252,6 +258,11 @@ fn execute(invocation: &Invocation) -> Result<i32, String> {
         "promote-candidate" => write_commands::promote(invocation),
         "demote-local-reviews" => write_commands::demote(invocation),
         "recover-registry-update" => write_commands::recover(invocation),
+        "init-change-package" => lifecycle::init_change_package(invocation),
+        "validate-change-package" => lifecycle::validate_package(invocation),
+        "redraft-proposal" => lifecycle::redraft_proposal(invocation),
+        "rebase-proposal" => lifecycle::rebase(invocation),
+        "ship-package" => lifecycle::ship(invocation),
         "quality-gates" => review_commands::quality_gates(invocation),
         "boundary-impact" => review_commands::boundary_impact(invocation),
         "brief" => review_commands::brief(invocation),

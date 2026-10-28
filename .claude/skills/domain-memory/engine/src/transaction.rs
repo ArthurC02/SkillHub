@@ -7,6 +7,7 @@ use crate::files::{MAX_JSON_BYTES, rename_retrying, replace_error, write_json};
 use crate::json::{self, Fault, Object, Value};
 use crate::listing::Repository;
 use crate::py;
+use crate::revision::registry_digest;
 use crate::sha256::hex_digest;
 use crate::store::registry_dir;
 use crate::validate::validate;
@@ -240,7 +241,12 @@ fn invalid_update(
     Ok((!errors.is_empty()).then(|| format!("registry update is invalid: {}", errors.join("; "))))
 }
 
-fn prepared_journal(operation: &str, staging: &Path, backup: &Path) -> Object {
+fn prepared_journal(
+    operation: &str,
+    staging: &Path,
+    backup: &Path,
+    expected_digest: Option<&str>,
+) -> Object {
     let name = |path: &Path| {
         Value::Str(
             path.file_name()
@@ -254,7 +260,10 @@ fn prepared_journal(operation: &str, staging: &Path, backup: &Path) -> Object {
     journal.insert("phase", Value::Str("prepared".to_string()));
     journal.insert("staging", name(staging));
     journal.insert("backup", name(backup));
-    journal.insert("expected_digest", Value::Null);
+    journal.insert(
+        "expected_digest",
+        expected_digest.map_or(Value::Null, |digest| Value::Str(digest.to_string())),
+    );
     journal
 }
 
@@ -299,8 +308,25 @@ pub fn mutate_registry(
     mutate: impl FnOnce(&Path) -> Result<(), String>,
     audit_event: impl FnOnce() -> Object,
 ) -> Result<(), String> {
+    mutate_registry_expecting(root, repo_root, None, mutate, || Ok(audit_event()))
+}
+
+pub fn mutate_registry_expecting(
+    root: &Path,
+    repo_root: &Path,
+    expected_digest: Option<&str>,
+    mutate: impl FnOnce(&Path) -> Result<(), String>,
+    audit_event: impl FnOnce() -> Result<Object, String>,
+) -> Result<(), String> {
     with_writer_lock(root, || {
         recover(root)?;
+        if let Some(expected) = expected_digest
+            && registry_digest(root)? != expected
+        {
+            return Err(
+                "registry revision changed before update; run ship-package again".to_string(),
+            );
+        }
         let operation = new_operation_id();
         let staging = root.join(format!(".domain-registry-stage-{operation}"));
         let backup = root.join(format!(".domain-registry-backup-{operation}"));
@@ -308,6 +334,7 @@ pub fn mutate_registry(
             root,
             repo_root,
             (&operation, &staging, &backup),
+            expected_digest,
             mutate,
             audit_event,
         );
@@ -322,8 +349,9 @@ fn update_through_staging(
     root: &Path,
     repo_root: &Path,
     (operation, staging, backup): (&str, &Path, &Path),
+    expected_digest: Option<&str>,
     mutate: impl FnOnce(&Path) -> Result<(), String>,
-    audit_event: impl FnOnce() -> Object,
+    audit_event: impl FnOnce() -> Result<Object, String>,
 ) -> Result<(), String> {
     copy_tree(&registry_dir(root), &registry_dir(staging))?;
     mutate(staging)?;
@@ -332,7 +360,7 @@ fn update_through_staging(
         return Err(refusal);
     }
     let journal_path = transaction_path(root);
-    let mut journal = prepared_journal(operation, staging, backup);
+    let mut journal = prepared_journal(operation, staging, backup, expected_digest);
     write_json(&journal_path, &Value::Object(journal.clone()))?;
     let swap = Swap {
         root,
@@ -342,9 +370,11 @@ fn update_through_staging(
     };
     swap.install()?;
     mark_phase(&journal_path, &mut journal, "installed")?;
-    let mut event = audit_event();
-    event.insert("operation_id", Value::Str(operation.to_string()));
-    if let Err(failure) = audit_append::append(root, &event) {
+    let appended = audit_event().and_then(|mut event| {
+        event.insert("operation_id", Value::Str(operation.to_string()));
+        audit_append::append(root, &event)
+    });
+    if let Err(failure) = appended {
         swap.restore_after_failed_audit()?;
         return Err(failure);
     }

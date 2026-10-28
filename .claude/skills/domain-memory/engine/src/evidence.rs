@@ -438,7 +438,7 @@ pub fn package_overlay(package_root: &Path) -> Result<Overlay, String> {
     Ok(overlay)
 }
 
-fn parsed_update(update: &Value) -> Result<(String, String, Option<Object>), String> {
+pub fn parsed_update(update: &Value) -> Result<(String, String, Option<Object>), String> {
     let operation = update
         .as_object()
         .and_then(|it| it.get("operation"))
