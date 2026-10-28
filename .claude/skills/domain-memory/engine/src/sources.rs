@@ -2,15 +2,19 @@ use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{MAIN_SEPARATOR, Path, PathBuf};
 
-use crate::files::load_json;
+use crate::files::{load_json, one_level_too_deep_hint};
 use crate::fnmatch::fnmatchcase;
+use crate::git::{self, Failure};
 use crate::json::{Object, Value};
-use crate::listing::{EXCLUDED_DIRECTORIES, ignored_among, ignored_relatives, listing_of};
-use crate::py;
+use crate::listing::{
+    EXCLUDED_DIRECTORIES, Repository, ignored_among, ignored_relatives, listing_of,
+};
+use crate::okf::truthy;
+use crate::policy::validate_policy;
+use crate::py::{self, Raised};
 use crate::pyvalue::{equal, kind_of, str_of};
 use crate::sha256::Sha256;
-
-pub const SOURCE_MAP_FORMAT: &str = "domain-source-map/v1";
+use crate::store::SOURCE_MAP_FORMAT;
 const INSTRUCTION_FILE_NAME: &str = "AGENTS.md";
 const MAX_NAMED_OVERSIZED: usize = 5;
 const CI_MARKERS: [(&str, &str); 6] = [
@@ -72,6 +76,10 @@ impl Profile {
 
     pub fn of_policy(policy: Option<&Object>) -> Self {
         Self::from_section(policy.and_then(|policy| policy.get("project_profile")))
+    }
+
+    pub fn has_excluded_directories(&self) -> bool {
+        !self.excluded_directories.is_empty()
     }
 
     fn excluded_set(&self) -> HashSet<String> {
@@ -163,10 +171,21 @@ fn roots_among(root: &Path, items: &[Value], key: &str) -> Result<Vec<String>, S
     Ok(existing_directories(root, &only_texts(items, key)?))
 }
 
-pub fn discover_sources(root: &Path, profile: &Profile) -> Result<Object, String> {
+pub fn discover_sources(
+    root: &Path,
+    profile: &Profile,
+    listing: Option<&mut Repository>,
+) -> Result<Object, Raised> {
     let root = py::resolve_path(root);
     let ci_tools = discover_ci_tools(&root);
-    let files = listing_of(&root, &profile.excluded_set())?;
+    let own;
+    let files = match listing {
+        Some(shared) => shared.files()?,
+        None => {
+            own = listing_of(&root, &profile.excluded_set())?;
+            &own
+        }
+    };
     let bases: Vec<String> = profile
         .implementation_roots
         .iter()
@@ -183,7 +202,7 @@ pub fn discover_sources(root: &Path, profile: &Profile) -> Result<Object, String
         sorted_where(&files.entries, |entry| is_test_file(file_name(entry))),
     ];
     let every: Vec<String> = candidates.iter().flatten().cloned().collect();
-    let ignored = ignored_among(&root, &files, &every)?;
+    let ignored = ignored_among(&root, files, &every)?;
     let [instructions, boundaries, tests] = candidates.map(|group| {
         group
             .into_iter()
@@ -343,8 +362,13 @@ fn relative(root: &Path, path: &Path) -> Result<String, String> {
     if let Some(rest) = py::shown(path).strip_prefix(&prefix) {
         return Ok(rest.replace(MAIN_SEPARATOR, "/"));
     }
-    py::relative_to(path, root)
-        .or_else(|_| py::relative_to(&py::resolve_path(path), &py::resolve_path(root)))
+    let found = py::relative_to(path, root)
+        .or_else(|_| py::relative_to(&py::resolve_path(path), &py::resolve_path(root)))?;
+    Ok(if found.is_empty() {
+        ".".to_string()
+    } else {
+        found
+    })
 }
 
 fn in_excluded_directory(relative: &str, excluded: &HashSet<String>) -> bool {
@@ -427,7 +451,7 @@ fn source_files(
     root: &Path,
     selected_paths: &[PathBuf],
     policy: Option<&Object>,
-) -> Result<Vec<PathBuf>, String> {
+) -> Result<Vec<PathBuf>, Raised> {
     let section = source_policy_of(policy)?;
     let include = pattern_list(section, "include", &["**"])?;
     let exclude = pattern_list(section, "exclude", &[])?;
@@ -505,7 +529,7 @@ fn owned_by_selection(root: &Path, selected: &[String], files: &[PathBuf]) -> Ve
     owned
 }
 
-fn source_snapshot(root: &Path, path: &str, files: &[PathBuf]) -> Result<Snapshot, String> {
+fn source_snapshot(root: &Path, path: &str, files: &[PathBuf]) -> Result<Snapshot, Raised> {
     let (mut digest, mut listing) = (Sha256::start(), Sha256::start());
     for file in files {
         let name = relative(root, file)?;
@@ -513,7 +537,7 @@ fn source_snapshot(root: &Path, path: &str, files: &[PathBuf]) -> Result<Snapsho
         listing.update(&[0]);
         digest.update(name.as_bytes());
         digest.update(&[0]);
-        digest.update(&fs::read(file).map_err(|error| py::open_error(&error, file))?);
+        digest.update(&fs::read(file).map_err(|error| Raised::open(&error, file))?);
         digest.update(&[0]);
     }
     Ok(Snapshot {
@@ -528,7 +552,7 @@ fn source_snapshots(
     root: &Path,
     selected: &[String],
     policy: Option<&Object>,
-) -> Result<HashMap<String, Snapshot>, String> {
+) -> Result<HashMap<String, Snapshot>, Raised> {
     let mut unique: Vec<String> = Vec::new();
     for path in selected {
         if !unique.contains(path) {
@@ -582,19 +606,19 @@ fn source_policy_report(
     root: &Path,
     selected_paths: &[PathBuf],
     policy: &Object,
-) -> Result<Object, String> {
+) -> Result<Object, Raised> {
     let files = source_files(root, selected_paths, Some(policy))?;
     let limits = policy
         .get("limits")
         .and_then(Value::as_object)
-        .ok_or("policy has no limits")?;
+        .ok_or_else(|| "policy has no limits".to_string())?;
     let (max_count, shown_count) = limit_of(limits, "max_file_count")?;
     let (max_total, shown_total) = limit_of(limits, "max_total_bytes")?;
     let (max_file, shown_file) = limit_of(limits, "max_file_bytes")?;
     let mut sizes = Vec::new();
     for file in &files {
         let size = fs::metadata(file)
-            .map_err(|error| py::os_error(&error, file))?
+            .map_err(|error| Raised::os(&error, file))?
             .len();
         sizes.push((relative(root, file)?, size));
     }
@@ -715,7 +739,7 @@ fn compare_snapshots(
     root: &Path,
     snapshots: &[&Object],
     policy: Option<&Object>,
-) -> Result<(Vec<Value>, Vec<Value>), String> {
+) -> Result<(Vec<Value>, Vec<Value>), Raised> {
     let paths: Vec<String> = snapshots.iter().map(|item| path_text(item)).collect();
     let actual = source_snapshots(root, &paths, policy)?;
     let (mut changed, mut drifted) = (Vec::new(), Vec::new());
@@ -753,6 +777,8 @@ fn listed_paths(source_map: &Object) -> Result<Vec<String>, String> {
     let groups = match source_map.get("source_groups") {
         None => return Ok(listed),
         Some(Value::Array(groups)) => groups,
+        Some(Value::Object(groups)) if groups.iter().next().is_none() => return Ok(listed),
+        Some(Value::Str(text)) if text.is_empty() => return Ok(listed),
         Some(other) => {
             return Err(format!(
                 "source_groups must be a list, got {}",
@@ -777,6 +803,8 @@ fn listed_paths(source_map: &Object) -> Result<Vec<String>, String> {
                     listed.push(text.clone());
                 }
             }
+            Some(Value::Str(text)) => listed.extend(text.chars().map(String::from)),
+            Some(Value::Object(keys)) => listed.extend(keys.iter().map(|(key, _)| key.clone())),
             Some(other) => {
                 return Err(format!(
                     "source group paths must be a list, got {}",
@@ -797,11 +825,12 @@ fn discovered_but_gone(root: &Path, source_map: &Object) -> Result<Vec<String>, 
     Ok(gone)
 }
 
-fn verify_source_map(
+pub fn verify_source_map(
     root: &Path,
     source_map_path: &Path,
     policy: Option<&Object>,
-) -> Result<Object, String> {
+) -> Result<Object, Raised> {
+    let policy = policy.filter(|policy| policy.iter().next().is_some());
     let root = py::resolve_path(root);
     let source_map = load_json(source_map_path)?;
     let selection_status = source_map
@@ -869,25 +898,29 @@ fn sorted_difference(left: &HashSet<String>, right: &HashSet<String>) -> Vec<Str
     difference
 }
 
+pub fn listing_drift(
+    discovered: &Object,
+    source_map: &Object,
+) -> Result<(Vec<String>, Vec<String>), String> {
+    let listed: HashSet<String> = listed_paths(source_map)?.into_iter().collect();
+    let current: HashSet<String> = listed_paths(discovered)?.into_iter().collect();
+    Ok((
+        sorted_difference(&listed, &current),
+        sorted_difference(&current, &listed),
+    ))
+}
+
 pub fn verify_against_discovery(
     root: &Path,
     source_map_path: &Path,
     policy: Option<&Object>,
-) -> Result<Object, String> {
-    let policy = policy.filter(|policy| policy.iter().next().is_some());
+) -> Result<Object, Raised> {
     let mut result = verify_source_map(root, source_map_path, policy)?;
     if result.get("discovered_but_gone").is_none() {
         return Ok(result);
     }
-    let discovered = discover_sources(&py::resolve_path(root), &Profile::of_policy(policy))?;
-    let listed: HashSet<String> = listed_paths(&load_json(source_map_path)?)?
-        .into_iter()
-        .collect();
-    let current: HashSet<String> = listed_paths(&discovered)?.into_iter().collect();
-    let (gone, unlisted) = (
-        sorted_difference(&listed, &current),
-        sorted_difference(&current, &listed),
-    );
+    let discovered = discover_sources(&py::resolve_path(root), &Profile::of_policy(policy), None)?;
+    let (gone, unlisted) = listing_drift(&discovered, &load_json(source_map_path)?)?;
     let drifted = (!gone.is_empty() || !unlisted.is_empty())
         && result.get("status").and_then(Value::as_str) == Some("current");
     if drifted {
@@ -898,7 +931,204 @@ pub fn verify_against_discovery(
     Ok(result)
 }
 
-fn counted(count: usize, noun: &str) -> String {
+fn strings_of(value: &Value) -> Option<Vec<String>> {
+    value
+        .as_array()?
+        .iter()
+        .map(|item| item.as_str().map(str::to_string))
+        .collect()
+}
+
+fn sorted_strings(mut items: Vec<String>) -> Vec<String> {
+    items.sort();
+    items
+}
+
+type GitState = (Vec<(String, String)>, Vec<String>);
+
+fn git_unless_unavailable(root: &Path, arguments: &[&str]) -> Result<Option<git::Output>, Raised> {
+    match git::run_git(root, arguments, None) {
+        Ok(output) => Ok(Some(output)),
+        Err(error) if error.kind == Failure::Spawn => Ok(None),
+        Err(error) => Err(error.into()),
+    }
+}
+
+fn git_state(root: &Path, selected: &[String]) -> Result<Option<GitState>, Raised> {
+    if selected.is_empty() || !root.join(".git").exists() {
+        return Ok(None);
+    }
+    let heads: Vec<String> = selected.iter().map(|path| format!("HEAD:{path}")).collect();
+    let mut revisions = vec!["rev-parse"];
+    revisions.extend(heads.iter().map(String::as_str));
+    let Some(trees) = git_unless_unavailable(root, &revisions)? else {
+        return Ok(None);
+    };
+    let mut status = vec!["status", "--porcelain", "-z", "--"];
+    status.extend(selected.iter().map(String::as_str));
+    let Some(dirty) = git_unless_unavailable(root, &status)? else {
+        return Ok(None);
+    };
+    if trees.code != 0 || dirty.code != 0 {
+        return Ok(None);
+    }
+    let objects: Vec<String> = git::universal_newlines(&trees.stdout)
+        .split_whitespace()
+        .map(str::to_string)
+        .collect();
+    if objects.len() != selected.len() {
+        return Ok(None);
+    }
+    let dirty_sources = sorted_strings(
+        git::universal_newlines(&dirty.stdout)
+            .split('\0')
+            .filter(|entry| !entry.is_empty())
+            .map(str::to_string)
+            .collect(),
+    );
+    Ok(Some((
+        selected.iter().cloned().zip(objects).collect(),
+        dirty_sources,
+    )))
+}
+
+fn git_shows_no_change(root: &Path, source_map: &Object) -> Result<bool, Raised> {
+    let Some(Value::Object(recorded)) = source_map.get("git_state") else {
+        return Ok(false);
+    };
+    let tracked = recorded.get("tracked_objects");
+    if !tracked.is_some_and(truthy) || recorded.get("dirty_sources").is_some_and(truthy) {
+        return Ok(false);
+    }
+    let selected = match source_map.get("selected_paths") {
+        None => Vec::new(),
+        Some(found) => match strings_of(found) {
+            Some(listed) => listed,
+            None => return Ok(false),
+        },
+    };
+    let Some((objects, dirty)) = git_state(root, &selected)? else {
+        return Ok(false);
+    };
+    let mut now = Object::new();
+    for (path, object) in objects {
+        now.insert(path, Value::Str(object));
+    }
+    let same = tracked.is_some_and(|held| equal(held, &Value::Object(now)));
+    Ok(same && dirty.is_empty())
+}
+
+fn policy_verdict(
+    root: &Path,
+    source_map: &Object,
+    policy: &Object,
+    selection_status: &Value,
+) -> Result<Option<Object>, Raised> {
+    let errors = validate_policy(policy);
+    if !errors.is_empty() {
+        return Ok(Some(verdict(
+            "invalid",
+            selection_status,
+            &errors.join("; "),
+        )));
+    }
+    let policy_paths = policy
+        .get("source_policy")
+        .and_then(Value::as_object)
+        .and_then(|section| section.get("selected_paths"))
+        .and_then(strings_of)
+        .unwrap_or_default();
+    let recorded = source_map.get("selected_paths").and_then(strings_of);
+    if recorded.map(sorted_strings) != Some(sorted_strings(policy_paths.clone())) {
+        return Ok(Some(verdict(
+            "invalid",
+            selection_status,
+            "policy selected_paths do not match the source map",
+        )));
+    }
+    let joined: Vec<PathBuf> = policy_paths.iter().map(|path| root.join(path)).collect();
+    match source_policy_report(root, &joined, policy) {
+        Err(Raised::Subprocess(message)) => Err(Raised::Subprocess(message)),
+        Err(Raised::Os(message) | Raised::Value(message)) => {
+            Ok(Some(verdict("invalid", selection_status, &message)))
+        }
+        Ok(report) => {
+            let errors: Vec<String> = texts(
+                report
+                    .get("errors")
+                    .and_then(Value::as_array)
+                    .unwrap_or_default(),
+            )
+            .collect();
+            if errors.is_empty() {
+                return Ok(None);
+            }
+            let mut result = verdict("invalid", selection_status, &errors.join("; "));
+            result.insert("source_policy_report", Value::Object(report));
+            Ok(Some(result))
+        }
+    }
+}
+
+pub fn probe_sources(
+    root: &Path,
+    source_map_path: &Path,
+    policy: Option<&Object>,
+) -> Result<Object, Raised> {
+    if !source_map_path.exists() {
+        let mut absent = Object::new();
+        absent.insert("status", Value::Str("absent".to_string()));
+        absent.insert(
+            "reason",
+            Value::Str(format!("no source map at {}", py::shown(source_map_path))),
+        );
+        let hint = one_level_too_deep_hint(source_map_path);
+        if !hint.is_empty() {
+            let bare = hint.strip_prefix("; ").unwrap_or(&hint);
+            absent.insert("hint", Value::Str(bare.to_string()));
+        }
+        return Ok(absent);
+    }
+    let source_map = load_json(source_map_path)?;
+    let selection_status = source_map
+        .get("selection_status")
+        .cloned()
+        .unwrap_or_else(|| Value::Str("agent-asserted".to_string()));
+    if let Some(policy) = policy
+        && let Some(invalid) = policy_verdict(root, &source_map, policy, &selection_status)?
+    {
+        return Ok(invalid);
+    }
+    let mut result = if git_shows_no_change(root, &source_map)? {
+        let mut unchanged = Object::new();
+        unchanged.insert("status", Value::Str("current".to_string()));
+        unchanged.insert("selection_status", selection_status);
+        unchanged.insert("changed_sources", Value::Array(Vec::new()));
+        unchanged.insert("checked", Value::Str("git".to_string()));
+        unchanged
+    } else {
+        let mut hashed = verify_source_map(root, source_map_path, policy)?;
+        hashed.insert("checked", Value::Str("hash".to_string()));
+        hashed
+    };
+    if result.get("status").and_then(Value::as_str) != Some("current") {
+        return Ok(result);
+    }
+    let discovered = discover_sources(&py::resolve_path(root), &Profile::of_policy(policy), None)?;
+    let (gone, unlisted) = listing_drift(&discovered, &source_map)?;
+    let drifted = !gone.is_empty() || !unlisted.is_empty();
+    let status = if drifted {
+        "discovery_drifted"
+    } else {
+        "current"
+    };
+    result.insert("status", Value::Str(status.to_string()));
+    result.insert("discovered_but_gone", strings(&gone));
+    result.insert("discovered_but_unlisted", strings(&unlisted));
+    Ok(result)
+}
+
+pub fn counted(count: usize, noun: &str) -> String {
     format!("{count} {noun}{}", if count == 1 { "" } else { "s" })
 }
 
@@ -909,6 +1139,14 @@ fn shown_argument(path: &py::PurePath) -> String {
     } else {
         text
     }
+}
+
+pub fn refresh_listing_advice(registry_root: &py::PurePath, repo_root: &py::PurePath) -> String {
+    format!(
+        "run refresh-listing --registry-root {} --repo-root {} (no confirmation needed)",
+        shown_argument(registry_root),
+        shown_argument(repo_root)
+    )
 }
 
 fn length_of(result: &Object, key: &str) -> usize {
@@ -930,11 +1168,7 @@ pub fn discovery_drift_note(
     }
     let status = result.get("status").map(str_of).unwrap_or_default();
     let advice = if status == "discovery_drifted" {
-        format!(
-            "run refresh-listing --registry-root {} --repo-root {} (no confirmation needed)",
-            shown_argument(registry_root),
-            shown_argument(repo_root)
-        )
+        refresh_listing_advice(registry_root, repo_root)
     } else {
         format!("the selection is {status}, so run refresh-sources, then confirm-sources")
     };

@@ -3,7 +3,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::git::{self, Failure};
-use crate::py;
+use crate::py::{self, Raised};
 
 pub const EXCLUDED_DIRECTORIES: [&str; 9] = [
     ".git",
@@ -18,6 +18,13 @@ pub const EXCLUDED_DIRECTORIES: [&str; 9] = [
 ];
 const TRACKED_PREFILTER_MIN_PATHS: usize = 512;
 const INDEX_TAGS_GIT_NEVER_IGNORES: [&str; 2] = ["H ", "M "];
+
+pub fn default_excluded() -> HashSet<String> {
+    EXCLUDED_DIRECTORIES
+        .iter()
+        .map(|name| (*name).to_string())
+        .collect()
+}
 
 pub struct Files {
     pub entries: Vec<String>,
@@ -114,14 +121,14 @@ pub fn ignored_among(
     root: &Path,
     files: &Files,
     relatives: &[String],
-) -> Result<HashSet<String>, String> {
+) -> Result<HashSet<String>, Raised> {
     if files.pruned_by_git {
         return Ok(HashSet::new());
     }
     ignored_relatives(root, relatives)
 }
 
-pub fn ignored_relatives(root: &Path, relatives: &[String]) -> Result<HashSet<String>, String> {
+pub fn ignored_relatives(root: &Path, relatives: &[String]) -> Result<HashSet<String>, Raised> {
     if relatives.is_empty() || !root.join(".git").exists() {
         return Ok(HashSet::new());
     }
@@ -132,14 +139,14 @@ pub fn ignored_relatives(root: &Path, relatives: &[String]) -> Result<HashSet<St
         &["check-ignore", "-z", "--stdin"],
         Some(input.as_bytes()),
     )
-    .map_err(|error| error.message)?;
+    .map_err(Raised::from)?;
     if done.code != 0 && done.code != 1 {
         let stderr = String::from_utf8_lossy(&done.stderr);
-        return Err(format!(
+        return Err(Raised::Value(format!(
             "git check-ignore failed in {}, so ignored files cannot be told from sources: {}",
             py::shown(root),
             py::strip(&stderr)
-        ));
+        )));
     }
     let asked: HashSet<&String> = relatives.iter().collect();
     Ok(nul_separated(&done.stdout)
@@ -147,13 +154,13 @@ pub fn ignored_relatives(root: &Path, relatives: &[String]) -> Result<HashSet<St
         .collect())
 }
 
-fn untracked(root: &Path, relatives: &[String]) -> Result<Vec<String>, String> {
+fn untracked(root: &Path, relatives: &[String]) -> Result<Vec<String>, Raised> {
     if relatives.len() < TRACKED_PREFILTER_MIN_PATHS {
         return Ok(relatives.to_vec());
     }
     let listed = match git::run_git(root, &["ls-files", "-z", "-t"], None) {
         Err(error) if error.kind == Failure::Spawn => return Ok(relatives.to_vec()),
-        Err(error) => return Err(error.message),
+        Err(error) => return Err(error.into()),
         Ok(done) => done,
     };
     let tracked: HashSet<String> = nul_separated(&listed.stdout)
@@ -173,6 +180,7 @@ fn untracked(root: &Path, relatives: &[String]) -> Result<Vec<String>, String> {
 
 pub struct Repository {
     pub root: PathBuf,
+    files: Option<Files>,
     directories: Option<Vec<String>>,
 }
 
@@ -180,17 +188,22 @@ impl Repository {
     pub fn new(root: &Path) -> Self {
         Self {
             root: root.to_path_buf(),
+            files: None,
             directories: None,
         }
     }
 
+    pub fn files(&mut self) -> Result<&Files, String> {
+        if self.files.is_none() {
+            self.files = Some(listing_of(&self.root, &default_excluded())?);
+        }
+        Ok(self.files.as_ref().expect("listed"))
+    }
+
     pub fn directories(&mut self) -> Result<&[String], String> {
         if self.directories.is_none() {
-            let excluded = EXCLUDED_DIRECTORIES
-                .iter()
-                .map(|name| (*name).to_string())
-                .collect();
-            self.directories = Some(directories_of(&listing_of(&self.root, &excluded)?.entries));
+            let directories = directories_of(&self.files()?.entries);
+            self.directories = Some(directories);
         }
         Ok(self.directories.as_deref().unwrap_or_default())
     }

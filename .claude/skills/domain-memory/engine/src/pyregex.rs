@@ -13,6 +13,7 @@ const TYPE_FLAGS: u8 = ASCII | UNICODE | LOCALE;
 const SPECIAL_CHARS: &str = ".\\[{()*+?^$|";
 const REPEAT_CHARS: &str = "*+?{";
 const WHITESPACE: &str = " \t\n\r\x0b\x0c";
+const ESCAPED_CHARS: &str = "()[]{}?*+-|^$\\.&~# \t\n\r\x0b\x0c";
 
 #[derive(Clone, Copy, PartialEq)]
 enum Category {
@@ -85,6 +86,32 @@ pub struct Regex {
     root: Vec<Node>,
     groups: usize,
     flags: u8,
+    names: Vec<(String, usize)>,
+}
+
+pub struct Match {
+    spans: Vec<Option<(usize, usize)>>,
+    names: Vec<(String, usize)>,
+}
+
+impl Match {
+    pub fn end(&self) -> usize {
+        self.spans[0].map_or(0, |(_, end)| end)
+    }
+
+    pub fn named(&self, name: &str) -> Option<(usize, usize)> {
+        let (_, index) = self.names.iter().find(|(known, _)| known == name)?;
+        self.spans.get(*index).copied().flatten()
+    }
+}
+
+pub fn escape(text: &str) -> String {
+    text.chars()
+        .flat_map(|character| {
+            let escaped = ESCAPED_CHARS.contains(character).then_some('\\');
+            escaped.into_iter().chain([character])
+        })
+        .collect()
 }
 
 struct Source {
@@ -1040,6 +1067,7 @@ pub fn compile(pattern: &str) -> Result<Regex, String> {
         root,
         groups: state.group_count,
         flags: state.flags,
+        names: state.group_names,
     })
 }
 
@@ -1299,6 +1327,23 @@ impl Matcher<'_> {
 }
 
 impl Regex {
+    pub fn match_at(&self, text: &[char], start: usize) -> Option<Match> {
+        let mut matcher = Matcher {
+            text,
+            captures: vec![None; self.groups],
+        };
+        let mut finish = None;
+        matcher.sequence(&self.root, start, self.flags, &mut |_, end| {
+            finish = Some(end);
+            true
+        });
+        matcher.captures[0] = Some((start, finish?));
+        Some(Match {
+            spans: matcher.captures,
+            names: self.names.clone(),
+        })
+    }
+
     pub fn search(&self, text: &str) -> bool {
         let characters: Vec<char> = text.chars().collect();
         let mut matcher = Matcher {

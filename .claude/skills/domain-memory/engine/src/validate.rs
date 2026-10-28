@@ -3,12 +3,11 @@ use std::path::{Path, PathBuf};
 use crate::coverage::all_references;
 use crate::crossrefs::{cross_reference_errors, identifier, records_of};
 use crate::evidence::Verifier;
-use crate::files::load_json;
 use crate::indexes::{self, Loaded};
 use crate::json::{Object, Value};
 use crate::listing::Repository;
 use crate::okf::{review_field, truthy};
-use crate::policy::{POLICY_FILE, review_mode, validate_policy};
+use crate::policy::{existing_policy, review_mode, validate_policy};
 use crate::proposals::list_proposals;
 use crate::py;
 use crate::pyvalue::{repr_of, splitlines, str_of};
@@ -114,12 +113,9 @@ pub fn validate(
 }
 
 fn policy_errors(root: &Path) -> Vec<String> {
-    let path = root.join(POLICY_FILE);
-    if !path.is_file() {
-        return Vec::new();
-    }
-    match load_json(&path) {
-        Ok(policy) => validate_policy(&policy),
+    match existing_policy(root) {
+        Ok(Some(policy)) => validate_policy(&policy),
+        Ok(None) => Vec::new(),
         Err(error) => vec![error],
     }
 }

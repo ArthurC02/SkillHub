@@ -60030,5 +60030,580 @@
     },
     "writes": true,
     "git": true
+  },
+  {
+    "name": "cite function after a type word that ends in a combining mark",
+    "args": [
+      "cite",
+      "--repo-root",
+      "{fixture}",
+      "--path",
+      "src/M.java",
+      "--function",
+      "foo"
+    ],
+    "files": {
+      "src/M.java": "class M {\n    ाx foo() {\n    }\n}\n"
+    }
+  },
+  {
+    "name": "cite function after a keyword followed by a combining mark",
+    "args": [
+      "cite",
+      "--repo-root",
+      "{fixture}",
+      "--path",
+      "src/M.java",
+      "--function",
+      "foo"
+    ],
+    "files": {
+      "src/M.java": "class M {\n    returnा foo() {\n    }\n}\n"
+    }
+  },
+  {
+    "name": "cite function after a type word with a word character beyond ascii",
+    "args": [
+      "cite",
+      "--repo-root",
+      "{fixture}",
+      "--path",
+      "src/M.java",
+      "--function",
+      "foo"
+    ],
+    "files": {
+      "src/M.java": "class M {\n    été foo() {\n    }\n}\n"
+    }
+  },
+  {
+    "name": "cite function defined nowhere with an invalid git timeout",
+    "args": [
+      "cite",
+      "--repo-root",
+      "{fixture}",
+      "--path",
+      "src/a.py",
+      "--function",
+      "missing"
+    ],
+    "files": {
+      "src/a.py": "def top():\n    pass\n",
+      "src/b.py": "def other():\n    pass\n"
+    },
+    "env": {
+      "DOMAIN_MEMORY_GIT_TIMEOUT": "soon"
+    }
+  },
+  {
+    "name": "cite function defined nowhere in a git repository",
+    "args": [
+      "cite",
+      "--repo-root",
+      "{fixture}",
+      "--path",
+      "src/a.py",
+      "--function",
+      "other"
+    ],
+    "files": {
+      "src/a.py": "def top():\n    pass\n",
+      "src/b.py": "def other():\n    pass\n",
+      ".gitignore": "ignored/\n",
+      "ignored/c.py": "def other():\n    pass\n"
+    },
+    "git": true
+  },
+  {
+    "name": "cite function defined nowhere with a name needing no escape in a path with spaces",
+    "args": [
+      "cite",
+      "--repo-root",
+      "{fixture}",
+      "--path",
+      "src/a b.py",
+      "--function",
+      "top-level"
+    ],
+    "files": {
+      "src/a b.py": "def top():\n    pass\n"
+    }
+  },
+  {
+    "name": "readiness without a registry root and a git deadline that cannot be met",
+    "args": [
+      "readiness",
+      "--repo-root",
+      "{fixture}"
+    ],
+    "files": {
+      "src/a.go": "package a\n"
+    },
+    "git": true,
+    "env": {
+      "DOMAIN_MEMORY_GIT_TIMEOUT": "0.000001"
+    }
+  },
+  {
+    "name": "readiness without a registry root, a plain directory and a git deadline that cannot be met",
+    "args": [
+      "readiness",
+      "--repo-root",
+      "{fixture}"
+    ],
+    "files": {
+      "src/a.go": "package a\n"
+    },
+    "env": {
+      "DOMAIN_MEMORY_GIT_TIMEOUT": "0.000001"
+    }
+  },
+  {
+    "name": "probe a policy and a git deadline that cannot be met",
+    "args": [
+      "probe",
+      "--repo-root",
+      "{fixture}",
+      "--registry-root",
+      "{fixture}/dm"
+    ],
+    "files": {
+      "apps/api/main.go": "package api\n",
+      "apps/api/main_test.go": "package api\n",
+      "contracts/openapi.yaml": "openapi: 3\n",
+      "dm/domain-memory-policy.json": "{\n  \"format\": \"domain-memory-policy/v1\",\n  \"storage_mode\": \"tracked\",\n  \"data_classification\": \"internal\",\n  \"review_mode\": \"local-draft-only\",\n  \"review_governance\": {\n    \"verifier\": \"none\",\n    \"trigger\": \"none\",\n    \"ci_requirement\": \"none\",\n    \"authorized_signers\": [],\n    \"distinct_signer\": false\n  },\n  \"source_policy\": {\n    \"selected_paths\": [\n      \"apps/api\",\n      \"contracts\",\n      \"docs\"\n    ],\n    \"include\": [\n      \"**\"\n    ],\n    \"exclude\": [],\n    \"authority\": \"tester\"\n  },\n  \"limits\": {\n    \"max_file_count\": 10000,\n    \"max_file_bytes\": 10485760,\n    \"max_total_bytes\": 104857600,\n    \"max_query_results\": 100\n  },\n  \"project_profile\": {\n    \"implementation_roots\": [\n      \"apps\",\n      \"src\",\n      \"services\",\n      \"packages\",\n      \"db\",\n      \"database\",\n      \"migrations\",\n      \"schema\"\n    ],\n    \"excluded_directories\": [],\n    \"decision_roots\": [\n      \"docs/adr\",\n      \"adr\",\n      \"docs/architecture\",\n      \"architecture\"\n    ],\n    \"boundary_markers\": [\n      \"doc.go\"\n    ]\n  },\n  \"approved_command_profiles\": []\n}\n",
+      "dm/registry/aggregates/index.md": "# Aggregates\n\n",
+      "dm/registry/capabilities/index.md": "# Capabilities\n\n",
+      "dm/registry/contexts/index.md": "# Bounded Contexts\n\n",
+      "dm/registry/contracts/index.md": "# Contracts\n\n",
+      "dm/registry/decisions/index.md": "# Decisions\n\n",
+      "dm/registry/dependency-policies/index.md": "# Dependency Policies\n\n",
+      "dm/registry/events/index.md": "# Domain Events\n\n",
+      "dm/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n\n- [Bounded Contexts](/contexts/index.md)\n- [Vocabulary](/vocabulary/index.md)\n- [Aggregates](/aggregates/index.md)\n- [Business Rules](/rules/index.md)\n- [Contracts](/contracts/index.md)\n- [Interactions](/interactions/index.md)\n- [Decisions](/decisions/index.md)\n- [Domain Events](/events/index.md)\n- [Capabilities](/capabilities/index.md)\n- [Value Objects](/value-objects/index.md)\n- [Dependency Policies](/dependency-policies/index.md)\n",
+      "dm/registry/interactions/index.md": "# Interactions\n\n",
+      "dm/registry/rules/index.md": "# Business Rules\n\n",
+      "dm/registry/value-objects/index.md": "# Value Objects\n\n",
+      "dm/registry/vocabulary/index.md": "# Vocabulary\n\n",
+      "dm/source-map.json": "{\n  \"format\": \"domain-source-map/v1\",\n  \"repo_root\": \".\",\n  \"source_order\": [\n    \"repository_instructions\",\n    \"decisions\",\n    \"requirements\",\n    \"contracts\",\n    \"bounded_contexts\",\n    \"implementation\",\n    \"tests\"\n  ],\n  \"source_groups\": [\n    {\n      \"kind\": \"repository_instructions\",\n      \"authority\": \"instructions to coding agents, not a statement of the business domain\",\n      \"caution\": \"These files exist to steer agents working in this repository. They are rewritten whenever the workflow changes, and a Domain Memory that rests on one loses its evidence when it is. Select them only for a domain fact no other source states, and record the gap.\",\n      \"paths\": []\n    },\n    {\n      \"kind\": \"decisions\",\n      \"authority\": \"current approved decisions when their status says so\",\n      \"paths\": [\n        \"docs/adr\"\n      ]\n    },\n    {\n      \"kind\": \"requirements\",\n      \"authority\": \"intended behavior and acceptance criteria\",\n      \"paths\": []\n    },\n    {\n      \"kind\": \"contracts\",\n      \"authority\": \"inter-process promises and compatibility\",\n      \"paths\": [\n        \"contracts\"\n      ]\n    },\n    {\n      \"kind\": \"bounded_contexts\",\n      \"authority\": \"candidate technical boundaries requiring domain review\",\n      \"paths\": []\n    },\n    {\n      \"kind\": \"implementation\",\n      \"authority\": \"current executable behavior\",\n      \"paths\": [\n        \"apps\"\n      ]\n    },\n    {\n      \"kind\": \"tests\",\n      \"authority\": \"evidence that a specific behavior is checked\",\n      \"paths\": [\n        \"apps/api/main_test.go\"\n      ]\n    }\n  ],\n  \"missing_groups\": [\n    \"repository_instructions\",\n    \"requirements\",\n    \"bounded_contexts\"\n  ],\n  \"selection_status\": \"agent-asserted\",\n  \"governance_candidates\": {\n    \"ci_tools\": [],\n    \"recommended_verifier\": \"git-signed-commit\",\n    \"recommended_trigger\": \"git-push\"\n  },\n  \"note\": \"The map locates candidate sources. It does not establish a domain fact or source authority by itself.\",\n  \"selected_paths\": [\n    \"apps/api\",\n    \"contracts\",\n    \"docs\"\n  ],\n  \"source_policy_report\": {\n    \"files\": 5,\n    \"total_bytes\": 47,\n    \"oversized_files\": [],\n    \"errors\": []\n  },\n  \"source_kinds\": {\n    \"apps/api\": \"unclassified\",\n    \"contracts\": \"contracts\",\n    \"docs\": \"unclassified\"\n  },\n  \"git_state\": {\n    \"tracked_objects\": {\n      \"apps/api\": \"55588281353482da7220ae7b16326754b63cec7e\",\n      \"contracts\": \"569133da6eab7e927203fc543259cd732cc18c3a\",\n      \"docs\": \"70c46c264c48dd20c6b471c6c5378e38b3c0c7d9\"\n    },\n    \"dirty_sources\": []\n  },\n  \"source_snapshots\": [\n    {\n      \"path\": \"apps/api\",\n      \"file_count\": 2,\n      \"digest\": \"sha256:17f9dd7ebc9de9c149a93b8eb7c7d11aaaf9d3f1552d322d804d37a9251c3862\",\n      \"listing_sha256\": \"sha256:843fc03371d5e70e8fbd1ce162fb91c391b8806388c54cf4a795919ba0015527\"\n    },\n    {\n      \"path\": \"contracts\",\n      \"file_count\": 1,\n      \"digest\": \"sha256:fd4fa32a0830be4d4c471609582f0361a214e4c27fafe22fc36bc2625bbca78e\",\n      \"listing_sha256\": \"sha256:0c526eab5c9fd9ae82dfc34db0c0ae705d2737bfed9ba091bb9b9ae0c8e2c7bf\"\n    },\n    {\n      \"path\": \"docs\",\n      \"file_count\": 2,\n      \"digest\": \"sha256:f15d0976d93b5e663399393dc04d780ba4bc688b7ddf00049900e912b5e2e102\",\n      \"listing_sha256\": \"sha256:1993d8979bd77c95761a7b222d38da2240fbef77037b1e4d4eb2c439bcac8917\"\n    }\n  ]\n}\n",
+      "docs/adr/0001.md": "# adr\n",
+      "docs/requirements.md": "# req\n"
+    },
+    "git": true,
+    "env": {
+      "DOMAIN_MEMORY_GIT_TIMEOUT": "0.000001"
+    }
+  },
+  {
+    "name": "probe a valid policy and git agreeing with the map",
+    "args": [
+      "probe",
+      "--repo-root",
+      "{fixture}",
+      "--registry-root",
+      "{fixture}/dm"
+    ],
+    "files": {
+      "apps/api/main.go": "package api\n",
+      "apps/api/main_test.go": "package api\n",
+      "contracts/openapi.yaml": "openapi: 3\n",
+      "dm/domain-memory-policy.json": "{\n  \"format\": \"domain-memory-policy/v1\",\n  \"storage_mode\": \"tracked\",\n  \"data_classification\": \"internal\",\n  \"review_mode\": \"local-draft-only\",\n  \"review_governance\": {\n    \"verifier\": \"none\",\n    \"trigger\": \"none\",\n    \"ci_requirement\": \"none\",\n    \"authorized_signers\": [],\n    \"distinct_signer\": false\n  },\n  \"source_policy\": {\n    \"selected_paths\": [\n      \"apps/api\",\n      \"contracts\",\n      \"docs\"\n    ],\n    \"include\": [\n      \"**\"\n    ],\n    \"exclude\": [],\n    \"authority\": \"tester\"\n  },\n  \"limits\": {\n    \"max_file_count\": 10000,\n    \"max_file_bytes\": 10485760,\n    \"max_total_bytes\": 104857600,\n    \"max_query_results\": 100\n  },\n  \"project_profile\": {\n    \"implementation_roots\": [\n      \"apps\",\n      \"src\",\n      \"services\",\n      \"packages\",\n      \"db\",\n      \"database\",\n      \"migrations\",\n      \"schema\"\n    ],\n    \"excluded_directories\": [],\n    \"decision_roots\": [\n      \"docs/adr\",\n      \"adr\",\n      \"docs/architecture\",\n      \"architecture\"\n    ],\n    \"boundary_markers\": [\n      \"doc.go\"\n    ]\n  },\n  \"approved_command_profiles\": []\n}\n",
+      "dm/registry/aggregates/index.md": "# Aggregates\n\n",
+      "dm/registry/capabilities/index.md": "# Capabilities\n\n",
+      "dm/registry/contexts/index.md": "# Bounded Contexts\n\n",
+      "dm/registry/contracts/index.md": "# Contracts\n\n",
+      "dm/registry/decisions/index.md": "# Decisions\n\n",
+      "dm/registry/dependency-policies/index.md": "# Dependency Policies\n\n",
+      "dm/registry/events/index.md": "# Domain Events\n\n",
+      "dm/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n\n- [Bounded Contexts](/contexts/index.md)\n- [Vocabulary](/vocabulary/index.md)\n- [Aggregates](/aggregates/index.md)\n- [Business Rules](/rules/index.md)\n- [Contracts](/contracts/index.md)\n- [Interactions](/interactions/index.md)\n- [Decisions](/decisions/index.md)\n- [Domain Events](/events/index.md)\n- [Capabilities](/capabilities/index.md)\n- [Value Objects](/value-objects/index.md)\n- [Dependency Policies](/dependency-policies/index.md)\n",
+      "dm/registry/interactions/index.md": "# Interactions\n\n",
+      "dm/registry/rules/index.md": "# Business Rules\n\n",
+      "dm/registry/value-objects/index.md": "# Value Objects\n\n",
+      "dm/registry/vocabulary/index.md": "# Vocabulary\n\n",
+      "dm/source-map.json": "{\n  \"format\": \"domain-source-map/v1\",\n  \"repo_root\": \".\",\n  \"source_order\": [\n    \"repository_instructions\",\n    \"decisions\",\n    \"requirements\",\n    \"contracts\",\n    \"bounded_contexts\",\n    \"implementation\",\n    \"tests\"\n  ],\n  \"source_groups\": [\n    {\n      \"kind\": \"repository_instructions\",\n      \"authority\": \"instructions to coding agents, not a statement of the business domain\",\n      \"caution\": \"These files exist to steer agents working in this repository. They are rewritten whenever the workflow changes, and a Domain Memory that rests on one loses its evidence when it is. Select them only for a domain fact no other source states, and record the gap.\",\n      \"paths\": []\n    },\n    {\n      \"kind\": \"decisions\",\n      \"authority\": \"current approved decisions when their status says so\",\n      \"paths\": [\n        \"docs/adr\"\n      ]\n    },\n    {\n      \"kind\": \"requirements\",\n      \"authority\": \"intended behavior and acceptance criteria\",\n      \"paths\": []\n    },\n    {\n      \"kind\": \"contracts\",\n      \"authority\": \"inter-process promises and compatibility\",\n      \"paths\": [\n        \"contracts\"\n      ]\n    },\n    {\n      \"kind\": \"bounded_contexts\",\n      \"authority\": \"candidate technical boundaries requiring domain review\",\n      \"paths\": []\n    },\n    {\n      \"kind\": \"implementation\",\n      \"authority\": \"current executable behavior\",\n      \"paths\": [\n        \"apps\"\n      ]\n    },\n    {\n      \"kind\": \"tests\",\n      \"authority\": \"evidence that a specific behavior is checked\",\n      \"paths\": [\n        \"apps/api/main_test.go\"\n      ]\n    }\n  ],\n  \"missing_groups\": [\n    \"repository_instructions\",\n    \"requirements\",\n    \"bounded_contexts\"\n  ],\n  \"selection_status\": \"agent-asserted\",\n  \"governance_candidates\": {\n    \"ci_tools\": [],\n    \"recommended_verifier\": \"git-signed-commit\",\n    \"recommended_trigger\": \"git-push\"\n  },\n  \"note\": \"The map locates candidate sources. It does not establish a domain fact or source authority by itself.\",\n  \"selected_paths\": [\n    \"apps/api\",\n    \"contracts\",\n    \"docs\"\n  ],\n  \"source_policy_report\": {\n    \"files\": 5,\n    \"total_bytes\": 47,\n    \"oversized_files\": [],\n    \"errors\": []\n  },\n  \"source_kinds\": {\n    \"apps/api\": \"unclassified\",\n    \"contracts\": \"contracts\",\n    \"docs\": \"unclassified\"\n  },\n  \"git_state\": {\n    \"tracked_objects\": {\n      \"apps/api\": \"55588281353482da7220ae7b16326754b63cec7e\",\n      \"contracts\": \"569133da6eab7e927203fc543259cd732cc18c3a\",\n      \"docs\": \"70c46c264c48dd20c6b471c6c5378e38b3c0c7d9\"\n    },\n    \"dirty_sources\": []\n  },\n  \"source_snapshots\": [\n    {\n      \"path\": \"apps/api\",\n      \"file_count\": 2,\n      \"digest\": \"sha256:17f9dd7ebc9de9c149a93b8eb7c7d11aaaf9d3f1552d322d804d37a9251c3862\",\n      \"listing_sha256\": \"sha256:843fc03371d5e70e8fbd1ce162fb91c391b8806388c54cf4a795919ba0015527\"\n    },\n    {\n      \"path\": \"contracts\",\n      \"file_count\": 1,\n      \"digest\": \"sha256:fd4fa32a0830be4d4c471609582f0361a214e4c27fafe22fc36bc2625bbca78e\",\n      \"listing_sha256\": \"sha256:0c526eab5c9fd9ae82dfc34db0c0ae705d2737bfed9ba091bb9b9ae0c8e2c7bf\"\n    },\n    {\n      \"path\": \"docs\",\n      \"file_count\": 2,\n      \"digest\": \"sha256:f15d0976d93b5e663399393dc04d780ba4bc688b7ddf00049900e912b5e2e102\",\n      \"listing_sha256\": \"sha256:1993d8979bd77c95761a7b222d38da2240fbef77037b1e4d4eb2c439bcac8917\"\n    }\n  ]\n}\n",
+      "docs/adr/0001.md": "# adr\n",
+      "docs/requirements.md": "# req\n"
+    },
+    "git": true
+  },
+  {
+    "name": "probe the git state read under a git deadline that cannot be met",
+    "args": [
+      "probe",
+      "--repo-root",
+      "{fixture}",
+      "--registry-root",
+      "{fixture}/dm"
+    ],
+    "files": {
+      "apps/api/main.go": "package api\n",
+      "apps/api/main_test.go": "package api\n",
+      "contracts/openapi.yaml": "openapi: 3\n",
+      "dm/registry/aggregates/index.md": "# Aggregates\n\n",
+      "dm/registry/capabilities/index.md": "# Capabilities\n\n",
+      "dm/registry/contexts/index.md": "# Bounded Contexts\n\n",
+      "dm/registry/contracts/index.md": "# Contracts\n\n",
+      "dm/registry/decisions/index.md": "# Decisions\n\n",
+      "dm/registry/dependency-policies/index.md": "# Dependency Policies\n\n",
+      "dm/registry/events/index.md": "# Domain Events\n\n",
+      "dm/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n\n- [Bounded Contexts](/contexts/index.md)\n- [Vocabulary](/vocabulary/index.md)\n- [Aggregates](/aggregates/index.md)\n- [Business Rules](/rules/index.md)\n- [Contracts](/contracts/index.md)\n- [Interactions](/interactions/index.md)\n- [Decisions](/decisions/index.md)\n- [Domain Events](/events/index.md)\n- [Capabilities](/capabilities/index.md)\n- [Value Objects](/value-objects/index.md)\n- [Dependency Policies](/dependency-policies/index.md)\n",
+      "dm/registry/interactions/index.md": "# Interactions\n\n",
+      "dm/registry/rules/index.md": "# Business Rules\n\n",
+      "dm/registry/value-objects/index.md": "# Value Objects\n\n",
+      "dm/registry/vocabulary/index.md": "# Vocabulary\n\n",
+      "dm/source-map.json": "{\n  \"format\": \"domain-source-map/v1\",\n  \"repo_root\": \".\",\n  \"source_order\": [\n    \"repository_instructions\",\n    \"decisions\",\n    \"requirements\",\n    \"contracts\",\n    \"bounded_contexts\",\n    \"implementation\",\n    \"tests\"\n  ],\n  \"source_groups\": [\n    {\n      \"kind\": \"repository_instructions\",\n      \"authority\": \"instructions to coding agents, not a statement of the business domain\",\n      \"caution\": \"These files exist to steer agents working in this repository. They are rewritten whenever the workflow changes, and a Domain Memory that rests on one loses its evidence when it is. Select them only for a domain fact no other source states, and record the gap.\",\n      \"paths\": []\n    },\n    {\n      \"kind\": \"decisions\",\n      \"authority\": \"current approved decisions when their status says so\",\n      \"paths\": [\n        \"docs/adr\"\n      ]\n    },\n    {\n      \"kind\": \"requirements\",\n      \"authority\": \"intended behavior and acceptance criteria\",\n      \"paths\": []\n    },\n    {\n      \"kind\": \"contracts\",\n      \"authority\": \"inter-process promises and compatibility\",\n      \"paths\": [\n        \"contracts\"\n      ]\n    },\n    {\n      \"kind\": \"bounded_contexts\",\n      \"authority\": \"candidate technical boundaries requiring domain review\",\n      \"paths\": []\n    },\n    {\n      \"kind\": \"implementation\",\n      \"authority\": \"current executable behavior\",\n      \"paths\": [\n        \"apps\"\n      ]\n    },\n    {\n      \"kind\": \"tests\",\n      \"authority\": \"evidence that a specific behavior is checked\",\n      \"paths\": [\n        \"apps/api/main_test.go\"\n      ]\n    }\n  ],\n  \"missing_groups\": [\n    \"repository_instructions\",\n    \"requirements\",\n    \"bounded_contexts\"\n  ],\n  \"selection_status\": \"agent-asserted\",\n  \"governance_candidates\": {\n    \"ci_tools\": [],\n    \"recommended_verifier\": \"git-signed-commit\",\n    \"recommended_trigger\": \"git-push\"\n  },\n  \"note\": \"The map locates candidate sources. It does not establish a domain fact or source authority by itself.\",\n  \"selected_paths\": [\n    \"apps/api\",\n    \"contracts\",\n    \"docs\"\n  ],\n  \"source_policy_report\": {\n    \"files\": 5,\n    \"total_bytes\": 47,\n    \"oversized_files\": [],\n    \"errors\": []\n  },\n  \"source_kinds\": {\n    \"apps/api\": \"unclassified\",\n    \"contracts\": \"contracts\",\n    \"docs\": \"unclassified\"\n  },\n  \"git_state\": {\n    \"tracked_objects\": {\n      \"apps/api\": \"55588281353482da7220ae7b16326754b63cec7e\",\n      \"contracts\": \"569133da6eab7e927203fc543259cd732cc18c3a\",\n      \"docs\": \"70c46c264c48dd20c6b471c6c5378e38b3c0c7d9\"\n    },\n    \"dirty_sources\": []\n  },\n  \"source_snapshots\": [\n    {\n      \"path\": \"apps/api\",\n      \"file_count\": 2,\n      \"digest\": \"sha256:17f9dd7ebc9de9c149a93b8eb7c7d11aaaf9d3f1552d322d804d37a9251c3862\",\n      \"listing_sha256\": \"sha256:843fc03371d5e70e8fbd1ce162fb91c391b8806388c54cf4a795919ba0015527\"\n    },\n    {\n      \"path\": \"contracts\",\n      \"file_count\": 1,\n      \"digest\": \"sha256:fd4fa32a0830be4d4c471609582f0361a214e4c27fafe22fc36bc2625bbca78e\",\n      \"listing_sha256\": \"sha256:0c526eab5c9fd9ae82dfc34db0c0ae705d2737bfed9ba091bb9b9ae0c8e2c7bf\"\n    },\n    {\n      \"path\": \"docs\",\n      \"file_count\": 2,\n      \"digest\": \"sha256:f15d0976d93b5e663399393dc04d780ba4bc688b7ddf00049900e912b5e2e102\",\n      \"listing_sha256\": \"sha256:1993d8979bd77c95761a7b222d38da2240fbef77037b1e4d4eb2c439bcac8917\"\n    }\n  ]\n}\n",
+      "docs/adr/0001.md": "# adr\n",
+      "docs/requirements.md": "# req\n"
+    },
+    "git": true,
+    "env": {
+      "DOMAIN_MEMORY_GIT_TIMEOUT": "0.000001"
+    }
+  },
+  {
+    "name": "probe the git state read without a policy file",
+    "args": [
+      "probe",
+      "--repo-root",
+      "{fixture}",
+      "--registry-root",
+      "{fixture}/dm"
+    ],
+    "files": {
+      "apps/api/main.go": "package api\n",
+      "apps/api/main_test.go": "package api\n",
+      "contracts/openapi.yaml": "openapi: 3\n",
+      "dm/registry/aggregates/index.md": "# Aggregates\n\n",
+      "dm/registry/capabilities/index.md": "# Capabilities\n\n",
+      "dm/registry/contexts/index.md": "# Bounded Contexts\n\n",
+      "dm/registry/contracts/index.md": "# Contracts\n\n",
+      "dm/registry/decisions/index.md": "# Decisions\n\n",
+      "dm/registry/dependency-policies/index.md": "# Dependency Policies\n\n",
+      "dm/registry/events/index.md": "# Domain Events\n\n",
+      "dm/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n\n- [Bounded Contexts](/contexts/index.md)\n- [Vocabulary](/vocabulary/index.md)\n- [Aggregates](/aggregates/index.md)\n- [Business Rules](/rules/index.md)\n- [Contracts](/contracts/index.md)\n- [Interactions](/interactions/index.md)\n- [Decisions](/decisions/index.md)\n- [Domain Events](/events/index.md)\n- [Capabilities](/capabilities/index.md)\n- [Value Objects](/value-objects/index.md)\n- [Dependency Policies](/dependency-policies/index.md)\n",
+      "dm/registry/interactions/index.md": "# Interactions\n\n",
+      "dm/registry/rules/index.md": "# Business Rules\n\n",
+      "dm/registry/value-objects/index.md": "# Value Objects\n\n",
+      "dm/registry/vocabulary/index.md": "# Vocabulary\n\n",
+      "dm/source-map.json": "{\n  \"format\": \"domain-source-map/v1\",\n  \"repo_root\": \".\",\n  \"source_order\": [\n    \"repository_instructions\",\n    \"decisions\",\n    \"requirements\",\n    \"contracts\",\n    \"bounded_contexts\",\n    \"implementation\",\n    \"tests\"\n  ],\n  \"source_groups\": [\n    {\n      \"kind\": \"repository_instructions\",\n      \"authority\": \"instructions to coding agents, not a statement of the business domain\",\n      \"caution\": \"These files exist to steer agents working in this repository. They are rewritten whenever the workflow changes, and a Domain Memory that rests on one loses its evidence when it is. Select them only for a domain fact no other source states, and record the gap.\",\n      \"paths\": []\n    },\n    {\n      \"kind\": \"decisions\",\n      \"authority\": \"current approved decisions when their status says so\",\n      \"paths\": [\n        \"docs/adr\"\n      ]\n    },\n    {\n      \"kind\": \"requirements\",\n      \"authority\": \"intended behavior and acceptance criteria\",\n      \"paths\": []\n    },\n    {\n      \"kind\": \"contracts\",\n      \"authority\": \"inter-process promises and compatibility\",\n      \"paths\": [\n        \"contracts\"\n      ]\n    },\n    {\n      \"kind\": \"bounded_contexts\",\n      \"authority\": \"candidate technical boundaries requiring domain review\",\n      \"paths\": []\n    },\n    {\n      \"kind\": \"implementation\",\n      \"authority\": \"current executable behavior\",\n      \"paths\": [\n        \"apps\"\n      ]\n    },\n    {\n      \"kind\": \"tests\",\n      \"authority\": \"evidence that a specific behavior is checked\",\n      \"paths\": [\n        \"apps/api/main_test.go\"\n      ]\n    }\n  ],\n  \"missing_groups\": [\n    \"repository_instructions\",\n    \"requirements\",\n    \"bounded_contexts\"\n  ],\n  \"selection_status\": \"agent-asserted\",\n  \"governance_candidates\": {\n    \"ci_tools\": [],\n    \"recommended_verifier\": \"git-signed-commit\",\n    \"recommended_trigger\": \"git-push\"\n  },\n  \"note\": \"The map locates candidate sources. It does not establish a domain fact or source authority by itself.\",\n  \"selected_paths\": [\n    \"apps/api\",\n    \"contracts\",\n    \"docs\"\n  ],\n  \"source_policy_report\": {\n    \"files\": 5,\n    \"total_bytes\": 47,\n    \"oversized_files\": [],\n    \"errors\": []\n  },\n  \"source_kinds\": {\n    \"apps/api\": \"unclassified\",\n    \"contracts\": \"contracts\",\n    \"docs\": \"unclassified\"\n  },\n  \"git_state\": {\n    \"tracked_objects\": {\n      \"apps/api\": \"55588281353482da7220ae7b16326754b63cec7e\",\n      \"contracts\": \"569133da6eab7e927203fc543259cd732cc18c3a\",\n      \"docs\": \"70c46c264c48dd20c6b471c6c5378e38b3c0c7d9\"\n    },\n    \"dirty_sources\": []\n  },\n  \"source_snapshots\": [\n    {\n      \"path\": \"apps/api\",\n      \"file_count\": 2,\n      \"digest\": \"sha256:17f9dd7ebc9de9c149a93b8eb7c7d11aaaf9d3f1552d322d804d37a9251c3862\",\n      \"listing_sha256\": \"sha256:843fc03371d5e70e8fbd1ce162fb91c391b8806388c54cf4a795919ba0015527\"\n    },\n    {\n      \"path\": \"contracts\",\n      \"file_count\": 1,\n      \"digest\": \"sha256:fd4fa32a0830be4d4c471609582f0361a214e4c27fafe22fc36bc2625bbca78e\",\n      \"listing_sha256\": \"sha256:0c526eab5c9fd9ae82dfc34db0c0ae705d2737bfed9ba091bb9b9ae0c8e2c7bf\"\n    },\n    {\n      \"path\": \"docs\",\n      \"file_count\": 2,\n      \"digest\": \"sha256:f15d0976d93b5e663399393dc04d780ba4bc688b7ddf00049900e912b5e2e102\",\n      \"listing_sha256\": \"sha256:1993d8979bd77c95761a7b222d38da2240fbef77037b1e4d4eb2c439bcac8917\"\n    }\n  ]\n}\n",
+      "docs/adr/0001.md": "# adr\n",
+      "docs/requirements.md": "# req\n"
+    },
+    "git": true
+  },
+  {
+    "name": "readiness policy limits given as floats that the sources exceed",
+    "args": [
+      "readiness",
+      "--repo-root",
+      "{fixture}",
+      "--registry-root",
+      "{fixture}/dm"
+    ],
+    "files": {
+      "apps/api/main.go": "package api\n",
+      "apps/api/main_test.go": "package api\n",
+      "contracts/openapi.yaml": "openapi: 3\n",
+      "dm/domain-memory-policy.json": "{\n  \"format\": \"domain-memory-policy/v1\",\n  \"storage_mode\": \"tracked\",\n  \"data_classification\": \"internal\",\n  \"review_mode\": \"local-draft-only\",\n  \"review_governance\": {\n    \"verifier\": \"none\",\n    \"trigger\": \"none\",\n    \"ci_requirement\": \"none\",\n    \"authorized_signers\": [],\n    \"distinct_signer\": false\n  },\n  \"source_policy\": {\n    \"selected_paths\": [\n      \"apps/api\",\n      \"contracts\",\n      \"docs\"\n    ],\n    \"include\": [\n      \"**\"\n    ],\n    \"exclude\": [],\n    \"authority\": \"tester\"\n  },\n  \"limits\": {\n    \"max_file_count\": 1.5,\n    \"max_file_bytes\": 10485760,\n    \"max_total_bytes\": 104857600,\n    \"max_query_results\": 100\n  },\n  \"schema_conventions\": {\n    \"exempt_columns\": [\n      \"id\",\n      \"created_at\",\n      \"updated_at\"\n    ],\n    \"status_like_suffixes\": [\n      \"status\",\n      \"state\",\n      \"kind\",\n      \"mode\",\n      \"tier\",\n      \"role\",\n      \"decision\",\n      \"verdict\",\n      \"outcome\",\n      \"phase\",\n      \"stage\",\n      \"level\",\n      \"priority\",\n      \"severity\",\n      \"visibility\",\n      \"category\"\n    ],\n    \"free_text_markers\": [\n      \"free text\",\n      \"free-text\"\n    ],\n    \"value_comment_limit\": 12\n  },\n  \"project_profile\": {\n    \"implementation_roots\": [\n      \"apps\",\n      \"src\",\n      \"services\",\n      \"packages\",\n      \"db\",\n      \"database\",\n      \"migrations\",\n      \"schema\"\n    ],\n    \"excluded_directories\": [],\n    \"decision_roots\": [\n      \"docs/adr\",\n      \"adr\",\n      \"docs/architecture\",\n      \"architecture\"\n    ],\n    \"boundary_markers\": [\n      \"doc.go\"\n    ]\n  },\n  \"approved_command_profiles\": []\n}\n",
+      "dm/registry/aggregates/index.md": "# Aggregates\n\n",
+      "dm/registry/capabilities/index.md": "# Capabilities\n\n",
+      "dm/registry/contexts/index.md": "# Bounded Contexts\n\n",
+      "dm/registry/contracts/index.md": "# Contracts\n\n",
+      "dm/registry/decisions/index.md": "# Decisions\n\n",
+      "dm/registry/dependency-policies/index.md": "# Dependency Policies\n\n",
+      "dm/registry/events/index.md": "# Domain Events\n\n",
+      "dm/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n\n- [Bounded Contexts](/contexts/index.md)\n- [Vocabulary](/vocabulary/index.md)\n- [Aggregates](/aggregates/index.md)\n- [Business Rules](/rules/index.md)\n- [Contracts](/contracts/index.md)\n- [Interactions](/interactions/index.md)\n- [Decisions](/decisions/index.md)\n- [Domain Events](/events/index.md)\n- [Capabilities](/capabilities/index.md)\n- [Value Objects](/value-objects/index.md)\n- [Dependency Policies](/dependency-policies/index.md)\n",
+      "dm/registry/interactions/index.md": "# Interactions\n\n",
+      "dm/registry/rules/index.md": "# Business Rules\n\n",
+      "dm/registry/value-objects/index.md": "# Value Objects\n\n",
+      "dm/registry/vocabulary/index.md": "# Vocabulary\n\n",
+      "dm/source-map.json": "{\n  \"format\": \"domain-source-map/v1\",\n  \"repo_root\": \".\",\n  \"source_order\": [\n    \"repository_instructions\",\n    \"decisions\",\n    \"requirements\",\n    \"contracts\",\n    \"bounded_contexts\",\n    \"implementation\",\n    \"tests\"\n  ],\n  \"source_groups\": [\n    {\n      \"kind\": \"repository_instructions\",\n      \"authority\": \"instructions to coding agents, not a statement of the business domain\",\n      \"caution\": \"These files exist to steer agents working in this repository. They are rewritten whenever the workflow changes, and a Domain Memory that rests on one loses its evidence when it is. Select them only for a domain fact no other source states, and record the gap.\",\n      \"paths\": []\n    },\n    {\n      \"kind\": \"decisions\",\n      \"authority\": \"current approved decisions when their status says so\",\n      \"paths\": [\n        \"docs/adr\"\n      ]\n    },\n    {\n      \"kind\": \"requirements\",\n      \"authority\": \"intended behavior and acceptance criteria\",\n      \"paths\": []\n    },\n    {\n      \"kind\": \"contracts\",\n      \"authority\": \"inter-process promises and compatibility\",\n      \"paths\": [\n        \"contracts\"\n      ]\n    },\n    {\n      \"kind\": \"bounded_contexts\",\n      \"authority\": \"candidate technical boundaries requiring domain review\",\n      \"paths\": []\n    },\n    {\n      \"kind\": \"implementation\",\n      \"authority\": \"current executable behavior\",\n      \"paths\": [\n        \"apps\"\n      ]\n    },\n    {\n      \"kind\": \"tests\",\n      \"authority\": \"evidence that a specific behavior is checked\",\n      \"paths\": [\n        \"apps/api/main_test.go\"\n      ]\n    }\n  ],\n  \"missing_groups\": [\n    \"repository_instructions\",\n    \"requirements\",\n    \"bounded_contexts\"\n  ],\n  \"selection_status\": \"agent-asserted\",\n  \"governance_candidates\": {\n    \"ci_tools\": [],\n    \"recommended_verifier\": \"git-signed-commit\",\n    \"recommended_trigger\": \"git-push\"\n  },\n  \"note\": \"The map locates candidate sources. It does not establish a domain fact or source authority by itself.\",\n  \"selected_paths\": [\n    \"apps/api\",\n    \"contracts\",\n    \"docs\"\n  ],\n  \"source_policy_report\": {\n    \"files\": 5,\n    \"total_bytes\": 47,\n    \"oversized_files\": [],\n    \"errors\": []\n  },\n  \"source_kinds\": {\n    \"apps/api\": \"unclassified\",\n    \"contracts\": \"contracts\",\n    \"docs\": \"unclassified\"\n  },\n  \"git_state\": {},\n  \"source_snapshots\": [\n    {\n      \"path\": \"apps/api\",\n      \"file_count\": 2,\n      \"digest\": \"sha256:17f9dd7ebc9de9c149a93b8eb7c7d11aaaf9d3f1552d322d804d37a9251c3862\",\n      \"listing_sha256\": \"sha256:843fc03371d5e70e8fbd1ce162fb91c391b8806388c54cf4a795919ba0015527\"\n    },\n    {\n      \"path\": \"contracts\",\n      \"file_count\": 1,\n      \"digest\": \"sha256:fd4fa32a0830be4d4c471609582f0361a214e4c27fafe22fc36bc2625bbca78e\",\n      \"listing_sha256\": \"sha256:0c526eab5c9fd9ae82dfc34db0c0ae705d2737bfed9ba091bb9b9ae0c8e2c7bf\"\n    },\n    {\n      \"path\": \"docs\",\n      \"file_count\": 2,\n      \"digest\": \"sha256:f15d0976d93b5e663399393dc04d780ba4bc688b7ddf00049900e912b5e2e102\",\n      \"listing_sha256\": \"sha256:1993d8979bd77c95761a7b222d38da2240fbef77037b1e4d4eb2c439bcac8917\"\n    }\n  ]\n}\n",
+      "docs/adr/0001.md": "# adr\n",
+      "docs/requirements.md": "# req\n"
+    }
+  },
+  {
+    "name": "readiness policy limits given as booleans that the sources exceed",
+    "args": [
+      "readiness",
+      "--repo-root",
+      "{fixture}",
+      "--registry-root",
+      "{fixture}/dm"
+    ],
+    "files": {
+      "apps/api/main.go": "package api\n",
+      "apps/api/main_test.go": "package api\n",
+      "contracts/openapi.yaml": "openapi: 3\n",
+      "dm/domain-memory-policy.json": "{\n  \"format\": \"domain-memory-policy/v1\",\n  \"storage_mode\": \"tracked\",\n  \"data_classification\": \"internal\",\n  \"review_mode\": \"local-draft-only\",\n  \"review_governance\": {\n    \"verifier\": \"none\",\n    \"trigger\": \"none\",\n    \"ci_requirement\": \"none\",\n    \"authorized_signers\": [],\n    \"distinct_signer\": false\n  },\n  \"source_policy\": {\n    \"selected_paths\": [\n      \"apps/api\",\n      \"contracts\",\n      \"docs\"\n    ],\n    \"include\": [\n      \"**\"\n    ],\n    \"exclude\": [],\n    \"authority\": \"tester\"\n  },\n  \"limits\": {\n    \"max_file_count\": 10000,\n    \"max_file_bytes\": 10485760,\n    \"max_total_bytes\": true,\n    \"max_query_results\": 100\n  },\n  \"schema_conventions\": {\n    \"exempt_columns\": [\n      \"id\",\n      \"created_at\",\n      \"updated_at\"\n    ],\n    \"status_like_suffixes\": [\n      \"status\",\n      \"state\",\n      \"kind\",\n      \"mode\",\n      \"tier\",\n      \"role\",\n      \"decision\",\n      \"verdict\",\n      \"outcome\",\n      \"phase\",\n      \"stage\",\n      \"level\",\n      \"priority\",\n      \"severity\",\n      \"visibility\",\n      \"category\"\n    ],\n    \"free_text_markers\": [\n      \"free text\",\n      \"free-text\"\n    ],\n    \"value_comment_limit\": 12\n  },\n  \"project_profile\": {\n    \"implementation_roots\": [\n      \"apps\",\n      \"src\",\n      \"services\",\n      \"packages\",\n      \"db\",\n      \"database\",\n      \"migrations\",\n      \"schema\"\n    ],\n    \"excluded_directories\": [],\n    \"decision_roots\": [\n      \"docs/adr\",\n      \"adr\",\n      \"docs/architecture\",\n      \"architecture\"\n    ],\n    \"boundary_markers\": [\n      \"doc.go\"\n    ]\n  },\n  \"approved_command_profiles\": []\n}\n",
+      "dm/registry/aggregates/index.md": "# Aggregates\n\n",
+      "dm/registry/capabilities/index.md": "# Capabilities\n\n",
+      "dm/registry/contexts/index.md": "# Bounded Contexts\n\n",
+      "dm/registry/contracts/index.md": "# Contracts\n\n",
+      "dm/registry/decisions/index.md": "# Decisions\n\n",
+      "dm/registry/dependency-policies/index.md": "# Dependency Policies\n\n",
+      "dm/registry/events/index.md": "# Domain Events\n\n",
+      "dm/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n\n- [Bounded Contexts](/contexts/index.md)\n- [Vocabulary](/vocabulary/index.md)\n- [Aggregates](/aggregates/index.md)\n- [Business Rules](/rules/index.md)\n- [Contracts](/contracts/index.md)\n- [Interactions](/interactions/index.md)\n- [Decisions](/decisions/index.md)\n- [Domain Events](/events/index.md)\n- [Capabilities](/capabilities/index.md)\n- [Value Objects](/value-objects/index.md)\n- [Dependency Policies](/dependency-policies/index.md)\n",
+      "dm/registry/interactions/index.md": "# Interactions\n\n",
+      "dm/registry/rules/index.md": "# Business Rules\n\n",
+      "dm/registry/value-objects/index.md": "# Value Objects\n\n",
+      "dm/registry/vocabulary/index.md": "# Vocabulary\n\n",
+      "dm/source-map.json": "{\n  \"format\": \"domain-source-map/v1\",\n  \"repo_root\": \".\",\n  \"source_order\": [\n    \"repository_instructions\",\n    \"decisions\",\n    \"requirements\",\n    \"contracts\",\n    \"bounded_contexts\",\n    \"implementation\",\n    \"tests\"\n  ],\n  \"source_groups\": [\n    {\n      \"kind\": \"repository_instructions\",\n      \"authority\": \"instructions to coding agents, not a statement of the business domain\",\n      \"caution\": \"These files exist to steer agents working in this repository. They are rewritten whenever the workflow changes, and a Domain Memory that rests on one loses its evidence when it is. Select them only for a domain fact no other source states, and record the gap.\",\n      \"paths\": []\n    },\n    {\n      \"kind\": \"decisions\",\n      \"authority\": \"current approved decisions when their status says so\",\n      \"paths\": [\n        \"docs/adr\"\n      ]\n    },\n    {\n      \"kind\": \"requirements\",\n      \"authority\": \"intended behavior and acceptance criteria\",\n      \"paths\": []\n    },\n    {\n      \"kind\": \"contracts\",\n      \"authority\": \"inter-process promises and compatibility\",\n      \"paths\": [\n        \"contracts\"\n      ]\n    },\n    {\n      \"kind\": \"bounded_contexts\",\n      \"authority\": \"candidate technical boundaries requiring domain review\",\n      \"paths\": []\n    },\n    {\n      \"kind\": \"implementation\",\n      \"authority\": \"current executable behavior\",\n      \"paths\": [\n        \"apps\"\n      ]\n    },\n    {\n      \"kind\": \"tests\",\n      \"authority\": \"evidence that a specific behavior is checked\",\n      \"paths\": [\n        \"apps/api/main_test.go\"\n      ]\n    }\n  ],\n  \"missing_groups\": [\n    \"repository_instructions\",\n    \"requirements\",\n    \"bounded_contexts\"\n  ],\n  \"selection_status\": \"agent-asserted\",\n  \"governance_candidates\": {\n    \"ci_tools\": [],\n    \"recommended_verifier\": \"git-signed-commit\",\n    \"recommended_trigger\": \"git-push\"\n  },\n  \"note\": \"The map locates candidate sources. It does not establish a domain fact or source authority by itself.\",\n  \"selected_paths\": [\n    \"apps/api\",\n    \"contracts\",\n    \"docs\"\n  ],\n  \"source_policy_report\": {\n    \"files\": 5,\n    \"total_bytes\": 47,\n    \"oversized_files\": [],\n    \"errors\": []\n  },\n  \"source_kinds\": {\n    \"apps/api\": \"unclassified\",\n    \"contracts\": \"contracts\",\n    \"docs\": \"unclassified\"\n  },\n  \"git_state\": {},\n  \"source_snapshots\": [\n    {\n      \"path\": \"apps/api\",\n      \"file_count\": 2,\n      \"digest\": \"sha256:17f9dd7ebc9de9c149a93b8eb7c7d11aaaf9d3f1552d322d804d37a9251c3862\",\n      \"listing_sha256\": \"sha256:843fc03371d5e70e8fbd1ce162fb91c391b8806388c54cf4a795919ba0015527\"\n    },\n    {\n      \"path\": \"contracts\",\n      \"file_count\": 1,\n      \"digest\": \"sha256:fd4fa32a0830be4d4c471609582f0361a214e4c27fafe22fc36bc2625bbca78e\",\n      \"listing_sha256\": \"sha256:0c526eab5c9fd9ae82dfc34db0c0ae705d2737bfed9ba091bb9b9ae0c8e2c7bf\"\n    },\n    {\n      \"path\": \"docs\",\n      \"file_count\": 2,\n      \"digest\": \"sha256:f15d0976d93b5e663399393dc04d780ba4bc688b7ddf00049900e912b5e2e102\",\n      \"listing_sha256\": \"sha256:1993d8979bd77c95761a7b222d38da2240fbef77037b1e4d4eb2c439bcac8917\"\n    }\n  ]\n}\n",
+      "docs/adr/0001.md": "# adr\n",
+      "docs/requirements.md": "# req\n"
+    }
+  },
+  {
+    "name": "readiness policy byte limit given as a float under the largest file",
+    "args": [
+      "readiness",
+      "--repo-root",
+      "{fixture}",
+      "--registry-root",
+      "{fixture}/dm"
+    ],
+    "files": {
+      "apps/api/main.go": "package api\n",
+      "apps/api/main_test.go": "package api\n",
+      "contracts/openapi.yaml": "openapi: 3\n",
+      "dm/domain-memory-policy.json": "{\n  \"format\": \"domain-memory-policy/v1\",\n  \"storage_mode\": \"tracked\",\n  \"data_classification\": \"internal\",\n  \"review_mode\": \"local-draft-only\",\n  \"review_governance\": {\n    \"verifier\": \"none\",\n    \"trigger\": \"none\",\n    \"ci_requirement\": \"none\",\n    \"authorized_signers\": [],\n    \"distinct_signer\": false\n  },\n  \"source_policy\": {\n    \"selected_paths\": [\n      \"apps/api\",\n      \"contracts\",\n      \"docs\"\n    ],\n    \"include\": [\n      \"**\"\n    ],\n    \"exclude\": [],\n    \"authority\": \"tester\"\n  },\n  \"limits\": {\n    \"max_file_count\": 10000,\n    \"max_file_bytes\": 2.5,\n    \"max_total_bytes\": 104857600,\n    \"max_query_results\": 100\n  },\n  \"schema_conventions\": {\n    \"exempt_columns\": [\n      \"id\",\n      \"created_at\",\n      \"updated_at\"\n    ],\n    \"status_like_suffixes\": [\n      \"status\",\n      \"state\",\n      \"kind\",\n      \"mode\",\n      \"tier\",\n      \"role\",\n      \"decision\",\n      \"verdict\",\n      \"outcome\",\n      \"phase\",\n      \"stage\",\n      \"level\",\n      \"priority\",\n      \"severity\",\n      \"visibility\",\n      \"category\"\n    ],\n    \"free_text_markers\": [\n      \"free text\",\n      \"free-text\"\n    ],\n    \"value_comment_limit\": 12\n  },\n  \"project_profile\": {\n    \"implementation_roots\": [\n      \"apps\",\n      \"src\",\n      \"services\",\n      \"packages\",\n      \"db\",\n      \"database\",\n      \"migrations\",\n      \"schema\"\n    ],\n    \"excluded_directories\": [],\n    \"decision_roots\": [\n      \"docs/adr\",\n      \"adr\",\n      \"docs/architecture\",\n      \"architecture\"\n    ],\n    \"boundary_markers\": [\n      \"doc.go\"\n    ]\n  },\n  \"approved_command_profiles\": []\n}\n",
+      "dm/registry/aggregates/index.md": "# Aggregates\n\n",
+      "dm/registry/capabilities/index.md": "# Capabilities\n\n",
+      "dm/registry/contexts/index.md": "# Bounded Contexts\n\n",
+      "dm/registry/contracts/index.md": "# Contracts\n\n",
+      "dm/registry/decisions/index.md": "# Decisions\n\n",
+      "dm/registry/dependency-policies/index.md": "# Dependency Policies\n\n",
+      "dm/registry/events/index.md": "# Domain Events\n\n",
+      "dm/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n\n- [Bounded Contexts](/contexts/index.md)\n- [Vocabulary](/vocabulary/index.md)\n- [Aggregates](/aggregates/index.md)\n- [Business Rules](/rules/index.md)\n- [Contracts](/contracts/index.md)\n- [Interactions](/interactions/index.md)\n- [Decisions](/decisions/index.md)\n- [Domain Events](/events/index.md)\n- [Capabilities](/capabilities/index.md)\n- [Value Objects](/value-objects/index.md)\n- [Dependency Policies](/dependency-policies/index.md)\n",
+      "dm/registry/interactions/index.md": "# Interactions\n\n",
+      "dm/registry/rules/index.md": "# Business Rules\n\n",
+      "dm/registry/value-objects/index.md": "# Value Objects\n\n",
+      "dm/registry/vocabulary/index.md": "# Vocabulary\n\n",
+      "dm/source-map.json": "{\n  \"format\": \"domain-source-map/v1\",\n  \"repo_root\": \".\",\n  \"source_order\": [\n    \"repository_instructions\",\n    \"decisions\",\n    \"requirements\",\n    \"contracts\",\n    \"bounded_contexts\",\n    \"implementation\",\n    \"tests\"\n  ],\n  \"source_groups\": [\n    {\n      \"kind\": \"repository_instructions\",\n      \"authority\": \"instructions to coding agents, not a statement of the business domain\",\n      \"caution\": \"These files exist to steer agents working in this repository. They are rewritten whenever the workflow changes, and a Domain Memory that rests on one loses its evidence when it is. Select them only for a domain fact no other source states, and record the gap.\",\n      \"paths\": []\n    },\n    {\n      \"kind\": \"decisions\",\n      \"authority\": \"current approved decisions when their status says so\",\n      \"paths\": [\n        \"docs/adr\"\n      ]\n    },\n    {\n      \"kind\": \"requirements\",\n      \"authority\": \"intended behavior and acceptance criteria\",\n      \"paths\": []\n    },\n    {\n      \"kind\": \"contracts\",\n      \"authority\": \"inter-process promises and compatibility\",\n      \"paths\": [\n        \"contracts\"\n      ]\n    },\n    {\n      \"kind\": \"bounded_contexts\",\n      \"authority\": \"candidate technical boundaries requiring domain review\",\n      \"paths\": []\n    },\n    {\n      \"kind\": \"implementation\",\n      \"authority\": \"current executable behavior\",\n      \"paths\": [\n        \"apps\"\n      ]\n    },\n    {\n      \"kind\": \"tests\",\n      \"authority\": \"evidence that a specific behavior is checked\",\n      \"paths\": [\n        \"apps/api/main_test.go\"\n      ]\n    }\n  ],\n  \"missing_groups\": [\n    \"repository_instructions\",\n    \"requirements\",\n    \"bounded_contexts\"\n  ],\n  \"selection_status\": \"agent-asserted\",\n  \"governance_candidates\": {\n    \"ci_tools\": [],\n    \"recommended_verifier\": \"git-signed-commit\",\n    \"recommended_trigger\": \"git-push\"\n  },\n  \"note\": \"The map locates candidate sources. It does not establish a domain fact or source authority by itself.\",\n  \"selected_paths\": [\n    \"apps/api\",\n    \"contracts\",\n    \"docs\"\n  ],\n  \"source_policy_report\": {\n    \"files\": 5,\n    \"total_bytes\": 47,\n    \"oversized_files\": [],\n    \"errors\": []\n  },\n  \"source_kinds\": {\n    \"apps/api\": \"unclassified\",\n    \"contracts\": \"contracts\",\n    \"docs\": \"unclassified\"\n  },\n  \"git_state\": {},\n  \"source_snapshots\": [\n    {\n      \"path\": \"apps/api\",\n      \"file_count\": 2,\n      \"digest\": \"sha256:17f9dd7ebc9de9c149a93b8eb7c7d11aaaf9d3f1552d322d804d37a9251c3862\",\n      \"listing_sha256\": \"sha256:843fc03371d5e70e8fbd1ce162fb91c391b8806388c54cf4a795919ba0015527\"\n    },\n    {\n      \"path\": \"contracts\",\n      \"file_count\": 1,\n      \"digest\": \"sha256:fd4fa32a0830be4d4c471609582f0361a214e4c27fafe22fc36bc2625bbca78e\",\n      \"listing_sha256\": \"sha256:0c526eab5c9fd9ae82dfc34db0c0ae705d2737bfed9ba091bb9b9ae0c8e2c7bf\"\n    },\n    {\n      \"path\": \"docs\",\n      \"file_count\": 2,\n      \"digest\": \"sha256:f15d0976d93b5e663399393dc04d780ba4bc688b7ddf00049900e912b5e2e102\",\n      \"listing_sha256\": \"sha256:1993d8979bd77c95761a7b222d38da2240fbef77037b1e4d4eb2c439bcac8917\"\n    }\n  ]\n}\n",
+      "docs/adr/0001.md": "# adr\n",
+      "docs/requirements.md": "# req\n"
+    }
+  },
+  {
+    "name": "readiness conflict markers in sibling folders are ordered by their parts",
+    "args": [
+      "readiness",
+      "--repo-root",
+      "{fixture}",
+      "--registry-root",
+      "{fixture}/dm"
+    ],
+    "files": {
+      "apps/api/main.go": "package api\n",
+      "apps/api/main_test.go": "package api\n",
+      "contracts/openapi.yaml": "openapi: 3\n",
+      "dm/domain-memory-policy.json": "{\n  \"format\": \"domain-memory-policy/v1\",\n  \"storage_mode\": \"tracked\",\n  \"data_classification\": \"internal\",\n  \"review_mode\": \"local-draft-only\",\n  \"review_governance\": {\n    \"verifier\": \"none\",\n    \"trigger\": \"none\",\n    \"ci_requirement\": \"none\",\n    \"authorized_signers\": [],\n    \"distinct_signer\": false\n  },\n  \"source_policy\": {\n    \"selected_paths\": [\n      \"apps/api\",\n      \"contracts\",\n      \"docs\"\n    ],\n    \"include\": [\n      \"**\"\n    ],\n    \"exclude\": [],\n    \"authority\": \"tester\"\n  },\n  \"limits\": {\n    \"max_file_count\": 10000,\n    \"max_file_bytes\": 10485760,\n    \"max_total_bytes\": 104857600,\n    \"max_query_results\": 100\n  },\n  \"schema_conventions\": {\n    \"exempt_columns\": [\n      \"id\",\n      \"created_at\",\n      \"updated_at\"\n    ],\n    \"status_like_suffixes\": [\n      \"status\",\n      \"state\",\n      \"kind\",\n      \"mode\",\n      \"tier\",\n      \"role\",\n      \"decision\",\n      \"verdict\",\n      \"outcome\",\n      \"phase\",\n      \"stage\",\n      \"level\",\n      \"priority\",\n      \"severity\",\n      \"visibility\",\n      \"category\"\n    ],\n    \"free_text_markers\": [\n      \"free text\",\n      \"free-text\"\n    ],\n    \"value_comment_limit\": 12\n  },\n  \"project_profile\": {\n    \"implementation_roots\": [\n      \"apps\",\n      \"src\",\n      \"services\",\n      \"packages\",\n      \"db\",\n      \"database\",\n      \"migrations\",\n      \"schema\"\n    ],\n    \"excluded_directories\": [],\n    \"decision_roots\": [\n      \"docs/adr\",\n      \"adr\",\n      \"docs/architecture\",\n      \"architecture\"\n    ],\n    \"boundary_markers\": [\n      \"doc.go\"\n    ]\n  },\n  \"approved_command_profiles\": []\n}\n",
+      "dm/registry/aggregates/index.md": "# Aggregates\n\n",
+      "dm/registry/capabilities/index.md": "# Capabilities\n\n",
+      "dm/registry/contexts/index.md": "# Bounded Contexts\n\n",
+      "dm/registry/contracts/index.md": "# Contracts\n\n",
+      "dm/registry/decisions/index.md": "# Decisions\n\n",
+      "dm/registry/dependency-policies/index.md": "# Dependency Policies\n\n",
+      "dm/registry/events/index.md": "# Domain Events\n\n",
+      "dm/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n\n- [Bounded Contexts](/contexts/index.md)\n- [Vocabulary](/vocabulary/index.md)\n- [Aggregates](/aggregates/index.md)\n- [Business Rules](/rules/index.md)\n- [Contracts](/contracts/index.md)\n- [Interactions](/interactions/index.md)\n- [Decisions](/decisions/index.md)\n- [Domain Events](/events/index.md)\n- [Capabilities](/capabilities/index.md)\n- [Value Objects](/value-objects/index.md)\n- [Dependency Policies](/dependency-policies/index.md)\n",
+      "dm/registry/interactions/index.md": "# Interactions\n\n",
+      "dm/registry/rules/index.md": "# Business Rules\n\n",
+      "dm/registry/value-objects/index.md": "# Value Objects\n\n",
+      "dm/registry/vocabulary/index.md": "# Vocabulary\n\n",
+      "dm/source-map.json": "{\n  \"format\": \"domain-source-map/v1\",\n  \"repo_root\": \".\",\n  \"source_order\": [\n    \"repository_instructions\",\n    \"decisions\",\n    \"requirements\",\n    \"contracts\",\n    \"bounded_contexts\",\n    \"implementation\",\n    \"tests\"\n  ],\n  \"source_groups\": [\n    {\n      \"kind\": \"repository_instructions\",\n      \"authority\": \"instructions to coding agents, not a statement of the business domain\",\n      \"caution\": \"These files exist to steer agents working in this repository. They are rewritten whenever the workflow changes, and a Domain Memory that rests on one loses its evidence when it is. Select them only for a domain fact no other source states, and record the gap.\",\n      \"paths\": []\n    },\n    {\n      \"kind\": \"decisions\",\n      \"authority\": \"current approved decisions when their status says so\",\n      \"paths\": [\n        \"docs/adr\"\n      ]\n    },\n    {\n      \"kind\": \"requirements\",\n      \"authority\": \"intended behavior and acceptance criteria\",\n      \"paths\": []\n    },\n    {\n      \"kind\": \"contracts\",\n      \"authority\": \"inter-process promises and compatibility\",\n      \"paths\": [\n        \"contracts\"\n      ]\n    },\n    {\n      \"kind\": \"bounded_contexts\",\n      \"authority\": \"candidate technical boundaries requiring domain review\",\n      \"paths\": []\n    },\n    {\n      \"kind\": \"implementation\",\n      \"authority\": \"current executable behavior\",\n      \"paths\": [\n        \"apps\"\n      ]\n    },\n    {\n      \"kind\": \"tests\",\n      \"authority\": \"evidence that a specific behavior is checked\",\n      \"paths\": [\n        \"apps/api/main_test.go\"\n      ]\n    }\n  ],\n  \"missing_groups\": [\n    \"repository_instructions\",\n    \"requirements\",\n    \"bounded_contexts\"\n  ],\n  \"selection_status\": \"agent-asserted\",\n  \"governance_candidates\": {\n    \"ci_tools\": [],\n    \"recommended_verifier\": \"git-signed-commit\",\n    \"recommended_trigger\": \"git-push\"\n  },\n  \"note\": \"The map locates candidate sources. It does not establish a domain fact or source authority by itself.\",\n  \"selected_paths\": [\n    \"apps/api\",\n    \"contracts\",\n    \"docs\"\n  ],\n  \"source_policy_report\": {\n    \"files\": 5,\n    \"total_bytes\": 47,\n    \"oversized_files\": [],\n    \"errors\": []\n  },\n  \"source_kinds\": {\n    \"apps/api\": \"unclassified\",\n    \"contracts\": \"contracts\",\n    \"docs\": \"unclassified\"\n  },\n  \"git_state\": {},\n  \"source_snapshots\": [\n    {\n      \"path\": \"apps/api\",\n      \"file_count\": 2,\n      \"digest\": \"sha256:17f9dd7ebc9de9c149a93b8eb7c7d11aaaf9d3f1552d322d804d37a9251c3862\",\n      \"listing_sha256\": \"sha256:843fc03371d5e70e8fbd1ce162fb91c391b8806388c54cf4a795919ba0015527\"\n    },\n    {\n      \"path\": \"contracts\",\n      \"file_count\": 1,\n      \"digest\": \"sha256:fd4fa32a0830be4d4c471609582f0361a214e4c27fafe22fc36bc2625bbca78e\",\n      \"listing_sha256\": \"sha256:0c526eab5c9fd9ae82dfc34db0c0ae705d2737bfed9ba091bb9b9ae0c8e2c7bf\"\n    },\n    {\n      \"path\": \"docs\",\n      \"file_count\": 2,\n      \"digest\": \"sha256:f15d0976d93b5e663399393dc04d780ba4bc688b7ddf00049900e912b5e2e102\",\n      \"listing_sha256\": \"sha256:1993d8979bd77c95761a7b222d38da2240fbef77037b1e4d4eb2c439bcac8917\"\n    }\n  ]\n}\n",
+      "docs/adr/0001.md": "# adr\n",
+      "docs/requirements.md": "# req\n",
+      "dm/registry/contexts/a.md": "<<<<<<< ours\nx\n=======\ny\n>>>>>>> theirs\n",
+      "dm/registry/contexts-b/x.md": "<<<<<<< ours\nx\n=======\ny\n>>>>>>> theirs\n",
+      "dm/registry/contexts.d/y.md": "<<<<<<< ours\nx\n=======\ny\n>>>>>>> theirs\n"
+    }
+  },
+  {
+    "name": "verify-sources source groups given as an empty object",
+    "args": [
+      "verify-sources",
+      "--repo-root",
+      "{fixture}",
+      "--source-map",
+      "{fixture}/m/source-map.json"
+    ],
+    "files": {
+      "AGENTS.md": "root\n",
+      "src/a.py": "print('a')\n",
+      "src/b/c.py": "print('c')\n",
+      "src/b/c_test.py": "pass\n",
+      "docs/adr/0001.md": "# decision\n",
+      "docs/plans/01.md": "# plan\n",
+      "README.md": "readme\n",
+      "m/source-map.json": "{\n  \"format\": \"domain-source-map/v1\",\n  \"repo_root\": \".\",\n  \"source_order\": [\n    \"repository_instructions\",\n    \"decisions\",\n    \"requirements\",\n    \"contracts\",\n    \"bounded_contexts\",\n    \"implementation\",\n    \"tests\"\n  ],\n  \"source_groups\": {},\n  \"missing_groups\": [\n    \"contracts\",\n    \"bounded_contexts\"\n  ],\n  \"selection_status\": \"agent-asserted\",\n  \"governance_candidates\": {\n    \"ci_tools\": [],\n    \"recommended_verifier\": \"git-signed-commit\",\n    \"recommended_trigger\": \"git-push\"\n  },\n  \"note\": \"The map locates candidate sources. It does not establish a domain fact or source authority by itself.\",\n  \"selected_paths\": [\n    \"docs\",\n    \"src\"\n  ],\n  \"source_kinds\": {\n    \"docs\": \"unclassified\",\n    \"src\": \"implementation\"\n  },\n  \"git_state\": {},\n  \"source_snapshots\": [\n    {\n      \"path\": \"docs\",\n      \"file_count\": 2,\n      \"digest\": \"sha256:be0be3cbb456c18fad188abdbe86454eb3825a825f0a5f6acdf4042af49b73d5\",\n      \"listing_sha256\": \"sha256:53fe6dc5bcb468560da748d433668c25347c2578a6f511189e2542c9ed29f83d\"\n    },\n    {\n      \"path\": \"src\",\n      \"file_count\": 3,\n      \"digest\": \"sha256:203f62d0bf2371889272e4bd1d7cef40851a86737694847a4ff06d124c7f537f\",\n      \"listing_sha256\": \"sha256:505af66fd0a4429370f7a3bb160bb935e5c6b12bb9fc251727bd22e9e078666c\"\n    }\n  ]\n}\n"
+    }
+  },
+  {
+    "name": "verify-sources source groups given as an empty string",
+    "args": [
+      "verify-sources",
+      "--repo-root",
+      "{fixture}",
+      "--source-map",
+      "{fixture}/m/source-map.json"
+    ],
+    "files": {
+      "AGENTS.md": "root\n",
+      "src/a.py": "print('a')\n",
+      "src/b/c.py": "print('c')\n",
+      "src/b/c_test.py": "pass\n",
+      "docs/adr/0001.md": "# decision\n",
+      "docs/plans/01.md": "# plan\n",
+      "README.md": "readme\n",
+      "m/source-map.json": "{\n  \"format\": \"domain-source-map/v1\",\n  \"repo_root\": \".\",\n  \"source_order\": [\n    \"repository_instructions\",\n    \"decisions\",\n    \"requirements\",\n    \"contracts\",\n    \"bounded_contexts\",\n    \"implementation\",\n    \"tests\"\n  ],\n  \"source_groups\": \"\",\n  \"missing_groups\": [\n    \"contracts\",\n    \"bounded_contexts\"\n  ],\n  \"selection_status\": \"agent-asserted\",\n  \"governance_candidates\": {\n    \"ci_tools\": [],\n    \"recommended_verifier\": \"git-signed-commit\",\n    \"recommended_trigger\": \"git-push\"\n  },\n  \"note\": \"The map locates candidate sources. It does not establish a domain fact or source authority by itself.\",\n  \"selected_paths\": [\n    \"docs\",\n    \"src\"\n  ],\n  \"source_kinds\": {\n    \"docs\": \"unclassified\",\n    \"src\": \"implementation\"\n  },\n  \"git_state\": {},\n  \"source_snapshots\": [\n    {\n      \"path\": \"docs\",\n      \"file_count\": 2,\n      \"digest\": \"sha256:be0be3cbb456c18fad188abdbe86454eb3825a825f0a5f6acdf4042af49b73d5\",\n      \"listing_sha256\": \"sha256:53fe6dc5bcb468560da748d433668c25347c2578a6f511189e2542c9ed29f83d\"\n    },\n    {\n      \"path\": \"src\",\n      \"file_count\": 3,\n      \"digest\": \"sha256:203f62d0bf2371889272e4bd1d7cef40851a86737694847a4ff06d124c7f537f\",\n      \"listing_sha256\": \"sha256:505af66fd0a4429370f7a3bb160bb935e5c6b12bb9fc251727bd22e9e078666c\"\n    }\n  ]\n}\n"
+    }
+  },
+  {
+    "name": "verify-sources source groups given as a list of objects whose paths are text",
+    "args": [
+      "verify-sources",
+      "--repo-root",
+      "{fixture}",
+      "--source-map",
+      "{fixture}/m/source-map.json"
+    ],
+    "files": {
+      "AGENTS.md": "root\n",
+      "src/a.py": "print('a')\n",
+      "src/b/c.py": "print('c')\n",
+      "src/b/c_test.py": "pass\n",
+      "docs/adr/0001.md": "# decision\n",
+      "docs/plans/01.md": "# plan\n",
+      "README.md": "readme\n",
+      "m/source-map.json": "{\n  \"format\": \"domain-source-map/v1\",\n  \"repo_root\": \".\",\n  \"source_order\": [\n    \"repository_instructions\",\n    \"decisions\",\n    \"requirements\",\n    \"contracts\",\n    \"bounded_contexts\",\n    \"implementation\",\n    \"tests\"\n  ],\n  \"source_groups\": [\n    {\n      \"paths\": \"docs\"\n    },\n    {\n      \"paths\": \"nothing\"\n    }\n  ],\n  \"missing_groups\": [\n    \"contracts\",\n    \"bounded_contexts\"\n  ],\n  \"selection_status\": \"agent-asserted\",\n  \"governance_candidates\": {\n    \"ci_tools\": [],\n    \"recommended_verifier\": \"git-signed-commit\",\n    \"recommended_trigger\": \"git-push\"\n  },\n  \"note\": \"The map locates candidate sources. It does not establish a domain fact or source authority by itself.\",\n  \"selected_paths\": [\n    \"docs\",\n    \"src\"\n  ],\n  \"source_kinds\": {\n    \"docs\": \"unclassified\",\n    \"src\": \"implementation\"\n  },\n  \"git_state\": {},\n  \"source_snapshots\": [\n    {\n      \"path\": \"docs\",\n      \"file_count\": 2,\n      \"digest\": \"sha256:be0be3cbb456c18fad188abdbe86454eb3825a825f0a5f6acdf4042af49b73d5\",\n      \"listing_sha256\": \"sha256:53fe6dc5bcb468560da748d433668c25347c2578a6f511189e2542c9ed29f83d\"\n    },\n    {\n      \"path\": \"src\",\n      \"file_count\": 3,\n      \"digest\": \"sha256:203f62d0bf2371889272e4bd1d7cef40851a86737694847a4ff06d124c7f537f\",\n      \"listing_sha256\": \"sha256:505af66fd0a4429370f7a3bb160bb935e5c6b12bb9fc251727bd22e9e078666c\"\n    }\n  ]\n}\n"
+    }
+  },
+  {
+    "name": "verify-sources source groups given as a list of objects whose paths are an object",
+    "args": [
+      "verify-sources",
+      "--repo-root",
+      "{fixture}",
+      "--source-map",
+      "{fixture}/m/source-map.json"
+    ],
+    "files": {
+      "AGENTS.md": "root\n",
+      "src/a.py": "print('a')\n",
+      "src/b/c.py": "print('c')\n",
+      "src/b/c_test.py": "pass\n",
+      "docs/adr/0001.md": "# decision\n",
+      "docs/plans/01.md": "# plan\n",
+      "README.md": "readme\n",
+      "m/source-map.json": "{\n  \"format\": \"domain-source-map/v1\",\n  \"repo_root\": \".\",\n  \"source_order\": [\n    \"repository_instructions\",\n    \"decisions\",\n    \"requirements\",\n    \"contracts\",\n    \"bounded_contexts\",\n    \"implementation\",\n    \"tests\"\n  ],\n  \"source_groups\": [\n    {\n      \"paths\": {\n        \"docs\": 1,\n        \"nothing\": 2\n      }\n    }\n  ],\n  \"missing_groups\": [\n    \"contracts\",\n    \"bounded_contexts\"\n  ],\n  \"selection_status\": \"agent-asserted\",\n  \"governance_candidates\": {\n    \"ci_tools\": [],\n    \"recommended_verifier\": \"git-signed-commit\",\n    \"recommended_trigger\": \"git-push\"\n  },\n  \"note\": \"The map locates candidate sources. It does not establish a domain fact or source authority by itself.\",\n  \"selected_paths\": [\n    \"docs\",\n    \"src\"\n  ],\n  \"source_kinds\": {\n    \"docs\": \"unclassified\",\n    \"src\": \"implementation\"\n  },\n  \"git_state\": {},\n  \"source_snapshots\": [\n    {\n      \"path\": \"docs\",\n      \"file_count\": 2,\n      \"digest\": \"sha256:be0be3cbb456c18fad188abdbe86454eb3825a825f0a5f6acdf4042af49b73d5\",\n      \"listing_sha256\": \"sha256:53fe6dc5bcb468560da748d433668c25347c2578a6f511189e2542c9ed29f83d\"\n    },\n    {\n      \"path\": \"src\",\n      \"file_count\": 3,\n      \"digest\": \"sha256:203f62d0bf2371889272e4bd1d7cef40851a86737694847a4ff06d124c7f537f\",\n      \"listing_sha256\": \"sha256:505af66fd0a4429370f7a3bb160bb935e5c6b12bb9fc251727bd22e9e078666c\"\n    }\n  ]\n}\n"
+    }
+  },
+  {
+    "name": "probe source groups given as an empty string",
+    "args": [
+      "probe",
+      "--repo-root",
+      "{fixture}",
+      "--registry-root",
+      "{fixture}/dm"
+    ],
+    "files": {
+      "apps/api/main.go": "package api\n",
+      "apps/api/main_test.go": "package api\n",
+      "contracts/openapi.yaml": "openapi: 3\n",
+      "dm/domain-memory-policy.json": "{\n  \"format\": \"domain-memory-policy/v1\",\n  \"storage_mode\": \"tracked\",\n  \"data_classification\": \"internal\",\n  \"review_mode\": \"local-draft-only\",\n  \"review_governance\": {\n    \"verifier\": \"none\",\n    \"trigger\": \"none\",\n    \"ci_requirement\": \"none\",\n    \"authorized_signers\": [],\n    \"distinct_signer\": false\n  },\n  \"source_policy\": {\n    \"selected_paths\": [\n      \"apps/api\",\n      \"contracts\",\n      \"docs\"\n    ],\n    \"include\": [\n      \"**\"\n    ],\n    \"exclude\": [],\n    \"authority\": \"tester\"\n  },\n  \"limits\": {\n    \"max_file_count\": 10000,\n    \"max_file_bytes\": 10485760,\n    \"max_total_bytes\": 104857600,\n    \"max_query_results\": 100\n  },\n  \"schema_conventions\": {\n    \"exempt_columns\": [\n      \"id\",\n      \"created_at\",\n      \"updated_at\"\n    ],\n    \"status_like_suffixes\": [\n      \"status\",\n      \"state\",\n      \"kind\",\n      \"mode\",\n      \"tier\",\n      \"role\",\n      \"decision\",\n      \"verdict\",\n      \"outcome\",\n      \"phase\",\n      \"stage\",\n      \"level\",\n      \"priority\",\n      \"severity\",\n      \"visibility\",\n      \"category\"\n    ],\n    \"free_text_markers\": [\n      \"free text\",\n      \"free-text\"\n    ],\n    \"value_comment_limit\": 12\n  },\n  \"project_profile\": {\n    \"implementation_roots\": [\n      \"apps\",\n      \"src\",\n      \"services\",\n      \"packages\",\n      \"db\",\n      \"database\",\n      \"migrations\",\n      \"schema\"\n    ],\n    \"excluded_directories\": [],\n    \"decision_roots\": [\n      \"docs/adr\",\n      \"adr\",\n      \"docs/architecture\",\n      \"architecture\"\n    ],\n    \"boundary_markers\": [\n      \"doc.go\"\n    ]\n  },\n  \"approved_command_profiles\": []\n}\n",
+      "dm/registry/aggregates/index.md": "# Aggregates\n\n",
+      "dm/registry/capabilities/index.md": "# Capabilities\n\n",
+      "dm/registry/contexts/index.md": "# Bounded Contexts\n\n",
+      "dm/registry/contracts/index.md": "# Contracts\n\n",
+      "dm/registry/decisions/index.md": "# Decisions\n\n",
+      "dm/registry/dependency-policies/index.md": "# Dependency Policies\n\n",
+      "dm/registry/events/index.md": "# Domain Events\n\n",
+      "dm/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n\n- [Bounded Contexts](/contexts/index.md)\n- [Vocabulary](/vocabulary/index.md)\n- [Aggregates](/aggregates/index.md)\n- [Business Rules](/rules/index.md)\n- [Contracts](/contracts/index.md)\n- [Interactions](/interactions/index.md)\n- [Decisions](/decisions/index.md)\n- [Domain Events](/events/index.md)\n- [Capabilities](/capabilities/index.md)\n- [Value Objects](/value-objects/index.md)\n- [Dependency Policies](/dependency-policies/index.md)\n",
+      "dm/registry/interactions/index.md": "# Interactions\n\n",
+      "dm/registry/rules/index.md": "# Business Rules\n\n",
+      "dm/registry/value-objects/index.md": "# Value Objects\n\n",
+      "dm/registry/vocabulary/index.md": "# Vocabulary\n\n",
+      "dm/source-map.json": "{\n  \"format\": \"domain-source-map/v1\",\n  \"repo_root\": \".\",\n  \"source_order\": [\n    \"repository_instructions\",\n    \"decisions\",\n    \"requirements\",\n    \"contracts\",\n    \"bounded_contexts\",\n    \"implementation\",\n    \"tests\"\n  ],\n  \"source_groups\": \"\",\n  \"missing_groups\": [\n    \"repository_instructions\",\n    \"requirements\",\n    \"bounded_contexts\"\n  ],\n  \"selection_status\": \"agent-asserted\",\n  \"governance_candidates\": {\n    \"ci_tools\": [],\n    \"recommended_verifier\": \"git-signed-commit\",\n    \"recommended_trigger\": \"git-push\"\n  },\n  \"note\": \"The map locates candidate sources. It does not establish a domain fact or source authority by itself.\",\n  \"selected_paths\": [\n    \"apps/api\",\n    \"contracts\",\n    \"docs\"\n  ],\n  \"source_policy_report\": {\n    \"files\": 5,\n    \"total_bytes\": 47,\n    \"oversized_files\": [],\n    \"errors\": []\n  },\n  \"source_kinds\": {\n    \"apps/api\": \"unclassified\",\n    \"contracts\": \"contracts\",\n    \"docs\": \"unclassified\"\n  },\n  \"git_state\": {},\n  \"source_snapshots\": [\n    {\n      \"path\": \"apps/api\",\n      \"file_count\": 2,\n      \"digest\": \"sha256:17f9dd7ebc9de9c149a93b8eb7c7d11aaaf9d3f1552d322d804d37a9251c3862\",\n      \"listing_sha256\": \"sha256:843fc03371d5e70e8fbd1ce162fb91c391b8806388c54cf4a795919ba0015527\"\n    },\n    {\n      \"path\": \"contracts\",\n      \"file_count\": 1,\n      \"digest\": \"sha256:fd4fa32a0830be4d4c471609582f0361a214e4c27fafe22fc36bc2625bbca78e\",\n      \"listing_sha256\": \"sha256:0c526eab5c9fd9ae82dfc34db0c0ae705d2737bfed9ba091bb9b9ae0c8e2c7bf\"\n    },\n    {\n      \"path\": \"docs\",\n      \"file_count\": 2,\n      \"digest\": \"sha256:f15d0976d93b5e663399393dc04d780ba4bc688b7ddf00049900e912b5e2e102\",\n      \"listing_sha256\": \"sha256:1993d8979bd77c95761a7b222d38da2240fbef77037b1e4d4eb2c439bcac8917\"\n    }\n  ]\n}\n",
+      "docs/adr/0001.md": "# adr\n",
+      "docs/requirements.md": "# req\n"
+    }
+  },
+  {
+    "name": "probe source groups whose paths are given as text under a current map",
+    "args": [
+      "probe",
+      "--repo-root",
+      "{fixture}",
+      "--registry-root",
+      "{fixture}/dm"
+    ],
+    "files": {
+      "apps/api/main.go": "package api\n",
+      "apps/api/main_test.go": "package api\n",
+      "contracts/openapi.yaml": "openapi: 3\n",
+      "dm/domain-memory-policy.json": "{\n  \"format\": \"domain-memory-policy/v1\",\n  \"storage_mode\": \"tracked\",\n  \"data_classification\": \"internal\",\n  \"review_mode\": \"local-draft-only\",\n  \"review_governance\": {\n    \"verifier\": \"none\",\n    \"trigger\": \"none\",\n    \"ci_requirement\": \"none\",\n    \"authorized_signers\": [],\n    \"distinct_signer\": false\n  },\n  \"source_policy\": {\n    \"selected_paths\": [\n      \"apps/api\",\n      \"contracts\",\n      \"docs\"\n    ],\n    \"include\": [\n      \"**\"\n    ],\n    \"exclude\": [],\n    \"authority\": \"tester\"\n  },\n  \"limits\": {\n    \"max_file_count\": 10000,\n    \"max_file_bytes\": 10485760,\n    \"max_total_bytes\": 104857600,\n    \"max_query_results\": 100\n  },\n  \"project_profile\": {\n    \"implementation_roots\": [\n      \"apps\",\n      \"src\",\n      \"services\",\n      \"packages\",\n      \"db\",\n      \"database\",\n      \"migrations\",\n      \"schema\"\n    ],\n    \"excluded_directories\": [],\n    \"decision_roots\": [\n      \"docs/adr\",\n      \"adr\",\n      \"docs/architecture\",\n      \"architecture\"\n    ],\n    \"boundary_markers\": [\n      \"doc.go\"\n    ]\n  },\n  \"approved_command_profiles\": []\n}\n",
+      "dm/registry/aggregates/index.md": "# Aggregates\n\n",
+      "dm/registry/capabilities/index.md": "# Capabilities\n\n",
+      "dm/registry/contexts/index.md": "# Bounded Contexts\n\n",
+      "dm/registry/contracts/index.md": "# Contracts\n\n",
+      "dm/registry/decisions/index.md": "# Decisions\n\n",
+      "dm/registry/dependency-policies/index.md": "# Dependency Policies\n\n",
+      "dm/registry/events/index.md": "# Domain Events\n\n",
+      "dm/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n\n- [Bounded Contexts](/contexts/index.md)\n- [Vocabulary](/vocabulary/index.md)\n- [Aggregates](/aggregates/index.md)\n- [Business Rules](/rules/index.md)\n- [Contracts](/contracts/index.md)\n- [Interactions](/interactions/index.md)\n- [Decisions](/decisions/index.md)\n- [Domain Events](/events/index.md)\n- [Capabilities](/capabilities/index.md)\n- [Value Objects](/value-objects/index.md)\n- [Dependency Policies](/dependency-policies/index.md)\n",
+      "dm/registry/interactions/index.md": "# Interactions\n\n",
+      "dm/registry/rules/index.md": "# Business Rules\n\n",
+      "dm/registry/value-objects/index.md": "# Value Objects\n\n",
+      "dm/registry/vocabulary/index.md": "# Vocabulary\n\n",
+      "dm/source-map.json": "{\n  \"format\": \"domain-source-map/v1\",\n  \"repo_root\": \".\",\n  \"source_order\": [\n    \"repository_instructions\",\n    \"decisions\",\n    \"requirements\",\n    \"contracts\",\n    \"bounded_contexts\",\n    \"implementation\",\n    \"tests\"\n  ],\n  \"source_groups\": [\n    {\n      \"kind\": \"repository_instructions\",\n      \"authority\": \"instructions to coding agents, not a statement of the business domain\",\n      \"caution\": \"These files exist to steer agents working in this repository. They are rewritten whenever the workflow changes, and a Domain Memory that rests on one loses its evidence when it is. Select them only for a domain fact no other source states, and record the gap.\",\n      \"paths\": \"docs\"\n    },\n    {\n      \"kind\": \"decisions\",\n      \"authority\": \"current approved decisions when their status says so\",\n      \"paths\": [\n        \"docs/adr\"\n      ]\n    },\n    {\n      \"kind\": \"requirements\",\n      \"authority\": \"intended behavior and acceptance criteria\",\n      \"paths\": []\n    },\n    {\n      \"kind\": \"contracts\",\n      \"authority\": \"inter-process promises and compatibility\",\n      \"paths\": [\n        \"contracts\"\n      ]\n    },\n    {\n      \"kind\": \"bounded_contexts\",\n      \"authority\": \"candidate technical boundaries requiring domain review\",\n      \"paths\": []\n    },\n    {\n      \"kind\": \"implementation\",\n      \"authority\": \"current executable behavior\",\n      \"paths\": [\n        \"apps\"\n      ]\n    },\n    {\n      \"kind\": \"tests\",\n      \"authority\": \"evidence that a specific behavior is checked\",\n      \"paths\": [\n        \"apps/api/main_test.go\"\n      ]\n    }\n  ],\n  \"missing_groups\": [\n    \"repository_instructions\",\n    \"requirements\",\n    \"bounded_contexts\"\n  ],\n  \"selection_status\": \"agent-asserted\",\n  \"governance_candidates\": {\n    \"ci_tools\": [],\n    \"recommended_verifier\": \"git-signed-commit\",\n    \"recommended_trigger\": \"git-push\"\n  },\n  \"note\": \"The map locates candidate sources. It does not establish a domain fact or source authority by itself.\",\n  \"selected_paths\": [\n    \"apps/api\",\n    \"contracts\",\n    \"docs\"\n  ],\n  \"source_policy_report\": {\n    \"files\": 5,\n    \"total_bytes\": 47,\n    \"oversized_files\": [],\n    \"errors\": []\n  },\n  \"source_kinds\": {\n    \"apps/api\": \"unclassified\",\n    \"contracts\": \"contracts\",\n    \"docs\": \"unclassified\"\n  },\n  \"git_state\": {\n    \"tracked_objects\": {\n      \"apps/api\": \"55588281353482da7220ae7b16326754b63cec7e\",\n      \"contracts\": \"569133da6eab7e927203fc543259cd732cc18c3a\",\n      \"docs\": \"70c46c264c48dd20c6b471c6c5378e38b3c0c7d9\"\n    },\n    \"dirty_sources\": []\n  },\n  \"source_snapshots\": [\n    {\n      \"path\": \"apps/api\",\n      \"file_count\": 2,\n      \"digest\": \"sha256:17f9dd7ebc9de9c149a93b8eb7c7d11aaaf9d3f1552d322d804d37a9251c3862\",\n      \"listing_sha256\": \"sha256:843fc03371d5e70e8fbd1ce162fb91c391b8806388c54cf4a795919ba0015527\"\n    },\n    {\n      \"path\": \"contracts\",\n      \"file_count\": 1,\n      \"digest\": \"sha256:fd4fa32a0830be4d4c471609582f0361a214e4c27fafe22fc36bc2625bbca78e\",\n      \"listing_sha256\": \"sha256:0c526eab5c9fd9ae82dfc34db0c0ae705d2737bfed9ba091bb9b9ae0c8e2c7bf\"\n    },\n    {\n      \"path\": \"docs\",\n      \"file_count\": 2,\n      \"digest\": \"sha256:f15d0976d93b5e663399393dc04d780ba4bc688b7ddf00049900e912b5e2e102\",\n      \"listing_sha256\": \"sha256:1993d8979bd77c95761a7b222d38da2240fbef77037b1e4d4eb2c439bcac8917\"\n    }\n  ]\n}\n",
+      "docs/adr/0001.md": "# adr\n",
+      "docs/requirements.md": "# req\n"
+    },
+    "git": true
+  },
+  {
+    "name": "readiness source groups whose paths are given as text under a current map",
+    "args": [
+      "readiness",
+      "--repo-root",
+      "{fixture}",
+      "--registry-root",
+      "{fixture}/dm"
+    ],
+    "files": {
+      "apps/api/main.go": "package api\n",
+      "apps/api/main_test.go": "package api\n",
+      "contracts/openapi.yaml": "openapi: 3\n",
+      "dm/domain-memory-policy.json": "{\n  \"format\": \"domain-memory-policy/v1\",\n  \"storage_mode\": \"tracked\",\n  \"data_classification\": \"internal\",\n  \"review_mode\": \"local-draft-only\",\n  \"review_governance\": {\n    \"verifier\": \"none\",\n    \"trigger\": \"none\",\n    \"ci_requirement\": \"none\",\n    \"authorized_signers\": [],\n    \"distinct_signer\": false\n  },\n  \"source_policy\": {\n    \"selected_paths\": [\n      \"apps/api\",\n      \"contracts\",\n      \"docs\"\n    ],\n    \"include\": [\n      \"**\"\n    ],\n    \"exclude\": [],\n    \"authority\": \"tester\"\n  },\n  \"limits\": {\n    \"max_file_count\": 10000,\n    \"max_file_bytes\": 10485760,\n    \"max_total_bytes\": 104857600,\n    \"max_query_results\": 100\n  },\n  \"project_profile\": {\n    \"implementation_roots\": [\n      \"apps\",\n      \"src\",\n      \"services\",\n      \"packages\",\n      \"db\",\n      \"database\",\n      \"migrations\",\n      \"schema\"\n    ],\n    \"excluded_directories\": [],\n    \"decision_roots\": [\n      \"docs/adr\",\n      \"adr\",\n      \"docs/architecture\",\n      \"architecture\"\n    ],\n    \"boundary_markers\": [\n      \"doc.go\"\n    ]\n  },\n  \"approved_command_profiles\": []\n}\n",
+      "dm/registry/aggregates/index.md": "# Aggregates\n\n",
+      "dm/registry/capabilities/index.md": "# Capabilities\n\n",
+      "dm/registry/contexts/index.md": "# Bounded Contexts\n\n",
+      "dm/registry/contracts/index.md": "# Contracts\n\n",
+      "dm/registry/decisions/index.md": "# Decisions\n\n",
+      "dm/registry/dependency-policies/index.md": "# Dependency Policies\n\n",
+      "dm/registry/events/index.md": "# Domain Events\n\n",
+      "dm/registry/index.md": "---\nokf_version: \"0.2\"\n---\n# Domain Registry\n\n- [Bounded Contexts](/contexts/index.md)\n- [Vocabulary](/vocabulary/index.md)\n- [Aggregates](/aggregates/index.md)\n- [Business Rules](/rules/index.md)\n- [Contracts](/contracts/index.md)\n- [Interactions](/interactions/index.md)\n- [Decisions](/decisions/index.md)\n- [Domain Events](/events/index.md)\n- [Capabilities](/capabilities/index.md)\n- [Value Objects](/value-objects/index.md)\n- [Dependency Policies](/dependency-policies/index.md)\n",
+      "dm/registry/interactions/index.md": "# Interactions\n\n",
+      "dm/registry/rules/index.md": "# Business Rules\n\n",
+      "dm/registry/value-objects/index.md": "# Value Objects\n\n",
+      "dm/registry/vocabulary/index.md": "# Vocabulary\n\n",
+      "dm/source-map.json": "{\n  \"format\": \"domain-source-map/v1\",\n  \"repo_root\": \".\",\n  \"source_order\": [\n    \"repository_instructions\",\n    \"decisions\",\n    \"requirements\",\n    \"contracts\",\n    \"bounded_contexts\",\n    \"implementation\",\n    \"tests\"\n  ],\n  \"source_groups\": [\n    {\n      \"kind\": \"repository_instructions\",\n      \"authority\": \"instructions to coding agents, not a statement of the business domain\",\n      \"caution\": \"These files exist to steer agents working in this repository. They are rewritten whenever the workflow changes, and a Domain Memory that rests on one loses its evidence when it is. Select them only for a domain fact no other source states, and record the gap.\",\n      \"paths\": \"docs\"\n    },\n    {\n      \"kind\": \"decisions\",\n      \"authority\": \"current approved decisions when their status says so\",\n      \"paths\": [\n        \"docs/adr\"\n      ]\n    },\n    {\n      \"kind\": \"requirements\",\n      \"authority\": \"intended behavior and acceptance criteria\",\n      \"paths\": []\n    },\n    {\n      \"kind\": \"contracts\",\n      \"authority\": \"inter-process promises and compatibility\",\n      \"paths\": [\n        \"contracts\"\n      ]\n    },\n    {\n      \"kind\": \"bounded_contexts\",\n      \"authority\": \"candidate technical boundaries requiring domain review\",\n      \"paths\": []\n    },\n    {\n      \"kind\": \"implementation\",\n      \"authority\": \"current executable behavior\",\n      \"paths\": [\n        \"apps\"\n      ]\n    },\n    {\n      \"kind\": \"tests\",\n      \"authority\": \"evidence that a specific behavior is checked\",\n      \"paths\": [\n        \"apps/api/main_test.go\"\n      ]\n    }\n  ],\n  \"missing_groups\": [\n    \"repository_instructions\",\n    \"requirements\",\n    \"bounded_contexts\"\n  ],\n  \"selection_status\": \"agent-asserted\",\n  \"governance_candidates\": {\n    \"ci_tools\": [],\n    \"recommended_verifier\": \"git-signed-commit\",\n    \"recommended_trigger\": \"git-push\"\n  },\n  \"note\": \"The map locates candidate sources. It does not establish a domain fact or source authority by itself.\",\n  \"selected_paths\": [\n    \"apps/api\",\n    \"contracts\",\n    \"docs\"\n  ],\n  \"source_policy_report\": {\n    \"files\": 5,\n    \"total_bytes\": 47,\n    \"oversized_files\": [],\n    \"errors\": []\n  },\n  \"source_kinds\": {\n    \"apps/api\": \"unclassified\",\n    \"contracts\": \"contracts\",\n    \"docs\": \"unclassified\"\n  },\n  \"git_state\": {},\n  \"source_snapshots\": [\n    {\n      \"path\": \"apps/api\",\n      \"file_count\": 2,\n      \"digest\": \"sha256:17f9dd7ebc9de9c149a93b8eb7c7d11aaaf9d3f1552d322d804d37a9251c3862\",\n      \"listing_sha256\": \"sha256:843fc03371d5e70e8fbd1ce162fb91c391b8806388c54cf4a795919ba0015527\"\n    },\n    {\n      \"path\": \"contracts\",\n      \"file_count\": 1,\n      \"digest\": \"sha256:fd4fa32a0830be4d4c471609582f0361a214e4c27fafe22fc36bc2625bbca78e\",\n      \"listing_sha256\": \"sha256:0c526eab5c9fd9ae82dfc34db0c0ae705d2737bfed9ba091bb9b9ae0c8e2c7bf\"\n    },\n    {\n      \"path\": \"docs\",\n      \"file_count\": 2,\n      \"digest\": \"sha256:f15d0976d93b5e663399393dc04d780ba4bc688b7ddf00049900e912b5e2e102\",\n      \"listing_sha256\": \"sha256:1993d8979bd77c95761a7b222d38da2240fbef77037b1e4d4eb2c439bcac8917\"\n    }\n  ]\n}\n",
+      "docs/adr/0001.md": "# adr\n",
+      "docs/requirements.md": "# req\n"
+    }
+  },
+  {
+    "name": "cite function name that holds a regular expression dot",
+    "args": [
+      "cite",
+      "--repo-root",
+      "{fixture}",
+      "--path",
+      "src/a.py",
+      "--function",
+      "t.p"
+    ],
+    "files": {
+      "src/a.py": "def top():\n    pass\n"
+    }
   }
 ]

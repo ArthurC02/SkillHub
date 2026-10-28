@@ -5,8 +5,9 @@ use crate::digits::decimal_value;
 use crate::evidence::{MAX_EVIDENCE_BYTES, rows};
 use crate::files::load_json;
 use crate::json::{Object, Value};
+use crate::listing::{default_excluded, listing_of};
 use crate::py;
-use crate::pyre::{Match, Regex, escape};
+use crate::pyregex::{self, Match, Regex, escape};
 use crate::pyvalue::splitlines;
 use crate::sha256::hex_digest;
 
@@ -46,17 +47,6 @@ const REGEX_AFTER_WORDS: &[&str] = &[
     "await",
     "yield",
     "instanceof",
-];
-const EXCLUDED_DIRECTORIES: &[&str] = &[
-    ".git",
-    ".hg",
-    ".svn",
-    "node_modules",
-    ".venv",
-    "vendor",
-    "dist",
-    "build",
-    "generated",
 ];
 pub const OUTSIDE_SOURCES_CONSEQUENCE: &str = "A candidate may rest on it, but ship-package refuses to review a record whose evidence rests \
      outside the confirmed sources; cite a source the corpus covers, or have the developer confirm this path \
@@ -294,23 +284,22 @@ pub fn function_span(root: &Path, relative: &str, name: &str) -> Result<(usize, 
     let (language, start_form) = language(relative)?;
     let path = cited_file(root, relative)?;
     let rows = rows(&std::fs::read(&path).map_err(|error| py::os_error(&error, &path))?);
-    let pattern = Regex::new(&format!(
+    let pattern = pyregex::compile(&format!(
         "{INDENT}{}",
         start_form.replace("{name}", &escape(name))
     ))?;
     let starts = definitions(&rows, language, &pattern);
+    if starts.is_empty() {
+        return Err(format!(
+            "{relative} defines no function named {name} in a form --function reads{}; a definition of another form is cited with --lines",
+            defined_elsewhere(root, relative, language, &pattern)?
+        ));
+    }
     if starts.len() != 1 {
-        return Err(if starts.is_empty() {
-            format!(
-                "{relative} defines no function named {name} in a form --function reads{}; a definition of another form is cited with --lines",
-                defined_elsewhere(root, relative, language, &pattern)
-            )
-        } else {
-            format!(
-                "{relative} defines {name} {} times; cite the one you mean with --lines",
-                starts.len()
-            )
-        });
+        return Err(format!(
+            "{relative} defines {name} {} times; cite the one you mean with --lines",
+            starts.len()
+        ));
     }
     let (start, found, body) = &starts[0];
     let end = if language == "Python" {
@@ -349,83 +338,32 @@ fn definitions(
     found_all
 }
 
-fn defined_elsewhere(root: &Path, relative: &str, language: &str, pattern: &Regex) -> String {
+fn defined_elsewhere(
+    root: &Path,
+    relative: &str,
+    language: &str,
+    pattern: &Regex,
+) -> Result<String, String> {
     let suffix = suffix(relative);
     let mut found = Vec::new();
-    for path in repository_files(root) {
+    for path in listing_of(root, &default_excluded())?.entries {
         if path == relative || !path.ends_with(suffix) {
             continue;
         }
-        let rows = rows(&std::fs::read(root.join(&path)).unwrap_or_default());
+        let full = root.join(&path);
+        let data = std::fs::read(&full).map_err(|error| py::open_error(&error, &full))?;
         found.extend(
-            definitions(&rows, language, pattern)
+            definitions(&rows(&data), language, pattern)
                 .into_iter()
                 .map(|(number, _, _)| format!("{path}:{number}")),
         );
     }
     found.sort();
-    match found.as_slice() {
+    Ok(match found.as_slice() {
         [] => String::new(),
         [only] => format!("; it is defined in {only}"),
         many => format!("; it is defined in several files: {}", many.join(", ")),
-    }
-}
-
-fn repository_files(root: &Path) -> Vec<String> {
-    let ignored = crate::git::run_git_bytes(
-        root,
-        &[
-            "ls-files",
-            "--others",
-            "--ignored",
-            "--exclude-standard",
-            "--directory",
-            "-z",
-        ],
-    )
-    .ok()
-    .filter(|done| done.code == 0)
-    .map(|done| {
-        done.stdout
-            .split(|byte| *byte == 0)
-            .filter(|entry| !entry.is_empty())
-            .map(|entry| String::from_utf8_lossy(entry).into_owned())
-            .collect::<Vec<_>>()
     })
-    .unwrap_or_default();
-    let mut found = Vec::new();
-    collect_files(root, "", &ignored, &mut found);
-    found
-}
-
-fn collect_files(directory: &Path, prefix: &str, ignored: &[String], found: &mut Vec<String>) {
-    let Ok(entries) = std::fs::read_dir(directory) else {
-        return;
-    };
-    let listed: Vec<std::fs::DirEntry> = entries.flatten().collect();
-    if !prefix.is_empty() && listed.iter().any(|entry| entry.file_name() == ".git") {
-        return;
-    }
-    let mut children = Vec::new();
-    for entry in listed {
-        let entry_name = entry.file_name().to_string_lossy().into_owned();
-        let name = format!("{prefix}{entry_name}");
-        let file_type = entry.file_type();
-        let is_dir = entry.path().is_dir();
-        if !is_dir {
-            if !ignored.contains(&name) {
-                found.push(name);
-            }
-        } else if !EXCLUDED_DIRECTORIES.contains(&entry_name.as_str())
-            && !file_type.is_ok_and(|kind| kind.is_symlink())
-            && !ignored.contains(&format!("{name}/"))
-        {
-            children.push((entry.path(), format!("{name}/")));
-        }
-    }
-    for (path, prefix) in children {
-        collect_files(&path, &prefix, ignored, found);
-    }
 }
 
 fn python_end(rows: &[String], start: usize, indent: usize) -> Option<usize> {

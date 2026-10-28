@@ -1,15 +1,17 @@
 use std::path::{Path, PathBuf};
 
+use crate::coverage::registry_coverage;
 use crate::files::{load_json, one_level_too_deep_hint};
 use crate::json::{Object, Value};
+use crate::listing::Repository;
 use crate::okf::truthy;
-use crate::py;
-use crate::registry_check::validate;
-use crate::source_probe::{
-    Discovered, Fail, Listed, Listing, Res, counted, discover_sources, domain_memories_in,
-    existing_policy, joined_given, listing_drift, project_profile, refresh_listing_advice,
-    shown_path, verify_source_map,
+use crate::policy::existing_policy;
+use crate::py::{self, Raised};
+use crate::sources::{
+    Profile, discover_sources, discovery_drift_note, listing_drift, verify_source_map,
 };
+use crate::store::{Listed, domain_memories_in, shown_path};
+use crate::validate::validate;
 
 const PRODUCT_GROUPS: [&str; 6] = [
     "decisions",
@@ -18,6 +20,13 @@ const PRODUCT_GROUPS: [&str; 6] = [
     "bounded_contexts",
     "implementation",
     "tests",
+];
+const COUNTED_KINDS: [&str; 5] = [
+    "contexts",
+    "vocabulary_terms",
+    "aggregates",
+    "rules",
+    "contracts",
 ];
 const UNUSABLE_REGISTRY_STATUSES: [&str; 3] = ["invalid", "unverified", "stale"];
 const ERRORS_SHOWN: usize = 3;
@@ -42,11 +51,21 @@ fn signal(kind: &str, field: &str, value: Value) -> Value {
     Value::Object(found)
 }
 
+fn record_count(report: &Object) -> usize {
+    COUNTED_KINDS
+        .iter()
+        .map(|kind| match report.get(kind) {
+            Some(Value::Int(digits)) => digits.parse().unwrap_or(0),
+            _ => 0,
+        })
+        .sum()
+}
+
 fn registry_condition(
     repo_root: &Path,
     registry_path: &Path,
-    listing: &mut Listing,
-) -> Res<(String, usize, Vec<String>)> {
+    listing: &mut Repository,
+) -> Result<(String, usize, Vec<String>), Raised> {
     if !registry_path.exists() {
         return Ok(("absent".to_string(), 0, Vec::new()));
     }
@@ -60,10 +79,10 @@ fn registry_condition(
         ));
     }
     let checked = existing_policy(registry_path)
-        .map_err(Fail::Value)
+        .map_err(Raised::Value)
         .and_then(|policy| verify_source_map(repo_root, &source_map, policy.as_ref()));
     let source_result = match checked {
-        Err(Fail::Value(error)) => {
+        Err(Raised::Value(error)) => {
             return Ok((
                 "invalid".to_string(),
                 0,
@@ -72,9 +91,13 @@ fn registry_condition(
         }
         other => other?,
     };
-    if source_result.status != "current" {
+    let status = source_result
+        .get("status")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    if status != "current" {
         return Ok((
-            source_result.status,
+            status.to_string(),
             0,
             vec![
                 "Domain Memory sources require review before they can guide implementation."
@@ -82,9 +105,9 @@ fn registry_condition(
             ],
         ));
     }
-    let checked = validate(registry_path, repo_root, listing)?;
-    if !checked.errors.is_empty() {
-        let shown: Vec<String> = checked.errors.iter().take(ERRORS_SHOWN).cloned().collect();
+    let errors = validate(registry_path, Some(listing), false)?;
+    if !errors.is_empty() {
+        let shown: Vec<String> = errors.iter().take(ERRORS_SHOWN).cloned().collect();
         return Ok((
             "invalid".to_string(),
             0,
@@ -94,13 +117,13 @@ fn registry_condition(
             )],
         ));
     }
-    let records = checked.counts.map_or(0, |counts| counts.iter().sum());
+    let records = record_count(&registry_coverage(registry_path)?);
     Ok(("current".to_string(), records, Vec::new()))
 }
 
-fn listing_signal(discovered: &Discovered, registry_root: &Path) -> Res<Value> {
+fn listing_signal(discovered: &Object, registry_root: &Path) -> Result<Value, String> {
     let source_map = load_json(&registry_root.join("source-map.json"))?;
-    let (gone, unlisted) = listing_drift(discovered, &source_map);
+    let (gone, unlisted) = listing_drift(discovered, &source_map)?;
     let mut found = Object::new();
     found.insert("kind", text("listing"));
     found.insert(
@@ -122,49 +145,52 @@ fn readable_policy(registry_root: Option<&Path>) -> Option<Object> {
         .flatten()
 }
 
-fn governance(ci_tools: &[String], registry_root: Option<&Path>) -> Value {
+fn governance(candidates: Option<&Value>, registry_root: Option<&Path>) -> Value {
     let policy = readable_policy(registry_root);
     let configured = policy
         .as_ref()
         .and_then(|found| found.get("review_governance"))
         .and_then(Value::as_object)
         .filter(|rules| rules.get("verifier").is_some_and(truthy));
+    let (Some(rules), Some(Value::Object(candidates))) = (configured, candidates) else {
+        return candidates.cloned().unwrap_or(Value::Null);
+    };
     let mut found = Object::new();
-    found.insert("ci_tools", names(ci_tools));
-    match configured {
-        Some(rules) => {
-            found.insert(
-                "configured_verifier",
-                rules.get("verifier").cloned().unwrap_or(Value::Null),
-            );
-            found.insert(
-                "configured_trigger",
-                rules.get("trigger").cloned().unwrap_or(Value::Null),
-            );
-        }
-        None => {
-            found.insert("recommended_verifier", text("git-signed-commit"));
-            found.insert("recommended_trigger", text("git-push"));
-        }
-    }
+    found.insert(
+        "ci_tools",
+        candidates.get("ci_tools").cloned().unwrap_or(Value::Null),
+    );
+    found.insert(
+        "configured_verifier",
+        rules.get("verifier").cloned().unwrap_or(Value::Null),
+    );
+    found.insert(
+        "configured_trigger",
+        rules.get("trigger").cloned().unwrap_or(Value::Null),
+    );
     Value::Object(found)
 }
 
-fn assess(repo_root: &Path, registry_root: Option<&Path>) -> Res<Object> {
+fn group_present(discovered: &Object, kind: &str) -> bool {
+    discovered
+        .get("source_groups")
+        .and_then(Value::as_array)
+        .unwrap_or_default()
+        .iter()
+        .filter_map(Value::as_object)
+        .any(|group| {
+            group.get("kind").and_then(Value::as_str) == Some(kind)
+                && group.get("paths").is_some_and(truthy)
+        })
+}
+
+fn assess(repo_root: &Path, registry_root: Option<&Path>) -> Result<Object, Raised> {
     let policy = readable_policy(registry_root);
-    let profile = project_profile(policy.as_ref());
-    let mut listing = Listing::default_for(repo_root);
-    let discovered = if profile.excluded_directories.is_empty() {
-        discover_sources(repo_root, &profile, Some(&mut listing))?
-    } else {
-        discover_sources(repo_root, &profile, None)?
-    };
-    let present = |kind: &str| {
-        discovered
-            .groups
-            .iter()
-            .any(|(group, paths)| *group == kind && !paths.is_empty())
-    };
+    let profile = Profile::of_policy(policy.as_ref());
+    let mut listing = Repository::new(repo_root);
+    let shared = (!profile.has_excluded_directories()).then_some(&mut listing);
+    let discovered = discover_sources(repo_root, &profile, shared)?;
+    let present = |kind: &str| group_present(&discovered, kind);
     let product_sources = PRODUCT_GROUPS.iter().any(|kind| present(kind));
     let mut signals: Vec<Value> = PRODUCT_GROUPS
         .iter()
@@ -218,14 +244,17 @@ fn assess(repo_root: &Path, registry_root: Option<&Path>) -> Res<Object> {
     report.insert("signals", Value::Array(signals));
     report.insert(
         "governance_candidates",
-        governance(&discovered.ci_tools, registry_root),
+        governance(discovered.get("governance_candidates"), registry_root),
     );
     report.insert("blocks", names(&blocks));
     report.insert("next_capability", text(next_capability));
     Ok(report)
 }
 
-pub fn readiness_report(repo_root: &Path, registry_root: Option<&Path>) -> Res<Readiness> {
+pub fn readiness_report(
+    repo_root: &Path,
+    registry_root: Option<&Path>,
+) -> Result<Readiness, Raised> {
     let repo_root = py::resolve_path(repo_root);
     if let Some(given) = registry_root {
         let mut report = assess(&repo_root, Some(given))?;
@@ -289,7 +318,7 @@ pub fn drift_note(
     given_registry: Option<&str>,
     given_repo: &str,
 ) -> Option<String> {
-    let drifted = report
+    let mut drifted = report
         .get("signals")?
         .as_array()?
         .iter()
@@ -297,29 +326,13 @@ pub fn drift_note(
             let signal = signal.as_object()?;
             (signal.get("kind")?.as_str()? == "listing"
                 && signal.get("status")?.as_str()? == "drifted")
-                .then_some(signal)
+                .then(|| signal.clone())
         })?;
-    let count = |key: &str| {
-        drifted
-            .get(key)
-            .and_then(Value::as_array)
-            .map_or(0, <[Value]>::len)
-    };
-    let (gone, unlisted) = (
-        count("discovered_but_gone"),
-        count("discovered_but_unlisted"),
-    );
-    if gone == 0 && unlisted == 0 {
-        return None;
-    }
+    drifted.insert("status", text("discovery_drifted"));
+    let repo = py::PurePath::new(given_repo);
     let registry = match given_registry {
-        Some(given) => given.to_string(),
-        None => joined_given(given_repo, report.get("registry_root")?.as_str()?),
+        Some(given) => py::PurePath::new(given),
+        None => repo.joined(report.get("registry_root")?.as_str()?),
     };
-    Some(format!(
-        "NOTE: discovery drifted: {} gone, {} unlisted; {}",
-        counted(gone, "listed path"),
-        counted(unlisted, "matching path"),
-        refresh_listing_advice(&registry, given_repo)
-    ))
+    discovery_drift_note(&drifted, &registry, &repo)
 }

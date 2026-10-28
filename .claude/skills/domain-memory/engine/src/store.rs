@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use crate::files::load_json;
-use crate::git;
+use crate::git::{self, Failure};
 use crate::json::{Object, Value};
 use crate::okf;
 use crate::py;
@@ -29,7 +29,7 @@ pub const ASSETS: &[(&str, &str, &str)] = &[
 
 const INDEX: &str = "index.md";
 const DEFAULT_STATUS: &str = "candidate";
-const SOURCE_MAP_FORMAT: &str = "domain-source-map/v1";
+pub const SOURCE_MAP_FORMAT: &str = "domain-source-map/v1";
 const DOMAIN_MEMORY_HINT: &str = "check --registry-root (a Registry holds registry/index.md, \
      or a domain-source-map/v1 source-map.json); initialize one only if this repository has none yet";
 
@@ -272,7 +272,7 @@ pub fn shown_path(path: &Path, top: Option<&Path>) -> String {
     posix(&resolved)
 }
 
-fn domain_memory_hint(root: &Path, repo_root: Option<&Path>) -> Result<String, String> {
+pub fn domain_memory_hint(root: &Path, repo_root: Option<&Path>) -> Result<String, String> {
     let asked = py::resolve_path(root);
     let places: Vec<String> = candidates(&asked, repo_root)?
         .into_iter()
@@ -291,7 +291,7 @@ fn domain_memory_hint(root: &Path, repo_root: Option<&Path>) -> Result<String, S
 
 fn candidates(asked: &Path, repo_root: Option<&Path>) -> Result<Vec<PathBuf>, String> {
     if let Some(repo_root) = repo_root
-        && let Some(listed) = domain_memories_known_to_git(repo_root)?
+        && let Listed::Places(listed) = domain_memories_in(repo_root)?
     {
         return Ok(listed);
     }
@@ -301,8 +301,13 @@ fn candidates(asked: &Path, repo_root: Option<&Path>) -> Result<Vec<PathBuf>, St
         .collect())
 }
 
-fn domain_memories_known_to_git(repo_root: &Path) -> Result<Option<Vec<PathBuf>>, String> {
-    let launched = git::launch_git(
+pub enum Listed {
+    Places(Vec<PathBuf>),
+    Refused(String),
+}
+
+pub fn domain_memories_in(repo_root: &Path) -> Result<Listed, String> {
+    let listed = match git::run_git(
         repo_root,
         &[
             "ls-files",
@@ -314,12 +319,15 @@ fn domain_memories_known_to_git(repo_root: &Path) -> Result<Option<Vec<PathBuf>>
             ":(glob)**/source-map.json",
             ":(glob)**/registry/index.md",
         ],
-    )?;
-    let git::Launched::Ran(listed) = launched else {
-        return Ok(None);
+        None,
+    ) {
+        Ok(listed) => listed,
+        Err(error) if error.kind == Failure::Spawn => return Ok(Listed::Refused(error.message)),
+        Err(error) => return Err(error.message),
     };
     if listed.code != 0 {
-        return Ok(None);
+        let stderr = git::universal_newlines(&listed.stderr);
+        return Ok(Listed::Refused(py::strip(&stderr).to_string()));
     }
     let mut homes: Vec<PathBuf> = Vec::new();
     for entry in String::from_utf8_lossy(&listed.stdout).split('\0') {
@@ -347,7 +355,7 @@ fn domain_memories_known_to_git(repo_root: &Path) -> Result<Option<Vec<PathBuf>>
         }
     }
     homes.sort_by(|left, right| py::compare_paths(left, right));
-    Ok(Some(homes))
+    Ok(Listed::Places(homes))
 }
 
 pub fn neighbours(asked: &Path) -> Result<Vec<PathBuf>, String> {

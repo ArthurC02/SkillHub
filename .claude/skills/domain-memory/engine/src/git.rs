@@ -5,7 +5,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use crate::json::float_repr;
-use crate::py;
+use crate::py::{self, Raised};
 
 const TIMEOUT_VARIABLE: &str = "DOMAIN_MEMORY_GIT_TIMEOUT";
 const DEFAULT_SECONDS: f64 = 15.0;
@@ -33,6 +33,16 @@ pub struct GitError {
 impl GitError {
     fn new(kind: Failure, message: String) -> Self {
         Self { message, kind }
+    }
+}
+
+impl From<GitError> for Raised {
+    fn from(error: GitError) -> Self {
+        match error.kind {
+            Failure::Spawn => Raised::Os(error.message),
+            Failure::Deadline => Raised::Subprocess(error.message),
+            Failure::Invalid => Raised::Value(error.message),
+        }
     }
 }
 
@@ -81,23 +91,10 @@ pub fn toplevel(repo_root: &Path) -> Result<Option<PathBuf>, String> {
     Ok((found.code == 0).then(|| py::resolve(py::strip(&found.stdout))))
 }
 
-fn universal_newlines(bytes: &[u8]) -> String {
+pub fn universal_newlines(bytes: &[u8]) -> String {
     String::from_utf8_lossy(bytes)
         .replace("\r\n", "\n")
         .replace('\r', "\n")
-}
-
-pub enum Launched {
-    Ran(Output),
-    Unavailable,
-}
-
-pub fn launch_git(root: &Path, arguments: &[&str]) -> Result<Launched, String> {
-    match run_git(root, arguments, None) {
-        Ok(output) => Ok(Launched::Ran(output)),
-        Err(error) if error.kind == Failure::Spawn => Ok(Launched::Unavailable),
-        Err(error) => Err(error.message),
-    }
 }
 
 pub fn run_git(root: &Path, arguments: &[&str], input: Option<&[u8]>) -> Result<Output, GitError> {
@@ -105,15 +102,6 @@ pub fn run_git(root: &Path, arguments: &[&str], input: Option<&[u8]>) -> Result<
     let mut argv = vec!["git", "-C", root_text.as_str()];
     argv.extend_from_slice(arguments);
     run_bounded(&argv, input)
-}
-
-pub fn run_git_lenient(
-    root: &Path,
-    arguments: &[&str],
-    input: Option<&[u8]>,
-) -> Result<Result<Output, String>, String> {
-    deadline_seconds()?;
-    Ok(run_git(root, arguments, input).map_err(|error| error.message))
 }
 
 pub fn checked_git_bytes(root: &Path, arguments: &[&str], failure: &str) -> Result<Output, String> {

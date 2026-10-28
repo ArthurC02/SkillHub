@@ -27,21 +27,18 @@ mod policy;
 mod promotion;
 mod proposals;
 mod py;
-mod pyre;
 mod pyregex;
 mod pyvalue;
 mod read_commands;
 mod readiness;
 mod reconciliation;
 mod records;
-mod registry_check;
 mod registry_write;
 mod revision;
 mod search;
 mod secret_patterns;
 mod secrets;
 mod sha256;
-mod source_probe;
 mod sources;
 mod store;
 mod tar;
@@ -283,6 +280,7 @@ fn discover_sources(invocation: &Invocation) -> Result<i32, String> {
     let source_map = Value::Object(sources::discover_sources(
         &root,
         &sources::Profile::from_section(Some(&given)),
+        None,
     )?);
     if let Some(output) = invocation.text("output") {
         files::write_source_file(&py::resolve(output), &source_map)?;

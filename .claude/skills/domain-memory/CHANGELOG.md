@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 5.0.6
+
+### Fixed
+
+- The executable now matches the script where its own copies disagreed: `cite` treats a combining mark (such as U+093E) as part of a word, and an invalid `DOMAIN_MEMORY_GIT_TIMEOUT` or an unreadable file stops `cite` as it stops the script; `readiness` and `probe` stop on a git deadline instead of ignoring it, and read a float or boolean limit as the script does; `verify-sources`, `probe` and `readiness` read source group paths given as text or an object as the script does.
+
 ## 5.0.5
 
 ### Added

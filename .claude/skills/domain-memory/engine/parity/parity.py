@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 ENGINE = Path(__file__).resolve().parents[1]
@@ -153,15 +154,18 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Run every parity case through the Python plugin and the Rust engine.")
     parser.add_argument("--binary", type=Path, default=BINARY)
     parser.add_argument("--only", help="run only the cases whose name contains this text")
+    parser.add_argument("--jobs", type=int, default=os.cpu_count() or 1)
     options = parser.parse_args()
     if f"{sys.version_info.major}.{sys.version_info.minor}" != PYTHON:
         print(f"run the parity cases with Python {PYTHON}; this is {sys.version.split()[0]}", file=sys.stderr)
         return 2
     cases = generated_cases() + json.loads(CASES.read_text(encoding="utf-8"))
     chosen = [case for case in cases if not options.only or options.only in case["name"]]
+    binary = options.binary.resolve()
     failed = 0
-    for case in chosen:
-        problems = compared(case, options.binary.resolve())
+    with ThreadPoolExecutor(max_workers=options.jobs) as pool:
+        results = pool.map(lambda case: compared(case, binary), chosen)
+    for case, problems in zip(chosen, results, strict=True):
         if problems:
             failed += 1
             print(f"DIFF {case['name']}")

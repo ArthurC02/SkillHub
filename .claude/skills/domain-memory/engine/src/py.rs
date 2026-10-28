@@ -2,6 +2,40 @@ use std::cmp::Ordering;
 use std::io;
 use std::path::{Component, Path, PathBuf};
 
+pub enum Raised {
+    Value(String),
+    Os(String),
+    Subprocess(String),
+}
+
+impl Raised {
+    pub fn message(self) -> String {
+        match self {
+            Raised::Value(message) | Raised::Os(message) | Raised::Subprocess(message) => message,
+        }
+    }
+
+    pub fn os(error: &io::Error, path: &Path) -> Self {
+        Raised::Os(os_error(error, path))
+    }
+
+    pub fn open(error: &io::Error, path: &Path) -> Self {
+        Raised::Os(open_error(error, path))
+    }
+}
+
+impl From<String> for Raised {
+    fn from(message: String) -> Self {
+        Raised::Value(message)
+    }
+}
+
+impl From<Raised> for String {
+    fn from(raised: Raised) -> Self {
+        raised.message()
+    }
+}
+
 pub fn is_space(character: char) -> bool {
     character.is_whitespace() || ('\u{1c}'..='\u{1f}').contains(&character)
 }
@@ -256,6 +290,12 @@ impl PurePath {
             anchor: self.anchor.clone(),
             parts,
         }
+    }
+
+    pub fn joined(&self, relative: &str) -> Self {
+        let separator = if cfg!(windows) { "\\" } else { "/" };
+        let own = format!("{}{}", self.anchor, self.parts.join(separator));
+        Self::new(&Path::new(&own).join(relative).to_string_lossy())
     }
 
     pub fn as_posix(&self) -> String {

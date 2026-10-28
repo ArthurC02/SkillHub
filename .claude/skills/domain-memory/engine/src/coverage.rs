@@ -37,8 +37,28 @@ struct Held {
 }
 
 pub fn coverage(root: &Path, changes_root: Option<PathBuf>) -> Result<Report, String> {
+    let held = held_assets(root)?;
+    let mut report = model_report(root, &held)?;
+    rule_coverage(
+        &mut report,
+        root,
+        of(&held, "rules"),
+        &of(&held, "contexts").records,
+        changes_root.as_deref(),
+    )?;
+    Ok(Report {
+        coverage: Value::Object(report),
+        missing_changes: changes_root.is_none().then(|| root.join("changes")),
+    })
+}
+
+pub fn registry_coverage(root: &Path) -> Result<Object, String> {
+    model_report(root, &held_assets(root)?)
+}
+
+fn held_assets(root: &Path) -> Result<Vec<(&'static str, Held)>, String> {
     let documents = read_documents(root)?;
-    let held: Vec<(&str, Held)> = ASSETS
+    Ok(ASSETS
         .iter()
         .map(|(asset, key, _)| {
             let document = documents.get(asset).and_then(Value::as_object);
@@ -52,28 +72,24 @@ pub fn coverage(root: &Path, changes_root: Option<PathBuf>) -> Result<Report, St
             let status = field("status").cloned().unwrap_or(Value::Null);
             (*asset, Held { status, records })
         })
-        .collect();
-    let of = |asset: &str| {
-        &held
-            .iter()
-            .find(|(name, _)| *name == asset)
-            .expect("asset")
-            .1
-    };
+        .collect())
+}
+
+fn of<'a>(held: &'a [(&str, Held)], asset: &str) -> &'a Held {
+    &held
+        .iter()
+        .find(|(name, _)| *name == asset)
+        .expect("asset")
+        .1
+}
+
+fn model_report(root: &Path, held: &[(&str, Held)]) -> Result<Object, String> {
     let mut report = Object::new();
-    model_coverage(&mut report, &of("contexts").records, &of);
-    report.insert("evidence_gaps", evidence_gaps(root, &held)?);
-    rule_coverage(
-        &mut report,
-        root,
-        of("rules"),
-        &of("contexts").records,
-        changes_root.as_deref(),
-    )?;
-    Ok(Report {
-        coverage: Value::Object(report),
-        missing_changes: changes_root.is_none().then(|| root.join("changes")),
-    })
+    model_coverage(&mut report, &of(held, "contexts").records, &|asset| {
+        of(held, asset)
+    });
+    report.insert("evidence_gaps", evidence_gaps(root, held)?);
+    Ok(report)
 }
 
 fn model_coverage<'a>(report: &mut Object, contexts: &[Object], of: &dyn Fn(&str) -> &'a Held) {

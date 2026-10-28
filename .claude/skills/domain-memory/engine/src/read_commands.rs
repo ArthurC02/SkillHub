@@ -5,10 +5,12 @@ use crate::compare;
 use crate::coupling::{self, Limits, Reading};
 use crate::files::load_json;
 use crate::json::{Object, Value};
+use crate::policy::policy_path;
 use crate::py;
+use crate::pyvalue::str_of;
 use crate::readiness;
-use crate::source_probe::{self, Fail};
-use crate::store::{self, Registry};
+use crate::sources::{counted, probe_sources, refresh_listing_advice};
+use crate::store::{self, Registry, domain_memory_hint, shown_path};
 
 pub fn change_coupling(invocation: &Invocation) -> Result<i32, String> {
     let depth = invocation.int("depth").unwrap_or(2);
@@ -86,6 +88,104 @@ pub fn compare_registry(invocation: &Invocation) -> Result<i32, String> {
     Ok(0)
 }
 
+fn length_of(result: &Object, key: &str) -> usize {
+    result
+        .get(key)
+        .and_then(Value::as_array)
+        .map_or(0, <[Value]>::len)
+}
+
+fn named(result: &Object, key: &str) -> String {
+    result
+        .get(key)
+        .and_then(Value::as_array)
+        .unwrap_or_default()
+        .iter()
+        .take(5)
+        .map(|source| {
+            source
+                .as_object()
+                .and_then(|source| source.get("path"))
+                .map(str_of)
+                .unwrap_or_default()
+        })
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn closed(sentence: String) -> String {
+    if sentence.ends_with('?') {
+        sentence
+    } else {
+        format!("{sentence}.")
+    }
+}
+
+fn probe_summary(
+    result: &Object,
+    given_registry: &str,
+    given_repo: &str,
+) -> Result<String, String> {
+    let (registry_root, repo_root) = (py::resolve(given_registry), py::resolve(given_repo));
+    let where_ = format!(
+        "Domain Memory at {}",
+        shown_path(&registry_root, Some(&repo_root))
+    );
+    let status = result.get("status").map(str_of).unwrap_or_default();
+    if status == "absent" {
+        if let Some(hint) = result.get("hint") {
+            return Ok(format!(
+                "{where_}: no source map here, but {}.",
+                str_of(hint)
+            ));
+        }
+        let hint = domain_memory_hint(&registry_root, Some(&repo_root))?;
+        return Ok(closed(format!("{where_}: none; {hint}")));
+    }
+    if status == "current" || status == "discovery_drifted" {
+        let inside = match length_of(result, "content_changed") {
+            0 => String::new(),
+            changed => format!(
+                "; {changed} selected sources changed inside ({}); verify-evidence checks the citations",
+                named(result, "content_changed")
+            ),
+        };
+        let drifted = if status == "discovery_drifted" {
+            format!(
+                "; discovery drifted: {} gone, {} unlisted; {}",
+                counted(length_of(result, "discovered_but_gone"), "listed path"),
+                counted(
+                    length_of(result, "discovered_but_unlisted"),
+                    "matching path"
+                ),
+                refresh_listing_advice(
+                    &py::PurePath::new(given_registry),
+                    &py::PurePath::new(given_repo)
+                )
+            )
+        } else {
+            String::new()
+        };
+        return Ok(format!(
+            "{where_}: current, {}, established by {}{inside}{drifted}.",
+            result
+                .get("selection_status")
+                .map(str_of)
+                .unwrap_or_default(),
+            result.get("checked").map(str_of).unwrap_or_default()
+        ));
+    }
+    if status == "stale" {
+        return Ok(format!(
+            "{where_}: stale. {} selected sources gained, lost or renamed files ({}); run refresh-sources, then have a developer run confirm-sources.",
+            length_of(result, "changed_sources"),
+            named(result, "changed_sources")
+        ));
+    }
+    let reason = result.get("reason").map(str_of).unwrap_or_default();
+    Ok(py::strip(&format!("{where_}: {status}. {reason}")).to_string())
+}
+
 pub fn probe(invocation: &Invocation) -> Result<i32, String> {
     let given_registry = invocation.text("registry_root").unwrap_or(".");
     let given_repo = invocation.text("repo_root").unwrap_or(".");
@@ -93,31 +193,23 @@ pub fn probe(invocation: &Invocation) -> Result<i32, String> {
     let repo_root = py::resolve(given_repo);
     let policy_file = match invocation.text("policy") {
         Some(given) => py::resolve(given),
-        None => source_probe::policy_path(&registry_root),
+        None => policy_path(&registry_root),
     };
     let policy = if policy_file.exists() {
         Some(load_json(&policy_file)?)
     } else {
         None
     };
-    let result = source_probe::probe_sources(
+    let result = probe_sources(
         &repo_root,
         &registry_root.join("source-map.json"),
         policy.as_ref(),
-    )
-    .map_err(Fail::text)?;
-    let summary = source_probe::probe_summary(
-        &result,
-        &py::resolve(given_registry),
-        &py::resolve(given_repo),
-        given_registry,
-        given_repo,
-    )
-    .map_err(Fail::text)?;
+    )?;
+    let summary = probe_summary(&result, given_registry, given_repo)?;
     crate::emit_stdout(&format!("{summary}\n"));
-    Ok(match result.status.as_str() {
-        "current" | "discovery_drifted" => 0,
-        "absent" => 2,
+    Ok(match result.get("status").and_then(Value::as_str) {
+        Some("current" | "discovery_drifted") => 0,
+        Some("absent") => 2,
         _ => 1,
     })
 }
@@ -127,7 +219,7 @@ pub fn readiness(invocation: &Invocation) -> Result<i32, String> {
     let given_registry = invocation.text("registry_root");
     let registry_root = given_registry.map(py::resolve);
     let result = readiness::readiness_report(&py::resolve(given_repo), registry_root.as_deref())
-        .map_err(Fail::text)?;
+        .map_err(py::Raised::message)?;
     crate::print_json(&Value::Object(result.report.clone()));
     if let Some(located) = &result.located {
         crate::emit_stderr(&format!("{located}\n"));

@@ -1,12 +1,12 @@
 use std::path::{Path, PathBuf};
 
 use crate::audit_log::CANONICAL;
-use crate::git::{self, Launched};
+use crate::git::{self, Failure};
 use crate::json::{self, Object, Value};
+use crate::policy::{existing_policy, policy_path};
 use crate::py;
 use crate::pyvalue::str_of;
 use crate::sha256::hex_digest;
-use crate::source_probe::{existing_policy, policy_path};
 use crate::store::{ASSETS, Registry};
 
 const COMMIT_LENGTH: usize = 40;
@@ -90,8 +90,10 @@ fn is_commit(text: &str) -> bool {
 }
 
 fn git_commit(repo_root: &Path) -> Result<Option<String>, String> {
-    let Launched::Ran(done) = git::launch_git(repo_root, &["rev-parse", "HEAD"])? else {
-        return Ok(None);
+    let done = match git::run_git(repo_root, &["rev-parse", "HEAD"], None) {
+        Ok(done) => done,
+        Err(error) if error.kind == Failure::Spawn => return Ok(None),
+        Err(error) => return Err(error.message),
     };
     if done.code != 0 {
         return Ok(None);

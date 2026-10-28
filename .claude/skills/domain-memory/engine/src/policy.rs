@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::difflib::close_matches;
 use crate::files::load_json;
@@ -39,8 +39,20 @@ const BARE_NAME_KEYS: &[&str] = &["excluded_directories", "boundary_markers"];
 
 const DEFAULT_QUERY_RESULTS: usize = 100;
 
+pub fn policy_path(root: &Path) -> PathBuf {
+    root.join(POLICY_FILE)
+}
+
+pub fn existing_policy(root: &Path) -> Result<Option<Object>, String> {
+    let path = policy_path(root);
+    if path.is_file() {
+        return load_json(&path).map(Some);
+    }
+    Ok(None)
+}
+
 fn valid_policy_if_any(root: &Path) -> Result<Option<Object>, String> {
-    let path = root.join(POLICY_FILE);
+    let path = policy_path(root);
     if !path.is_file() {
         return Ok(None);
     }
@@ -60,7 +72,7 @@ fn valid_policy(path: &Path) -> Result<Object, String> {
 }
 
 pub fn review_governance(root: &Path) -> Result<Object, String> {
-    let policy = valid_policy(&root.join(POLICY_FILE))?;
+    let policy = valid_policy(&policy_path(root))?;
     Ok(policy
         .get("review_governance")
         .and_then(Value::as_object)
