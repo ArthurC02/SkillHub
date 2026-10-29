@@ -1,8 +1,8 @@
 import type { On } from 'claude-code'
 import { expect, test } from 'claude-code/testing'
 import {
-  attributedToCommand, isAgentCache, isGeneratedHeader, needsSignature, spawnProblem, subagentCommandProblem,
-  worktreePaths,
+  attributedToCommand, isAgentCache, isGeneratedHeader, needsSignature, pushDirectory, spawnProblem,
+  subagentCommandProblem, worktreePaths,
 } from '../hooks/register'
 
 const PARENT = 'claude-opus-5-5'
@@ -229,6 +229,36 @@ test('a file inside a new folder this session\'s own command created can then be
   const result = await $.tool.call({ tool: 'Edit', file_path: `${ROOT}/docs/pkg/draft.md`, old_string: 'a', new_string: 'b' })
   expect(result.deny).toBeUndefined()
   expect(edited).toEqual(['Edit'])
+})
+
+const pushedFrom: [string, string][] = [
+  ['git push origin HEAD:main', 'c:/repo'],
+  ['git -C "c:/scratch/wt" push origin HEAD:main', 'c:/scratch/wt'],
+  ['cd "c:/scratch/wt" && git log -1 && git push -q origin HEAD:main', 'c:/scratch/wt'],
+  ["cd 'c:/a' && git -C /b push", '/b'],
+  ['cd sub && git push', 'c:/repo/sub'],
+  ['cd c:/a && ls; cd c:/b && git push', 'c:/b'],
+  ['git push && cd c:/elsewhere', 'c:/repo'],
+]
+
+for (const [command, directory] of pushedFrom) {
+  test(`"${command}" pushes from ${directory}`, () => {
+    expect(pushDirectory(command, ROOT)).toBe(directory)
+  })
+}
+
+const IMAGE_FILE = 'infra/images/runtime-agent-sdk/Dockerfile'
+
+test('a push from a worktree whose new commits change the runtime image is refused', async ($, on) => {
+  world(on, argv => argv.includes('diff') && argv.includes('c:/scratch/wt') && argv.includes('@{u}...HEAD') ? IMAGE_FILE : '')
+  const result = await $.tool.call({ tool: 'Bash', command: 'cd "c:/scratch/wt" && git push origin HEAD:main' })
+  expect(result.deny).toMatch(/runtime image tag/)
+})
+
+test('a checkout behind its upstream is not refused for the image change it has yet to pull', async ($, on) => {
+  world(on, argv => argv.includes('diff') && argv.includes('@{u}..HEAD') ? IMAGE_FILE : '')
+  const result = await $.tool.call({ tool: 'Bash', command: 'git push' })
+  expect(result.deny).toBeUndefined()
 })
 
 const LINKED = 'c:/scratch/wt'

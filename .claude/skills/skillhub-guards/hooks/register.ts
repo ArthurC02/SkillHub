@@ -175,11 +175,25 @@ async function readHeader($: EngineInterface, path: string): Promise<string> {
   }
 }
 
+const unquoted = (arg: string) => arg.replace(/^(["'])(.*)\1$/, '$2')
+const ABSOLUTE = /^([a-zA-Z]:|\/)/
+
+export function pushDirectory(command: string, sessionRoot: string): string {
+  const push = command.match(GIT_PUSH)
+  if (!push || push.index === undefined) return sessionRoot
+  const dashC = [...push[0].matchAll(new RegExp(String.raw`-C\s+(${ARG})`, 'g'))].at(-1)
+  const cd = [...command.slice(0, push.index).matchAll(new RegExp(String.raw`(?:^|[;&|\n])\s*cd\s+(${ARG})`, 'g'))].at(-1)
+  const directory = dashC?.[1] ?? cd?.[1]
+  if (directory === undefined) return sessionRoot
+  const path = unquoted(directory)
+  return ABSOLUTE.test(path) ? path : `${sessionRoot}/${path}`
+}
+
 async function unallowedRuntimeImagePush($: EngineInterface, root: string) {
   const head = (await $.process.run(['git', '-C', root, 'rev-parse', 'HEAD'])).stdout.trim()
   const upstream = await $.process.run(['git', '-C', root, 'rev-parse', '--verify', '--quiet', '@{u}'])
   const base = upstream.exitCode === 0 ? '@{u}' : 'origin/main'
-  const changed = await $.process.run(['git', '-C', root, 'diff', '--name-only', `${base}..HEAD`, '--', RUNTIME_IMAGE])
+  const changed = await $.process.run(['git', '-C', root, 'diff', '--name-only', `${base}...HEAD`, '--', RUNTIME_IMAGE])
   const action = `push of ${head.slice(0, 8)} touching ${RUNTIME_IMAGE}`
   if (changed.stdout.trim() === '' || await consumeAllowance($, action)) return undefined
   return refuse($, action,
@@ -271,7 +285,7 @@ export const register: Register = on => {
     const root = await $.session.root()
 
     if (GIT_PUSH.test(e.command)) {
-      const refusal = await unallowedRuntimeImagePush($, root)
+      const refusal = await unallowedRuntimeImagePush($, pushDirectory(e.command, root))
       if (refusal) return refusal
     }
 

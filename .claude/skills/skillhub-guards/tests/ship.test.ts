@@ -65,7 +65,7 @@ test('a clean ship lints, stages each file, commits from stdin, checks fast-forw
     'merge-base --is-ancestor origin/main HEAD',
     'rev-parse HEAD',
     'rev-parse --verify --quiet @{u}',
-    'diff --name-only @{u}..HEAD -- infra/images/runtime-agent-sdk',
+    'diff --name-only @{u}...HEAD -- infra/images/runtime-agent-sdk',
     'push --quiet',
     'rev-parse HEAD',
   ])
