@@ -1,3 +1,4 @@
+use crate::pyvalue::{kind_of, message_repr, repr_of};
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
@@ -6,7 +7,6 @@ use crate::difflib::close_matches;
 use crate::files::{load_json, write_json};
 use crate::json::{self, Object, Value};
 use crate::py::{self, Raised};
-use crate::pyvalue::{kind_of, repr_of};
 use crate::transaction::with_writer_lock;
 
 pub const POLICY_FILE: &str = "domain-memory-policy.json";
@@ -151,7 +151,7 @@ pub fn validate_policy(policy: &Object) -> Vec<String> {
             sorted.sort_unstable();
             errors.push(format!(
                 "policy has an invalid {key}: {} is not one of {}",
-                repr_of(value),
+                message_repr(value),
                 sorted.join(", ")
             ));
         }

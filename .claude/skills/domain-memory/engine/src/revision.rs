@@ -1,3 +1,4 @@
+use crate::pyvalue::{equal, message_text, str_of};
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
@@ -8,7 +9,6 @@ use crate::json::{self, Object, Value};
 use crate::okf::{review_field, truthy};
 use crate::policy::{existing_policy, policy_path};
 use crate::py;
-use crate::pyvalue::{equal, str_of};
 use crate::sha256::hex_digest;
 use crate::store::{ASSETS, Registry, committed_documents, registry_dir, shown_path};
 
@@ -42,7 +42,11 @@ fn in_identifier_order(mut records: Vec<Value>) -> Vec<Value> {
     records.sort_by_key(|record| {
         record
             .as_object()
-            .map(|object| object.get("id").map_or_else(|| "None".to_string(), str_of))
+            .map(|object| {
+                object
+                    .get("id")
+                    .map_or_else(|| "null".to_string(), message_text)
+            })
             .unwrap_or_default()
     });
     records

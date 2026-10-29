@@ -1,3 +1,4 @@
+use crate::pyvalue::message_text;
 use std::io::Read;
 use std::path::Path;
 
@@ -9,7 +10,6 @@ use crate::git_governance;
 use crate::json::{self, Object, Style, Value};
 use crate::proposals;
 use crate::py;
-use crate::pyvalue::str_of;
 use crate::{emit_stderr, emit_stdout, print_json};
 
 const INLINE: Style = Style {
@@ -149,7 +149,7 @@ fn note_unsettled(registry_root: &Path) -> Result<(), String> {
     let pending: Vec<String> = rows
         .iter()
         .filter(|row| field(row, "status").as_str() == Some("approved"))
-        .map(|row| str_of(&field(row, "proposal_id")))
+        .map(|row| message_text(&field(row, "proposal_id")))
         .collect();
     let dangling: Vec<String> = rows
         .iter()
@@ -157,8 +157,8 @@ fn note_unsettled(registry_root: &Path) -> Result<(), String> {
         .map(|row| {
             format!(
                 "{} (by {})",
-                str_of(&field(row, "proposal_id")),
-                str_of(&field(row, "superseded_by"))
+                message_text(&field(row, "proposal_id")),
+                message_text(&field(row, "superseded_by"))
             )
         })
         .collect();

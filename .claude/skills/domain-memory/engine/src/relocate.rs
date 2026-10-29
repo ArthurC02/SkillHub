@@ -68,7 +68,7 @@ fn whole(value: Option<&Value>) -> Result<i128, String> {
 }
 
 fn text_of(value: Option<&Value>) -> String {
-    value.map_or_else(|| "None".to_string(), str_of)
+    value.map_or_else(|| "null".to_string(), str_of)
 }
 
 impl Relocation<'_> {

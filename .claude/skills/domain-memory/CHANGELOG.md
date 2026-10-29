@@ -2,6 +2,14 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 6.1.0
+
+### Changed
+
+- Messages show a missing, null or boolean value as `null`, `true` or `false`, the way the YAML and JSON that hold it spell it, instead of Python's `None`, `True` and `False`: `contexts/x has an invalid status: null is not one of ...`, `distinct_signer: false -> true`. `audit-attestations` reports a package without an id as `"proposal_id": "null"`. Names, index lines and every other value the engine compares or writes keep their spelling, so no Registry needs refreshing.
+- A file that is not UTF-8 is reported as `not valid UTF-8 at byte offset 4 (0xff): invalid start byte` instead of `'utf-8' codec can't decode byte 0xff in position 4: invalid start byte`.
+- `brief --base ""` says `brief --base needs a revision, and it was empty` instead of `None record not found: None`, and a Registry update blocked by an open file no longer says `(error null)` when the system gives no error code.
+
 ## 6.0.1
 
 ### Fixed

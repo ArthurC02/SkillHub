@@ -1,3 +1,4 @@
+use crate::pyvalue::{equal, message_text, str_of};
 use std::path::{Path, PathBuf};
 
 use crate::audit_append::utc_now;
@@ -6,7 +7,6 @@ use crate::files::{PROPOSAL_FILE, load_json, write_json};
 use crate::json::{Object, Value};
 use crate::proposals::completed_identifier;
 use crate::py;
-use crate::pyvalue::{equal, str_of};
 use crate::revision::{current_registry_revision, inside};
 
 pub fn reconciliation_path(root: &Path) -> PathBuf {
@@ -58,7 +58,7 @@ fn reconciled(
     if status.as_str() != Some("approved") {
         return Err(format!(
             "the audit log records an apply of {shown_id}, but its proposal is {}; reconcile the package with the Registry by hand",
-            str_of(&status)
+            message_text(&status)
         ));
     }
     mark_applied(proposal_path, proposal, registry_root, repo_root)?;

@@ -221,9 +221,9 @@ fn new_operation_id() -> String {
 fn held_open(root: &Path, error: &std::io::Error) -> String {
     let code = error
         .raw_os_error()
-        .map_or_else(|| "None".to_string(), |code| code.to_string());
+        .map_or_else(String::new, |code| format!(" (error {code})"));
     format!(
-        "another process is holding {} or a file in it open (error {code}), so the update could not be swapped; nothing was changed. Close it and rerun.",
+        "another process is holding {} or a file in it open{code}, so the update could not be swapped; nothing was changed. Close it and rerun.",
         py::shown(&registry_dir(root))
     )
 }

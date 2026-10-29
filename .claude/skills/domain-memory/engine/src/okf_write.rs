@@ -1,7 +1,7 @@
 use crate::json::{self, Object, Style, Value};
 use crate::okf::{LIST_RELATIONS, prose_field, review_field, title_field};
 use crate::py;
-use crate::pyvalue::{repr_of, str_of};
+use crate::pyvalue::{message_text, repr_of};
 
 const CONCEPT_TYPES: &[(&str, &str)] = &[
     ("contexts", "Bounded Context"),
@@ -84,7 +84,9 @@ pub fn encode(asset: &str, record: &Object) -> Result<String, String> {
     {
         return Err(format!(
             "{asset}/{} has a field named {key}, which the concept format reserves",
-            record.get("id").map_or_else(|| "None".to_string(), str_of)
+            record
+                .get("id")
+                .map_or_else(|| "null".to_string(), message_text)
         ));
     }
     for (key, value) in remaining.iter() {

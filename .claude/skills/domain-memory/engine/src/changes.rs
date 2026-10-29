@@ -1,3 +1,4 @@
+use crate::pyvalue::{equal, message_repr, message_text, str_of};
 use std::collections::BTreeSet;
 use std::path::Path;
 
@@ -19,7 +20,6 @@ use crate::policy::approved_command_profiles;
 use crate::proposals::{completed_identifier, completed_identifiers, superseded_ids};
 use crate::py;
 use crate::pyregex;
-use crate::pyvalue::{equal, repr_of, str_of};
 use crate::registry_write::without;
 use crate::revision::{DIGEST_HEX_LENGTH, DIGEST_PREFIX, valid_digest, valid_registry_revision};
 use crate::store::{ASSETS, Registry};
@@ -637,14 +637,14 @@ fn obligation_source_error(obligation_id: &str, source: &Object) -> Option<Strin
         return Some(format!(
             "test obligation {obligation_id} has source_type {}; a source_type names what the \
              obligation is derived from, not the kind of check, and must be one of {}",
-            repr_of(source_type),
+            message_repr(source_type),
             OBLIGATION_SOURCE_TYPES.join(", ")
         ));
     }
     if !completed_identifier(get(source, "source_id")) {
         return Some(format!(
             "test obligation {obligation_id} has an incomplete source_id: {}",
-            repr_of(get(source, "source_id"))
+            message_repr(get(source, "source_id"))
         ));
     }
     None
@@ -1179,12 +1179,12 @@ fn updated_evidence_errors(proposal: &Object, repo_root: &Path) -> Result<Vec<St
                     .iter()
                     .map(|key| get(&result, key))
                     .find(|value| truthy(value))
-                    .map_or_else(|| "None".to_string(), str_of);
+                    .map_or_else(|| "null".to_string(), message_text);
                 errors.push(format!(
                     "registry update {}/{} cites evidence that is {}: {shown}",
                     str_of(get(raw, "asset")),
                     str_of(get(record, "id")),
-                    str_of(status)
+                    message_text(status)
                 ));
             }
         }

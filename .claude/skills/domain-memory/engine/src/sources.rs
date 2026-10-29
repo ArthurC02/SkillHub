@@ -1,3 +1,4 @@
+use crate::pyvalue::{equal, kind_of, message_text, str_of};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{MAIN_SEPARATOR, Path, PathBuf};
@@ -14,7 +15,6 @@ use crate::listing::{
 use crate::okf::truthy;
 use crate::policy::validate_policy;
 use crate::py::{self, Raised};
-use crate::pyvalue::{equal, kind_of, str_of};
 use crate::sha256::Sha256;
 use crate::store::{SOURCE_MAP_FORMAT, domain_memory_hint, shown_path};
 use crate::transaction::with_writer_lock;
@@ -620,7 +620,7 @@ fn limit_of(limits: &Object, key: &str) -> Result<(f64, String), String> {
             kind_of(value)
         )
     })?;
-    Ok((number, str_of(value)))
+    Ok((number, message_text(value)))
 }
 
 fn source_policy_report(

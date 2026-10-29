@@ -1,3 +1,4 @@
+use crate::pyvalue::message_text;
 use std::path::PathBuf;
 
 use crate::audit_commands::print_inline;
@@ -8,7 +9,6 @@ use crate::git_governance;
 use crate::json::{Object, Value};
 use crate::policy;
 use crate::py;
-use crate::pyvalue::str_of;
 use crate::signing::{self, SigningKey};
 use crate::{emit_stderr, emit_stdout, print_json};
 
@@ -38,12 +38,12 @@ pub fn amend_policy(invocation: &Invocation) -> Result<i32, String> {
         invocation.text("verifier"),
     )?;
     for change in &changes {
-        let shown = |key: &str| change.get(key).map(str_of).unwrap_or_default();
+        let rendered = |key: &str| change.get(key).map(message_text).unwrap_or_default();
         emit_stdout(&format!(
             "{}: {} -> {}\n",
-            shown("field"),
-            shown("from"),
-            shown("to")
+            rendered("field"),
+            rendered("from"),
+            rendered("to")
         ));
     }
     emit_stdout(

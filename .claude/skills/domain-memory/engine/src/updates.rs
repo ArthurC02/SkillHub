@@ -1,3 +1,4 @@
+use crate::pyvalue::{message_text, str_of};
 use std::path::{Path, PathBuf};
 
 use crate::audit_log::{APPLY_OPERATION, read_events};
@@ -14,7 +15,6 @@ use crate::okf::{review_field, truthy};
 use crate::policy::review_mode;
 use crate::proposals::{completed_identifier, superseded_ids};
 use crate::py;
-use crate::pyvalue::str_of;
 use crate::reconciliation::{
     mark_applied, reconcile_pending_update, reconciliation_path, was_applied,
 };
@@ -119,7 +119,9 @@ fn reviewed_copy(
         let held = cited_excerpts(other)?;
         let same = held.len() == excerpts.len() && held.iter().all(|pair| excerpts.contains(pair));
         if same {
-            let named = other.get("id").map_or_else(|| "None".to_string(), str_of);
+            let named = other
+                .get("id")
+                .map_or_else(|| "null".to_string(), message_text);
             return Ok(Some(format!("{asset}/{named}")));
         }
     }

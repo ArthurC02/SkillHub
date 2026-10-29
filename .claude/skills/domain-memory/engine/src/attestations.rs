@@ -1,3 +1,4 @@
+use crate::pyvalue::{equal, message_text, splitlines};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
@@ -6,7 +7,6 @@ use crate::git;
 use crate::json::{self, Object, Value};
 use crate::proposals::{completed_identifier, readable_packages};
 use crate::py;
-use crate::pyvalue::{equal, splitlines, str_of};
 use crate::unicode::casefold;
 
 const EVIDENCE_FILE: &str = "evidence-bundle.json";
@@ -412,7 +412,7 @@ pub fn audit_attestations(repo_root: &Path, changes_root: &Path) -> Result<Vec<V
         .iter()
         .map(|entry| {
             let (verdict, detail) = attestation_verdict(repo_root, entry, &objects);
-            let field = |key: &str| str_of(entry.proposal.get(key).unwrap_or(&Value::Null));
+            let field = |key: &str| message_text(entry.proposal.get(key).unwrap_or(&Value::Null));
             let mut finding = Object::new();
             finding.insert(
                 "package",

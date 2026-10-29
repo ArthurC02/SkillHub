@@ -1,9 +1,9 @@
+use crate::pyvalue::{message_text, str_of};
 use std::io::{BufRead, Write};
 use std::path::{Path, PathBuf};
 
 use crate::json::{self, Object, Style, Value};
 use crate::py;
-use crate::pyvalue::str_of;
 use crate::revision;
 use crate::store::ASSETS;
 
@@ -592,7 +592,7 @@ impl Server {
             .and_then(Value::as_str)
             .and_then(|name| self.tools.iter().find(|tool| tool.name() == name));
         let Some(tool) = tool else {
-            let shown = named.map_or_else(|| "None".to_string(), str_of);
+            let shown = named.map_or_else(|| "null".to_string(), message_text);
             return Err(protocol(INVALID_PARAMS, format!("Unknown tool: {shown}")));
         };
         let empty = Value::Object(Object::new());

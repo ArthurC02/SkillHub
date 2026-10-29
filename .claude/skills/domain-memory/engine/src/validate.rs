@@ -1,3 +1,4 @@
+use crate::pyvalue::{message_repr, message_text, splitlines, str_of};
 use std::path::{Path, PathBuf};
 
 use crate::coverage::all_references;
@@ -10,7 +11,6 @@ use crate::okf::{review_field, truthy};
 use crate::policy::{existing_policy, review_mode, validate_policy};
 use crate::proposals::list_proposals;
 use crate::py;
-use crate::pyvalue::{repr_of, splitlines, str_of};
 use crate::store::{
     ASSETS, Registry, has_registry, missing_registry_for, registry_dir, shown_path,
 };
@@ -162,7 +162,7 @@ fn entry_status_errors(
     else {
         errors.push(format!(
             "{label} has an invalid status: {} is not one of {}",
-            repr_of(&status),
+            message_repr(&status),
             REGISTRY_STATUSES.join(", ")
         ));
         return;
@@ -210,7 +210,7 @@ fn evidence_errors(loaded: &Loaded, repo_root: &Path) -> Result<Vec<String>, Str
             let shown = result.get("reason").or_else(|| result.get("path"));
             errors.push(format!(
                 "evidence {status}: {}",
-                shown.map_or_else(|| "None".to_string(), str_of)
+                shown.map_or_else(|| "null".to_string(), message_text)
             ));
         }
     }
@@ -410,7 +410,7 @@ pub fn unsettled_notes(registry_root: &Path) -> Result<Vec<String>, String> {
     let rows: Vec<&Object> = rows.iter().filter_map(Value::as_object).collect();
     let proposal = |row: &Object| {
         row.get("proposal_id")
-            .map_or_else(|| "None".to_string(), str_of)
+            .map_or_else(|| "null".to_string(), message_text)
     };
     let pending: Vec<String> = rows
         .iter()
@@ -423,7 +423,7 @@ pub fn unsettled_notes(registry_root: &Path) -> Result<Vec<String>, String> {
         .map(|row| {
             let by = row
                 .get("superseded_by")
-                .map_or_else(|| "None".to_string(), str_of);
+                .map_or_else(|| "null".to_string(), message_text);
             format!("{} (by {by})", proposal(row))
         })
         .collect();

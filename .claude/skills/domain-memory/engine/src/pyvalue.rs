@@ -66,11 +66,29 @@ pub fn str_of(value: &Value) -> String {
     }
 }
 
+const PYTHON_WORDS: [&str; 3] = ["None", "True", "False"];
+const JSON_WORDS: [&str; 3] = ["null", "true", "false"];
+
 pub fn repr_of(value: &Value) -> String {
+    rendered(value, &PYTHON_WORDS)
+}
+
+pub fn message_text(value: &Value) -> String {
     match value {
-        Value::Null => "None".to_string(),
-        Value::Bool(true) => "True".to_string(),
-        Value::Bool(false) => "False".to_string(),
+        Value::Str(text) => text.clone(),
+        other => message_repr(other),
+    }
+}
+
+pub fn message_repr(value: &Value) -> String {
+    rendered(value, &JSON_WORDS)
+}
+
+fn rendered(value: &Value, words: &[&str; 3]) -> String {
+    match value {
+        Value::Null => words[0].to_string(),
+        Value::Bool(true) => words[1].to_string(),
+        Value::Bool(false) => words[2].to_string(),
         Value::Int(digits) => digits.clone(),
         Value::Float(number) => float_repr(*number)
             .replace("NaN", "nan")
@@ -78,13 +96,17 @@ pub fn repr_of(value: &Value) -> String {
         Value::Str(text) => py::repr(text),
         Value::Array(items) => format!(
             "[{}]",
-            items.iter().map(repr_of).collect::<Vec<_>>().join(", ")
+            items
+                .iter()
+                .map(|item| rendered(item, words))
+                .collect::<Vec<_>>()
+                .join(", ")
         ),
         Value::Object(object) => format!(
             "{{{}}}",
             object
                 .iter()
-                .map(|(key, value)| format!("{}: {}", py::repr(key), repr_of(value)))
+                .map(|(key, value)| format!("{}: {}", py::repr(key), rendered(value, words)))
                 .collect::<Vec<_>>()
                 .join(", ")
         ),

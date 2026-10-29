@@ -1,3 +1,4 @@
+use crate::pyvalue::{message_text, splitlines, str_of};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::Path;
 
@@ -5,7 +6,6 @@ use crate::git;
 use crate::json::{Object, Value};
 use crate::py;
 use crate::pyregex::{self, Regex};
-use crate::pyvalue::{splitlines, str_of};
 use crate::store::Registry;
 
 const COMMIT_MARKER: char = '\x1e';
@@ -88,8 +88,8 @@ pub fn registered_collaborations(registry: &Registry) -> Result<Vec<Collaboratio
                 "{asset}/{}",
                 entry
                     .get("id")
-                    .map(str_of)
-                    .unwrap_or_else(|| "None".to_string())
+                    .map(message_text)
+                    .unwrap_or_else(|| "null".to_string())
             );
             for (one, other) in ends_of(asset, &entry) {
                 let (Value::Str(one), Value::Str(other)) = (one, other) else {

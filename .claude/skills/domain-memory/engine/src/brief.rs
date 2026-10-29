@@ -1,3 +1,4 @@
+use crate::pyvalue::{equal, message_text, repr_of, str_of};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
@@ -10,7 +11,6 @@ use crate::impact::{self, Library};
 use crate::json::{self, Object, Value};
 use crate::okf::truthy;
 use crate::py;
-use crate::pyvalue::{equal, repr_of, str_of};
 use crate::records::{audit_events, obligations_proving, read_record, readable_packages};
 use crate::store::{self, ASSETS, DEFAULT_STATUS, Registry};
 
@@ -57,8 +57,8 @@ type Packages = Option<Vec<(PathBuf, Object)>>;
 fn text_of(object: &Object, key: &str) -> String {
     object
         .get(key)
-        .map(str_of)
-        .unwrap_or_else(|| "None".to_string())
+        .map(message_text)
+        .unwrap_or_else(|| "null".to_string())
 }
 
 fn value_of(object: &Object, key: &str) -> Value {
@@ -462,7 +462,7 @@ fn source_map_line(change: &Object) -> String {
     } else {
         format!(
             "source map changed in this range and is {}, not confirmed {counts}",
-            str_of(&confirmation)
+            message_text(&confirmation)
         )
     }
 }

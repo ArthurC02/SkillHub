@@ -1,3 +1,4 @@
+use crate::pyvalue::{equal, message_text, str_of};
 use std::collections::HashMap;
 use std::fs;
 use std::io::Write;
@@ -12,7 +13,6 @@ use crate::json::{Object, Value};
 use crate::listing::EXCLUDED_DIRECTORIES;
 use crate::py::{self, PurePath};
 use crate::pyregex;
-use crate::pyvalue::{equal, str_of};
 use crate::sha256::hex_digest;
 use crate::shlex;
 use crate::test_output::{build_failed, failing_tests, failure_evidence, no_test_passed};
@@ -787,7 +787,7 @@ pub fn require_recordable(package: &Path, obligation_id: Option<&str>) -> Outcom
     let proposal = load_json(&package.join(PROPOSAL_FILE))?;
     let status = proposal
         .get("status")
-        .map_or_else(|| "None".to_string(), str_of);
+        .map_or_else(|| "null".to_string(), message_text);
     if !RECORDABLE_STATUSES.contains(&status.as_str()) {
         return Err(format!(
             "the proposal is {status}: its counterfactual checks are what verify-proposal checked, so they stay as they are; redraft it to record new ones"

@@ -1,3 +1,4 @@
+use crate::pyvalue::{equal, message_text, str_of};
 use std::path::Path;
 
 use crate::audit_log::APPLY_OPERATION;
@@ -7,7 +8,6 @@ use crate::git::resolve_commit;
 use crate::hitl::{attest_signed_commit, finalize_proposal, proposal_path};
 use crate::json::{Object, Value};
 use crate::py;
-use crate::pyvalue::{equal, str_of};
 use crate::revision::{Refusal, require_current_registry_revision};
 use crate::store::shown_path;
 use crate::updates::apply_approved_updates;
@@ -57,7 +57,7 @@ fn next_for(status: &Value) -> String {
         Some("submitted") => "the proposal is submitted again; correct what finalize named, verify-proposal, then ship-package".to_string(),
         _ => format!(
             "the proposal is {}; ship-package works from a verified proposal",
-            str_of(status)
+            message_text(status)
         ),
     }
 }
@@ -123,7 +123,10 @@ pub fn ship_package(
             .errors
             .extend(another_commit(&package_root, &repo_root, &status, commit)?);
         if names.is_empty() && report.errors.is_empty() {
-            report.note = Some(format!("already {}; nothing was written", str_of(&status)));
+            report.note = Some(format!(
+                "already {}; nothing was written",
+                message_text(&status)
+            ));
         }
     }
     let mut stale_steps = false;

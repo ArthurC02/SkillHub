@@ -7,7 +7,7 @@ use crate::files::load_json;
 use crate::json::{Object, Value};
 use crate::policy::policy_path;
 use crate::py;
-use crate::pyvalue::str_of;
+use crate::pyvalue::{message_text, str_of};
 use crate::readiness;
 use crate::sources::{counted, probe_sources, refresh_listing_advice};
 use crate::store::{self, Registry, domain_memory_hint, shown_path};
@@ -170,7 +170,7 @@ fn probe_summary(
             "{where_}: current, {}, established by {}{inside}{drifted}.",
             result
                 .get("selection_status")
-                .map(str_of)
+                .map(message_text)
                 .unwrap_or_default(),
             result.get("checked").map(str_of).unwrap_or_default()
         ));

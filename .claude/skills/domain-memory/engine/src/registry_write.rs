@@ -1,3 +1,4 @@
+use crate::pyvalue::message_repr;
 use std::path::Path;
 
 use crate::candidate_evidence::without_derived_keys;
@@ -5,7 +6,6 @@ use crate::indexes::{asset_index, root_index};
 use crate::json::{Object, Value};
 use crate::okf_write::encode;
 use crate::py;
-use crate::pyvalue::repr_of;
 use crate::store::{ASSETS, Registry, registry_dir};
 
 const INDEX: &str = "index.md";
@@ -46,7 +46,7 @@ fn concept_file_name(asset: &str, record_id: Option<&Value>) -> Result<String, S
         Some(id) => Ok(format!("{id}.md")),
         None => Err(format!(
             "{asset} record id {} cannot name a concept file; use letters, digits, '.', '_' or '-'",
-            record_id.map_or_else(|| "None".to_string(), repr_of)
+            record_id.map_or_else(|| "null".to_string(), message_repr)
         )),
     }
 }

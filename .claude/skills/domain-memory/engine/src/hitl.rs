@@ -1,3 +1,4 @@
+use crate::pyvalue::{equal, message_repr, message_text, str_of};
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
@@ -19,7 +20,6 @@ use crate::okf::truthy;
 use crate::policy::{approved_command_profiles, review_governance};
 use crate::proposals::completed_identifier;
 use crate::py;
-use crate::pyvalue::{equal, repr_of, str_of};
 use crate::revision::{Refusal, base_registry_revision, require_current_registry_revision};
 use crate::sha256::hex_digest;
 use crate::shlex;
@@ -112,7 +112,7 @@ pub fn rebase_proposal(
         .as_str()
         .filter(|held| REBASABLE_STATUSES.contains(held))
     else {
-        let shown = str_of(&status);
+        let shown = message_text(&status);
         return Err(format!(
             "{} {shown} proposal is not rebased; {}",
             article(&shown),
@@ -331,7 +331,11 @@ fn silent_go_obligations(entries: &[Value]) -> Vec<String> {
                 .collect();
             is_go_test(&argv) && !reports_tests(&argv)
         })
-        .map(|entry| entry.get("id").map_or_else(|| "None".to_string(), str_of))
+        .map(|entry| {
+            entry
+                .get("id")
+                .map_or_else(|| "null".to_string(), message_text)
+        })
         .collect()
 }
 
@@ -379,7 +383,7 @@ pub fn supersede_proposal(
     if !status_in(&status, &SUPERSEDABLE_STATUSES)? {
         return Err(format!(
             "a {} proposal cannot be superseded; create a new draft instead",
-            str_of(&status)
+            message_text(&status)
         ));
     }
     if !completed_identifier(&Value::Str(reason.to_string())) {
@@ -509,8 +513,8 @@ fn evidence_check_errors(evidence: &Object, entries: &[Value]) -> Result<Vec<Str
         errors.push(format!(
             "the test result of {} ran {}, not the obligation's check {}; record the check, or cite the CI run as an https:// link",
             str_of(id),
-            repr_of(get(result, "evidence")),
-            repr_of(check)
+            message_repr(get(result, "evidence")),
+            message_repr(check)
         ));
     }
     Ok(errors)
@@ -594,7 +598,7 @@ pub fn record_test_result(
     if !status_in(&status, &RECORDABLE_STATUSES)? {
         return Err(format!(
             "the proposal is {}: its test results are what verify-proposal checked, so they stay as they are; redraft it to record new ones",
-            str_of(&status)
+            message_text(&status)
         ));
     }
     let entries = obligation_entries(&load_json(&root.join(OBLIGATIONS_FILE))?)?;

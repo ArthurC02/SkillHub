@@ -7,7 +7,7 @@ use crate::hitl::{
 use crate::json::Value;
 use crate::proposals::list_proposals;
 use crate::py::{self, PurePath};
-use crate::pyvalue::str_of;
+use crate::pyvalue::message_text;
 use crate::write_commands::resolved;
 use crate::{emit_stderr, emit_stdout};
 
@@ -79,7 +79,7 @@ pub fn verify(invocation: &Invocation) -> Result<i32, String> {
     if let Some(status) = status.filter(|status| PAST_VERIFICATION.contains(status)) {
         let revision = proposal
             .get("proposal_revision")
-            .map_or_else(|| "None".to_string(), str_of);
+            .map_or_else(|| "null".to_string(), message_text);
         emit_stdout(&format!(
             "already {status} at revision {revision}; nothing was written\n"
         ));

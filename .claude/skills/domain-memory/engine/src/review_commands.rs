@@ -62,7 +62,9 @@ pub fn brief(invocation: &Invocation) -> Result<i32, String> {
     let repo_root = py::resolve(invocation.text("repo_root").unwrap_or("."));
     let found = match base.filter(|base| !base.is_empty()) {
         Some(base) => brief::brief_for_change(&root, &repo_root, base)?,
-        None if base.is_some() => return Err("None record not found: None".to_string()),
+        None if base.is_some() => {
+            return Err("brief --base needs a revision, and it was empty".to_string());
+        }
         None => brief::brief_for_record(
             &root,
             &repo_root,

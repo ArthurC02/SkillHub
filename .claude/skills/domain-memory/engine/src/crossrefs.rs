@@ -1,10 +1,10 @@
+use crate::pyvalue::{message_repr, str_of};
 use std::collections::HashSet;
 
 use crate::coverage::holding;
 use crate::indexes::Loaded;
 use crate::json::{Object, Value};
 use crate::py;
-use crate::pyvalue::{repr_of, str_of};
 use crate::unicode::casefold;
 
 const ABSENCE_ASSETS: [&str; 5] = ["aggregates", "contracts", "events", "rules", "vocabulary"];
@@ -56,7 +56,7 @@ pub fn records_of<'a>(loaded: &'a Loaded, asset: &str) -> &'a [Object] {
 }
 
 pub fn identifier(entry: &Object) -> String {
-    entry.get("id").map_or_else(|| "None".to_string(), str_of)
+    entry.get("id").map_or_else(|| "null".to_string(), str_of)
 }
 
 fn present<'a>(entry: &'a Object, key: &str) -> Option<&'a Value> {
@@ -84,7 +84,7 @@ fn nonblank(value: &Value) -> bool {
 }
 
 fn unknown_contexts(names: &[Option<&str>]) -> String {
-    let mut shown: Vec<&str> = names.iter().map(|name| name.unwrap_or("None")).collect();
+    let mut shown: Vec<&str> = names.iter().map(|name| name.unwrap_or("null")).collect();
     shown.sort_unstable();
     format!(
         "unknown context {}; add the Context first",
@@ -128,7 +128,7 @@ fn placement_errors(contexts: &[Object], errors: &mut Vec<String>) {
             };
             errors.push(format!(
                 "{label} has an unknown subdomain: {} is not one of {}{hint}",
-                repr_of(subdomain),
+                message_repr(subdomain),
                 SUBDOMAINS.join(", ")
             ));
         }
@@ -366,7 +366,7 @@ fn aggregate_binding_errors(loaded: &Loaded, errors: &mut Vec<String>) {
                 Some((_, home)) if !named_contexts(entry).contains(home) => {
                     errors.push(format!(
                         "{label} aggregate {aggregate} belongs to context {}, which the record does not name",
-                        home.unwrap_or("None")
+                        home.unwrap_or("null")
                     ));
                 }
                 Some(_) => {}
@@ -393,7 +393,7 @@ fn closed_field_errors(loaded: &Loaded, errors: &mut Vec<String>) {
                 errors.push(format!(
                     "{asset}/{} has an unknown {field}: {} is not one of {}{hint}",
                     identifier(entry),
-                    repr_of(value),
+                    message_repr(value),
                     allowed.join(", ")
                 ));
             }
@@ -470,7 +470,7 @@ fn synonym_errors(
                 "{location} synonym {} is the name of {} in a shared context",
                 other
                     .get("name")
-                    .map_or_else(|| "None".to_string(), repr_of),
+                    .map_or_else(|| "null".to_string(), message_repr),
                 identifier(other)
             ));
         }

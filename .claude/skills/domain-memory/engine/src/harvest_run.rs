@@ -1,3 +1,4 @@
+use crate::pyvalue::{equal, message_text, str_of};
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -21,7 +22,6 @@ use crate::policy::existing_policy;
 use crate::promotion::{promote_candidate, replace_promoted_fields};
 use crate::proposals::iter_packages;
 use crate::py::{self, PurePath};
-use crate::pyvalue::{equal, str_of};
 use crate::records::read_record;
 use crate::registry_write::is_reviewed;
 use crate::revision::as_stored;
@@ -309,7 +309,7 @@ fn check_package_directory(run: &mut Harvest, records: &[Object]) -> Result<(), 
     {
         run.errors.push(format!(
             "the package at {package} is {}; a finished harvest is not re-run; {}",
-            str_of(&status),
+            message_text(&status),
             way_out(&package, &status)
         ));
         return Ok(());
@@ -1019,7 +1019,7 @@ pub fn discard_harvest(
     {
         return Err(format!(
             "the package at {package} is {}; only a draft, submitted or verified package is discarded",
-            str_of(status)
+            message_text(status)
         ));
     }
     let elsewhere = named_by_other_packages(&package_root)?;

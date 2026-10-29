@@ -1,6 +1,6 @@
 use crate::json::{Object, Value};
 use crate::proposals::completed_identifier;
-use crate::pyvalue::{equal, repr_of};
+use crate::pyvalue::{equal, message_repr};
 
 pub const REQUIREMENT_FILE: &str = "requirement-normalization.json";
 pub const OBLIGATIONS_FILE: &str = "test-obligations.json";
@@ -43,7 +43,7 @@ pub const OBLIGATION_STATUSES: [&str; 3] = ["blocked", "executed", "planned"];
 pub fn invalid_choice(label: &str, field: &str, value: &Value, allowed: &[&str]) -> String {
     format!(
         "{label} has an invalid {field}: {} is not one of {}",
-        repr_of(value),
+        message_repr(value),
         allowed.join(", ")
     )
 }

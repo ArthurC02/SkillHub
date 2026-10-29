@@ -1,3 +1,4 @@
+use crate::pyvalue::{equal, message_text, splitlines};
 use std::cmp::Ordering;
 use std::path::{Path, PathBuf};
 
@@ -8,7 +9,6 @@ use crate::json::{self, Object, Style, Value};
 use crate::okf::truthy;
 use crate::proposals::readable_packages;
 use crate::py;
-use crate::pyvalue::{equal, splitlines, str_of};
 use crate::records::reviewed_by;
 use crate::sha256::hex_digest;
 use crate::store::{has_registry, missing_registry, posix};
@@ -343,7 +343,7 @@ fn applied_without_event(root: &Path, changes_root: &Path) -> Result<Vec<String>
                     .file_name()
                     .map(|name| name.to_string_lossy().into_owned())
                     .unwrap_or_default();
-                missing.push(format!("{name} ({})", str_of(&id)));
+                missing.push(format!("{name} ({})", message_text(&id)));
             }
         }
     }
@@ -406,8 +406,8 @@ fn committed_prefix_error(root: &Path, against: &str) -> Result<Option<String>, 
         return Ok(Some(format!(
             "the audit log does not extend the one committed at {against} ({} events, head {}); \
              events were removed or rewritten since",
-            str_of(&count),
-            str_of(&head)
+            message_text(&count),
+            message_text(&head)
         )));
     }
     Ok(None)
@@ -492,7 +492,7 @@ fn without_repeats(parsed: Vec<(usize, Object)>) -> Vec<Object> {
     for (_, event) in parsed {
         let key = event
             .get("event_sha256")
-            .map_or_else(|| "None".to_string(), str_of);
+            .map_or_else(|| "null".to_string(), message_text);
         if seen.insert(key) {
             unique.push(event);
         }

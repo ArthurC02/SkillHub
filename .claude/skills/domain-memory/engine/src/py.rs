@@ -139,12 +139,12 @@ fn utf8_refusal(bytes: &[u8], error: &std::str::Utf8Error) -> String {
     };
     if end - start == 1 {
         format!(
-            "'utf-8' codec can't decode byte 0x{:02x} in position {start}: {reason}",
+            "not valid UTF-8 at byte offset {start} (0x{:02x}): {reason}",
             bytes[start]
         )
     } else {
         format!(
-            "'utf-8' codec can't decode bytes in position {start}-{}: {reason}",
+            "not valid UTF-8 at byte offsets {start}-{}: {reason}",
             end - 1
         )
     }

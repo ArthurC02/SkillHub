@@ -1,3 +1,4 @@
+use crate::pyvalue::{equal, message_repr, repr_of};
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -8,7 +9,6 @@ use crate::git;
 use crate::json::{Object, Value};
 use crate::okf::{review_field, truthy};
 use crate::py;
-use crate::pyvalue::{equal, repr_of};
 use crate::registry_write::without;
 use crate::sha256::hex_digest;
 use crate::store::{ASSETS, Registry};
@@ -481,7 +481,7 @@ fn unknown_asset_message(asset: &Value) -> String {
     valid.sort_unstable();
     let mut message = format!(
         "registry update names unknown asset {}; valid assets: {}",
-        repr_of(asset),
+        message_repr(asset),
         valid.join(", ")
     );
     if let Some((holder, _, _)) = ASSETS
