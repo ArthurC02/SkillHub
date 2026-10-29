@@ -149,16 +149,25 @@ async function remember($: EngineInterface, paths: string[]) {
   }
 }
 
-async function consumeAllowance($: EngineInterface, action: string): Promise<boolean> {
-  const allowance = (await $.state.get({ plugin: 'skillhub-guards', key: 'allowance' })).value
-  if (allowance !== action) return false
-  await $.state.set({ plugin: 'skillhub-guards', key: 'allowance' }, null)
-  return true
-}
+type Gate = { refusal?: { deny: string }; granted?: string }
+type Outcome = { deny?: string; isError?: boolean }
 
 async function refuse($: EngineInterface, action: string, reason: string) {
   await $.state.set({ plugin: 'skillhub-guards', key: 'lastDenied' }, action)
   return { deny: `skillhub-guards: ${reason} ${ALLOW_HINT}` }
+}
+
+async function gate($: EngineInterface, action: string, reason: string): Promise<Gate> {
+  const allowance = (await $.state.get({ plugin: 'skillhub-guards', key: 'allowance' })).value
+  if (allowance === action) return { granted: action }
+  return { refusal: await refuse($, action, reason) }
+}
+
+async function spendOnSuccess<T extends Outcome>($: EngineInterface, granted: string | undefined, result: T): Promise<T> {
+  if (granted !== undefined && result.deny === undefined && result.isError !== true) {
+    await $.state.set({ plugin: 'skillhub-guards', key: 'allowance' }, null)
+  }
+  return result
 }
 
 async function status($: EngineInterface, root: string): Promise<string | undefined> {
@@ -189,14 +198,13 @@ export function pushDirectory(command: string, sessionRoot: string): string {
   return ABSOLUTE.test(path) ? path : `${sessionRoot}/${path}`
 }
 
-async function unallowedRuntimeImagePush($: EngineInterface, root: string) {
+async function runtimeImagePushGate($: EngineInterface, root: string): Promise<Gate> {
   const head = (await $.process.run(['git', '-C', root, 'rev-parse', 'HEAD'])).stdout.trim()
   const upstream = await $.process.run(['git', '-C', root, 'rev-parse', '--verify', '--quiet', '@{u}'])
   const base = upstream.exitCode === 0 ? '@{u}' : 'origin/main'
   const changed = await $.process.run(['git', '-C', root, 'diff', '--name-only', `${base}...HEAD`, '--', RUNTIME_IMAGE])
-  const action = `push of ${head.slice(0, 8)} touching ${RUNTIME_IMAGE}`
-  if (changed.stdout.trim() === '' || await consumeAllowance($, action)) return undefined
-  return refuse($, action,
+  if (changed.stdout.trim() === '') return {}
+  return gate($, `push of ${head.slice(0, 8)} touching ${RUNTIME_IMAGE}`,
     'this push publishes a new runtime image tag, which cannot be withdrawn; ask the owner first ' +
     '(.claude/rules/tests.md).')
 }
@@ -284,9 +292,11 @@ export const register: Register = on => {
     if (problem) return { deny: `skillhub-guards: a subagent ${problem}.` }
     const root = await $.session.root()
 
+    let granted: string | undefined
     if (GIT_PUSH.test(e.command)) {
-      const refusal = await unallowedRuntimeImagePush($, pushDirectory(e.command, root))
-      if (refusal) return refusal
+      const image = await runtimeImagePushGate($, pushDirectory(e.command, root))
+      if (image.refusal) return image.refusal
+      granted = image.granted
     }
 
     if (heredocWritesCodeWithBackslash(e.command)) {
@@ -297,17 +307,18 @@ export const register: Register = on => {
 
     if (needsSignature(e.command)) {
       const staged = await $.process.run(['git', '-C', root, 'diff', '--cached', '--name-only', '--', DOMAIN_MEMORY])
-      const action = `unsigned commit touching ${DOMAIN_MEMORY}`
-      if (staged.stdout.trim() !== '' && !(await consumeAllowance($, action))) {
-        return refuse($, action,
+      if (staged.stdout.trim() !== '') {
+        const signature = await gate($, `unsigned commit touching ${DOMAIN_MEMORY}`,
           `commits touching ${DOMAIN_MEMORY} must be signed (git commit -S); the server rejects an unsigned one ` +
           'at push, and amend and reset are not allowed to repair it.')
+        if (signature.refusal) return signature.refusal
+        granted ??= signature.granted
       }
     }
 
     const rewritten = withTestDatabase(e.command, await testDsn($, root))
     if (rewritten !== undefined) {
-      const result = await next({ ...e, command: rewritten })
+      const result = await spendOnSuccess($, granted, await next({ ...e, command: rewritten }))
       const shell = result.result as { stdout?: unknown } | undefined
       if (result.deny !== undefined || typeof shell?.stdout !== 'string') return result
       return { ...result, result: { ...shell, stdout: TEST_DATABASE_NOTE + shell.stdout } }
@@ -315,7 +326,7 @@ export const register: Register = on => {
 
     const roots = TEST_RUN.test(e.command) ? [] : await worktrees($, root)
     const watched = await statuses($, roots)
-    const result = await next(e)
+    const result = await spendOnSuccess($, granted, await next(e))
     const changed = attributedAcrossWorktrees(watched, await statuses($, [...watched.keys()]))
     if (changed.length > 0) await remember($, changed)
     if (e.agentId === undefined && GIT_PUSH.test(e.command) && result.deny === undefined && result.isError !== true) {
@@ -351,10 +362,11 @@ export const register: Register = on => {
       return { result: 'committed, not pushed: origin/main has commits this branch lacks; run git pull --rebase, ' +
         'then git push (the push is still watched).', isError: true as const }
     }
-    const refusal = await unallowedRuntimeImagePush($, root)
-    if (refusal) return refusal
+    const image = await runtimeImagePushGate($, root)
+    if (image.refusal) return image.refusal
     const push = await git($, root, ['push', '--quiet'])
     if (!push.ok) return { result: `committed, push failed:\n${push.out}`, isError: true as const }
+    await spendOnSuccess($, image.granted, {})
     const sha = await watchCI($, root)
     return { result: `pushed ${sha.slice(0, 8)}${sign ? ' (signed)' : ''}; CI is being watched\n${push.out}`.trim() }
   })
@@ -395,16 +407,18 @@ export const register: Register = on => {
       return { deny: `skillhub-guards: ${path} declares itself generated; change its source and regenerate with ` +
         'task gen:sql or task gen:openapi (AGENTS.md 開發自動化 5).' }
     }
+    let granted: string | undefined
     if (!(await touched($)).includes(normalize(path))) {
       const dirty = await $.process.run(['git', '-C', directoryOf(path), 'status', '--porcelain', '--', path])
-      const action = `edit of ${path}`
-      if (dirty.exitCode === 0 && dirty.stdout.trim() !== '' && !(await consumeAllowance($, action))) {
-        return refuse($, action,
+      if (dirty.exitCode === 0 && dirty.stdout.trim() !== '') {
+        const foreign = await gate($, `edit of ${path}`,
           `${path} has uncommitted changes this session did not make; keep them and report ` +
           '(AGENTS.md 開發自動化 3).')
+        if (foreign.refusal) return foreign.refusal
+        granted = foreign.granted
       }
     }
-    const result = await next(e)
+    const result = await spendOnSuccess($, granted, await next(e))
     if (result.deny === undefined && result.isError !== true) await remember($, [path])
     return result
   })

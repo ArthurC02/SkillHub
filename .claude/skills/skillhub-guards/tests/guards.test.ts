@@ -261,6 +261,40 @@ test('a checkout behind its upstream is not refused for the image change it has 
   expect(result.deny).toBeUndefined()
 })
 
+const imagePushWorld = (on: On, below: () => { deny: string } | undefined) => {
+  on('session.root', () => ({ value: ROOT }))
+  on('process.run', (_, e) => ({
+    value: {
+      exitCode: 0, stdout: e.argv.includes('diff') && e.argv.includes('@{u}...HEAD') ? IMAGE_FILE : '',
+      stderr: '', isStdoutTruncated: false, isStderrTruncated: false,
+    },
+  }))
+  on('tool.call', () => below() ?? { result: 'ran' })
+}
+
+const grantLastDenied = async ($: Parameters<Parameters<typeof test>[1]>[0]) => {
+  const granted = await $.command.run({ command: 'guard-allow', args: '', origin: { kind: 'composer' } })
+  expect(granted.text).toMatch(/goes through, once/)
+}
+
+test('an allowance survives a push that a later layer refuses, and lets the retry through', async ($, on) => {
+  let below: { deny: string } | undefined = { deny: 'refused further down' }
+  imagePushWorld(on, () => below)
+  expect((await $.tool.call({ tool: 'Bash', command: 'git push' })).deny).toMatch(/runtime image tag/)
+  await grantLastDenied($)
+  expect((await $.tool.call({ tool: 'Bash', command: 'git push' })).deny).toBe('refused further down')
+  below = undefined
+  expect((await $.tool.call({ tool: 'Bash', command: 'git push' })).deny).toBeUndefined()
+})
+
+test('an allowance is spent by the push it let through, so the next one is refused again', async ($, on) => {
+  imagePushWorld(on, () => undefined)
+  await $.tool.call({ tool: 'Bash', command: 'git push' })
+  await grantLastDenied($)
+  expect((await $.tool.call({ tool: 'Bash', command: 'git push' })).deny).toBeUndefined()
+  expect((await $.tool.call({ tool: 'Bash', command: 'git push' })).deny).toMatch(/runtime image tag/)
+})
+
 const LINKED = 'c:/scratch/wt'
 const WORKTREES = `worktree ${ROOT}\nHEAD 1111\nbranch refs/heads/main\n\nworktree ${LINKED}\nHEAD 2222\ndetached\n\n`
 
