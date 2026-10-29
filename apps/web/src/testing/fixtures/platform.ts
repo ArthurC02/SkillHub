@@ -1088,7 +1088,7 @@ export const ADMIN_DISPATCH = {
 } satisfies DispatchStatus;
 
 export const ADMIN_ROSTERS = {
-  operator_user_ids: ["u-1"],
+  operator_user_ids: ["11111111-1111-1111-1111-111111111111"],
   beta_allowlist: [],
 } satisfies Rosters;
 

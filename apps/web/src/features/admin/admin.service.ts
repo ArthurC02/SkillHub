@@ -371,10 +371,31 @@ export function useModelBudgetChange(method: "PUT" | "DELETE") {
   });
 }
 
+export async function getRosters(): Promise<Rosters> {
+  const result = await apiFetch<unknown>("/admin/rosters");
+  if (!isRosters(result)) throw new Error("Invalid rosters response");
+  return result;
+}
+
+function isRosters(value: unknown): value is Rosters {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const result = value as Partial<Rosters>;
+  return (
+    Array.isArray(result.operator_user_ids) &&
+    result.operator_user_ids.every(
+      (id) =>
+        typeof id === "string" &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id),
+    ) &&
+    Array.isArray(result.beta_allowlist) &&
+    result.beta_allowlist.every((id) => typeof id === "string")
+  );
+}
+
 export function useRosters() {
   return useQuery({
     queryKey: queryKeys.admin.rosters,
-    queryFn: () => apiFetch<Rosters>("/admin/rosters"),
+    queryFn: getRosters,
     enabled: useOperator(),
   });
 }

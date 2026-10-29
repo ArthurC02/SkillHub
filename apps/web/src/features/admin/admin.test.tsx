@@ -2867,7 +2867,7 @@ test("OPS-005: the rosters page is read-only", async () => {
   stub(true);
   await mountAt("/admin/rosters");
   await waitFor(has("每一個登入的帳號都算受邀"));
-  expect(field("main code").textContent).toBe("u-1");
+  expect(field("main code").textContent).toBe("11111111-1111-1111-1111-111111111111");
   expect(container.querySelectorAll("main :is(input, textarea, select)")).toHaveLength(0);
   expect(button("重新整理")).toBeDefined();
 });
