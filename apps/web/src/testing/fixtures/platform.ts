@@ -553,7 +553,7 @@ export const PREFLIGHT = {
     test_case_id: TEST_CASE,
     datasets: [
       {
-        dataset_id: "d0",
+        dataset_id: "d0000000-0000-4000-8000-000000000000",
         file_name: "rows.csv",
         content_type: "text/csv",
         size_bytes: 1024,
@@ -1668,7 +1668,7 @@ const ROUTES: RouteMatcher[] = [
       ? ok({
           datasets: [
             {
-              dataset_id: "d0",
+              dataset_id: "d0000000-0000-4000-8000-000000000000",
               file_name: "rows.csv",
               content_type: "text/csv",
               size_bytes: 1024,

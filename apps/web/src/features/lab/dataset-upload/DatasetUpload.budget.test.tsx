@@ -75,9 +75,12 @@ function platform(totalBytes: number, fileCount: number) {
     if (path === `/test-cases/${TEST_CASE}/datasets`) {
       return json({
         datasets: Array.from({ length: fileCount }, (_, i) => ({
-          dataset_id: `d${i}`,
+          dataset_id: `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`,
           file_name: `old${i}.csv`,
           size_bytes: totalBytes / Math.max(fileCount, 1),
+          content_type: "text/csv",
+          content_hash: "a".repeat(64),
+          expires_at: "2026-11-15T00:00:00Z",
         })),
         total_bytes: totalBytes,
       });

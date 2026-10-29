@@ -191,11 +191,43 @@ export function useDeleteTestCase(testCaseId: string) {
   });
 }
 
+export async function getTestCaseDatasets(testCaseId: string) {
+  const result = await apiFetch<unknown>(`/test-cases/${testCaseId}/datasets`);
+  if (!result || typeof result !== "object" || Array.isArray(result))
+    throw new Error("Invalid dataset list response");
+  const response = result as { datasets?: unknown; total_bytes?: unknown };
+  if (
+    !Array.isArray(response.datasets) ||
+    !response.datasets.every(isListedDataset) ||
+    !Number.isSafeInteger(response.total_bytes) ||
+    (response.total_bytes as number) < 0 ||
+    response.datasets.reduce((sum, dataset) => sum + dataset.size_bytes, 0) !== response.total_bytes
+  )
+    throw new Error("Invalid dataset list response");
+  return result as { datasets: Dataset[]; total_bytes: number };
+}
+
+function isListedDataset(value: unknown): value is Dataset {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const dataset = value as Partial<Dataset>;
+  return (
+    typeof dataset.dataset_id === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(dataset.dataset_id) &&
+    [dataset.file_name, dataset.content_type, dataset.content_hash].every(
+      (field) => typeof field === "string",
+    ) &&
+    typeof dataset.expires_at === "string" &&
+    Number.isFinite(Date.parse(dataset.expires_at)) &&
+    typeof dataset.size_bytes === "number" &&
+    Number.isSafeInteger(dataset.size_bytes) &&
+    dataset.size_bytes >= 0
+  );
+}
+
 export function useTestCaseDatasets(testCaseId: string) {
   return useQuery({
     queryKey: queryKeys.testCases.datasets(testCaseId),
-    queryFn: () =>
-      apiFetch<{ datasets: Dataset[]; total_bytes: number }>(`/test-cases/${testCaseId}/datasets`),
+    queryFn: () => getTestCaseDatasets(testCaseId),
     enabled: testCaseId.length > 0,
   });
 }
