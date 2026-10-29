@@ -13,7 +13,7 @@ S3_IMAGE="docker.io/chrislusf/seaweedfs:4.47@sha256:ce9e796f1fe6f06968f4c04bdaf8
 # Runs every check from inside the docker network rather than through a
 # published host port, which also exercises the DNS name nginx.conf dials.
 CURL_IMAGE="docker.io/curlimages/curl@sha256:c1fe1679c34d9784c1b0d1e5f62ac0a79fca01fb6377cdd33e90473c6f9f9a69"
-PLAYWRIGHT_IMAGE="mcr.microsoft.com/playwright:v1.62.1-noble"
+PLAYWRIGHT_IMAGE="mcr.microsoft.com/playwright:v1.64.1-noble"
 
 NET="skillhub-smoke"
 
@@ -246,7 +246,7 @@ docker run --rm --network "$NET" \
 	-v "$HOST_ROOT:/work:ro" -w /work \
 	-e BASE_URL=http://smoke-web \
 	"$PLAYWRIGHT_IMAGE" \
-	sh -c 'cd /tmp && npm i --no-save --silent --no-audit --no-fund playwright@1.62.1 &&
+	sh -c 'cd /tmp && npm i --no-save --silent --no-audit --no-fund playwright@1.64.1 &&
 	       cp /work/tools/ci/stack-browser.mjs /work/tools/ci/stack-seed.mjs /tmp/ && node /tmp/stack-browser.mjs' 2>&1 | tee -a "$nodelog" && rc=0 || rc=1
 check "public routes render in a browser against the real API" "$rc"
 
@@ -283,7 +283,7 @@ if [ "$login" = 204 ] && [ "$fork_source_login" = 204 ] && [ "$catalogued" = UPD
 		wait_for "web (credit)" 60 hget -fs -o /dev/null -H "Accept: text/html" http://smoke-web/ &&
 		docker run --rm --network "$NET" -v "$HOST_ROOT:/work:ro" -w /work -e BASE_URL=http://smoke-web \
 			"$PLAYWRIGHT_IMAGE" \
-			sh -c 'cd /tmp && npm i --no-save --silent --no-audit --no-fund playwright@1.62.1 &&
+			sh -c 'cd /tmp && npm i --no-save --silent --no-audit --no-fund playwright@1.64.1 &&
 			       cp /work/tools/ci/stack-credit.mjs /work/tools/ci/stack-seed.mjs /tmp/ && node /tmp/stack-credit.mjs' 2>&1 | tee -a "$nodelog"; then
 		rc=0
 	else
