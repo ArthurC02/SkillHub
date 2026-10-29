@@ -2,6 +2,10 @@
 #[path = "../src/json.rs"]
 mod json;
 
+#[allow(dead_code)]
+#[path = "../src/sha256.rs"]
+mod sha256;
+
 mod okf {
     pub const INT_MAX_STR_DIGITS: usize = 4300;
 }
@@ -21,6 +25,8 @@ const FIXED_GIT_DATE: &str = "2026-01-01T00:00:00Z";
 const UNHURRIED_GIT_SECONDS: &str = "300";
 const UNKNOWN_OPTION: &str = "--not-an-option-of-any-command";
 const PLATFORM: &str = if cfg!(windows) { "windows" } else { "posix" };
+const LARGEST_STORED_IN_FULL: usize = 64 * 1024;
+const DIGEST_HEAD_BYTES: usize = 4096;
 const VOLATILE_FIELDS: [&str; 5] = [
     "event_sha256",
     "previous_event_sha256",
@@ -668,34 +674,30 @@ impl Suite {
         let (actual, mut problems) = self.observed(case);
         let mut differences = Vec::new();
         for (stream, written) in [("stdout", &actual.stdout), ("stderr", &actual.stderr)] {
-            let wanted = field(expected, stream)
-                .map(stored_bytes)
-                .unwrap_or_default();
-            if &wanted != written {
-                differences.push(format!("{stream}: {}", first_difference(&wanted, written)));
+            if let Some(difference) = stored_difference(field(expected, stream), written) {
+                differences.push(format!("{stream}: {difference}"));
             }
         }
-        let wanted_files: BTreeMap<String, Vec<u8>> = field(expected, "files")
+        let wanted_files: BTreeMap<String, &Value> = field(expected, "files")
             .and_then(Value::as_object)
             .map(|files| {
                 files
                     .iter()
-                    .map(|(name, content)| (name.clone(), stored_bytes(content)))
+                    .map(|(name, content)| (name.clone(), content))
                     .collect()
             })
             .unwrap_or_default();
         let written_files = actual.files.unwrap_or_default();
         let names: BTreeSet<&String> = wanted_files.keys().chain(written_files.keys()).collect();
         for name in names {
-            let (wanted, written) = (wanted_files.get(name), written_files.get(name));
-            if wanted != written {
-                differences.push(format!(
-                    "file {name}: {}",
-                    first_difference(
-                        wanted.map_or(&[][..], Vec::as_slice),
-                        written.map_or(&[][..], Vec::as_slice)
-                    )
-                ));
+            let (wanted, written) = (wanted_files.get(name).copied(), written_files.get(name));
+            let difference = match (wanted, written) {
+                (Some(_), Some(written)) => stored_difference(wanted, written),
+                (Some(_), None) => Some("expected the file / actual none".to_string()),
+                (None, _) => Some("expected no file / actual one".to_string()),
+            };
+            if let Some(difference) = difference {
+                differences.push(format!("file {name}: {difference}"));
             }
         }
         differences.append(&mut problems);
@@ -820,7 +822,56 @@ fn credential_shaped(data: &[u8]) -> bool {
         .any(|at| token_at(data, at) || private_key_at(data, at) || aws_secret_at(data, at))
 }
 
+fn digest_head(data: &[u8]) -> String {
+    let text = String::from_utf8_lossy(&data[..data.len().min(DIGEST_HEAD_BYTES)]).into_owned();
+    let whole_lines = text.rfind('\n').map_or(0, |end| end + 1);
+    text[..whole_lines].to_string()
+}
+
+fn digest_value(data: &[u8]) -> Value {
+    let mut digest = Object::new();
+    digest.insert("bytes", Value::Int(data.len().to_string()));
+    if std::str::from_utf8(data).is_ok() && !credential_shaped(data) {
+        digest.insert("head", Value::Str(digest_head(data)));
+    }
+    digest.insert("sha256", Value::Str(sha256::hex_digest(data)));
+    Value::Object(digest)
+}
+
+fn stored_difference(wanted: Option<&Value>, written: &[u8]) -> Option<String> {
+    let digest = wanted
+        .and_then(Value::as_object)
+        .and_then(|object| object.get("sha256"));
+    let Some(digest) = digest else {
+        let wanted = wanted.map(stored_bytes).unwrap_or_default();
+        return (wanted != written).then(|| first_difference(&wanted, written));
+    };
+    let wanted = wanted.expect("a digest is recorded");
+    if stored_value(written) == *wanted {
+        return None;
+    }
+    let head = field(wanted, "head").and_then(Value::as_str).unwrap_or("");
+    let written_head = digest_head(written);
+    let bytes = match field(wanted, "bytes") {
+        Some(Value::Int(count)) => count.as_str(),
+        _ => "?",
+    };
+    Some(if head.is_empty() || head == written_head {
+        format!(
+            "expected {bytes} bytes with sha256 {} / actual {} bytes with sha256 {}",
+            digest.as_str().unwrap_or(""),
+            written.len(),
+            sha256::hex_digest(written)
+        )
+    } else {
+        first_difference(head.as_bytes(), written_head.as_bytes())
+    })
+}
+
 fn stored_value(data: &[u8]) -> Value {
+    if data.len() > LARGEST_STORED_IN_FULL {
+        return digest_value(data);
+    }
     match std::str::from_utf8(data) {
         Ok(text) if !credential_shaped(data) => Value::Str(text.to_string()),
         _ => {
