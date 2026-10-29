@@ -105,6 +105,10 @@ export function useUpdateTestCase(testCaseId: string) {
   return useMutation({
     mutationFn: (patch: TestCasePatch) => updateTestCase(testCaseId, patch),
     onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.testCases.all }),
+    onError: (error) => {
+      if (isWriteResultUnknown(error))
+        void client.invalidateQueries({ queryKey: queryKeys.testCases.all });
+    },
   });
 }
 
@@ -162,6 +166,10 @@ export function useCriterionAction(testCaseId: string, criterionId: string) {
       return updateCriterion(testCaseId, criterionId, { confirmed: action.kind === "confirm" });
     },
     onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.testCases.all }),
+    onError: (error) => {
+      if (isWriteResultUnknown(error))
+        void client.invalidateQueries({ queryKey: queryKeys.testCases.all });
+    },
   });
 }
 

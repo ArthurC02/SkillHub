@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"math"
 	"net/http"
 	"strconv"
@@ -96,14 +97,20 @@ type testCaseResponse struct {
 	UpdatedAt          string   `json:"updated_at"`
 }
 
-func toTestCaseResponse(tc TestCase) testCaseResponse {
+func toTestCaseResponse(tc TestCase) (testCaseResponse, error) {
 	criteria, err := DecodeCriteria(tc.AcceptanceCriteria)
 	if err != nil {
-		criteria = []Criterion{}
+		logUnreadableTestCase(tc, "acceptance_criteria")
+		return testCaseResponse{}, err
+	}
+	if criteria == nil {
+		logUnreadableTestCase(tc, "acceptance_criteria")
+		return testCaseResponse{}, errors.New("decode acceptance criteria: expected an array")
 	}
 	rubric, err := DecodeRubric(tc.Rubric)
 	if err != nil {
-		rubric = nil
+		logUnreadableTestCase(tc, "rubric")
+		return testCaseResponse{}, err
 	}
 	return testCaseResponse{
 		TestCaseID:         pgconv.UUIDString(tc.ID),
@@ -115,7 +122,20 @@ func toTestCaseResponse(tc TestCase) testCaseResponse {
 		SimulatedUserFacts: append([]string{}, tc.SimulatedUserFacts...),
 		CreatedAt:          tc.CreatedAt.Time.UTC().Format(time.RFC3339),
 		UpdatedAt:          tc.UpdatedAt.Time.UTC().Format(time.RFC3339),
+	}, nil
+}
+
+func logUnreadableTestCase(tc TestCase, field string) {
+	slog.Error("test case design unreadable", "test_case_id", pgconv.UUIDString(tc.ID), "field", field)
+}
+
+func writeTestCaseResponse(w http.ResponseWriter, code int, tc TestCase) {
+	response, err := toTestCaseResponse(tc)
+	if err != nil {
+		fail(w, err, "讀取失敗")
+		return
 	}
+	httpx.WriteJSON(w, code, response)
 }
 
 type datasetResponse struct {
@@ -188,7 +208,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		fail(w, err, "建立失敗")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusCreated, toTestCaseResponse(tc))
+	writeTestCaseResponse(w, http.StatusCreated, tc)
 }
 
 type testCaseListItem struct {
@@ -256,8 +276,13 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	}
 	out := make([]testCaseListItem, 0, len(rows))
 	for _, row := range rows {
+		response, err := toTestCaseResponse(row.TestCase)
+		if err != nil {
+			fail(w, err, "讀取清單失敗")
+			return
+		}
 		item := testCaseListItem{
-			testCaseResponse: toTestCaseResponse(row.TestCase),
+			testCaseResponse: response,
 			SkillName:        row.SkillName,
 		}
 		item.CriteriaTotal = len(item.AcceptanceCriteria)
@@ -286,7 +311,7 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		fail(w, err, "讀取失敗")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, toTestCaseResponse(tc))
+	writeTestCaseResponse(w, http.StatusOK, tc)
 }
 
 func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
@@ -323,7 +348,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		fail(w, err, "更新失敗")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, toTestCaseResponse(tc))
+	writeTestCaseResponse(w, http.StatusOK, tc)
 }
 
 func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
@@ -374,7 +399,7 @@ func (h *Handler) AddCriterion(w http.ResponseWriter, r *http.Request) {
 		fail(w, err, "新增驗收條件失敗")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusCreated, toTestCaseResponse(tc))
+	writeTestCaseResponse(w, http.StatusCreated, tc)
 }
 
 func (h *Handler) SuggestCriteria(w http.ResponseWriter, r *http.Request) {
@@ -419,7 +444,7 @@ func (h *Handler) UpdateCriterion(w http.ResponseWriter, r *http.Request) {
 		fail(w, err, "更新驗收條件失敗")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, toTestCaseResponse(tc))
+	writeTestCaseResponse(w, http.StatusOK, tc)
 }
 
 func (h *Handler) DeleteCriterion(w http.ResponseWriter, r *http.Request) {
@@ -436,7 +461,7 @@ func (h *Handler) DeleteCriterion(w http.ResponseWriter, r *http.Request) {
 		fail(w, err, "刪除驗收條件失敗")
 		return
 	}
-	httpx.WriteJSON(w, http.StatusOK, toTestCaseResponse(tc))
+	writeTestCaseResponse(w, http.StatusOK, tc)
 }
 
 func (h *Handler) Limits(w http.ResponseWriter, _ *http.Request) {

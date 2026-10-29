@@ -905,7 +905,7 @@ test.each(criterionOwnershipCases)(
       expect(row.querySelector("#criterion-edited-c1") !== null).toBe(dirty);
       if (mode === "failed-save") {
         expect(row.querySelector('[role="alert"]')?.textContent).toBe(
-          "操作沒有成功，可以再試一次。",
+          "操作結果尚未確認；請先確認最新資料，再決定是否重送。",
         );
       }
       if (mode === "empty-reread") expect(row.textContent).toContain("驗收條件不能是空白");
@@ -919,7 +919,7 @@ test.each(criterionOwnershipCases)(
           (call) =>
             call.method === "GET" && call.url.split("?")[0].endsWith(`/test-cases/${TEST_CASE}`),
         ),
-      ).toHaveLength(mode === "failed-save" ? 1 : 2);
+      ).toHaveLength(2);
     } finally {
       release();
     }

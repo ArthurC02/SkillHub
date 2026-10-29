@@ -15,7 +15,9 @@ export function MutationError({
   return (
     <ReadFailure error={error} what={what}>
       <p role="alert">
-        {(unknown && isWriteResultUnknown(error) ? unknown : serverReason(error)) ?? fallback}
+        {isWriteResultUnknown(error)
+          ? (unknown ?? "操作結果尚未確認；請先確認最新資料，再決定是否重送。")
+          : (serverReason(error) ?? fallback)}
       </p>
     </ReadFailure>
   );

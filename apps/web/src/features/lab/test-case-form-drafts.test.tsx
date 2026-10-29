@@ -146,7 +146,8 @@ for (const form of forms) {
       expect(save.disabled).toBe(false);
       await act(async () => save.click());
       await pollUntil(
-        () => container.textContent!.includes(outcome === "success" ? "已儲存。" : "沒有成功"),
+        () =>
+          container.textContent!.includes(outcome === "success" ? "已儲存。" : "操作結果尚未確認"),
         () => container.textContent,
         DEFAULT_WAIT_MS,
       );

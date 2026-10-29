@@ -278,7 +278,7 @@ function TestCaseReadFailure({
       {missing ? (
         <p role="alert">找不到這個測試題。</p>
       ) : preserved ? (
-        <p role="alert">暫時無法讀取測試題。尚未儲存的輸入已保留，請先再試一次。</p>
+        <p role="alert">暫時無法讀取測試題。目前無法確認最新內容，輸入已保留，請先再試一次。</p>
       ) : undefined}
     </PageReadFailure>
   );
