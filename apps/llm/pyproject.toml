@@ -12,7 +12,7 @@ dependencies = [
     "uvicorn>=0.32",
     "openai>=1.60",
     "pydantic>=2",
-    "langgraph>=1,<2",
+    "langgraph>=1.2.14,<2",
     "langsmith>=0.12,<1",
 ]
 
