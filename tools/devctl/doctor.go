@@ -58,6 +58,7 @@ func doctor(root string, out io.Writer) error {
 		checkOptionalVersion("golangci-lint", []string{versionFlag}, toolchain["golangci_lint"]),
 	}
 	results = append(results, checkDockerCompose())
+	results = append(results, checkBash())
 	results = append(results, checkDockerDaemon())
 	results = append(results, checkPython(pythonVersion))
 	results = append(results, checkEnv(root))
@@ -85,6 +86,27 @@ func checkRequiredVersion(name string, args []string, want string) checkResult {
 
 func checkOptionalVersion(name string, args []string, want string) checkResult {
 	return checkVersion(name, args, want, statusWarn)
+}
+
+func checkBash() checkResult {
+	detail := "not found on PATH"
+	if path, err := exec.LookPath("bash"); err == nil {
+		command := exec.Command(path, "-c", "builtin mapfile -t lines <<< ready && [[ ${lines[0]} == ready ]]")
+		command.Env = append(os.Environ(), "BASH_ENV=")
+		output, err := command.CombinedOutput()
+		if err == nil {
+			return checkResult{name: "bash (shell tasks)", status: statusPass, detail: "mapfile available"}
+		}
+		detail = firstLine(strings.TrimSpace(string(output)))
+		if detail == "" {
+			detail = err.Error()
+		}
+	}
+	return checkResult{
+		name:   "bash (shell tasks)",
+		status: statusWarn,
+		detail: fmt.Sprintf("shell tasks need Bash with mapfile on PATH; use the Dev Container, or Git Bash/configured WSL on Windows (%s)", detail),
+	}
 }
 
 func checkVersion(name string, args []string, want, statusWhenMissing string) checkResult {

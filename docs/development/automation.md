@@ -31,7 +31,7 @@ Dev Container 以 privileged mode 啟動獨立 DinD daemon，讓 Windows／macOS
 
 | 入口 | Docker | Secret | 可能花錢 | 作用 |
 | --- | --- | --- | --- | --- |
-| `task doctor` | 只檢查 | 否 | 否 | 診斷 runtime、Task、uv、Docker、Compose 與 `.env` 是否存在；不讀值 |
+| `task doctor` | 只檢查 | 否 | 否 | 診斷 runtime、Task、uv、Docker、Compose、shell task 所需的 Bash 能力與 `.env` 是否存在；不讀值 |
 | `task env:init` | 否 | 否 | 否 | `.env.example` → `.env`，已有檔案時不覆寫 |
 | `task bootstrap` | 否 | 否 | 否 | Go download、npm ci/build、uv frozen sync |
 | `task dev`／`dev:core` | 是 | 否 | 否 | Postgres＋SeaweedFS |
@@ -42,6 +42,8 @@ Dev Container 以 privileged mode 啟動獨立 DinD daemon，讓 Windows／macOS
 | `task down` | 是 | 否 | 否 | `docker compose … down`：停掉本機基礎設施（不刪 volume）。**它停的是共享的那一組**，唯讀／寫入 SubAgent 一律不得自行執行 |
 | `task gen*` | 是 | 否 | 否 | 固定版本 generator；apply 會改 generated files，check 只寫 `.devctl/` scratch |
 | `task test`／`task ci` | 視測試 | 否 | 否 | 預設不執行 E2E 模型測試；需 secret 的測試維持 opt-in gate |
+
+Bash 能力探測會清空子行程的 `BASH_ENV`，不改動使用者環境；缺少或不可用時只顯示 `WARN`，不阻擋其餘原生命令。Windows 可將 Git Bash 放到 `PATH`，或在已設定的 WSL／Dev Container 內執行 shell task。
 
 `.env.example` 內非空的 Postgres／SeaweedFS 值是公開的 local-only placeholder；production secret 一律留空。不得把 `.env`、key 值或 doctor 以外的環境 dump 放進回覆或 log。
 
