@@ -2261,6 +2261,200 @@ for (const entry of ["/admin", "/admin/dispatch"]) {
   });
 }
 
+for (const outcome of ["503", "malformed"]) {
+  for (const target of ["pool", "node-2"]) {
+    test(`dispatch lift ${target} retains its unsent draft through ${outcome} and requires deliberate confirmation`, async () => {
+      stub(true, (path, method) =>
+        path === "/admin/dispatch" && method === "GET"
+          ? {
+              status: 200,
+              body: {
+                ...ADMIN_DISPATCH,
+                halts: [
+                  ...ADMIN_DISPATCH.halts,
+                  {
+                    ...ADMIN_DISPATCH.halts[0],
+                    target: "node-2",
+                    source: "orphan_threshold",
+                    reason: "orphan capacity reached",
+                    automatic_recovery: true,
+                    clear_rounds: 1,
+                  },
+                ],
+              },
+            }
+          : path === "/admin/dispatch/halt" && method === "DELETE"
+            ? { status: 204, body: undefined }
+            : undefined,
+      );
+      const fetchBefore = globalThis.fetch;
+      let holdRead = false;
+      let finishRead: ((response: Response) => void) | undefined;
+      vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+        if (holdRead && String(input).endsWith("/admin/dispatch")) {
+          holdRead = false;
+          return new Promise<Response>((resolve) => {
+            finishRead = resolve;
+          });
+        }
+        return fetchBefore(input, init);
+      });
+      await mountAt("/admin/dispatch");
+      await waitFor(has("sandbox escape suspected on node-2"));
+      await type("#admin-halt-lift-target", target);
+      await type("#admin-halt-lift-note", "evidence preserved and incident resolved");
+      await click(button("恢復派送"));
+      const confirm = button("確認恢復派送");
+      holdRead = true;
+      await click(button("重新整理派送狀態"));
+      await waitFor(() => Boolean(finishRead) && confirm.disabled);
+      expect(field<HTMLSelectElement>("#admin-halt-lift-target").disabled).toBe(true);
+      expect(
+        field<HTMLSelectElement>("#admin-halt-lift-target").getAttribute("aria-describedby"),
+      ).toBe("admin-halt-lift-why");
+      expect(field<HTMLElement>("#admin-halt-lift-why").textContent).toBe(
+        "正在重新讀取派送狀態，完成後才能恢復派送。",
+      );
+      await click(confirm);
+      expect(calls.filter((call) => call.method === "DELETE")).toEqual([]);
+      await act(async () =>
+        finishRead!(
+          new Response(
+            JSON.stringify(
+              outcome === "503"
+                ? { error: "service unavailable" }
+                : { dispatching: "false", halts: [] },
+            ),
+            { status: outcome === "503" ? 503 : 200 },
+          ),
+        ),
+      );
+      await waitFor(has("暫時無法讀取派送狀態"));
+      expect(field<HTMLElement>('section[aria-labelledby="admin-dispatch-lift"]').hidden).toBe(
+        true,
+      );
+      expect(field<HTMLSelectElement>("#admin-halt-lift-target").value).toBe(target);
+      expect(field<HTMLTextAreaElement>("#admin-halt-lift-note").value).toBe(
+        "evidence preserved and incident resolved",
+      );
+      expect(confirm.disabled).toBe(true);
+      await click(confirm);
+      expect(calls.filter((call) => call.method === "DELETE")).toEqual([]);
+      await click(button("重新整理派送狀態"));
+      await waitFor(
+        () =>
+          !field<HTMLElement>('section[aria-labelledby="admin-dispatch-lift"]').hidden &&
+          !confirm.disabled,
+      );
+      expect(field<HTMLSelectElement>("#admin-halt-lift-target").value).toBe(target);
+      expect(field<HTMLTextAreaElement>("#admin-halt-lift-note").value).toBe(
+        "evidence preserved and incident resolved",
+      );
+      expect(calls.filter((call) => call.method === "DELETE")).toEqual([]);
+      await click(confirm);
+      await waitFor(has("煞車的請求已完成"));
+      expect(calls.filter((call) => call.method === "DELETE")).toHaveLength(1);
+      expect(calls.find((call) => call.method === "DELETE")?.body).toEqual(
+        target === "pool"
+          ? { note: "evidence preserved and incident resolved" }
+          : { note: "evidence preserved and incident resolved", provider: "node-2" },
+      );
+    });
+  }
+}
+
+for (const [changedField, value] of [
+  ["source", "p1_incident"],
+  ["reason", "new incident"],
+  ["declared_at", "2026-09-11T11:00:00Z"],
+] as const) {
+  test(`dispatch lift resets its reason and confirmation when recovered ${changedField} changes`, async () => {
+    const halt = {
+      ...ADMIN_DISPATCH.halts[0],
+      source: "orphan_threshold",
+      automatic_recovery: true,
+      clear_rounds: 1,
+    };
+    let current: Reply = { status: 200, body: { dispatching: true, halts: [halt] } };
+    stub(true, (path) => (path === "/admin/dispatch" ? current : undefined));
+    await mountAt("/admin/dispatch");
+    await waitFor(has("已連續 1／2 輪"));
+    await type("#admin-halt-lift-target", halt.target);
+    await type("#admin-halt-lift-note", "capacity cleared");
+    await click(button("恢復派送"));
+    current = { status: 503, body: { error: "service unavailable" } };
+    await click(button("重新整理派送狀態"));
+    await waitFor(has("暫時無法讀取派送狀態"));
+    current = {
+      status: 200,
+      body: {
+        dispatching: true,
+        halts: [{ ...halt, [changedField]: value, automatic_recovery: changedField !== "source" }],
+      },
+    };
+    await click(button("重新整理派送狀態"));
+    await waitFor(() => !has("暫時無法讀取派送狀態")());
+    expect(field<HTMLSelectElement>("#admin-halt-lift-target").value).toBe(halt.target);
+    expect(field<HTMLTextAreaElement>("#admin-halt-lift-note").value).toBe("");
+    expect(button("恢復派送").disabled).toBe(true);
+    expect(
+      Array.from(container.querySelectorAll("button")).some(
+        (item) => item.textContent === "確認恢復派送",
+      ),
+    ).toBe(false);
+    expect(calls.filter((call) => call.method !== "GET")).toEqual([]);
+  });
+}
+
+test("dispatch lift keeps its reason when only recovered clear rounds change", async () => {
+  const halt = {
+    ...ADMIN_DISPATCH.halts[0],
+    source: "orphan_threshold",
+    automatic_recovery: true,
+    clear_rounds: 1,
+  };
+  let current: Reply = { status: 200, body: { dispatching: true, halts: [halt] } };
+  stub(true, (path) => (path === "/admin/dispatch" ? current : undefined));
+  await mountAt("/admin/dispatch");
+  await waitFor(has("已連續 1／2 輪"));
+  await type("#admin-halt-lift-target", halt.target);
+  await type("#admin-halt-lift-note", "operator investigation");
+  await click(button("恢復派送"));
+  current = { status: 503, body: { error: "service unavailable" } };
+  await click(button("重新整理派送狀態"));
+  await waitFor(has("暫時無法讀取派送狀態"));
+  current = { status: 200, body: { dispatching: true, halts: [{ ...halt, clear_rounds: 0 }] } };
+  await click(button("重新整理派送狀態"));
+  await waitFor(has("已連續 0／2 輪"));
+  expect(field<HTMLSelectElement>("#admin-halt-lift-target").value).toBe(halt.target);
+  expect(field<HTMLTextAreaElement>("#admin-halt-lift-note").value).toBe("operator investigation");
+  expect(button("確認恢復派送").disabled).toBe(false);
+  expect(calls.filter((call) => call.method !== "GET")).toEqual([]);
+});
+
+test("dispatch lift resets a prepared reason when selecting another otherwise identical halt", async () => {
+  const halt = { ...ADMIN_DISPATCH.halts[0], reason: "shared incident" };
+  stub(true, (path) =>
+    path === "/admin/dispatch"
+      ? { status: 200, body: { dispatching: false, halts: [halt, { ...halt, target: "node-2" }] } }
+      : undefined,
+  );
+  await mountAt("/admin/dispatch");
+  await waitFor(has("shared incident"));
+  await type("#admin-halt-lift-target", halt.target);
+  await type("#admin-halt-lift-note", "pool verified");
+  await click(button("恢復派送"));
+  await type("#admin-halt-lift-target", "node-2");
+  expect(field<HTMLTextAreaElement>("#admin-halt-lift-note").value).toBe("");
+  expect(button("恢復派送").disabled).toBe(true);
+  expect(
+    Array.from(container.querySelectorAll("button")).some(
+      (item) => item.textContent === "確認恢復派送",
+    ),
+  ).toBe(false);
+  expect(calls.filter((call) => call.method !== "GET")).toEqual([]);
+});
+
 test("OPS-005: the dispatch page names the halt, and a declaration without a node halts the fleet", async () => {
   stub(true, (path, method) =>
     path === "/admin/dispatch/halt" && method === "PUT"
@@ -2387,7 +2581,8 @@ test("OPS-005: a completed release remains visible when status reread fails, the
   expect(result.classList.contains("notice-warning")).toBe(true);
   expect(document.activeElement).toBe(result);
   expect(has("sandbox escape suspected on node-2")()).toBe(false);
-  expect(container.querySelector("#admin-halt-lift-target")).toBeNull();
+  expect(field<HTMLElement>('section[aria-labelledby="admin-dispatch-lift"]').hidden).toBe(true);
+  expect(field<HTMLSelectElement>("#admin-halt-lift-target").disabled).toBe(true);
 
   await click(button("重新整理派送狀態"));
   await waitFor(has("沒有生效中的煞車"));

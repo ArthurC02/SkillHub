@@ -720,7 +720,9 @@ test("a release result stays reachable when dispatch status cannot be reread on 
   await expect(result).toHaveClass(/notice-warning/);
   await expect(result).toBeFocused();
   await expect(page.getByText("sandbox escape suspected on node-2")).toHaveCount(0);
-  await expect(page.locator("#admin-halt-lift-target")).toHaveCount(0);
+  await expect(page.locator('section[aria-labelledby="admin-dispatch-lift"]')).toHaveCount(1);
+  await expect(page.locator('section[aria-labelledby="admin-dispatch-lift"]')).toBeHidden();
+  await expect(page.locator("#admin-halt-lift-target")).toBeDisabled();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   const accessibility = await new AxeBuilder({ page }).include("main").analyze();
   expect(accessibility.violations).toEqual([]);

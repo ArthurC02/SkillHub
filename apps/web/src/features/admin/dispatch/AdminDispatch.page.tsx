@@ -1,11 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { dispatchState } from "../admin.model";
-import {
-  useDispatchHalt,
-  useDispatchStatus,
-  type DispatchHalt,
-  type DispatchStatus,
-} from "../admin.service";
+import { useDispatchHalt, useDispatchStatus, type DispatchStatus } from "../admin.service";
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../shared/ui/Timestamp";
@@ -90,75 +85,93 @@ function DispatchOverview({ status }: { status: DispatchStatus }) {
 }
 
 function LiftHalt({
-  halts,
+  status,
   lift,
   declarePending,
 }: {
-  halts: DispatchHalt[];
+  status: ReturnType<typeof useDispatchStatus>;
   lift: ReturnType<typeof useDispatchHalt>;
   declarePending: boolean;
 }) {
   const [liftTarget, setLiftTarget] = useState("");
+  const halts = status.data?.halts ?? [];
   const selectedHalt = halts.find((halt) => halt.target === liftTarget);
+  const readBlockedReason = status.isFetching
+    ? "正在重新讀取派送狀態，完成後才能恢復派送。"
+    : status.error
+      ? "派送狀態尚未確認，重新整理後才能恢復派送。"
+      : undefined;
   if (halts.length === 0) return null;
   return (
-    <section aria-labelledby="admin-dispatch-lift">
-      <h2 id="admin-dispatch-lift">解除煞車</h2>
-      <p className="note">解除前先重新整理狀態，並確認：觸發條件已消失、證據已保存、處置已記錄。</p>
-      <div className="field">
-        <label htmlFor="admin-halt-lift-target">要解除的對象</label>
-        <select
-          id="admin-halt-lift-target"
-          value={selectedHalt?.target ?? ""}
-          onChange={(event) => {
-            setLiftTarget(event.target.value);
-            lift.reset();
-          }}
-          disabled={lift.isPending || declarePending}
-        >
-          <option value="">請選擇生效中的煞車</option>
-          {halts.map((halt) => (
-            <option value={halt.target} key={halt.target}>
-              {haltTargetLabel(halt.target)} · {HALT_SOURCE[halt.source] ?? halt.source}
-            </option>
-          ))}
-        </select>
-      </div>
-      <ActionForm
-        key={
-          selectedHalt
-            ? [
-                selectedHalt.target,
-                selectedHalt.source,
-                selectedHalt.reason,
-                selectedHalt.declared_at,
-              ].join("|")
-            : ""
-        }
-        id="admin-halt-lift"
-        submitLabel="恢復派送"
-        pending={lift.isPending}
-        error={lift.error}
-        contextKey={selectedHalt?.target ?? ""}
-        ready={Boolean(selectedHalt) && !declarePending}
-        blockedReason={declarePending ? "正在停止派送，完成後才能恢復派送。" : undefined}
-        confirmationScope={
-          selectedHalt &&
-          "將解除" +
-            haltTargetLabel(selectedHalt.target) +
-            "的煞車；符合條件的 Run 會再次派送，其他煞車不受影響。"
-        }
-        confirmationLabel="確認恢復派送"
-        onSubmit={(note) => {
-          if (selectedHalt) {
-            lift.mutate({
-              note,
-              provider: selectedHalt.target === "pool" ? undefined : selectedHalt.target,
-            });
+    <>
+      {status.error && (
+        <p className="note">
+          派送狀態尚未確認，暫時無法解除煞車；原本的欄位先保留，狀態恢復後再核對。
+        </p>
+      )}
+      <section aria-labelledby="admin-dispatch-lift" hidden={Boolean(status.error)}>
+        <h2 id="admin-dispatch-lift">解除煞車</h2>
+        <p className="note">
+          解除前先重新整理狀態，並確認：觸發條件已消失、證據已保存、處置已記錄。
+        </p>
+        <div className="field">
+          <label htmlFor="admin-halt-lift-target">要解除的對象</label>
+          <select
+            id="admin-halt-lift-target"
+            value={selectedHalt?.target ?? ""}
+            onChange={(event) => {
+              setLiftTarget(event.target.value);
+              lift.reset();
+            }}
+            disabled={lift.isPending || declarePending || Boolean(readBlockedReason)}
+            aria-describedby={readBlockedReason ? "admin-halt-lift-why" : undefined}
+          >
+            <option value="">請選擇生效中的煞車</option>
+            {halts.map((halt) => (
+              <option value={halt.target} key={halt.target}>
+                {haltTargetLabel(halt.target)} · {HALT_SOURCE[halt.source] ?? halt.source}
+              </option>
+            ))}
+          </select>
+        </div>
+        <ActionForm
+          key={
+            selectedHalt
+              ? [
+                  selectedHalt.target,
+                  selectedHalt.source,
+                  selectedHalt.reason,
+                  selectedHalt.declared_at,
+                ].join("|")
+              : ""
           }
-        }}
-      />
-    </section>
+          id="admin-halt-lift"
+          submitLabel="恢復派送"
+          pending={lift.isPending}
+          error={lift.error}
+          contextKey={selectedHalt?.target ?? ""}
+          ready={Boolean(selectedHalt) && !declarePending && !readBlockedReason}
+          blockedReason={
+            readBlockedReason ?? (declarePending ? "正在停止派送，完成後才能恢復派送。" : undefined)
+          }
+          confirmationScope={
+            selectedHalt &&
+            "將解除" +
+              haltTargetLabel(selectedHalt.target) +
+              "的煞車；符合條件的 Run 會再次派送，其他煞車不受影響。"
+          }
+          confirmationLabel="確認恢復派送"
+          onSubmit={(note) => {
+            if (selectedHalt) {
+              lift.mutate({
+                note,
+                provider: selectedHalt.target === "pool" ? undefined : selectedHalt.target,
+              });
+            }
+          }}
+        />
+      </section>
+    </>
   );
 }
 
@@ -226,9 +239,7 @@ export function AdminDispatch() {
       </p>
       {status.data && !status.error && <DispatchOverview status={status.data} />}
       <LiftResult lift={lift} status={status} />
-      {status.data && !status.error && (
-        <LiftHalt halts={status.data.halts} lift={lift} declarePending={declare.isPending} />
-      )}
+      {status.data && <LiftHalt status={status} lift={lift} declarePending={declare.isPending} />}
 
       <section aria-labelledby="admin-dispatch-declare">
         <h2 id="admin-dispatch-declare">宣告 P1 煞車</h2>
