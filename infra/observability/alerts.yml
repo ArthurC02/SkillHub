@@ -281,7 +281,8 @@ groups:
         labels:
           severity: warning
         annotations:
-          summary: "Trace 收集端持續拒絕請求（reason={{ $labels.reason }}）"
+          summary: >-
+            Trace 收集端持續拒絕請求（{{ range $i, $sample := query "sum by (reason) (rate(skillhub_trace_ingest_rejected_total[15m])) > 0" | sortByLabel "reason" }}{{ if $i }}、{{ end }}{{ if $sample.Labels.reason }}{{ $sample.Labels.reason }}{{ else }}未提供原因{{ end }}{{ end }}）
           description: >-
             reason=expired 代表 Run 活得比自己的 token 久（見 trace/token.go 的
             DefaultTTL）；reason=bad_token 代表簽章密鑰不一致，通常是 api 與

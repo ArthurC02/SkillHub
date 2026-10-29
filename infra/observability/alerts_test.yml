@@ -4,6 +4,120 @@ rule_files:
 evaluation_interval: 1m
 
 tests:
+  - name: trace rejection identifies expired tokens
+    interval: 1m
+    input_series:
+      - series: 'skillhub_trace_ingest_rejected_total{reason="expired",instance="worker-a"}'
+        values: "0+12x40"
+      - series: 'skillhub_trace_ingest_rejected_total{reason="bad_token",instance="worker-a"}'
+        values: "0x40"
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: TraceIngestionRejecting
+        exp_alerts:
+          - &trace_rejection_expired
+            exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "Trace 收集端持續拒絕請求（expired）"
+              description: "reason=expired 代表 Run 活得比自己的 token 久（見 trace/token.go 的 DefaultTTL）；reason=bad_token 代表簽章密鑰不一致，通常是 api 與 worker 的 SKILLHUB_TRACE_INGEST_SECRET 不同步。"
+
+  - name: trace rejection identifies invalid signatures
+    interval: 1m
+    input_series:
+      - series: 'skillhub_trace_ingest_rejected_total{reason="bad_token",instance="worker-a"}'
+        values: "0+12x40"
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: TraceIngestionRejecting
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "Trace 收集端持續拒絕請求（bad_token）"
+              description: "reason=expired 代表 Run 活得比自己的 token 久（見 trace/token.go 的 DefaultTTL）；reason=bad_token 代表簽章密鑰不一致，通常是 api 與 worker 的 SKILLHUB_TRACE_INGEST_SECRET 不同步。"
+
+  - name: trace rejection combines causes below their individual thresholds
+    interval: 1m
+    input_series:
+      - series: 'skillhub_trace_ingest_rejected_total{reason="expired",instance="worker-a"}'
+        values: "0+2x40"
+      - series: 'skillhub_trace_ingest_rejected_total{reason="expired",instance="worker-b"}'
+        values: "0+2x40"
+      - series: 'skillhub_trace_ingest_rejected_total{reason="bad_token",instance="worker-a"}'
+        values: "0+4x40"
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: TraceIngestionRejecting
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "Trace 收集端持續拒絕請求（bad_token、expired）"
+              description: "reason=expired 代表 Run 活得比自己的 token 久（見 trace/token.go 的 DefaultTTL）；reason=bad_token 代表簽章密鑰不一致，通常是 api 與 worker 的 SKILLHUB_TRACE_INGEST_SECRET 不同步。"
+
+  - name: trace rejection states when its cause label is absent
+    interval: 1m
+    input_series:
+      - series: 'skillhub_trace_ingest_rejected_total{instance="worker-a"}'
+        values: "0+12x40"
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: TraceIngestionRejecting
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "Trace 收集端持續拒絕請求（未提供原因）"
+              description: "reason=expired 代表 Run 活得比自己的 token 久（見 trace/token.go 的 DefaultTTL）；reason=bad_token 代表簽章密鑰不一致，通常是 api 與 worker 的 SKILLHUB_TRACE_INGEST_SECRET 不同步。"
+
+  - name: trace rejection does not fire at its aggregate threshold
+    interval: 5m
+    input_series:
+      - series: 'skillhub_trace_ingest_rejected_total{reason="expired"}'
+        values: "0+30x8"
+    promql_expr_test:
+      - expr: sum(rate(skillhub_trace_ingest_rejected_total[15m])) == bool 0.1
+        eval_time: 30m
+        exp_samples:
+          - labels: "{}"
+            value: 1
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: TraceIngestionRejecting
+        exp_alerts: []
+
+  - name: trace rejection fires just above its aggregate threshold
+    interval: 1m
+    input_series:
+      - series: 'skillhub_trace_ingest_rejected_total{reason="expired"}'
+        values: "0+6.06x40"
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: TraceIngestionRejecting
+        exp_alerts:
+          - *trace_rejection_expired
+
+  - name: trace rejection does not fire without rejected requests
+    interval: 1m
+    input_series:
+      - series: 'skillhub_trace_ingest_rejected_total{reason="expired"}'
+        values: "0x40"
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: TraceIngestionRejecting
+        exp_alerts: []
+
+  - name: trace rejection waits for its sustained rejection period
+    interval: 1m
+    input_series:
+      - series: 'skillhub_trace_ingest_rejected_total{reason="expired"}'
+        values: "0+12x40"
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: TraceIngestionRejecting
+        exp_alerts: []
+
   - interval: 1m
     input_series:
       - series: 'up{job="platform", process="api"}'
