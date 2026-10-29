@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 6.1.1
+
+### Fixed
+
+- The expected-output recording stores a stream or file larger than 64 KiB as its length, its whole lines within the first 4 KiB and its SHA-256, so `engine/parity/expected/posix.json` drops from 29 MB to 10 MB and a re-bless no longer adds the repository's own briefs to history in full. A mismatch shows the first differing line of that head, or both digests when the head agrees.
+
 ## 6.1.0
 
 ### Changed
