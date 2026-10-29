@@ -1384,6 +1384,13 @@ const LIST_ROW = {
   has_rubric: true,
 };
 
+test.each(["", "   "])("a blank scenario name %j keeps its list link named", async (name) => {
+  stubPlatform({ testCases: [{ ...LIST_ROW, name }] });
+  await renderList();
+
+  expect(container.querySelector(".search-result a")?.textContent).toBe("未命名的測試題");
+});
+
 test("列表 shows the skill's name, the confirmed count and whether a rubric exists", async () => {
   stubPlatform({ testCases: [LIST_ROW] });
   await renderList();

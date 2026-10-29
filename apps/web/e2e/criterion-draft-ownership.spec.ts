@@ -90,7 +90,9 @@ for (const scenario of scenarios) {
             release();
           }
           if (scenario.mode === "failed-save") {
-            await expect(first.getByRole("alert")).toHaveText("操作沒有成功，可以再試一次。");
+            await expect(first.getByRole("alert")).toHaveText(
+              "操作結果尚未確認；請先確認最新資料，再決定是否重送。",
+            );
           } else {
             await expect(first).toContainText("狀態：尚未確認");
           }
@@ -107,7 +109,7 @@ for (const scenario of scenarios) {
         if (scenario.mode === "empty-reread") {
           await expect(save).toHaveAccessibleDescription("驗收條件不能是空白");
         }
-        expect(reads).toBe(scenario.mode === "failed-save" ? 1 : 2);
+        await expect.poll(() => reads).toBe(2);
         expect(writes).toEqual([
           saving
             ? { method: "PATCH", criterion: "c1", body: { text: "  已儲存的內容  " } }

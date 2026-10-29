@@ -33,25 +33,57 @@ export type TestCase = {
   updated_at: string;
 };
 
-export type TestCaseListItem = TestCase & {
+export type TestCaseListItem = Pick<TestCase, "test_case_id" | "name" | "updated_at"> & {
   skill_name: string;
   criteria_confirmed: number;
   criteria_total: number;
   has_rubric: boolean;
 };
 
+export async function getTestCases(skillId?: string, offset = 0) {
+  const params = new URLSearchParams({ limit: "51", offset: String(offset) });
+  if (skillId) params.set("skill_id", skillId);
+  const result = await apiFetch<unknown>(`/test-cases?${params}`);
+  if (!result || typeof result !== "object" || Array.isArray(result))
+    throw new Error("Invalid test case list response");
+  const response = result as { test_cases?: unknown };
+  if (
+    !Array.isArray(response.test_cases) ||
+    response.test_cases.length > 51 ||
+    !response.test_cases.every(isListedTestCase)
+  )
+    throw new Error("Invalid test case list response");
+  return result as { test_cases: TestCaseListItem[] };
+}
+
+function isListedTestCase(value: unknown): value is TestCaseListItem {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const row = value as Partial<TestCaseListItem>;
+  return (
+    typeof row.test_case_id === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(row.test_case_id) &&
+    [row.name, row.skill_name].every((field) => typeof field === "string") &&
+    typeof row.updated_at === "string" &&
+    Number.isFinite(Date.parse(row.updated_at)) &&
+    typeof row.criteria_confirmed === "number" &&
+    Number.isSafeInteger(row.criteria_confirmed) &&
+    row.criteria_confirmed >= 0 &&
+    typeof row.criteria_total === "number" &&
+    Number.isSafeInteger(row.criteria_total) &&
+    row.criteria_total >= row.criteria_confirmed &&
+    typeof row.has_rubric === "boolean"
+  );
+}
+
 export function useTestCases(skillId?: string) {
   return useInfiniteQuery({
     queryKey: queryKeys.testCases.list(skillId),
     initialPageParam: 0,
-    queryFn: ({ pageParam }) => {
-      const params = new URLSearchParams({ limit: "51", offset: String(pageParam) });
-      if (skillId) params.set("skill_id", skillId);
-      return apiFetch<{ test_cases: TestCaseListItem[] }>(`/test-cases?${params}`).then((page) => ({
+    queryFn: ({ pageParam }) =>
+      getTestCases(skillId, pageParam).then((page) => ({
         test_cases: page.test_cases.slice(0, 50),
         nextOffset: page.test_cases.length > 50 ? pageParam + 50 : undefined,
-      }));
-    },
+      })),
     getNextPageParam: (last) => last.nextOffset,
   });
 }

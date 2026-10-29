@@ -69,7 +69,7 @@ export function ExistingTestCasesSection({
                   params={{ testCaseId: tc.test_case_id }}
                   search={{ version }}
                 >
-                  {tc.name}
+                  {tc.name.trim() || "未命名的測試題"}
                 </Link>
                 <p className="note">
                   小工具：

@@ -67,6 +67,7 @@ function expectedFormValue(form: (typeof forms)[number], mode: string, index: nu
 
 for (const form of forms) {
   for (const mode of ["pristine", "partial", "cleared", "saved", "failed"]) {
+    const expectedReads = mode === "failed" ? 3 : 2;
     for (const width of [375, 1280]) {
       test(`${form.name} draft ${mode} follows legitimate reads at ${width}px`, async ({
         page,
@@ -126,7 +127,9 @@ for (const form of forms) {
             }
             release();
             if (mode === "failed") {
-              await expect(panel.getByRole("alert")).toHaveText("儲存沒有成功，可以再試一次。");
+              await expect(panel.getByRole("alert")).toHaveText(
+                "操作結果尚未確認；請先確認最新資料，再決定是否重送。",
+              );
             } else {
               await expect(panel.getByRole("status").filter({ hasText: "已儲存。" })).toHaveCount(
                 1,
@@ -149,7 +152,7 @@ for (const form of forms) {
             await expect(page.locator("#rubric-weight-c1")).toHaveValue("");
             await expect(page.locator("#rubric-evidence-c1")).not.toBeChecked();
           }
-          expect(reads).toBe(2);
+          await expect.poll(() => reads).toBe(expectedReads);
           expect(writes).toEqual(
             mode === "saved"
               ? [form.patch]
