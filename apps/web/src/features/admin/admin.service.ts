@@ -279,11 +279,40 @@ export function useGrantCredits(workspaceId: string) {
   });
 }
 
+export async function getGovernance(q: string): Promise<{ skills: SkillGovernance[] }> {
+  const result = await apiFetch<unknown>(`/admin/skills?q=${encodeURIComponent(q)}`);
+  if (!result || typeof result !== "object" || Array.isArray(result))
+    throw new Error("Invalid governance response");
+  const response = result as { skills?: unknown };
+  if (!Array.isArray(response.skills) || !response.skills.every(isSkillGovernance))
+    throw new Error("Invalid governance response");
+  return result as { skills: SkillGovernance[] };
+}
+
+function isSkillGovernance(value: unknown): value is SkillGovernance {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const skill = value as Partial<SkillGovernance>;
+  return (
+    [skill.skill_id, skill.workspace_id].every(
+      (id) =>
+        typeof id === "string" &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id),
+    ) &&
+    typeof skill.name === "string" &&
+    typeof skill.redistribution === "string" &&
+    [skill.access_restriction, skill.takedown_reason].every(
+      (text) => text === null || typeof text === "string",
+    ) &&
+    [skill.takedown_at, skill.deleted_at].every(
+      (at) => at === null || (typeof at === "string" && Number.isFinite(Date.parse(at))),
+    )
+  );
+}
+
 export function useGovernance(q: string) {
   return useQuery({
     queryKey: queryKeys.admin.skillSearch(q),
-    queryFn: () =>
-      apiFetch<{ skills: SkillGovernance[] }>(`/admin/skills?q=${encodeURIComponent(q)}`),
+    queryFn: () => getGovernance(q),
     enabled: useOperator() && q !== "",
   });
 }

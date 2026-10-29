@@ -4309,12 +4309,12 @@ paths:
     get:
       operationId: findSkillsForGovernance
       summary: Find skills to govern, in every workspace (02:OPS-004)
-      description: |
+      description: |-
         Operator only. A `q` that is a UUID matches that skill id; anything
         else is a case-insensitive substring of the name. Every workspace is
         searched, private and taken-down skills included, because those are
-        what public search cannot find and what an operator acts on. Deleted
-        skills are never listed. At most 20, newest first.
+        what public search cannot find and what an operator acts on. Owner-deleted
+        skills remain listed until purged. At most 20, newest first.
 
         Each match carries governance state only, never SKILL.md or the file
         tree, so this is not a personal-data read and writes no audit event.
