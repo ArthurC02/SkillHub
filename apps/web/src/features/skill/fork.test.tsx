@@ -39,17 +39,22 @@ vi.mock("@tanstack/react-router", () => ({
   Link: ({
     to,
     params,
+    search,
     className,
     children,
   }: {
     to: string;
     params?: Record<string, string>;
+    search?: Record<string, string>;
     className?: string;
     children?: unknown;
   }) => (
     <a
       className={className}
-      href={Object.entries(params ?? {}).reduce((acc, [k, v]) => acc.replace(`$${k}`, v), to)}
+      href={
+        Object.entries(params ?? {}).reduce((acc, [k, v]) => acc.replace(`$${k}`, v), to) +
+        (search ? `?${new URLSearchParams(search).toString()}` : "")
+      }
     >
       {children as never}
     </a>
@@ -217,6 +222,30 @@ test("a successful 複製一份 hands off to the exact created version and canno
     (item) => item.textContent === "已建立自己的版本",
   );
   expect(completed?.disabled).toBe(true);
+  const packaging = Array.from(container.querySelectorAll("a")).find((link) =>
+    link.textContent?.includes("直接打包並下載 v1"),
+  );
+  expect(packaging?.getAttribute("href")).toBe(
+    "/skills/abcdef01-2345-4789-abcd-0123456789ab/package?version=abcdef02-2345-4789-abcd-0123456789ab",
+  );
+});
+
+test("the copy-first notes name the fork button by the label it actually carries", async () => {
+  vi.stubGlobal("fetch", (input: string) => {
+    const path = String(input)
+      .replace(/^https?:\/\/[^/]+/, "")
+      .split("?")[0];
+    if (path === "/me") return json(ME);
+    if (path.endsWith("/versions")) return json({ ...SKILL_VERSIONS, versions: [] });
+    if (path.startsWith("/api/skills/")) return json(detailBody());
+    return json({ error: "not found" }, 404);
+  });
+  await render(<SkillDetail />, () => text().includes("要先複製一份"));
+
+  const named = [...text().matchAll(/「([^」]+)」就是那一步/g)].map((match) => match[1]);
+  const buttons = Array.from(container.querySelectorAll("button")).map((b) => b.textContent);
+  expect(named.length).toBeGreaterThanOrEqual(2);
+  for (const label of named) expect(buttons).toContain(label);
 });
 
 for (const change of ["another skill", "signed-out return"]) {

@@ -76,9 +76,13 @@ export function serverReason(error: unknown): string | undefined {
   return reason === "" ? undefined : reason;
 }
 
+export function isInAppWords(text: string): boolean {
+  return /[㐀-鿿]/u.test(text);
+}
+
 export function userFacingReason(error: unknown): string | undefined {
   if (!(error instanceof ApiError) || error.status === 401) return undefined;
-  return /[㐀-鿿]/u.test(error.message) ? error.message : undefined;
+  return isInAppWords(error.message) ? error.message : undefined;
 }
 
 function errorMessageFromBody(body: unknown, fallback: string): string {

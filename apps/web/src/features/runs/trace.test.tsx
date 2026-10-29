@@ -497,6 +497,14 @@ test("設計 §3 第 4 條：失敗的試跑紀錄在自己的頁面上要說出
   expect(container.textContent).not.toContain("失敗類別：未記錄");
 });
 
+test("設計 §3 第 4 條：結束的試跑在自己的頁面上說出平台寫下的原因，和清單頁一樣", async () => {
+  const reason = "排隊等空的沙箱超過時間上限，這次試跑沒有開始，也沒有扣點。";
+  stubTrace({ ...summary, status: "timed_out", status_reason: reason }, advanced);
+  await render();
+
+  expect(container.textContent).toContain(reason);
+});
+
 test("取消試跑只有最後確認使用破壞性語意", async () => {
   stubTrace({ ...summary, status: "running" }, advanced);
   await render();

@@ -8,6 +8,8 @@ import { useUninvited } from "../../../../core/session/me.service";
 
 const FORK_UNINVITED_REASON_ID = "fork-uninvited-reason";
 
+export const FORK_BUTTON_LABEL = "以這個小工具為起點建立我自己的";
+
 function forkErrorMessage(error: unknown): string {
   if (isWriteResultUnknown(error))
     return "尚未確認是否已複製到你的工作區。重新送出可能再建立一份副本；請先到資產庫查看，再決定是否重新送出。";
@@ -60,7 +62,7 @@ function ForkControl({ skillId, available }: Omit<ForkContext, "isLoggedIn">) {
             ? "已建立自己的版本"
             : uncertain
               ? "重新送出複製請求"
-              : "以這個小工具為起點建立我自己的"}
+              : FORK_BUTTON_LABEL}
       </button>
       {uninvited && (
         <p className="note" id={FORK_UNINVITED_REASON_ID}>
@@ -120,6 +122,14 @@ function ForkResult({
             params={{ skillId: fork.data.skill_id, versionId: fork.data.version_id }}
           >
             開啟 {fork.data.name} v{fork.data.version_number} 並繼續驗證
+          </Link>
+          ，或
+          <Link
+            to="/skills/$skillId/package"
+            params={{ skillId: fork.data.skill_id }}
+            search={{ version: fork.data.version_id }}
+          >
+            直接打包並下載 v{fork.data.version_number}
           </Link>
         </p>
       )}

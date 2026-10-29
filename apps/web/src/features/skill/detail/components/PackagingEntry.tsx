@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { useSkillVersions } from "../../skills.service";
 import { SignInAction } from "../../../../shared/ui/SignIn";
 import type { SkillDetail as SkillDetailModel } from "../../../../core/api/types";
+import { FORK_BUTTON_LABEL } from "./ForkAction";
 
 export function PackagingEntry({
   skill,
@@ -27,7 +28,7 @@ export function PackagingEntry({
     return (
       <p className="note">
         這個小工具不在你的工作區，所以沒有屬於你的版本可以打包。
-        <strong>要先複製一份</strong>——旁邊的「複製一份到你的工作區」就是那一步。
+        <strong>要先複製一份</strong>——旁邊的「{FORK_BUTTON_LABEL}」就是那一步。
       </p>
     );
 

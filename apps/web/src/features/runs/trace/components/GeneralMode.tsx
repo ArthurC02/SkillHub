@@ -8,6 +8,7 @@ import { IncompleteNotice } from "./IncompleteNotice";
 import { FailureClass } from "./FailureClass";
 import { RunCleanupStatus } from "./RunCleanupStatus";
 import { Reveal } from "../../../../shared/ui/Reveal";
+import { isInAppWords } from "../../../../core/api/client";
 
 export function GeneralMode({
   runId,
@@ -44,6 +45,9 @@ export function GeneralMode({
       <p role="status">
         執行狀態：<strong>{runStatusLabel(trace.status)}</strong>（<code>{trace.status}</code>）
       </p>
+      {trace.status_reason && isInAppWords(trace.status_reason) ? (
+        <p className="note">{trace.status_reason}</p>
+      ) : null}
       <FailureClass runId={runId} status={trace.status} />
       <RunCleanupStatus runId={runId} />
 

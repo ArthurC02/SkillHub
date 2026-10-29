@@ -3,6 +3,7 @@ import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { Link } from "@tanstack/react-router";
 import { useSkillVersions } from "../../skills.service";
 import { SignInAction } from "../../../../shared/ui/SignIn";
+import { FORK_BUTTON_LABEL } from "./ForkAction";
 
 // Ownership signal is the (workspace-scoped) versions list, empty for a non-owner —
 // not skill.version, which is present for every caller including the catalogue.
@@ -55,7 +56,7 @@ export function TrialEntry({ skillId, isLoggedIn }: { skillId: string; isLoggedI
         <p>
           這個小工具不在你的工作區。測試題屬於工作區，所以測試題清單裡看不到它、建立表單的小工具選單也選不到它——
           <strong>要先複製一份</strong>
-          ，才會有屬於你的版本可以試跑。下方的「複製一份到你的工作區」就是那一步。
+          ，才會有屬於你的版本可以試跑。下方的「{FORK_BUTTON_LABEL}」就是那一步。
         </p>
       )}
     </section>
