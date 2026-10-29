@@ -1,8 +1,9 @@
 import { StrictMode, act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { onlineManager, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
+import { queryKeys } from "../../core/api/queryKeys";
 import { RunCompare } from "../runs/compare/RunCompare.page";
 import { Compare, CompareTable } from "./compare/Compare.page";
 import {
@@ -12,6 +13,8 @@ import {
   RUN,
   RUNS,
   SKILL,
+  SKILL_B,
+  SKILL_C,
   SKILL_VERSIONS,
   TEST_CASE,
   platformResponse,
@@ -504,3 +507,75 @@ test("comparison names its horizontal scroll region and shows how to reveal hidd
   expect(region?.getAttribute("aria-label")).toContain("左右捲動");
   expect(container.querySelector(".table-scroll-hint")?.textContent).toContain("左右捲動");
 });
+
+test.each(["initial", "cached", "retry"] as const)(
+  "skill comparison explains its paused %s read and resumes without changing selection or focus",
+  async (phase) => {
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    const ids = [SKILL, SKILL_B, SKILL_C];
+    const names = ["更新摘要工具", "更新拆分工具", "更新清理工具"];
+    const reads: string[] = [];
+    let recovered = false;
+    search = { ids: ids.join(",") };
+    vi.stubGlobal("fetch", (input: string) => {
+      const url = String(input);
+      const index = ids.findIndex((id) => pathOf(url) === `/api/skills/${id}`);
+      if (index >= 0) {
+        reads.push(url);
+        if (phase === "retry" && index === 1 && !recovered)
+          return json({ error: "service unavailable" }, 503);
+        return json(skillDetail(ids[index], names[index]));
+      }
+      const response = platformResponse(url);
+      return json(response.body, response.status);
+    });
+    try {
+      if (phase === "cached")
+        ids.forEach((id) =>
+          queryClient.setQueryData(queryKeys.skills.embedded(id), skillDetail(id, "舊小工具")),
+        );
+      if (phase === "retry")
+        queryClient.setQueryData(
+          queryKeys.skills.embedded(ids[1]),
+          skillDetail(ids[1], "舊小工具"),
+        );
+      if (phase !== "retry") onlineManager.setOnline(false);
+      await render(<Compare />);
+      if (phase === "retry") {
+        await waitFor(() => container.querySelector('[role="alert"]') !== null);
+        expect(container.querySelectorAll("thead th")).toHaveLength(3);
+        await act(async () => {
+          onlineManager.setOnline(false);
+          Array.from(container.querySelectorAll<HTMLButtonElement>("button"))
+            .find((button) => button.textContent === "再試一次")!
+            .click();
+        });
+      }
+      await waitFor(() => text().includes("等待連線以讀取小工具比較資料"));
+      expect(container.querySelector(".compare-table")).toBeNull();
+      expect(container.querySelector('[role="alert"]')).toBeNull();
+      const refresh = Array.from(container.querySelectorAll<HTMLButtonElement>("button")).find(
+        (button) => button.textContent === "等待連線…",
+      )!;
+      expect(refresh.getAttribute("aria-disabled")).toBe("true");
+      refresh.focus();
+      await act(async () => refresh.click());
+      expect(reads).toHaveLength(phase === "retry" ? 3 : 0);
+      await act(async () => {
+        recovered = true;
+        onlineManager.setOnline(true);
+      });
+      await waitFor(() => container.querySelectorAll("thead th").length === 4);
+      expect(
+        Array.from(container.querySelectorAll("thead th")).map((node) => node.textContent),
+      ).toEqual(["比較項目", ...names]);
+      expect(text()).not.toContain("等待連線以讀取小工具比較資料");
+      expect(refresh.getAttribute("aria-disabled")).toBe("false");
+      expect(document.activeElement).toBe(refresh);
+      expect(search.ids).toBe(ids.join(","));
+      expect(reads).toHaveLength(phase === "retry" ? 4 : 3);
+    } finally {
+      onlineManager.setOnline(true);
+    }
+  },
+);

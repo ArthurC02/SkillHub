@@ -5,6 +5,7 @@ import { CompatibilityStatus } from "../../../shared/ui/CompatibilityStatus";
 import { LabelledBadge } from "../../../shared/ui/LabelledBadge";
 import { LicenseBadge, LicenseNotes } from "../../../shared/ui/LicenseBadge";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
+import { Loading } from "../../../shared/ui/Loading";
 import { RiskIndicator } from "../../../shared/ui/RiskIndicator";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import { ExternalLink } from "../../../shared/ui/ExternalLink";
@@ -283,6 +284,8 @@ export function Compare() {
 
   const skills = results.flatMap((result) => (result.data && !result.error ? [result.data] : []));
   const fetching = results.some((result) => result.isFetching);
+  const paused = results.some((result) => result.fetchStatus === "paused");
+  const reading = fetching || paused;
   const failed = results.filter((result) => result.isError).length;
   const firstError = results.find((result) => result.error)?.error;
 
@@ -301,20 +304,24 @@ export function Compare() {
       {skillIds.length >= 2 && (
         <button
           type="button"
-          aria-disabled={fetching}
+          aria-disabled={reading}
           onClick={() => {
-            if (!fetching) results.forEach((result) => void result.refetch());
+            if (!reading) results.forEach((result) => void result.refetch());
           }}
         >
-          {fetching ? "更新比較中…" : "更新比較資料"}
+          {paused ? "等待連線…" : fetching ? "更新比較中…" : "更新比較資料"}
         </button>
       )}
-      {fetching && (
-        <p role="status">
-          載入中…（{skillIds.length} 個裡讀到 {skills.length} 個）
-        </p>
+      {paused ? (
+        <Loading what="小工具比較資料" paused />
+      ) : (
+        fetching && (
+          <p role="status">
+            載入中…（{skillIds.length} 個裡讀到 {skills.length} 個）
+          </p>
+        )
       )}
-      {!fetching && failed > 0 && (
+      {!reading && failed > 0 && (
         <ReadFailure
           error={firstError}
           what="這些小工具"
@@ -327,7 +334,7 @@ export function Compare() {
         </ReadFailure>
       )}
 
-      {!fetching && skills.length >= 2 && <CompareTable skills={skills} />}
+      {!reading && skills.length >= 2 && <CompareTable skills={skills} />}
 
       <p>
         <Link to="/">回到首頁的目錄</Link>
