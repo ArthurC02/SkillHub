@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
+import { test } from "./socket-diagnostics";
 import { writeFile } from "node:fs/promises";
 import {
   PUBLIC_BUNDLE_PUBLICATION,
