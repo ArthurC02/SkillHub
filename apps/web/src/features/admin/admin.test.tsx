@@ -2225,6 +2225,42 @@ test("OPS-004: a takedown with no reason on record says it was not recorded", as
   await waitFor(has("理由：未記錄"));
 });
 
+for (const entry of ["/admin", "/admin/dispatch"]) {
+  test(`${entry} keeps malformed dispatch observations unknown and recovers without a write`, async () => {
+    let current: unknown = { dispatching: "false", halts: [] };
+    stub(true, (path, method) =>
+      path === "/admin/dispatch" && method === "GET" ? { body: current, status: 200 } : undefined,
+    );
+    await mountAt(entry);
+    const failure = entry === "/admin" ? "1 項狀態無法取得" : "暫時無法讀取派送狀態";
+    const refresh = entry === "/admin" ? "重新整理狀態" : "重新整理派送狀態";
+    await waitFor(has(failure));
+    const signal = () =>
+      container.querySelector<HTMLElement>(
+        entry === "/admin"
+          ? '.admin-home-priorities a[href="/admin/dispatch"] strong'
+          : 'section[aria-labelledby="admin-dispatch-state"] [role="status"]',
+      );
+    expect(signal()?.textContent ?? "").not.toContain("正在派送");
+    expect(container.querySelector("#admin-halt-lift-target")).toBeNull();
+    current = { dispatching: true, halts: [] };
+    await click(button(refresh));
+    await waitFor(() => signal()?.textContent?.includes("正在派送") === true);
+    expect(has(failure)()).toBe(false);
+    current = { dispatching: true, halts: [ADMIN_DISPATCH.halts[0], { target: "node-3" }] };
+    await click(button(refresh));
+    await waitFor(has(failure));
+    expect(signal()?.textContent ?? "").not.toContain("正在派送");
+    expect(signal()?.textContent ?? "").not.toContain("部分節點");
+    expect(container.querySelector("#admin-halt-lift-target")).toBeNull();
+    current = { dispatching: false, halts: [] };
+    await click(button(refresh));
+    await waitFor(() => signal()?.textContent?.includes("停止派送") === true);
+    expect(has(failure)()).toBe(false);
+    expect(calls.filter((call) => call.method !== "GET")).toEqual([]);
+  });
+}
+
 test("OPS-005: the dispatch page names the halt, and a declaration without a node halts the fleet", async () => {
   stub(true, (path, method) =>
     path === "/admin/dispatch/halt" && method === "PUT"

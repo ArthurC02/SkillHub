@@ -304,10 +304,40 @@ export function useGovernanceAction(
   });
 }
 
+export async function getDispatchStatus(): Promise<DispatchStatus> {
+  const result = await apiFetch<unknown>("/admin/dispatch");
+  if (!isDispatchStatus(result)) throw new Error("Invalid dispatch status response");
+  return result;
+}
+
+function isDispatchStatus(value: unknown): value is DispatchStatus {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const status = value as Partial<DispatchStatus>;
+  return (
+    typeof status.dispatching === "boolean" &&
+    Array.isArray(status.halts) &&
+    status.halts.every(isDispatchHalt)
+  );
+}
+
+function isDispatchHalt(value: unknown): value is DispatchHalt {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const halt = value as Partial<DispatchHalt>;
+  return (
+    typeof halt.target === "string" &&
+    (halt.source === "p1_incident" || halt.source === "orphan_threshold") &&
+    typeof halt.reason === "string" &&
+    typeof halt.declared_at === "string" &&
+    Number.isFinite(Date.parse(halt.declared_at)) &&
+    typeof halt.automatic_recovery === "boolean" &&
+    (halt.clear_rounds === undefined || Number.isSafeInteger(halt.clear_rounds))
+  );
+}
+
 export function useDispatchStatus() {
   return useQuery({
     queryKey: queryKeys.admin.dispatch,
-    queryFn: () => apiFetch<DispatchStatus>("/admin/dispatch"),
+    queryFn: getDispatchStatus,
     enabled: useOperator(),
   });
 }
