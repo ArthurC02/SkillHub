@@ -7,6 +7,7 @@ import { useDeleteDataset, useTestCaseDatasets } from "../../testcases.service";
 import { ConfirmDelete } from "../../../../shared/ui/ConfirmDelete";
 import { bytes } from "../../../../shared/format";
 import { MutationError } from "./MutationError";
+import { ListFreshness } from "../../../../shared/ui/ListFreshness";
 
 export function DatasetSection({
   testCaseId,
@@ -16,9 +17,16 @@ export function DatasetSection({
   versionId?: string;
 }) {
   const datasets = useTestCaseDatasets(testCaseId);
-  const readableDatasets = datasets.error ? undefined : datasets.data;
+  const reading = datasets.fetchStatus !== "idle";
+  const readableDatasets = datasets.isSuccess && !reading ? datasets.data : undefined;
   const [message, setMessage] = useState("");
   const remove = useDeleteDataset(testCaseId);
+  const refresh = async () => {
+    await datasets.refetch();
+    const heading = document.getElementById("test-case-datasets-heading");
+    heading?.focus({ preventScroll: true });
+    heading?.scrollIntoView?.({ block: "nearest", behavior: "instant" });
+  };
 
   return (
     <>
@@ -34,14 +42,26 @@ export function DatasetSection({
           上傳檔案
         </Link>
       </p>
-      {datasets.isPending && <Loading what="檔案清單" />}
+      {(datasets.isPending || reading) && (
+        <Loading what="檔案清單" paused={datasets.fetchStatus === "paused"} />
+      )}
       <ReadFailure
         error={datasets.error}
         what="檔案清單"
-        retry={() => void datasets.refetch()}
-        retrying={datasets.isFetching}
-        focusTarget="test-case-datasets-heading"
+        retry={() => void refresh()}
+        retrying={reading}
       />
+      {datasets.data && !datasets.error && (
+        <ListFreshness
+          inFlight={false}
+          showWhenIdle
+          subject="檔案"
+          updatedAt={datasets.dataUpdatedAt}
+          fetching={datasets.isFetching}
+          paused={datasets.fetchStatus === "paused"}
+          refetch={refresh}
+        />
+      )}
       {readableDatasets &&
         (readableDatasets.datasets.length === 0 ? (
           <p>還沒有上傳任何檔案。</p>

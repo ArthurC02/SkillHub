@@ -1,8 +1,9 @@
 import { StrictMode, act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { onlineManager, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
+import { queryKeys } from "../../core/api/queryKeys";
 import { TestCaseDetail } from "./test-cases/TestCaseDetail.page";
 import { TestCaseList } from "./test-cases/TestCaseList.page";
 import type { TestCase } from "./testcases.service";
@@ -1569,9 +1570,99 @@ test("丙-121 a test case whose skill is gone says it is gone, not that you may 
 test("§2.12 第 6 條 執行歷史 with a run still going says how old the list is and can be refreshed", async () => {
   stubPlatform({ runs: [{ ...RUN, status: "running", finished_at: undefined }] });
   await render();
-  await waitFor(() => (container.textContent ?? "").includes("上次取得於"));
+  const history = container.querySelector(".test-case-history-panel")!;
+  await waitFor(() => (history.textContent ?? "").includes("上次取得於"));
 
-  const refresh = button("重新整理");
+  const refresh = Array.from(history.querySelectorAll<HTMLButtonElement>("button")).find(
+    (candidate) => candidate.textContent === "重新整理",
+  );
   expect(refresh, "no visible refresh control on a history with a running row").toBeTruthy();
-  expect(refresh.closest("p")!.querySelector("time")).not.toBeNull();
+  expect(refresh!.closest("p")!.querySelector("time")).not.toBeNull();
 });
+
+const datasetReadinessCases = ["fetching", "paused"].flatMap((phase) =>
+  [false, true].map((empty) => ({ phase, empty })),
+);
+
+test.each(datasetReadinessCases)(
+  "dataset detail waits during $phase with cached empty=$empty and retains unrelated drafts",
+  async ({ phase, empty }) => {
+    vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+    stubPlatform();
+    const platformFetch = globalThis.fetch;
+    const none = { datasets: [], total_bytes: 0 };
+    const stored = {
+      datasets: [
+        {
+          dataset_id: "77777777-7777-4777-8777-777777777777",
+          file_name: "cached.csv",
+          content_type: "text/csv",
+          content_hash: "a".repeat(64),
+          size_bytes: 1,
+          expires_at: "2026-11-15T00:00:00Z",
+        },
+      ],
+      total_bytes: 1,
+    };
+    let response = empty ? none : stored;
+    let checking = false;
+    let reads = 0;
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.stubGlobal("fetch", async (input: string, init?: RequestInit) => {
+      if (!String(input).endsWith(`/test-cases/${TEST_CASE}/datasets`))
+        return platformFetch(input, init);
+      reads++;
+      if (checking) await gate;
+      return json(response);
+    });
+    await render();
+    const section = container.querySelector<HTMLElement>('[aria-label="測試資料"]')!;
+    await waitFor(() =>
+      empty
+        ? section.textContent?.includes("還沒有上傳任何檔案。") === true
+        : section.querySelectorAll(".file-tree > li").length === 1,
+    );
+    const name = container.querySelector<HTMLInputElement>("#edit-name")!;
+    await act(async () => setValue(name, "kept while checking datasets"));
+    try {
+      await act(async () => {
+        checking = true;
+        if (phase === "paused") onlineManager.setOnline(false);
+        void queryClient.invalidateQueries({ queryKey: queryKeys.testCases.datasets(TEST_CASE) });
+      });
+      const waiting = phase === "paused" ? "等待連線以讀取檔案清單" : "載入檔案清單中";
+      await waitFor(() => section.textContent?.includes(waiting) === true);
+      expect(section.textContent).not.toContain("還沒有上傳任何檔案。");
+      expect(section.textContent).not.toMatch(/目前 \d+ 個檔案/);
+      expect(section.querySelectorAll(".file-tree > li")).toHaveLength(0);
+      expect(reads).toBe(phase === "paused" ? 1 : 2);
+      expect(name.value).toBe("kept while checking datasets");
+    } finally {
+      await act(async () => {
+        response = empty ? stored : none;
+        checking = false;
+        release();
+        onlineManager.setOnline(true);
+      });
+    }
+    await waitFor(() => section.querySelectorAll(".file-tree > li").length === (empty ? 1 : 0));
+    await waitFor(() => queryClient.isFetching() === 0);
+    expect(reads).toBe(2);
+    expect(name.value).toBe("kept while checking datasets");
+    await waitFor(() =>
+      Array.from(section.querySelectorAll("button")).some(
+        (candidate) => candidate.textContent === "重新整理",
+      ),
+    );
+    const refresh = Array.from(section.querySelectorAll<HTMLButtonElement>("button")).find(
+      (candidate) => candidate.textContent === "重新整理",
+    )!;
+    expect(refresh).toBeTruthy();
+    await act(async () => refresh.click());
+    await waitFor(() => reads === 3 && document.activeElement?.id === "test-case-datasets-heading");
+    expect(name.value).toBe("kept while checking datasets");
+  },
+);

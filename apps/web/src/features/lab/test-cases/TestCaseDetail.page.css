@@ -82,7 +82,11 @@
 
 .test-case-detail-rail {
   position: sticky;
-  top: 16px;
+  top: var(--app-header-clearance, 16px);
+}
+
+#test-case-datasets-heading {
+  scroll-margin-top: var(--app-header-clearance, 0px);
 }
 
 .test-case-work-panel,
