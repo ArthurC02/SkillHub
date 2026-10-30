@@ -252,6 +252,13 @@ jobs:
               exit 1
             fi
             echo "::warning::playwright install-deps attempt $attempt stalled past 120 s or failed; resuming"
+            echo "::notice::Waiting for package manager locks before repairing packages"
+            sudo python3 - <<'PY'
+          import fcntl
+          with open("/var/lib/dpkg/lock-frontend", "r+") as frontend, open("/var/lib/dpkg/lock", "r+") as database:
+              for lock in (frontend, database):
+                  fcntl.lockf(lock, fcntl.LOCK_EX)
+          PY
             sudo dpkg --configure -a || sudo apt-get --fix-broken install --yes
           done
           find /var/cache/apt/archives -maxdepth 1 -name '*.deb' -exec cp -t ~/playwright-debs {} +

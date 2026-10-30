@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func browserDependencyInstallScript(t *testing.T) string {
+func browserDependencyInstallScript(t *testing.T, directory string) string {
 	t.Helper()
 	job := browserWorkflowJob(t, "web-browser-shards")
 	_, tail, ok := strings.Cut(job, "        name: Install Linux browser dependencies\n        run: |\n")
@@ -27,7 +27,16 @@ func browserDependencyInstallScript(t *testing.T) string {
 	}
 	script := strings.Join(lines, "\n")
 	script = strings.ReplaceAll(script, "${{ matrix.browser }}", "webkit")
-	return strings.ReplaceAll(script, "~/playwright-debs", `"$SKILLHUB_TEST_CACHE"`)
+	for _, name := range []string{"frontend-lock", "database-lock"} {
+		if err := os.WriteFile(filepath.Join(directory, name), nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return strings.NewReplacer(
+		"~/playwright-debs", `"$SKILLHUB_TEST_CACHE"`,
+		"/var/lib/dpkg/lock-frontend", filepath.Join(directory, "frontend-lock"),
+		"/var/lib/dpkg/lock", filepath.Join(directory, "database-lock"),
+	).Replace(script)
 }
 
 func writeBrowserInstallStub(t *testing.T, directory, name, body string) {
@@ -55,7 +64,7 @@ func TestBrowserDependencyRetriesRepairThePackageState(t *testing.T) {
 			writeBrowserInstallStub(t, directory, "sudo", `case "$1" in
 tee) cat >/dev/null ;;
 cp) ;;
-timeout|dpkg|apt-get) exec "$@" ;;
+timeout|dpkg|apt-get|python3) exec "$@" ;;
 *) exit 99 ;;
 esac`)
 			writeBrowserInstallStub(t, directory, "find", "exit 0")
@@ -81,7 +90,7 @@ touch "$SKILLHUB_TEST_REPAIRED"`)
 			ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 			defer cancel()
 			command := exec.CommandContext(ctx, "bash", "-e", "-o", "pipefail")
-			command.Stdin = strings.NewReader(browserDependencyInstallScript(t))
+			command.Stdin = strings.NewReader(browserDependencyInstallScript(t, directory))
 			command.Env = append(os.Environ(),
 				"PATH="+directory+":"+os.Getenv("PATH"),
 				"SKILLHUB_TEST_MODE="+scenario.mode,
