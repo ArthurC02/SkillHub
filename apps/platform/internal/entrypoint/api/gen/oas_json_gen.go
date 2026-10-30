@@ -44161,6 +44161,39 @@ func (s *OptNilString) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes OwnSkillTakedown as json.
+func (o OptOwnSkillTakedown) Encode(e *jx.Encoder) {
+	if !o.Set {
+		return
+	}
+	o.Value.Encode(e)
+}
+
+// Decode decodes OwnSkillTakedown from json.
+func (o *OptOwnSkillTakedown) Decode(d *jx.Decoder) error {
+	if o == nil {
+		return errors.New("invalid: unable to decode OptOwnSkillTakedown to nil")
+	}
+	o.Set = true
+	if err := o.Value.Decode(d); err != nil {
+		return err
+	}
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OptOwnSkillTakedown) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OptOwnSkillTakedown) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes OwnerBundlePublicationSummary as json.
 func (o OptOwnerBundlePublicationSummary) Encode(e *jx.Encoder) {
 	if !o.Set {
@@ -45670,9 +45703,15 @@ func (s *OwnSkill) encodeFields(e *jx.Encoder) {
 		e.FieldStart("verification")
 		s.Verification.Encode(e)
 	}
+	{
+		if s.Takedown.Set {
+			e.FieldStart("takedown")
+			s.Takedown.Encode(e)
+		}
+	}
 }
 
-var jsonFieldsNameOfOwnSkill = [9]string{
+var jsonFieldsNameOfOwnSkill = [10]string{
 	0: "skill_id",
 	1: "name",
 	2: "summary",
@@ -45682,6 +45721,7 @@ var jsonFieldsNameOfOwnSkill = [9]string{
 	6: "forked_from_version_id",
 	7: "risk",
 	8: "verification",
+	9: "takedown",
 }
 
 // Decode decodes OwnSkill from json.
@@ -45789,6 +45829,16 @@ func (s *OwnSkill) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"verification\"")
 			}
+		case "takedown":
+			if err := func() error {
+				s.Takedown.Reset()
+				if err := s.Takedown.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"takedown\"")
+			}
 		default:
 			return d.Skip()
 		}
@@ -45888,6 +45938,174 @@ func (s OwnSkillRedistribution) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *OwnSkillRedistribution) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode implements json.Marshaler.
+func (s *OwnSkillTakedown) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *OwnSkillTakedown) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("taken_down_at")
+		json.EncodeDateTime(e, s.TakenDownAt)
+	}
+	{
+		e.FieldStart("by")
+		s.By.Encode(e)
+	}
+	{
+		if s.RestorableUntil.Set {
+			e.FieldStart("restorable_until")
+			s.RestorableUntil.Encode(e, json.EncodeDateTime)
+		}
+	}
+}
+
+var jsonFieldsNameOfOwnSkillTakedown = [3]string{
+	0: "taken_down_at",
+	1: "by",
+	2: "restorable_until",
+}
+
+// Decode decodes OwnSkillTakedown from json.
+func (s *OwnSkillTakedown) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode OwnSkillTakedown to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "taken_down_at":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := json.DecodeDateTime(d)
+				s.TakenDownAt = v
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"taken_down_at\"")
+			}
+		case "by":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				if err := s.By.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"by\"")
+			}
+		case "restorable_until":
+			if err := func() error {
+				s.RestorableUntil.Reset()
+				if err := s.RestorableUntil.Decode(d, json.DecodeDateTime); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"restorable_until\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode OwnSkillTakedown")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00000011,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfOwnSkillTakedown) {
+					name = jsonFieldsNameOfOwnSkillTakedown[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *OwnSkillTakedown) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OwnSkillTakedown) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes OwnSkillTakedownBy as json.
+func (s OwnSkillTakedownBy) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes OwnSkillTakedownBy from json.
+func (s *OwnSkillTakedownBy) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode OwnSkillTakedownBy to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch OwnSkillTakedownBy(v) {
+	case OwnSkillTakedownByOwner:
+		*s = OwnSkillTakedownByOwner
+	case OwnSkillTakedownByOperator:
+		*s = OwnSkillTakedownByOperator
+	default:
+		*s = OwnSkillTakedownBy(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s OwnSkillTakedownBy) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *OwnSkillTakedownBy) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { Link } from "@tanstack/react-router";
 import { ApiError } from "../../../../core/api/client";
+import { useDeadlinePassed } from "../../../../shared/useDeadlinePassed";
 import {
   useCreationLimits,
   useCreationSessions,
@@ -189,18 +190,6 @@ type ComposerDock = "open" | "past-deadline" | "closed";
 function composerDock(terminal: boolean, deadlinePassed: boolean): ComposerDock {
   if (terminal) return "closed";
   return deadlinePassed ? "past-deadline" : "open";
-}
-
-function useDeadlinePassed(deadline: string | undefined) {
-  const [passedDeadline, setPassedDeadline] = useState<string>();
-  useEffect(() => {
-    const at = deadline ? Date.parse(deadline) : Number.NaN;
-    if (!Number.isFinite(at)) return;
-    const wait = Math.min(Math.max(at - Date.now(), 0), 2 ** 31 - 1);
-    const timer = setTimeout(() => setPassedDeadline(deadline), wait);
-    return () => clearTimeout(timer);
-  }, [deadline]);
-  return deadline !== undefined && passedDeadline === deadline;
 }
 
 function ComposerSlot({

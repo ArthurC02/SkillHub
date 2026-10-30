@@ -385,6 +385,30 @@ export function useDeleteSkill() {
   });
 }
 
+function useOwnSkillWrite<T>(write: (input: T) => Promise<unknown>) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: write,
+    onSettled: () => void client.invalidateQueries({ queryKey: queryKeys.skills.own }),
+  });
+}
+
+export function useTakedownSkill() {
+  return useOwnSkillWrite(({ skillId, reason }: { skillId: string; reason: string }) =>
+    apiFetch(`/skills/${skillId}/takedown`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason }),
+    }),
+  );
+}
+
+export function useRestoreSkill() {
+  return useOwnSkillWrite((skillId: string) =>
+    apiFetch(`/skills/${skillId}/restore`, { method: "POST" }),
+  );
+}
+
 function isForkReceipt(value: unknown): value is ForkedSkill {
   if (!isSkillReceipt(value)) return false;
   const receipt = value as Partial<ForkedSkill>;

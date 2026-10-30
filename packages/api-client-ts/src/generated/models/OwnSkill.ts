@@ -20,6 +20,13 @@ import {
     SearchResultRiskToJSON,
     SearchResultRiskToJSONTyped,
 } from './SearchResultRisk';
+import type { OwnSkillTakedown } from './OwnSkillTakedown';
+import {
+    OwnSkillTakedownFromJSON,
+    OwnSkillTakedownFromJSONTyped,
+    OwnSkillTakedownToJSON,
+    OwnSkillTakedownToJSONTyped,
+} from './OwnSkillTakedown';
 import type { SkillVerification } from './SkillVerification';
 import {
     SkillVerificationFromJSON,
@@ -102,6 +109,10 @@ export interface OwnSkill {
      * 
      */
     verification: SkillVerification;
+    /**
+     * 
+     */
+    takedown?: OwnSkillTakedown;
 }
 
 
@@ -150,6 +161,7 @@ export function OwnSkillFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
         'forkedFromVersionId': json['forked_from_version_id'] == null ? undefined : json['forked_from_version_id'],
         'risk': SearchResultRiskFromJSON(json['risk']),
         'verification': SkillVerificationFromJSON(json['verification']),
+        'takedown': json['takedown'] == null ? undefined : OwnSkillTakedownFromJSON(json['takedown']),
     };
 }
 
@@ -173,6 +185,7 @@ export function OwnSkillToJSONTyped(value?: OwnSkill | null, ignoreDiscriminator
         'forked_from_version_id': value['forkedFromVersionId'],
         'risk': SearchResultRiskToJSON(value['risk']),
         'verification': SkillVerificationToJSON(value['verification']),
+        'takedown': OwnSkillTakedownToJSON(value['takedown']),
     };
 }
 

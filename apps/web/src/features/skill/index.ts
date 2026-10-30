@@ -11,6 +11,8 @@ export {
   isSkillAlreadyGone,
   unreadableSkillSentence,
   useDeleteSkill,
+  useRestoreSkill,
+  useTakedownSkill,
   useEmbeddedSkillDetail,
   useEmbeddedSkillDetails,
   useEmbeddedSkillVersions,

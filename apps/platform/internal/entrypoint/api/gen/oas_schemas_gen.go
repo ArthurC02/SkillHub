@@ -18972,6 +18972,52 @@ func (o OptNilString) Or(d string) string {
 	return d
 }
 
+// NewOptOwnSkillTakedown returns new OptOwnSkillTakedown with value set to v.
+func NewOptOwnSkillTakedown(v OwnSkillTakedown) OptOwnSkillTakedown {
+	return OptOwnSkillTakedown{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptOwnSkillTakedown is optional OwnSkillTakedown.
+type OptOwnSkillTakedown struct {
+	Value OwnSkillTakedown
+	Set   bool
+}
+
+// IsSet returns true if OptOwnSkillTakedown was set.
+func (o OptOwnSkillTakedown) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptOwnSkillTakedown) Reset() {
+	var v OwnSkillTakedown
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptOwnSkillTakedown) SetTo(v OwnSkillTakedown) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptOwnSkillTakedown) Get() (v OwnSkillTakedown, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptOwnSkillTakedown) Or(d OwnSkillTakedown) OwnSkillTakedown {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptOwnerBundlePublicationSummary returns new OptOwnerBundlePublicationSummary with value set to v.
 func NewOptOwnerBundlePublicationSummary(v OwnerBundlePublicationSummary) OptOwnerBundlePublicationSummary {
 	return OptOwnerBundlePublicationSummary{
@@ -21298,8 +21344,9 @@ type OwnSkill struct {
 	// deliberately the same schema and not a second one shaped like it, because the rule this facet exists
 	// to keep is that the two planes word one fact the same way (02:NFR-007 第 3 條).
 	// `scan_status: unavailable` is the usual answer for a fork; see `verification` for why.
-	Risk         SearchResultRisk  `json:"risk"`
-	Verification SkillVerification `json:"verification"`
+	Risk         SearchResultRisk    `json:"risk"`
+	Verification SkillVerification   `json:"verification"`
+	Takedown     OptOwnSkillTakedown `json:"takedown"`
 }
 
 // GetSkillID returns the value of SkillID.
@@ -21347,6 +21394,11 @@ func (s *OwnSkill) GetVerification() SkillVerification {
 	return s.Verification
 }
 
+// GetTakedown returns the value of Takedown.
+func (s *OwnSkill) GetTakedown() OptOwnSkillTakedown {
+	return s.Takedown
+}
+
 // SetSkillID sets the value of SkillID.
 func (s *OwnSkill) SetSkillID(val uuid.UUID) {
 	s.SkillID = val
@@ -21390,6 +21442,11 @@ func (s *OwnSkill) SetRisk(val SearchResultRisk) {
 // SetVerification sets the value of Verification.
 func (s *OwnSkill) SetVerification(val SkillVerification) {
 	s.Verification = val
+}
+
+// SetTakedown sets the value of Takedown.
+func (s *OwnSkill) SetTakedown(val OptOwnSkillTakedown) {
+	s.Takedown = val
 }
 
 // Whether a Download Artifact may be produced from this skill. Three of its five values release and
@@ -21457,6 +21514,89 @@ func (s *OwnSkillRedistribution) UnmarshalText(data []byte) error {
 		return nil
 	case OwnSkillRedistributionGenerated:
 		*s = OwnSkillRedistributionGenerated
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Present only while the skill is taken down. The skill stays on its owner's list so the owner can see
+// why it left search and the catalog, and, for a takedown the owner made, restore it through
+// `POST /skills/{id}/restore` until `restorable_until`. A takedown an operator made carries no
+// `restorable_until`: only an operator lifts it.
+// Ref: #/components/schemas/OwnSkillTakedown
+type OwnSkillTakedown struct {
+	TakenDownAt time.Time          `json:"taken_down_at"`
+	By          OwnSkillTakedownBy `json:"by"`
+	// The last moment the owner's restore is accepted; owner takedowns only.
+	RestorableUntil OptDateTime `json:"restorable_until"`
+}
+
+// GetTakenDownAt returns the value of TakenDownAt.
+func (s *OwnSkillTakedown) GetTakenDownAt() time.Time {
+	return s.TakenDownAt
+}
+
+// GetBy returns the value of By.
+func (s *OwnSkillTakedown) GetBy() OwnSkillTakedownBy {
+	return s.By
+}
+
+// GetRestorableUntil returns the value of RestorableUntil.
+func (s *OwnSkillTakedown) GetRestorableUntil() OptDateTime {
+	return s.RestorableUntil
+}
+
+// SetTakenDownAt sets the value of TakenDownAt.
+func (s *OwnSkillTakedown) SetTakenDownAt(val time.Time) {
+	s.TakenDownAt = val
+}
+
+// SetBy sets the value of By.
+func (s *OwnSkillTakedown) SetBy(val OwnSkillTakedownBy) {
+	s.By = val
+}
+
+// SetRestorableUntil sets the value of RestorableUntil.
+func (s *OwnSkillTakedown) SetRestorableUntil(val OptDateTime) {
+	s.RestorableUntil = val
+}
+
+type OwnSkillTakedownBy string
+
+const (
+	OwnSkillTakedownByOwner    OwnSkillTakedownBy = "owner"
+	OwnSkillTakedownByOperator OwnSkillTakedownBy = "operator"
+)
+
+// AllValues returns all OwnSkillTakedownBy values.
+func (OwnSkillTakedownBy) AllValues() []OwnSkillTakedownBy {
+	return []OwnSkillTakedownBy{
+		OwnSkillTakedownByOwner,
+		OwnSkillTakedownByOperator,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s OwnSkillTakedownBy) MarshalText() ([]byte, error) {
+	switch s {
+	case OwnSkillTakedownByOwner:
+		return []byte(s), nil
+	case OwnSkillTakedownByOperator:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *OwnSkillTakedownBy) UnmarshalText(data []byte) error {
+	switch OwnSkillTakedownBy(data) {
+	case OwnSkillTakedownByOwner:
+		*s = OwnSkillTakedownByOwner
+		return nil
+	case OwnSkillTakedownByOperator:
+		*s = OwnSkillTakedownByOperator
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)

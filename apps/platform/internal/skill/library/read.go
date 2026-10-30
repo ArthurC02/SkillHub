@@ -88,6 +88,7 @@ type ListedSkill struct {
 	Skill        Skill
 	Risk         json.RawMessage
 	Verification ScanVerification
+	TakenDownBy  TakedownBy
 }
 
 type ScanVerification struct {
@@ -158,6 +159,7 @@ func (s *Service) Listing(
 		}
 		listing.Skills = append(listing.Skills, ListedSkill{
 			Skill: skillDTO(row.Skill), Risk: risk, Verification: scanVerificationOf(row, ancestor, inherits),
+			TakenDownBy: takedownByOf(row.Skill),
 		})
 	}
 	return listing, nil
@@ -518,4 +520,11 @@ func SkillsForGovernance(ctx context.Context, db gen.DBTX, skillID pgtype.UUID, 
 		out = append(out, Governance(row))
 	}
 	return out, nil
+}
+
+func takedownByOf(row gen.Skill) TakedownBy {
+	if row.TakedownBy != nil && TakedownBy(*row.TakedownBy) == TakedownByOwner {
+		return TakedownByOwner
+	}
+	return TakedownByOperator
 }

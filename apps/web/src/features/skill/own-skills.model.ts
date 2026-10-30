@@ -1,7 +1,7 @@
 import type { SkillRedistributionEnum } from "@skillhub/api-client-ts";
 import { ListSkillsLimitMaximum } from "@skillhub/api-client-ts/limits";
 import { contractEnum } from "../../core/api/contract-enum";
-import type { OwnSkill, OwnSkills, Skill } from "../../core/api/types";
+import type { OwnSkill, OwnSkills, OwnSkillTakedown, Skill } from "../../core/api/types";
 import { isSkillRisk } from "./search-response.model";
 
 const SKILL_REDISTRIBUTIONS = contractEnum<SkillRedistributionEnum>({
@@ -30,11 +30,26 @@ export function isSkillReceipt(value: unknown): value is Skill {
   );
 }
 
+const isTimestamp = (value: unknown) =>
+  typeof value === "string" && Number.isFinite(Date.parse(value));
+
+function isOwnSkillTakedown(value: unknown): value is OwnSkillTakedown {
+  if (!value || typeof value !== "object") return false;
+  const takedown = value as Partial<OwnSkillTakedown>;
+  return (
+    isTimestamp(takedown.taken_down_at) &&
+    (takedown.by === "owner"
+      ? isTimestamp(takedown.restorable_until)
+      : takedown.by === "operator" && takedown.restorable_until === undefined)
+  );
+}
+
 function isOwnSkill(value: unknown): value is OwnSkill {
   if (!isSkillReceipt(value)) return false;
   const skill = value as Partial<OwnSkill>;
   const verification = skill.verification;
   return (
+    (skill.takedown === undefined || isOwnSkillTakedown(skill.takedown)) &&
     (skill.access_restriction === undefined ||
       skill.access_restriction === null ||
       typeof skill.access_restriction === "string") &&

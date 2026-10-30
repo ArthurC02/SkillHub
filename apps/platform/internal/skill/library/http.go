@@ -383,6 +383,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 			skillResponse: toSkillResponseFromSkill(row.Skill),
 			Risk:          row.Risk,
 			Verification:  verificationOf(row.Verification),
+			Takedown:      ownTakedownOf(row),
 		})
 	}
 
@@ -399,6 +400,26 @@ type ownSkillResponse struct {
 
 	Risk         json.RawMessage   `json:"risk"`
 	Verification skillVerification `json:"verification"`
+	Takedown     *ownSkillTakedown `json:"takedown,omitempty"`
+}
+
+type ownSkillTakedown struct {
+	TakenDownAt     string  `json:"taken_down_at"`
+	By              string  `json:"by"`
+	RestorableUntil *string `json:"restorable_until,omitempty"`
+}
+
+func ownTakedownOf(row ListedSkill) *ownSkillTakedown {
+	if !row.Skill.TakenDown() {
+		return nil
+	}
+	at := row.Skill.TakedownAt.Time.UTC()
+	out := &ownSkillTakedown{TakenDownAt: at.Format(time.RFC3339), By: string(row.TakenDownBy)}
+	if row.TakenDownBy == TakedownByOwner {
+		until := at.Add(OwnerRestoreWindow).Format(time.RFC3339)
+		out.RestorableUntil = &until
+	}
+	return out
 }
 
 type skillVerification struct {

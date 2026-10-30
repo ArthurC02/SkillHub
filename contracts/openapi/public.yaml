@@ -8891,6 +8891,26 @@ components:
                 answer for a fork; see `verification` for why.
             verification:
               $ref: "#/components/schemas/SkillVerification"
+            takedown:
+              $ref: "#/components/schemas/OwnSkillTakedown"
+    OwnSkillTakedown:
+      description: |
+        Present only while the skill is taken down. The skill stays on its
+        owner's list so the owner can see why it left search and the catalog,
+        and, for a takedown the owner made, restore it through
+        `POST /skills/{id}/restore` until `restorable_until`. A takedown an
+        operator made carries no `restorable_until`: only an operator lifts it.
+      type: object
+      required: [taken_down_at, by]
+      properties:
+        taken_down_at: { type: string, format: date-time }
+        by:
+          type: string
+          enum: [owner, operator]
+        restorable_until:
+          type: string
+          format: date-time
+          description: The last moment the owner's restore is accepted; owner takedowns only.
     SkillVerification:
       description: |
         Whether anything was measured **in this workspace**, and when.

@@ -187,6 +187,7 @@ export * from './ModelError';
 export * from './MovePlatformAgentFindingRequest';
 export * from './OperatorAuditEvent';
 export * from './OwnSkill';
+export * from './OwnSkillTakedown';
 export * from './OwnerBundlePublicationSummary';
 export * from './OwnerBundleRelease';
 export * from './OwnerBundleSummary';

@@ -1857,3 +1857,175 @@ test("PACK-018 建立 Bundle Version 時，成員送出的是使用者明確選�
   expect(created.body?.member_version_ids).toEqual([olderVersion.version_id]);
   expect(created.body?.name).toBe("pdf-toolkit");
 });
+
+function ownSkillWithTakedown(takedown?: Record<string, unknown>) {
+  return {
+    skills: [
+      {
+        skill_id: SKILL,
+        name: "CSV 清理",
+        summary: "整理 CSV。",
+        redistribution: "allowed",
+        ...SCANNED,
+        ...(takedown ? { takedown } : {}),
+      },
+    ],
+    limit: 100,
+    total: 1,
+    truncated: false,
+  };
+}
+
+function stubTakedownPlatform(
+  list: () => unknown,
+  write?: (path: string, body: unknown) => Promise<Response>,
+) {
+  const writes: { path: string; body: unknown }[] = [];
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    const path = String(input)
+      .replace(/^https?:\/\/[^/]+/, "")
+      .split("?")[0];
+    if (path === "/me") return json(SESSION);
+    if (init?.method === "POST") {
+      const body = init.body ? JSON.parse(String(init.body)) : undefined;
+      writes.push({ path, body });
+      return write ? write(path, body) : Promise.resolve(new Response(null, { status: 204 }));
+    }
+    return json(list());
+  });
+  return writes;
+}
+
+const DAY = 24 * 60 * 60 * 1000;
+
+test.each([
+  {
+    who: "the owner, within the restore window",
+    by: "owner",
+    untilFromNow: 10 * DAY,
+    restorable: true,
+    says: "恢復期限到",
+  },
+  {
+    who: "the owner, past the restore window",
+    by: "owner",
+    untilFromNow: -DAY,
+    restorable: false,
+    says: "結束，不能再恢復上架",
+  },
+  {
+    who: "an operator",
+    by: "operator",
+    untilFromNow: undefined,
+    restorable: false,
+    says: "只有營運者能恢復上架",
+  },
+] as const)(
+  "a skill taken down by $who says who did it and offers a restore only when the owner may",
+  async ({ by, untilFromNow, restorable, says }) => {
+    const takenDownAt = new Date(Date.now() - DAY).toISOString();
+    stubTakedownPlatform(() =>
+      ownSkillWithTakedown({
+        taken_down_at: takenDownAt,
+        by,
+        ...(untilFromNow === undefined
+          ? {}
+          : { restorable_until: new Date(Date.now() + untilFromNow).toISOString() }),
+      }),
+    );
+    await render(<WorkspaceSkills />, () => text().includes("已下架"));
+    await waitFor(() => text().includes(says));
+
+    expect(button("恢復上架") !== undefined).toBe(restorable);
+    expect(container.querySelector(`#skill-takedown-reason-${SKILL}`)).toBeNull();
+  },
+);
+
+test("restoring the owner's own takedown posts the restore and rereads the list", async () => {
+  let restored = false;
+  const writes = stubTakedownPlatform(
+    () =>
+      ownSkillWithTakedown(
+        restored
+          ? undefined
+          : {
+              taken_down_at: new Date(Date.now() - DAY).toISOString(),
+              by: "owner",
+              restorable_until: new Date(Date.now() + 10 * DAY).toISOString(),
+            },
+      ),
+    () => {
+      restored = true;
+      return Promise.resolve(new Response(null, { status: 204 }));
+    },
+  );
+  await render(<WorkspaceSkills />, () => button("恢復上架") !== undefined);
+
+  await act(async () => button("恢復上架")!.click());
+  await waitFor(() => text().includes("已恢復上架「CSV 清理」"));
+
+  expect(writes).toEqual([{ path: `/skills/${SKILL}/restore`, body: undefined }]);
+  await waitFor(() => !text().includes("已下架"));
+});
+
+test.each([
+  [403, "這次下架不能由你恢復：它是平台營運下架的，或已經超過 30 天的恢復期限。"],
+  [409, "它已經不在下架狀態了；重新整理清單看看最新狀態。"],
+])("a restore the platform refuses with %i says why", async (status, says) => {
+  stubTakedownPlatform(
+    () =>
+      ownSkillWithTakedown({
+        taken_down_at: new Date(Date.now() - DAY).toISOString(),
+        by: "owner",
+        restorable_until: new Date(Date.now() + 10 * DAY).toISOString(),
+      }),
+    () => json({ error: "only the owner's own takedown can be restored, within 30 days" }, status),
+  );
+  await render(<WorkspaceSkills />, () => button("恢復上架") !== undefined);
+
+  await act(async () => button("恢復上架")!.click());
+  await waitFor(() => text().includes(says));
+});
+
+test("taking a skill down needs a reason, says what survives, and posts the trimmed reason", async () => {
+  const writes = stubTakedownPlatform(
+    () => ownSkillWithTakedown(),
+    () =>
+      json({
+        skill_id: SKILL,
+        takedown_at: new Date().toISOString(),
+        reason: "授權有疑慮",
+        note: "removed from search",
+      }),
+  );
+  await render(<WorkspaceSkills />, () => text().includes("CSV 清理"));
+  await open("管理");
+
+  expect(button("下架")?.disabled).toBe(true);
+  const reason = container.querySelector<HTMLTextAreaElement>(`#skill-takedown-reason-${SKILL}`)!;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(
+      reason,
+      "  授權有疑慮  ",
+    );
+    reason.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  expect(button("下架")?.disabled).toBe(false);
+
+  await act(async () => button("下架")!.click());
+  expect(text()).toContain("它仍留在你的資產庫");
+  expect(writes).toHaveLength(0);
+  await act(async () => button("確認下架")!.click());
+  await waitFor(() => text().includes("已下架「CSV 清理」"));
+
+  expect(writes).toEqual([{ path: `/skills/${SKILL}/takedown`, body: { reason: "授權有疑慮" } }]);
+});
+
+test("an owner takedown without its restore deadline is not accepted as a readable list", async () => {
+  stubTakedownPlatform(() =>
+    ownSkillWithTakedown({ taken_down_at: new Date().toISOString(), by: "owner" }),
+  );
+  await render(<WorkspaceSkills />, () => text().includes("暫時無法讀取資產庫內容"));
+
+  expect(text()).not.toContain("CSV 清理");
+});

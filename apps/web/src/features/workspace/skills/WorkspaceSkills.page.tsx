@@ -13,6 +13,7 @@ import { CreateHub } from "../../creation";
 import { StateIcon } from "../../../shared/ui/StateIcon";
 import type { OwnSkill, Redistribution } from "../../../core/api/types";
 import { REDISTRIBUTION_BADGE } from "./WorkspaceSkills.model";
+import { TakedownMenuItem, TakedownNotice } from "./SkillTakedown";
 import "./WorkspaceSkills.page.css";
 
 function redistributionOf(value: string) {
@@ -105,6 +106,34 @@ function SkillFlags({ skill }: { skill: OwnSkill }) {
   return <p className="badge-row skill-card-flags">{flags}</p>;
 }
 
+function SkillCardFooter({
+  skill,
+  onMessage,
+}: {
+  skill: OwnSkill;
+  onMessage: (message: string) => void;
+}) {
+  return (
+    <div className="skill-card-footer">
+      {skill.takedown && (
+        <TakedownNotice skill={skill} takedown={skill.takedown} onMessage={onMessage} />
+      )}
+      <SkillFlags skill={skill} />
+      <p className="skill-card-verification">
+        <span>工作區驗證：</span>
+        <strong>{skill.verification.label}</strong>
+      </p>
+      <Link
+        className="skill-card-validation"
+        to="/lab/test-cases"
+        search={{ skill: skill.skill_id }}
+      >
+        測試題與試跑 <span aria-hidden="true">→</span>
+      </Link>
+    </div>
+  );
+}
+
 function SkillCard({
   skill,
   remove,
@@ -133,20 +162,7 @@ function SkillCard({
         </span>
         <span className="skill-card-summary">{skill.summary}</span>
       </Link>
-      <div className="skill-card-footer">
-        <SkillFlags skill={skill} />
-        <p className="skill-card-verification">
-          <span>工作區驗證：</span>
-          <strong>{skill.verification.label}</strong>
-        </p>
-        <Link
-          className="skill-card-validation"
-          to="/lab/test-cases"
-          search={{ skill: skill.skill_id }}
-        >
-          測試題與試跑 <span aria-hidden="true">→</span>
-        </Link>
-      </div>
+      <SkillCardFooter skill={skill} onMessage={onMessage} />
       <details className="skill-menu" name="skill-menu">
         <summary aria-label={`管理「${skill.name}」`}>
           管理
@@ -194,6 +210,7 @@ function SkillCard({
               </Link>
             </li>
           )}
+          {!skill.takedown && <TakedownMenuItem skill={skill} onMessage={onMessage} />}
           <li className="skill-menu-delete">
             <ConfirmDelete
               scopeId={`skill-delete-scope-${skill.skill_id}`}

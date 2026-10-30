@@ -311,3 +311,23 @@
   border-color: transparent;
   background: var(--danger-bg);
 }
+
+.skill-card-takedown {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.skill-card-takedown p {
+  margin: 0;
+}
+
+.skill-menu-takedown {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+  padding: 8px 12px 0;
+  border-top: 1px solid var(--border);
+}

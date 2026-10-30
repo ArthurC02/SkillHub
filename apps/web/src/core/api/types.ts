@@ -432,6 +432,13 @@ export interface OwnSkills {
 export interface OwnSkill extends Skill {
   risk: SearchResultRisk;
   verification: SkillVerification;
+  takedown?: OwnSkillTakedown;
+}
+
+export interface OwnSkillTakedown {
+  taken_down_at: string;
+  by: "owner" | "operator";
+  restorable_until?: string;
 }
 
 export interface SkillVerification extends Labelled {
