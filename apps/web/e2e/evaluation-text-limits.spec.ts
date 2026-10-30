@@ -4,6 +4,8 @@ import { writeFile } from "node:fs/promises";
 import { TEST_CASE } from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";
 
+test.describe.configure({ mode: "default" });
+
 const fields = [
   {
     name: "criterion",
