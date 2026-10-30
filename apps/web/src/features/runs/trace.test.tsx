@@ -827,6 +827,33 @@ test.each([
   },
 );
 
+test("a run that was read once keeps its workspace when a reread answers 404", async () => {
+  let gone = false;
+  stubTrace(summary, advanced);
+  const traceOnly = globalThis.fetch;
+  vi.stubGlobal("fetch", (input: string) => {
+    if (/\/runs\/[^/?]+$/.test(String(input).split("?")[0]))
+      return Promise.resolve(
+        new Response(JSON.stringify(gone ? { error: "找不到這個 Run" } : { run_id: RUN_ID }), {
+          status: gone ? 404 : 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    return traceOnly(input);
+  });
+  await render();
+  await waitFor(() => container.querySelector("#run-trace") !== null);
+
+  gone = true;
+  await act(async () => {
+    await queryClient.invalidateQueries({ queryKey: queryKeys.runs.detail(RUN_ID) });
+  });
+  await waitFor(() => (container.textContent ?? "").includes("暫時無法讀取這次試跑"));
+
+  expect(container.querySelector("#run-trace")).not.toBeNull();
+  expect(container.querySelector('[role="alert"] a[href="/workspace/runs"]')).toBeNull();
+});
+
 test("returning to the general view does not ask for the trace again", async () => {
   vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
   try {
