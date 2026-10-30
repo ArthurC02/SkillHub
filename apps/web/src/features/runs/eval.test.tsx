@@ -736,6 +736,27 @@ test("an applied suggestion is marked from the apply answer before the evaluatio
   expect(container.textContent).toContain("（已套用於新版本）");
 });
 
+test("the build button with nothing accepted says what to do instead of sitting disabled", async () => {
+  stubPlatform({ evaluated: true });
+  await render("succeeded");
+  await waitFor(() => (container.textContent ?? "").includes("以已接受的 0 項建議建立新版本"));
+
+  const build = Array.from(container.querySelectorAll("button")).find(
+    (button) => button.textContent === "以已接受的 0 項建議建立新版本",
+  );
+  expect(build?.disabled).toBe(true);
+  const reason = document.getElementById(build?.getAttribute("aria-describedby") ?? "");
+  expect(reason?.textContent).toContain("先在上面的建議接受至少一項");
+});
+
+test("the none-accepted note is gone once a suggestion is accepted", async () => {
+  stubPlatform({ evaluated: true, accepted: true });
+  await render("succeeded");
+  await waitFor(() => (container.textContent ?? "").includes("以已接受的 1 項建議建立新版本"));
+
+  expect(container.textContent).not.toContain("還沒有接受任何建議");
+});
+
 test("a suggestion decision names the pending action before the server answers", async () => {
   stubPlatform({ evaluated: true });
   const settledFetch = globalThis.fetch;

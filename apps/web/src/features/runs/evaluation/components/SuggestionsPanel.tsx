@@ -202,7 +202,13 @@ function SuggestionsContent({
   }
 
   const accepted = suggestions.data.suggestions.filter((s) => s.decision === "accepted");
-  const sourceNoteId = skillId ? undefined : "suggestion-source-note";
+  const holds: BuildHolds = {
+    applying: apply.isPending,
+    decisionsUnsettled,
+    refreshing: suggestions.fetchStatus !== "idle",
+    noneAccepted: Boolean(skillId) && accepted.length === 0,
+    sourceMissing: !skillId,
+  };
 
   return (
     <>
@@ -221,22 +227,8 @@ function SuggestionsContent({
           </p>
           <button
             type="button"
-            disabled={
-              !skillId ||
-              accepted.length === 0 ||
-              decisionsUnsettled ||
-              apply.isPending ||
-              suggestions.fetchStatus !== "idle"
-            }
-            aria-describedby={
-              apply.isPending
-                ? "apply-suggestions-pending-note"
-                : decisionsUnsettled
-                  ? "suggestion-decisions-note"
-                  : suggestions.fetchStatus !== "idle"
-                    ? "suggestions-refresh-note"
-                    : sourceNoteId
-            }
+            disabled={Object.values(holds).some(Boolean)}
+            aria-describedby={buildHoldNoteId(holds)}
             onClick={() =>
               apply.mutate({
                 skillId: skillId as string,
@@ -247,23 +239,53 @@ function SuggestionsContent({
           >
             {unknown ? "核對後仍" : ""}以已接受的 {accepted.length} 項建議建立新版本
           </button>
-          {apply.isPending && (
-            <p id="apply-suggestions-pending-note" role="status" className="note">
-              正在建立新版本…
-            </p>
-          )}
-          {decisionsUnsettled && (
-            <p id="suggestion-decisions-note" role="status" className="note">
-              改善建議的決定尚未確認；請等待目前操作完成，或重新送出未確認的決定後，再建立版本。
-            </p>
-          )}
-          {suggestions.fetchStatus !== "idle" && (
-            <p id="suggestions-refresh-note" role="status" className="note">
-              改善建議清單尚未確認；確認後才能建立版本。
-            </p>
-          )}
+          <BuildHoldNotes holds={holds} />
           <SuggestionSourceNote skillId={skillId} sourceUnavailable={sourceUnavailable} />
         </div>
+      )}
+    </>
+  );
+}
+
+type BuildHolds = {
+  applying: boolean;
+  decisionsUnsettled: boolean;
+  refreshing: boolean;
+  noneAccepted: boolean;
+  sourceMissing: boolean;
+};
+
+function buildHoldNoteId(holds: BuildHolds): string | undefined {
+  if (holds.applying) return "apply-suggestions-pending-note";
+  if (holds.decisionsUnsettled) return "suggestion-decisions-note";
+  if (holds.refreshing) return "suggestions-refresh-note";
+  if (holds.noneAccepted) return "suggestions-none-accepted-note";
+  return holds.sourceMissing ? "suggestion-source-note" : undefined;
+}
+
+function BuildHoldNotes({ holds }: { holds: BuildHolds }) {
+  const quiet = !holds.applying && !holds.decisionsUnsettled && !holds.refreshing;
+  return (
+    <>
+      {holds.applying && (
+        <p id="apply-suggestions-pending-note" role="status" className="note">
+          正在建立新版本…
+        </p>
+      )}
+      {holds.decisionsUnsettled && (
+        <p id="suggestion-decisions-note" role="status" className="note">
+          改善建議的決定尚未確認；請等待目前操作完成，或重新送出未確認的決定後，再建立版本。
+        </p>
+      )}
+      {holds.refreshing && (
+        <p id="suggestions-refresh-note" role="status" className="note">
+          改善建議清單尚未確認；確認後才能建立版本。
+        </p>
+      )}
+      {quiet && holds.noneAccepted && (
+        <p id="suggestions-none-accepted-note" className="note">
+          還沒有接受任何建議。先在上面的建議接受至少一項，才能用它們建立新版本。
+        </p>
       )}
     </>
   );
