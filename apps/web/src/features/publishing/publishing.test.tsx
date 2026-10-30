@@ -676,30 +676,131 @@ test("an exact Version continuation preselects that immutable Bundle member inst
   expect(text()).not.toContain("已建立 pdf-toolkit v1.0.0");
 });
 
-test("a Bundle member version read failure stays unknown and blocks creation", async () => {
-  stub({
-    "/me/publisher": { body: OWN_PUBLISHER },
-    "/me/publications": { body: { publications: [] } },
-    "/me/bundles": { body: { bundles: [] } },
-    "/skills": {
-      body: {
-        skills: [(platformResponse("/skills").body as { skills: unknown[] }).skills[0]],
-        total: 1,
-        limit: 100,
-        truncated: false,
+for (const status of [401, 503]) {
+  test(`a Bundle member version read failure with ${status} stays unknown and explains blocked creation`, async () => {
+    stub({
+      "/me/publisher": { body: OWN_PUBLISHER },
+      "/me/publications": { body: { publications: [] } },
+      "/me/bundles": { body: { bundles: [] } },
+      "/skills": {
+        body: {
+          skills: [(platformResponse("/skills").body as { skills: unknown[] }).skills[0]],
+          total: 1,
+          limit: 100,
+          truncated: false,
+        },
       },
-    },
-    [`/api/skills/${SKILL}`]: { body: skillDetail(SKILL, "PDF Summariser") },
-    [`/skills/${SKILL}/versions`]: { body: { error: "version backend unavailable" }, status: 503 },
-    "/downloads": { body: { downloads: [] } },
+      [`/api/skills/${SKILL}`]: { body: skillDetail(SKILL, "PDF Summariser") },
+      [`/skills/${SKILL}/versions`]: { body: { error: "version backend unavailable" }, status },
+      "/downloads": { body: { downloads: [] } },
+    });
+
+    const explanation =
+      status === 401 ? "可加入 Bundle 的版本需要登入" : "暫時無法讀取可加入 Bundle 的版本";
+    await render(<PublishingWorkspace />, () => text().includes(explanation));
+
+    expect(text()).not.toContain("還沒有可加入的小工具");
+    expect(text()).not.toContain("version backend unavailable");
+    expect(button("建立")?.disabled).toBe(true);
+    const description = document.getElementById(button("建立")!.getAttribute("aria-describedby")!);
+    expect(description).not.toBeNull();
+    expect(description?.textContent).toContain(explanation);
   });
+}
 
-  await render(<PublishingWorkspace />, () => text().includes("暫時無法讀取可加入 Bundle 的版本"));
-
-  expect(text()).not.toContain("還沒有可加入的小工具");
-  expect(text()).not.toContain("version backend unavailable");
-  expect(button("建立")?.disabled).toBe(true);
-});
+for (const source of ["skills", "detail", "versions"] as const) {
+  for (const state of ["paused", "fetching"] as const) {
+    test(`a Bundle ${source} reread that is ${state} withholds decisions and preserves the draft until recovery`, async () => {
+      publishingSearch = { bundleVersion: VERSION };
+      const bundle = { ...OWN_BUNDLE, members: [OWN_BUNDLE.members[0]] };
+      const key =
+        source === "skills"
+          ? queryKeys.skills.ownPages(24)
+          : source === "detail"
+            ? queryKeys.skills.embedded(SKILL)
+            : queryKeys.skills.versions(SKILL);
+      const target =
+        source === "skills"
+          ? "/skills"
+          : source === "detail"
+            ? `/api/skills/${SKILL}`
+            : `/skills/${SKILL}/versions`;
+      let reads = 0;
+      let writes = 0;
+      let finish!: () => void;
+      const held = new Promise<void>((resolve) => {
+        finish = resolve;
+      });
+      vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+        const path = String(input)
+          .replace(/^https?:\/\/[^/]+/, "")
+          .split("?")[0];
+        if (init?.method && init.method !== "GET") writes++;
+        if (path === "/me/bundles") return json({ bundles: [bundle] });
+        if (path === "/me/bundles/overview") return json(bundleOverview(bundle));
+        const response = platformResponse(String(input));
+        if (path !== target || ++reads === 1) return json(response.body, response.status);
+        return held.then(() => json(response.body, response.status));
+      });
+      const submit = () =>
+        container.querySelector<HTMLButtonElement>(".bundle-form button[type=submit]");
+      const member = () => container.querySelector<HTMLSelectElement>(`.bundle-member select`);
+      try {
+        await render(
+          <PublishingWorkspace />,
+          () => member()?.value === VERSION && submit()?.disabled === false,
+        );
+        const name = container.querySelector<HTMLInputElement>(".bundle-form input")!;
+        await act(async () => {
+          Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
+            name,
+            "kept-bundle",
+          );
+          name.dispatchEvent(new Event("input", { bubbles: true }));
+          if (state === "paused") onlineManager.setOnline(false);
+          void queryClient.refetchQueries({ queryKey: key, exact: true });
+        });
+        await pollUntil(
+          () => queryClient.getQueryState(key)?.fetchStatus === state,
+          text,
+          DEFAULT_WAIT_MS,
+          { flushBeforeFirstCheck: true },
+        );
+        expect(submit()?.disabled).toBe(true);
+        expect(member()?.disabled).toBe(true);
+        expect(submit()?.getAttribute("aria-describedby")).toBe("bundle-members-read-status");
+        expect(member()?.getAttribute("aria-describedby")).toBe("bundle-members-read-status");
+        expect(text()).toContain("散布需求尚未確認");
+        expect(text()).not.toContain("還沒有可以選的小工具");
+        expect(document.getElementById("bundle-members-read-status")?.textContent).toContain(
+          state === "paused" ? "等待連線" : "載入可加入 Bundle 的版本中",
+        );
+        expect(member()?.value).toBe(VERSION);
+        expect(name.value).toBe("kept-bundle");
+        await act(async () => {
+          container
+            .querySelector(".bundle-form")!
+            .dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+        });
+        expect(writes).toBe(0);
+        await act(async () => {
+          onlineManager.setOnline(true);
+          finish();
+        });
+        await waitFor(() => submit()?.disabled === false);
+        expect(member()?.disabled).toBe(false);
+        expect(member()?.value).toBe(VERSION);
+        expect(member()?.getAttribute("aria-describedby")).toBeNull();
+        expect(name.value).toBe("kept-bundle");
+        expect(reads).toBe(2);
+        expect(writes).toBe(0);
+      } finally {
+        finish();
+        onlineManager.setOnline(true);
+      }
+    });
+  }
+}
 
 test("an older Bundle row exports and first publishes the immutable version shown on that row", async () => {
   const bundle = {

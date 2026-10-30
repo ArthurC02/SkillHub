@@ -52,6 +52,7 @@ function continuationFor(choices: MemberChoice[], selectedVersion?: string) {
 function useMemberChoices(): {
   choices: MemberChoice[];
   isPending: boolean;
+  paused: boolean;
   error: Error | null;
   retryFailedReads: () => void;
   fetching: boolean;
@@ -70,6 +71,7 @@ function useMemberChoices(): {
   const skillIds = useMemo(() => loadedSkills?.skills.map((s) => s.skill_id) ?? [], [loadedSkills]);
   const details = useEmbeddedSkillDetails(skillIds);
   const versions = useEmbeddedSkillVersions(skillIds);
+  const queries = [ownSkills, ...details, ...versions];
 
   const choices: MemberChoice[] = [];
   skillIds.forEach((skillId, i) => {
@@ -86,25 +88,20 @@ function useMemberChoices(): {
 
   return {
     choices,
-    isPending:
-      ownSkills.isPending ||
-      details.some((detail) => detail.isPending) ||
-      versions.some((versionList) => versionList.isPending),
+    isPending: queries.some((query) => query.isPending || query.fetchStatus !== "idle"),
+    paused: queries.some((query) => query.fetchStatus === "paused"),
     error:
       ownSkills.error ??
       details.find((detail) => detail.error)?.error ??
       versions.find((versionList) => versionList.error)?.error ??
       null,
-    fetching:
-      ownSkills.isFetching ||
-      details.some((query) => query.isFetching) ||
-      versions.some((query) => query.isFetching),
+    fetching: queries.some((query) => query.isFetching),
     retryFailedReads: () => {
       if (nextPageFailure) {
         void ownSkills.fetchNextPage();
         return;
       }
-      for (const query of [ownSkills, ...details, ...versions]) {
+      for (const query of queries) {
         if (query.error) void query.refetch();
       }
     },
@@ -228,21 +225,19 @@ function BundleReadStatus({
         retrying={overview.isFetching}
         focusTarget="bundle-workspace-heading"
       />
-      <ReadFailure
-        error={members.error}
-        what="可加入 Bundle 的版本"
-        retry={members.retryFailedReads}
-        retrying={members.fetching}
-        focusTarget="bundle-workspace-heading"
-      >
-        <p role="alert" id="bundle-members-read-status">
-          暫時無法讀取可加入 Bundle 的版本。
-        </p>
-      </ReadFailure>
-      {members.isPending && !members.error && (
-        <p role="status" id="bundle-members-read-status">
-          正在確認可加入 Bundle 的版本…
-        </p>
+      {(members.error || members.isPending) && (
+        <div id="bundle-members-read-status">
+          <ReadFailure
+            error={members.error}
+            what="可加入 Bundle 的版本"
+            retry={members.retryFailedReads}
+            retrying={members.fetching}
+            focusTarget="bundle-workspace-heading"
+          >
+            <p role="alert">暫時無法讀取可加入 Bundle 的版本。</p>
+          </ReadFailure>
+          {!members.error && <Loading what="可加入 Bundle 的版本" paused={members.paused} />}
+        </div>
       )}
       {members.loaded > 0 && (
         <p className="note" role="status">
@@ -251,7 +246,12 @@ function BundleReadStatus({
         </p>
       )}
       {members.hasNextPage && !members.error && (
-        <button type="button" disabled={members.fetchingNextPage} onClick={members.fetchNextPage}>
+        <button
+          type="button"
+          disabled={members.fetchingNextPage || members.paused}
+          aria-describedby={members.paused ? "bundle-members-read-status" : undefined}
+          onClick={members.fetchNextPage}
+        >
           {members.fetchingNextPage ? "載入中…" : "載入更多小工具"}
         </button>
       )}
@@ -743,7 +743,7 @@ function CreateBundleForm({
       className="bundle-form"
       onSubmit={(event) => {
         event.preventDefault();
-        if (create.isPending) return;
+        if (create.isPending || !choicesReady) return;
         const memberVersionIds = Array.from(selected.values());
         create.mutate(
           {
@@ -779,7 +779,6 @@ function CreateBundleForm({
       />
       <BundleMemberChoices
         choices={choices}
-        choicesPending={choicesPending}
         choicesReady={choicesReady}
         hasMoreChoices={hasMoreChoices}
         selectedVersion={selectedVersion}
@@ -916,7 +915,6 @@ function BundleIdentityFields({
 
 function BundleMemberChoices({
   choices,
-  choicesPending,
   choicesReady,
   hasMoreChoices,
   selectedVersion,
@@ -927,7 +925,6 @@ function BundleMemberChoices({
   pending,
 }: {
   choices: MemberChoice[];
-  choicesPending: boolean;
   choicesReady: boolean;
   hasMoreChoices: boolean;
   selectedVersion?: string;
@@ -941,7 +938,6 @@ function BundleMemberChoices({
     <fieldset>
       <legend>成員版本</legend>
       <p className="note">每個小工具明確選一個不可變版本；平台不會替你改成最新版本。</p>
-      {choicesPending && <Loading what="可加入 Bundle 的版本" />}
       {choicesReady && !hasMoreChoices && selectedVersion && !continuation && (
         <p role="status" className="note">
           無法確認要接續的 Version，因此沒有自動選擇其他版本。
@@ -964,6 +960,7 @@ function BundleMemberChoices({
             value={selected.get(choice.skillId) ?? ""}
             onChange={(event) => onSelect(choice.skillId, event.target.value)}
             disabled={!choicesReady || pending}
+            aria-describedby={!choicesReady ? "bundle-members-read-status" : undefined}
             data-bundle-version={
               continuation?.choice.skillId === choice.skillId ? selectedVersion : undefined
             }
