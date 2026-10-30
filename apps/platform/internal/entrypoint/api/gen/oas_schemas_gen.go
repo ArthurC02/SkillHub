@@ -1066,6 +1066,11 @@ type CancelRunAccepted struct {
 	// The run deliberately executed the test case without loading the skill, as the skill-withheld arm of
 	// an evaluation batch. Absent for an ordinary run.
 	SkillWithheld OptBool `json:"skill_withheld"`
+	// Whether answering this run's questions could start a continuing run, served on GET /runs/{id} for a
+	// succeeded run so the page can say so before the person writes any answer. The same rule decides POST
+	// /runs/{id}/continuations; the operator setting can still change in between, and the post is the one
+	// that decides.
+	Continuation OptCancelRunAcceptedContinuation `json:"continuation"`
 	// Why the run entered this status. Masked and safe to display.
 	//
 	// Two kinds of sentence arrive here and the difference matters. Most are the platform's own, and those
@@ -1140,6 +1145,11 @@ func (s *CancelRunAccepted) GetStatus() CancelRunAcceptedStatus {
 // GetSkillWithheld returns the value of SkillWithheld.
 func (s *CancelRunAccepted) GetSkillWithheld() OptBool {
 	return s.SkillWithheld
+}
+
+// GetContinuation returns the value of Continuation.
+func (s *CancelRunAccepted) GetContinuation() OptCancelRunAcceptedContinuation {
+	return s.Continuation
 }
 
 // GetStatusReason returns the value of StatusReason.
@@ -1230,6 +1240,11 @@ func (s *CancelRunAccepted) SetStatus(val CancelRunAcceptedStatus) {
 // SetSkillWithheld sets the value of SkillWithheld.
 func (s *CancelRunAccepted) SetSkillWithheld(val OptBool) {
 	s.SkillWithheld = val
+}
+
+// SetContinuation sets the value of Continuation.
+func (s *CancelRunAccepted) SetContinuation(val OptCancelRunAcceptedContinuation) {
+	s.Continuation = val
 }
 
 // SetStatusReason sets the value of StatusReason.
@@ -1400,6 +1415,38 @@ func (s *CancelRunAcceptedAttemptsItem) SetStartedAt(val OptDateTime) {
 // SetFinishedAt sets the value of FinishedAt.
 func (s *CancelRunAcceptedAttemptsItem) SetFinishedAt(val OptDateTime) {
 	s.FinishedAt = val
+}
+
+// Whether answering this run's questions could start a continuing run, served on GET /runs/{id} for a
+// succeeded run so the page can say so before the person writes any answer. The same rule decides POST
+// /runs/{id}/continuations; the operator setting can still change in between, and the post is the one
+// that decides.
+type CancelRunAcceptedContinuation struct {
+	// This run's questions were already answered; answering again is refused.
+	Answered bool `json:"answered"`
+	// Answered rounds this conversation may still take. 0 means the limit is reached and answering is
+	// refused.
+	RoundsLeft int `json:"rounds_left"`
+}
+
+// GetAnswered returns the value of Answered.
+func (s *CancelRunAcceptedContinuation) GetAnswered() bool {
+	return s.Answered
+}
+
+// GetRoundsLeft returns the value of RoundsLeft.
+func (s *CancelRunAcceptedContinuation) GetRoundsLeft() int {
+	return s.RoundsLeft
+}
+
+// SetAnswered sets the value of Answered.
+func (s *CancelRunAcceptedContinuation) SetAnswered(val bool) {
+	s.Answered = val
+}
+
+// SetRoundsLeft sets the value of RoundsLeft.
+func (s *CancelRunAcceptedContinuation) SetRoundsLeft(val int) {
+	s.RoundsLeft = val
 }
 
 // The standard lifecycle of RUN-002. `cleaning_up` is not in here: cleanup happens after a terminal
@@ -16515,6 +16562,52 @@ func (o OptBrowseCatalogValidation) Or(d BrowseCatalogValidation) BrowseCatalogV
 	return d
 }
 
+// NewOptCancelRunAcceptedContinuation returns new OptCancelRunAcceptedContinuation with value set to v.
+func NewOptCancelRunAcceptedContinuation(v CancelRunAcceptedContinuation) OptCancelRunAcceptedContinuation {
+	return OptCancelRunAcceptedContinuation{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptCancelRunAcceptedContinuation is optional CancelRunAcceptedContinuation.
+type OptCancelRunAcceptedContinuation struct {
+	Value CancelRunAcceptedContinuation
+	Set   bool
+}
+
+// IsSet returns true if OptCancelRunAcceptedContinuation was set.
+func (o OptCancelRunAcceptedContinuation) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptCancelRunAcceptedContinuation) Reset() {
+	var v CancelRunAcceptedContinuation
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptCancelRunAcceptedContinuation) SetTo(v CancelRunAcceptedContinuation) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptCancelRunAcceptedContinuation) Get() (v CancelRunAcceptedContinuation, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptCancelRunAcceptedContinuation) Or(d CancelRunAcceptedContinuation) CancelRunAcceptedContinuation {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptCompareEvaluationBatchesOKDifference95 returns new OptCompareEvaluationBatchesOKDifference95 with value set to v.
 func NewOptCompareEvaluationBatchesOKDifference95(v CompareEvaluationBatchesOKDifference95) OptCompareEvaluationBatchesOKDifference95 {
 	return OptCompareEvaluationBatchesOKDifference95{
@@ -19977,6 +20070,52 @@ func (o OptRunComparisonRunsItemEvaluation) Get() (v RunComparisonRunsItemEvalua
 
 // Or returns value if set, or given parameter if does not.
 func (o OptRunComparisonRunsItemEvaluation) Or(d RunComparisonRunsItemEvaluation) RunComparisonRunsItemEvaluation {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptRunContinuation returns new OptRunContinuation with value set to v.
+func NewOptRunContinuation(v RunContinuation) OptRunContinuation {
+	return OptRunContinuation{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptRunContinuation is optional RunContinuation.
+type OptRunContinuation struct {
+	Value RunContinuation
+	Set   bool
+}
+
+// IsSet returns true if OptRunContinuation was set.
+func (o OptRunContinuation) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptRunContinuation) Reset() {
+	var v RunContinuation
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptRunContinuation) SetTo(v RunContinuation) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptRunContinuation) Get() (v RunContinuation, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptRunContinuation) Or(d RunContinuation) RunContinuation {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -26796,6 +26935,11 @@ type Run struct {
 	// The run deliberately executed the test case without loading the skill, as the skill-withheld arm of
 	// an evaluation batch. Absent for an ordinary run.
 	SkillWithheld OptBool `json:"skill_withheld"`
+	// Whether answering this run's questions could start a continuing run, served on GET /runs/{id} for a
+	// succeeded run so the page can say so before the person writes any answer. The same rule decides POST
+	// /runs/{id}/continuations; the operator setting can still change in between, and the post is the one
+	// that decides.
+	Continuation OptRunContinuation `json:"continuation"`
 	// Why the run entered this status. Masked and safe to display.
 	//
 	// Two kinds of sentence arrive here and the difference matters. Most are the platform's own, and those
@@ -26869,6 +27013,11 @@ func (s *Run) GetStatus() RunStatus {
 // GetSkillWithheld returns the value of SkillWithheld.
 func (s *Run) GetSkillWithheld() OptBool {
 	return s.SkillWithheld
+}
+
+// GetContinuation returns the value of Continuation.
+func (s *Run) GetContinuation() OptRunContinuation {
+	return s.Continuation
 }
 
 // GetStatusReason returns the value of StatusReason.
@@ -26954,6 +27103,11 @@ func (s *Run) SetStatus(val RunStatus) {
 // SetSkillWithheld sets the value of SkillWithheld.
 func (s *Run) SetSkillWithheld(val OptBool) {
 	s.SkillWithheld = val
+}
+
+// SetContinuation sets the value of Continuation.
+func (s *Run) SetContinuation(val OptRunContinuation) {
+	s.Continuation = val
 }
 
 // SetStatusReason sets the value of StatusReason.
@@ -27921,6 +28075,38 @@ func (s *RunComparisonRunsItemStatus) UnmarshalText(data []byte) error {
 	default:
 		return errors.Errorf("invalid value: %q", data)
 	}
+}
+
+// Whether answering this run's questions could start a continuing run, served on GET /runs/{id} for a
+// succeeded run so the page can say so before the person writes any answer. The same rule decides POST
+// /runs/{id}/continuations; the operator setting can still change in between, and the post is the one
+// that decides.
+type RunContinuation struct {
+	// This run's questions were already answered; answering again is refused.
+	Answered bool `json:"answered"`
+	// Answered rounds this conversation may still take. 0 means the limit is reached and answering is
+	// refused.
+	RoundsLeft int `json:"rounds_left"`
+}
+
+// GetAnswered returns the value of Answered.
+func (s *RunContinuation) GetAnswered() bool {
+	return s.Answered
+}
+
+// GetRoundsLeft returns the value of RoundsLeft.
+func (s *RunContinuation) GetRoundsLeft() int {
+	return s.RoundsLeft
+}
+
+// SetAnswered sets the value of Answered.
+func (s *RunContinuation) SetAnswered(val bool) {
+	s.Answered = val
+}
+
+// SetRoundsLeft sets the value of RoundsLeft.
+func (s *RunContinuation) SetRoundsLeft(val int) {
+	s.RoundsLeft = val
 }
 
 // PDM-005 §5.3's 預估成本區間. A range rather than a number because §5.2a-6 makes one wrong

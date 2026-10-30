@@ -942,6 +942,111 @@ test("a run without questions, or with an empty list, shows no answer form", asy
   }
 });
 
+const askingRunDetail = (continuation?: unknown, status = "succeeded") => ({
+  run_id: RUN_ID,
+  status,
+  skill_id: "skill-1",
+  skill_version_id: "version-2",
+  test_case_snapshot_id: "snapshot-3",
+  ...(continuation === undefined ? {} : { continuation }),
+});
+
+const answerSection = () =>
+  container.querySelector(`[aria-labelledby="answer-questions-${RUN_ID}"]`);
+
+test.each([
+  [
+    "rounds left",
+    { answered: false, rounds_left: 2 },
+    "送出回答會開始一次新的試跑，和一般試跑一樣計入試跑次數並扣 Credit。這段對話還能再回答 2 輪。",
+  ],
+  [
+    "the last round",
+    { answered: false, rounds_left: 1 },
+    "送出回答會開始一次新的試跑，和一般試跑一樣計入試跑次數並扣 Credit。這段對話還能再回答 1 輪。",
+  ],
+  [
+    "no room reported",
+    undefined,
+    "送出回答會開始一次新的試跑，和一般試跑一樣計入試跑次數並扣 Credit。",
+  ],
+  [
+    "a malformed room",
+    { answered: false, rounds_left: -1 },
+    "送出回答會開始一次新的試跑，和一般試跑一樣計入試跑次數並扣 Credit。",
+  ],
+])("before any answer is written the form says what answering costs: %s", async (_, room, note) => {
+  stubTrace(asking, advanced, askingRunDetail(room));
+  await render();
+  await waitFor(() => (answerSection()?.textContent ?? "").includes("計入試跑次數"));
+  if (room) await waitFor(() => (answerSection()?.textContent ?? "").includes(note));
+
+  expect(answerSection()?.querySelector("p.note")?.textContent).toBe(note);
+  expect(submitButton()).toBeDefined();
+  expect(container.querySelectorAll("textarea")).toHaveLength(2);
+});
+
+test.each([
+  [
+    "the round limit is reached",
+    { answered: false, rounds_left: 0 },
+    "這段對話的回答輪數已經用完，不能再回答。還需要補充的資訊，請寫進測試題後重新試跑。",
+  ],
+  [
+    "the questions were already answered",
+    { answered: true, rounds_left: 2 },
+    "這些問題已經回答過，接續的試跑已經開始；同一組問題不能再回答一次。",
+  ],
+])("no answer can be written when %s", async (_, room, note) => {
+  stubTrace(asking, advanced, askingRunDetail(room));
+  await render();
+  await waitFor(() => (answerSection()?.textContent ?? "").includes(note));
+
+  expect(answerSection()?.querySelector("p.note")?.textContent).toBe(note);
+  expect(answerSection()?.querySelector("form")).toBeNull();
+  expect(container.querySelectorAll("textarea")).toHaveLength(0);
+  expect(submitButton()).toBeUndefined();
+});
+
+test("a run that finishes while its page is open reads its detail again to learn whether it can be answered", async () => {
+  const detailReads: string[] = [];
+  let finished = false;
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    const reply = (body: unknown) =>
+      Promise.resolve(
+        new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    if (url.endsWith(`/runs/${RUN_ID}`)) {
+      detailReads.push(finished ? "succeeded" : "running");
+      return reply(
+        finished
+          ? askingRunDetail({ answered: false, rounds_left: 0 })
+          : askingRunDetail(undefined, "running"),
+      );
+    }
+    if (url.includes("/artifacts")) return reply({ artifacts: [] });
+    if (url.includes("/evaluation") || url.includes("/suggestions"))
+      return Promise.resolve(new Response(JSON.stringify({ error: "not found" }), { status: 404 }));
+    if (url.includes("mode=advanced")) return reply(advanced);
+    return reply(finished ? asking : { ...summary, status: "running" });
+  });
+  await render();
+  await waitFor(() => detailReads.length > 0);
+
+  finished = true;
+  await act(async () => {
+    await queryClient.refetchQueries({ queryKey: queryKeys.trace.run(RUN_ID) });
+  });
+  await waitFor(() => detailReads.includes("succeeded"));
+  await waitFor(() => (answerSection()?.textContent ?? "").includes("回答輪數已經用完"));
+
+  expect(answerSection()?.querySelector("form")).toBeNull();
+});
+
 test("submitting sends a picked option and a typed answer in question order, then opens the new run", async () => {
   stubTrace(asking, advanced);
   const posts = stubContinuation({ status: 201, body: { run_id: NEXT_RUN_ID } });

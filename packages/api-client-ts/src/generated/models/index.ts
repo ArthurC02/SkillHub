@@ -250,6 +250,7 @@ export * from './RunComparisonCriterionMatrixInnerResultsInner';
 export * from './RunComparisonRunsInner';
 export * from './RunComparisonRunsInnerCost';
 export * from './RunComparisonRunsInnerEvaluation';
+export * from './RunContinuation';
 export * from './RunCostEstimate';
 export * from './RunListItem';
 export * from './RunPermissionSummary';

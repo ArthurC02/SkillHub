@@ -15,6 +15,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
@@ -42,20 +43,26 @@ type runResponse struct {
 	Status       string `json:"status"`
 	StatusReason string `json:"status_reason,omitempty"`
 
-	SkillID           string           `json:"skill_id"`
-	SkillVersionID    string           `json:"skill_version_id"`
-	TestCaseSnapshot  string           `json:"test_case_snapshot_id"`
-	TestCaseID        string           `json:"test_case_id,omitempty"`
-	Provider          string           `json:"provider"`
-	FailureClass      *labelled        `json:"failure_class,omitempty"`
-	CleanupStatus     labelled         `json:"cleanup_status"`
-	CancelRequestedAt string           `json:"cancel_requested_at,omitempty"`
-	CreatedAt         string           `json:"created_at"`
-	StartedAt         string           `json:"started_at,omitempty"`
-	FinishedAt        string           `json:"finished_at,omitempty"`
-	SkillWithheld     bool             `json:"skill_withheld,omitempty"`
-	Transitions       []transitionView `json:"transitions,omitempty"`
-	Attempts          []attemptView    `json:"attempts,omitempty"`
+	SkillID           string            `json:"skill_id"`
+	SkillVersionID    string            `json:"skill_version_id"`
+	TestCaseSnapshot  string            `json:"test_case_snapshot_id"`
+	TestCaseID        string            `json:"test_case_id,omitempty"`
+	Provider          string            `json:"provider"`
+	FailureClass      *labelled         `json:"failure_class,omitempty"`
+	CleanupStatus     labelled          `json:"cleanup_status"`
+	CancelRequestedAt string            `json:"cancel_requested_at,omitempty"`
+	CreatedAt         string            `json:"created_at"`
+	StartedAt         string            `json:"started_at,omitempty"`
+	FinishedAt        string            `json:"finished_at,omitempty"`
+	SkillWithheld     bool              `json:"skill_withheld,omitempty"`
+	Transitions       []transitionView  `json:"transitions,omitempty"`
+	Attempts          []attemptView     `json:"attempts,omitempty"`
+	Continuation      *continuationView `json:"continuation,omitempty"`
+}
+
+type continuationView struct {
+	Answered   bool `json:"answered"`
+	RoundsLeft int  `json:"rounds_left"`
 }
 
 type runCancellationResponse struct {
@@ -651,6 +658,14 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, a := range attempts {
 		resp.Attempts = append(resp.Attempts, attemptViewOf(a))
+	}
+	if run.Status == string(gen.RunStatusSucceeded) {
+		room, err := continuationRoom(r.Context(), h.Svc, h.Svc.queries(), ws.ID, runID)
+		if err != nil {
+			httpx.WriteError(w, http.StatusInternalServerError, "run continuation lookup failed")
+			return
+		}
+		resp.Continuation = &continuationView{Answered: room.Answered, RoundsLeft: room.RoundsLeft}
 	}
 	httpx.WriteJSON(w, http.StatusOK, resp)
 }

@@ -1,11 +1,13 @@
 import type { Labelled } from "../../core/api/types";
-import type { RunStatus } from "./trace.service";
+import { TERMINAL_RUN_STATUSES, type RunStatus } from "./trace.service";
+import { useEffect } from "react";
 import {
   useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
   type InfiniteData,
+  type UseQueryResult,
 } from "@tanstack/react-query";
 import {
   apiFetch,
@@ -13,6 +15,8 @@ import {
 } from "../../core/api/client";
 export { isWriteResultUnknown as isContinuationResultUnknown } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
+
+export type ContinuationRoom = { answered: boolean; rounds_left: number };
 
 export type Run = {
   run_id: string;
@@ -46,7 +50,26 @@ export type Run = {
     started_at?: string;
     finished_at?: string;
   }>;
+  continuation?: ContinuationRoom;
 };
+
+export function continuationRoomOf(run: Run | undefined): ContinuationRoom | undefined {
+  const room = run?.continuation;
+  if (!room || typeof room.answered !== "boolean") return undefined;
+  return Number.isInteger(room.rounds_left) && room.rounds_left >= 0 ? room : undefined;
+}
+
+export function useRunDetailFollowsTrace(
+  run: UseQueryResult<Run>,
+  traceStatus: string | undefined,
+) {
+  const detailStatus = run.data?.status;
+  const { refetch } = run;
+  useEffect(() => {
+    if (!traceStatus || !detailStatus || detailStatus === traceStatus) return;
+    if (TERMINAL_RUN_STATUSES.has(traceStatus)) void refetch();
+  }, [traceStatus, detailStatus, refetch]);
+}
 
 export function useRun(runId: string) {
   return useQuery({

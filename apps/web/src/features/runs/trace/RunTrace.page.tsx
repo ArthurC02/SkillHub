@@ -4,7 +4,7 @@ import { isLastingReadFailure } from "../../../core/api/client";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useParams, useSearch } from "@tanstack/react-router";
-import { useRun } from "../runs.service";
+import { continuationRoomOf, useRun, useRunDetailFollowsTrace } from "../runs.service";
 import { InFlight } from "./components/InFlight";
 import { useTrace, type TraceSummary } from "../trace.service";
 import { EvaluationPanel } from "../evaluation/EvaluationPanel";
@@ -105,6 +105,7 @@ export function RunTrace() {
   const readableRun = run.error ? undefined : run.data;
   const readableTrace = general.error ? undefined : general.data;
   const questions = retainedQuestions(runId, general);
+  useRunDetailFollowsTrace(run, readableTrace?.status);
 
   return (
     <article className="run-workspace">
@@ -162,6 +163,7 @@ export function RunTrace() {
                 key={runId}
                 runId={runId}
                 questions={questions}
+                room={continuationRoomOf(readableRun)}
                 readConfirmed={general.isSuccess && general.fetchStatus === "idle"}
                 checking={general.fetchStatus !== "idle"}
                 onRetryRead={() => void general.refetch()}

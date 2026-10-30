@@ -20,6 +20,13 @@ import {
     LabelledToJSON,
     LabelledToJSONTyped,
 } from './Labelled';
+import type { RunContinuation } from './RunContinuation';
+import {
+    RunContinuationFromJSON,
+    RunContinuationFromJSONTyped,
+    RunContinuationToJSON,
+    RunContinuationToJSONTyped,
+} from './RunContinuation';
 import type { RunTransitionsInner } from './RunTransitionsInner';
 import {
     RunTransitionsInnerFromJSON,
@@ -67,6 +74,10 @@ export interface CancelRun202Response {
      * 
      */
     skillWithheld?: boolean;
+    /**
+     * 
+     */
+    continuation?: RunContinuation;
     /**
      * Why the run entered this status. Masked and safe to display.
      * 
@@ -228,6 +239,7 @@ export function CancelRun202ResponseFromJSONTyped(json: any, ignoreDiscriminator
         'runId': json['run_id'],
         'status': json['status'],
         'skillWithheld': json['skill_withheld'] == null ? undefined : json['skill_withheld'],
+        'continuation': json['continuation'] == null ? undefined : RunContinuationFromJSON(json['continuation']),
         'statusReason': json['status_reason'] == null ? undefined : json['status_reason'],
         'skillId': json['skill_id'],
         'skillVersionId': json['skill_version_id'],
@@ -260,6 +272,7 @@ export function CancelRun202ResponseToJSONTyped(value?: CancelRun202Response | n
         'run_id': value['runId'],
         'status': value['status'],
         'skill_withheld': value['skillWithheld'],
+        'continuation': RunContinuationToJSON(value['continuation']),
         'status_reason': value['statusReason'],
         'skill_id': value['skillId'],
         'skill_version_id': value['skillVersionId'],

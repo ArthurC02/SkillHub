@@ -11629,6 +11629,25 @@ components:
             The run deliberately executed the test case without loading the
             skill, as the skill-withheld arm of an evaluation batch. Absent
             for an ordinary run.
+        continuation:
+          type: object
+          required: [answered, rounds_left]
+          description: |
+            Whether answering this run's questions could start a continuing run,
+            served on GET /runs/{id} for a succeeded run so the page can say so
+            before the person writes any answer. The same rule decides
+            POST /runs/{id}/continuations; the operator setting can still change
+            in between, and the post is the one that decides.
+          properties:
+            answered:
+              type: boolean
+              description: This run's questions were already answered; answering again is refused.
+            rounds_left:
+              type: integer
+              minimum: 0
+              description: |
+                Answered rounds this conversation may still take. 0 means the
+                limit is reached and answering is refused.
         status_reason:
           type: string
           description: |

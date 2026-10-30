@@ -176,27 +176,35 @@ func (s *Service) continueRun(ctx context.Context, p CreateParams, c continuatio
 	return run, nil
 }
 
-func (s *Service) requireOpenRound(ctx context.Context, q *gen.Queries, original gen.Run) error {
-	continued, err := q.RunWasContinued(ctx, gen.RunWasContinuedParams{
-		RunID: original.ID, WorkspaceID: original.WorkspaceID,
-	})
+type ContinuationRoom struct {
+	Answered   bool
+	RoundsLeft int
+}
+
+func continuationRoom(ctx context.Context, s *Service, q *gen.Queries, workspaceID, runID pgtype.UUID) (ContinuationRoom, error) {
+	answered, err := q.RunWasContinued(ctx, gen.RunWasContinuedParams{RunID: runID, WorkspaceID: workspaceID})
 	if err != nil {
-		return err
-	}
-	if continued {
-		return ErrAlreadyContinued
+		return ContinuationRoom{}, err
 	}
 	rounds, err := s.ContinuationRounds(ctx)
 	if err != nil {
-		return err
+		return ContinuationRoom{}, err
 	}
-	depth, err := q.CountContinuationChain(ctx, gen.CountContinuationChainParams{
-		RunID: original.ID, WorkspaceID: original.WorkspaceID,
-	})
+	depth, err := q.CountContinuationChain(ctx, gen.CountContinuationChainParams{RunID: runID, WorkspaceID: workspaceID})
 	if err != nil {
-		return err
+		return ContinuationRoom{}, err
 	}
-	if int(depth) >= rounds {
+	return ContinuationRoom{Answered: answered, RoundsLeft: max(rounds-int(depth), 0)}, nil
+}
+
+func (s *Service) requireOpenRound(ctx context.Context, q *gen.Queries, original gen.Run) error {
+	room, err := continuationRoom(ctx, s, q, original.WorkspaceID, original.ID)
+	switch {
+	case err != nil:
+		return err
+	case room.Answered:
+		return ErrAlreadyContinued
+	case room.RoundsLeft == 0:
 		return ErrContinuationLimit
 	}
 	return nil
