@@ -14,6 +14,17 @@ import (
 
 var ErrUnsupportedType = errors.New("testlab: the file is not one of the types a dataset accepts")
 
+const (
+	reasonExecutableOrArchive = "這是可執行檔、腳本，或 zip 以外的壓縮格式"
+	reasonUnreadableZip       = "這個 zip 讀不出來，可能已經損毀"
+	reasonZipEscapesRoot      = "zip 裡有檔案路徑跳出壓縮檔本身（例如 ../ 或絕對路徑）"
+	reasonZipSymlink          = "zip 裡有捷徑（符號連結）"
+)
+
+func unsupported(reason string) error {
+	return fmt.Errorf("%w: %s", ErrUnsupportedType, reason)
+}
+
 const sniffLen = 512
 
 var deniedMagic = [][]byte{
@@ -50,7 +61,7 @@ func detectContentType(content DatasetContent) (string, error) {
 	}
 	for _, magic := range deniedMagic {
 		if bytes.HasPrefix(head, magic) {
-			return "", ErrUnsupportedType
+			return "", unsupported(reasonExecutableOrArchive)
 		}
 	}
 
@@ -63,7 +74,7 @@ func detectContentType(content DatasetContent) (string, error) {
 	}
 	for _, magic := range deniedMagicUnlessText {
 		if bytes.HasPrefix(head, magic) {
-			return "", ErrUnsupportedType
+			return "", unsupported(reasonExecutableOrArchive)
 		}
 	}
 	if !allowedSniffed[base] {
@@ -85,7 +96,7 @@ var archiveExts = map[string]bool{
 func inspectZip(content DatasetContent) error {
 	zr, err := zip.NewReader(content, content.Size())
 	if err != nil {
-		return ErrUnsupportedType
+		return unsupported(reasonUnreadableZip)
 	}
 
 	ooxml := false
@@ -100,16 +111,16 @@ func inspectZip(content DatasetContent) error {
 		}
 
 		if escapesArchiveRoot(name) {
-			return ErrUnsupportedType
+			return unsupported(reasonZipEscapesRoot)
 		}
 		if f.Mode()&fs.ModeSymlink != 0 {
-			return ErrUnsupportedType
+			return unsupported(reasonZipSymlink)
 		}
 		if f.FileInfo().IsDir() {
 			continue
 		}
 		if archiveExts[strings.ToLower(path.Ext(name))] {
-			return ErrUnsupportedType
+			return unsupported(fmt.Sprintf("zip 裡的「%s」本身又是壓縮檔；只接受一層", name))
 		}
 		files++
 		if f.UncompressedSize64 > unpackedCap-unpacked {

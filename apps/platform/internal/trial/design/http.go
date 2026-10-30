@@ -60,6 +60,13 @@ func stripSentinelPrefix(err, sentinel error) string {
 	return message
 }
 
+func unsupportedTypeMessage(err error) string {
+	if reason := stripSentinelPrefix(err, ErrUnsupportedType); reason != err.Error() {
+		return messageUnsupportedType + "：" + reason + "。"
+	}
+	return messageUnsupportedType
+}
+
 func fail(w http.ResponseWriter, err error, generic string) {
 	switch {
 	case errors.Is(err, ErrNotFound):
@@ -67,7 +74,7 @@ func fail(w http.ResponseWriter, err error, generic string) {
 	case errors.Is(err, ErrInvalid):
 		httpx.WriteError(w, http.StatusBadRequest, stripSentinelPrefix(err, ErrInvalid))
 	case errors.Is(err, ErrUnsupportedType):
-		httpx.WriteError(w, http.StatusUnsupportedMediaType, messageUnsupportedType)
+		httpx.WriteError(w, http.StatusUnsupportedMediaType, unsupportedTypeMessage(err))
 	case errors.Is(err, ErrLimitExceeded):
 		httpx.WriteError(w, http.StatusRequestEntityTooLarge, stripSentinelPrefix(err, ErrLimitExceeded))
 
