@@ -3,12 +3,12 @@
   "proposal_id": "dataset-upload-executable-recite-2026-10-30",
   "proposer": "domain-memory-agent",
   "requirement_id": "dataset-upload-executable-recite",
-  "status": "submitted",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-10-30T13:58:36.776006Z",
-  "verified_at": null,
-  "finalized_at": null,
-  "applied_at": null,
+  "verified_at": "2026-10-30T13:58:38.881362Z",
+  "finalized_at": "2026-10-30T13:58:40.260272Z",
+  "applied_at": "2026-10-30T13:58:50.109568Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "ad6c6dcbed8ac6796a043df95e7ca8e4167cfcb3",
@@ -108,8 +108,26 @@
   ],
   "risk_flags": [],
   "open_questions": [],
-  "approvals": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-30T13:58:37.678673Z",
+      "scope": "re-cite the two dataset upload rules after the executable signature refusal returned to the bare sentinel; the rules themselves are unchanged",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "ad6c6dcbed8ac6796a043df95e7ca8e4167cfcb3",
+        "registry_digest": "sha256:498fed71d2ab9fb0616ce2c5892de1f7620f390a8a74bd7b4321be349b63e1d2",
+        "committed_digest": "sha256:498fed71d2ab9fb0616ce2c5892de1f7620f390a8a74bd7b4321be349b63e1d2"
+      }
+    }
+  ],
   "supersedes": [
     "dataset-upload-reason-recite-2026-10-30"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "da735f91d0b0556fac1df64b2e00d6ea0c100b55",
+    "registry_digest": "sha256:8f4f8ad8a03dc5c76f81a7ac99584e4482419139d7fffa8f41ef68e3d7c79f96"
+  }
 }
