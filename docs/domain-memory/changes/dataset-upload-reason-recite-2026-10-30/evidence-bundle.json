@@ -1,0 +1,29 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "dataset-upload-reason-recite",
+  "proposal_id": "dataset-upload-reason-recite-2026-10-30",
+  "registry_revision": {
+    "observed_commit": "9d75b28b4366bf73d00196b3ce72ea10ab09e792",
+    "registry_digest": "sha256:2a24f1e1504e62e91ebe28c468d2693e18160065592a0b7211e2dc5e21640454",
+    "committed_digest": "sha256:2a24f1e1504e62e91ebe28c468d2693e18160065592a0b7211e2dc5e21640454"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": ".claude/skills/domain-memory/engine/bin/windows-x86_64/domain-memory.exe verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/dataset-upload-reason-recite-2026-10-30 --path apps/platform/internal/trial/design/filetype.go --path apps/platform/internal/trial/design/filetype_test.go",
+      "command_profile": "architecture",
+      "exit_code": 0,
+      "output_sha256": "sha256:d3530ccf6fefe8a2e740f0be2b1151c11772ef2d5154db29cfc407e154d61fc5",
+      "finished_at": "2026-10-30T13:49:27.574001Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

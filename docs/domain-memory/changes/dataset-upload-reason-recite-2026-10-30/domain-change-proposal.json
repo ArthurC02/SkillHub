@@ -1,0 +1,115 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "dataset-upload-reason-recite-2026-10-30",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "dataset-upload-reason-recite",
+  "status": "submitted",
+  "change_classification": "routine",
+  "submitted_at": "2026-10-30T13:49:27.387976Z",
+  "verified_at": null,
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "9d75b28b4366bf73d00196b3ce72ea10ab09e792",
+    "registry_digest": "sha256:2a24f1e1504e62e91ebe28c468d2693e18160065592a0b7211e2dc5e21640454",
+    "committed_digest": "sha256:2a24f1e1504e62e91ebe28c468d2693e18160065592a0b7211e2dc5e21640454"
+  },
+  "affected_contexts": [
+    "testlab"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "<context-id>",
+    "invariant": "<falsifiable-rule>",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "<existing-or-proposed-collaboration>",
+    "consistency": "<synchronous-or-eventual>",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": null,
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-disguised-executable-is-refused",
+        "statement": "An upload whose leading bytes match an executable or archive signature is refused as an unsupported type, whatever its name.",
+        "contexts": [
+          "testlab"
+        ],
+        "examples": [
+          "data.csv beginning with the ELF magic is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/filetype.go",
+            "lines": {
+              "start": 62,
+              "end": 66
+            },
+            "content_sha256": "sha256:8b4b961df8421791e54a8bbb95ad2bcb556f20923954ea03b72d08a90622fe43",
+            "excerpt_sha256": "sha256:84d3d98cf34fb4651ab5f57f2772f4aed44f5706dcfb608d06a10e935b02246f",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/trial/design/filetype_test.go",
+            "lines": {
+              "start": 56,
+              "end": 75
+            },
+            "excerpt_sha256": "sha256:06fe609c44ac9d636307989282f4ad591018c4aa327e9c742cb7660cec2608d8"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-zip-entry-may-not-escape-its-archive",
+        "statement": "A zip upload is refused when any entry would escape the archive root by traversal or an absolute path.",
+        "contexts": [
+          "testlab"
+        ],
+        "examples": [
+          "A zip holding ../escape.txt is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/filetype.go",
+            "lines": {
+              "start": 113,
+              "end": 115
+            },
+            "content_sha256": "sha256:8b4b961df8421791e54a8bbb95ad2bcb556f20923954ea03b72d08a90622fe43",
+            "excerpt_sha256": "sha256:985ba27d331b1636f5578d4500640d23b02e655549eebfbf261182bd07eb35d0",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/trial/design/filetype_test.go",
+            "lines": {
+              "start": 106,
+              "end": 121
+            },
+            "excerpt_sha256": "sha256:0f1417be9843b13d8f9b609f83bda4e55d3cc579224fdb822dba5d951d186766"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [],
+  "supersedes": [
+    "testlab-harvest-rules-2026-10-17"
+  ]
+}

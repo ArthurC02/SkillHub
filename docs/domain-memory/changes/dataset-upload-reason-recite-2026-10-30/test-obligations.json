@@ -1,0 +1,16 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "dataset-upload-reason-recite",
+  "proposal_id": "dataset-upload-reason-recite-2026-10-30",
+  "obligations": [
+    {
+      "id": "evidence-current",
+      "source_type": "acceptance-criterion",
+      "source_id": "citations-current",
+      "expected_outcome": "verify-evidence reports current for every citation of the updated records.",
+      "level": "architecture",
+      "status": "planned",
+      "check": ".claude/skills/domain-memory/engine/bin/windows-x86_64/domain-memory.exe verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/dataset-upload-reason-recite-2026-10-30 --path apps/platform/internal/trial/design/filetype.go --path apps/platform/internal/trial/design/filetype_test.go"
+    }
+  ]
+}
