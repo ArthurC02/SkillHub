@@ -1,7 +1,8 @@
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode, type RefObject } from "react";
 import { SetSkillRestrictionBodyNoteMaxLength } from "@skillhub/api-client-ts/limits";
 import { textLengthReason } from "../../../shared/textLength.model";
 import { ConfirmDelete } from "../../../shared/ui/ConfirmDelete";
+import { useContinuationFocus } from "../../../shared/ui/useContinuationFocus";
 import { WriteFailure } from "./WriteFailure";
 
 const OPERATOR_NOTE_MAX_CHARS = SetSkillRestrictionBodyNoteMaxLength;
@@ -14,6 +15,27 @@ function whyBlocked(
 ): string {
   if (completed) return "已完成這筆操作；修改上方欄位或理由後再送出，會建立另一筆操作。";
   return tooLong ?? blockedReason ?? `「${submitLabel}」要等上面的欄位都填好。`;
+}
+
+function ActionFeedback({
+  feedback,
+  done,
+  error,
+}: {
+  feedback: RefObject<HTMLDivElement | null>;
+  done?: ReactNode;
+  error: unknown;
+}) {
+  return (
+    <div ref={feedback} tabIndex={-1} role="group" aria-label="操作結果">
+      {done && (
+        <p className="notice notice-success" role="status">
+          {done}
+        </p>
+      )}
+      <WriteFailure error={error} />
+    </div>
+  );
 }
 
 export function ActionForm({
@@ -48,14 +70,22 @@ export function ActionForm({
   children?: ReactNode;
 }) {
   const [note, setNote] = useState("");
-  const [submitted, setSubmitted] = useState<{ note: string; contextKey: string } | null>(null);
+  const [submitted, setSubmitted] = useState<{
+    note: string;
+    contextKey: string;
+    sequence: number;
+  } | null>(null);
+  const submissionSequence = useRef(0);
+  const feedback = useRef<HTMLDivElement>(null);
   const resultMatches = submitted?.note === note.trim() && submitted.contextKey === contextKey;
+  const hasResult = resultMatches && !pending && Boolean(error || done);
+  useContinuationFocus(submitted ? String(submitted.sequence) : undefined, hasResult, feedback);
   const completed = Boolean(done && resultMatches);
   const tooLong = textLengthReason(note.trim(), "理由", OPERATOR_NOTE_MAX_CHARS);
   const blocked = note.trim() === "" || tooLong !== null || !ready || completed;
   const send = () => {
     if (blocked || pending) return;
-    setSubmitted({ note: note.trim(), contextKey });
+    setSubmitted({ note: note.trim(), contextKey, sequence: ++submissionSequence.current });
     onSubmit(note.trim());
   };
 
@@ -105,12 +135,7 @@ export function ActionForm({
           {whyBlocked(completed, tooLong, blockedReason, submitLabel)}
         </p>
       )}
-      {done && resultMatches && (
-        <p className="notice notice-success" role="status">
-          {done}
-        </p>
-      )}
-      <WriteFailure error={resultMatches && !pending ? error : undefined} />
+      {hasResult && <ActionFeedback feedback={feedback} done={done} error={error} />}
     </form>
   );
 }
