@@ -5,13 +5,11 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import type {
-  CorrectedSearchRequest,
-  SetSkillCategoryRequest,
-  SkillRedistributionEnum,
-} from "@skillhub/api-client-ts";
-import { SearchMatchReasonsRequestSkillIdsMaxItems } from "@skillhub/api-client-ts/limits";
-import { contractEnum } from "../../core/api/contract-enum";
+import type { CorrectedSearchRequest, SetSkillCategoryRequest } from "@skillhub/api-client-ts";
+import {
+  ListSkillsLimitMaximum,
+  SearchMatchReasonsRequestSkillIdsMaxItems,
+} from "@skillhub/api-client-ts/limits";
 import {
   ApiError,
   SessionNotReadyError,
@@ -21,14 +19,13 @@ import {
 import { queryKeys } from "../../core/api/queryKeys";
 import { readSearchCorrection } from "../../core/api/searchIntent";
 import { readCatalogResponse, readSearchResponse } from "./search-response.model";
+import { isSkillReceipt, ownSkillsFromPages, readOwnSkillPage } from "./own-skills.model";
 import type {
   CatalogResponse,
   ForkedSkill,
-  OwnSkills,
   PublicSearchResponse,
   SearchFilters,
   SearchMatchReasons,
-  Skill,
   SkillDeletion,
   SkillDetail,
   SkillFiles,
@@ -313,31 +310,44 @@ export function useEmbeddedSkillVersions(skillIds: string[]) {
 export function useOwnSkills(enabled = true) {
   return useQuery({
     queryKey: queryKeys.skills.own,
-    queryFn: () => apiFetch<OwnSkills>("/skills"),
+    queryFn: async () => readOwnSkillPage(await apiFetch<unknown>("/skills")),
     enabled,
   });
 }
 
 export function useOwnCopiesOf(skillId: string, enabled = true) {
-  const own = useOwnSkills(enabled);
+  const query = useOwnSkillPages(ListSkillsLimitMaximum, enabled);
+  const own = ownSkillsFromPages(
+    query.error || query.fetchStatus !== "idle" ? undefined : query.data?.pages,
+  );
   const source = skillId.toLowerCase();
-  return (own.data?.skills ?? []).filter(
+  const copies = (own?.skills ?? []).filter(
     (skill) => skill.forked_from_skill_id?.toLowerCase() === source,
   );
+  const complete = Boolean(own && !own.truncated && own.skills.length === own.total);
+  return {
+    ...query,
+    copies,
+    complete,
+    partial: Boolean(own && !complete),
+    loaded: own?.skills.length,
+    total: own?.total,
+  };
 }
 
 export const OWN_SKILL_PAGE_SIZE = 24;
 
-export function getOwnSkillPage(limit: number, offset: number) {
+export async function getOwnSkillPage(limit: number, offset: number) {
   const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
-  return apiFetch<OwnSkills>(`/skills?${params.toString()}`);
+  return readOwnSkillPage(await apiFetch<unknown>(`/skills?${params.toString()}`), offset);
 }
 
-export function useOwnSkillPages(limit = OWN_SKILL_PAGE_SIZE) {
+export function useOwnSkillPages(limit = OWN_SKILL_PAGE_SIZE, enabled = true) {
   return useInfiniteQuery({
     queryKey: queryKeys.skills.ownPages(limit),
     queryFn: ({ pageParam }) => getOwnSkillPage(limit, pageParam),
     initialPageParam: 0,
+    enabled,
     getNextPageParam: (lastPage, _pages, lastPageParam) =>
       lastPage.truncated ? lastPageParam + lastPage.skills.length : undefined,
   });
@@ -373,26 +383,6 @@ export function useDeleteSkill() {
       }
     },
   });
-}
-
-const SKILL_REDISTRIBUTIONS = contractEnum<SkillRedistributionEnum>({
-  allowed: true,
-  blocked: true,
-  unknown: true,
-  self_supplied: true,
-  generated: true,
-});
-
-function isSkillReceipt(value: unknown): value is Skill {
-  if (!value || typeof value !== "object") return false;
-  const receipt = value as Partial<Skill>;
-  return (
-    typeof receipt.skill_id === "string" &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(receipt.skill_id) &&
-    typeof receipt.name === "string" &&
-    typeof receipt.summary === "string" &&
-    SKILL_REDISTRIBUTIONS.includes(receipt.redistribution ?? "")
-  );
 }
 
 function isForkReceipt(value: unknown): value is ForkedSkill {

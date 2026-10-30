@@ -9,7 +9,8 @@ import { SignInAction } from "../../../../shared/ui/SignIn";
 // Own component (not inlined) so the page's early returns can't shift hook order.
 export function TrialEntry({ skillId, isLoggedIn }: { skillId: string; isLoggedIn: boolean }) {
   const versions = useSkillVersions(skillId);
-  const copies = useOwnCopiesOf(skillId, isLoggedIn);
+  const lookup = useOwnCopiesOf(skillId, isLoggedIn);
+  const copies = lookup.copies;
 
   if (!isLoggedIn)
     return (
@@ -65,6 +66,8 @@ export function TrialEntry({ skillId, isLoggedIn }: { skillId: string; isLoggedI
             測試題是試跑用的草稿：User Prompt、測試資料與驗收條件。
           </p>
         </>
+      ) : !lookup.complete ? (
+        <p>工作區複本尚未確認，請先查看下方「複製一份到你的工作區」的查詢結果。</p>
       ) : (
         <p>
           這個小工具不在你的工作區。測試題屬於工作區，所以測試題清單裡看不到它、建立表單的小工具選單也選不到它——

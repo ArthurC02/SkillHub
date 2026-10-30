@@ -1727,6 +1727,7 @@ const ROUTES: RouteMatcher[] = [
           ],
           limit: 100,
           truncated: false,
+          total: 1,
         })
       : undefined,
   (path) => (path.includes("/versions/diff") ? ok(VERSION_DIFF) : undefined),

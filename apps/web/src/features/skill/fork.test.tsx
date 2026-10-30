@@ -1,12 +1,14 @@
-import { StrictMode, act, type ReactNode } from "react";
+import { StrictMode, act, type ReactNode, type Ref } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, onlineManager } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
+import { queryKeys } from "../../core/api/queryKeys";
 import { SkillDetail } from "./detail/SkillDetail.page";
 import { SkillFiles } from "./files/SkillFiles.page";
 import { ForkAction } from "./detail/components/ForkAction";
-import { ME, SKILL_VERSIONS, skillDetail } from "../../testing/fixtures/platform";
+import { ME, SKILL_VERSIONS, skillDetail, platformResponse } from "../../testing/fixtures/platform";
+import type { OwnSkills } from "../../core/api/types";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 
 const SKILL = "11111111-1111-1111-1111-111111111111";
@@ -22,12 +24,15 @@ beforeEach(() => {
   });
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   queryClient.clear();
+  onlineManager.setOnline(true);
   container = document.createElement("div");
   document.body.appendChild(container);
 });
 
 afterEach(async () => {
   await act(async () => root?.unmount());
+  queryClient.clear();
+  onlineManager.setOnline(true);
   container.remove();
   vi.unstubAllGlobals();
   if (originalScroll)
@@ -41,15 +46,18 @@ vi.mock("@tanstack/react-router", () => ({
     params,
     search,
     className,
+    ref,
     children,
   }: {
     to: string;
     params?: Record<string, string>;
     search?: Record<string, string>;
     className?: string;
+    ref?: Ref<HTMLAnchorElement>;
     children?: unknown;
   }) => (
     <a
+      ref={ref}
       className={className}
       href={
         Object.entries(params ?? {}).reduce((acc, [k, v]) => acc.replace(`$${k}`, v), to) +
@@ -97,6 +105,7 @@ function stubOwner(forkResponse: () => Promise<Response>, me: typeof ME = ME) {
     const url = String(input).replace(/^https?:\/\/[^/]+/, "");
     const path = url.split("?")[0];
     if (path === "/me") return json(me);
+    if (path === "/skills") return json(platformResponse(url).body);
     if (path.endsWith("/fork") && init?.method === "POST") return forkResponse();
     if (path.endsWith("/versions")) return json(SKILL_VERSIONS);
     if (path.startsWith("/api/skills/")) return json(detailBody());
@@ -232,7 +241,7 @@ test("a successful 複製一份 hands off to the exact created version and canno
 
 test("a catalog skill already copied into the workspace points at that copy instead of asking for another", async () => {
   const copy = {
-    ...detailBody(),
+    ...(platformResponse("/skills").body as OwnSkills).skills[0],
     skill_id: "abcdef01-2345-4789-abcd-0123456789ab",
     name: "PDF Summariser-fork",
     forked_from_skill_id: SKILL,
@@ -268,6 +277,7 @@ test("the copy-first notes name the fork section by the heading it actually carr
       .replace(/^https?:\/\/[^/]+/, "")
       .split("?")[0];
     if (path === "/me") return json(ME);
+    if (path === "/skills") return json({ skills: [], limit: 100, total: 0, truncated: false });
     if (path.endsWith("/versions")) return json({ ...SKILL_VERSIONS, versions: [] });
     if (path.startsWith("/api/skills/")) return json(detailBody());
     return json({ error: "not found" }, 404);
@@ -278,6 +288,166 @@ test("the copy-first notes name the fork section by the heading it actually carr
   const headings = Array.from(container.querySelectorAll("h2,h3")).map((h) => h.textContent);
   expect(named.length).toBeGreaterThanOrEqual(2);
   for (const label of named) expect(headings).toContain(label);
+});
+
+const copiedSkill = {
+  ...(platformResponse("/skills").body as OwnSkills).skills[0],
+  skill_id: "abcdef01-2345-4789-abcd-0123456789ab",
+  name: "Existing workspace copy",
+  forked_from_skill_id: SKILL,
+};
+const copiedPage = { skills: [copiedSkill], limit: 100, total: 1, truncated: false };
+const emptyOwnedPage = { skills: [], limit: 100, total: 0, truncated: false };
+
+function catalogLookup(reply: (url: URL) => Promise<Response>) {
+  const writes: string[] = [];
+  vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+    const url = new URL(String(input), "http://fixture.invalid");
+    if (init?.method && init.method !== "GET") writes.push(url.pathname);
+    if (url.pathname === "/me") return json(ME);
+    if (url.pathname === "/skills") return reply(url);
+    if (url.pathname.endsWith("/versions")) return json({ ...SKILL_VERSIONS, versions: [] });
+    if (url.pathname === `/api/skills/${SKILL}`) return json(detailBody());
+    const response = platformResponse(url.href);
+    return json(response.body, response.status);
+  });
+  return writes;
+}
+
+async function activateCopyRead(name: string) {
+  const control = Array.from(container.querySelectorAll("button")).find(
+    (item) => item.textContent?.trim() === name,
+  );
+  expect(control, name).toBeDefined();
+  await act(async () => control!.click());
+}
+
+test("an unread copy listing stays unknown until a complete empty reply arrives", async () => {
+  let release!: (value: Response) => void;
+  const held = new Promise<Response>((resolve) => {
+    release = resolve;
+  });
+  const writes = catalogLookup(() => held);
+  try {
+    await render(<SkillDetail />, () => text().includes("載入工作區複本清單中"));
+    expect(text()).not.toContain("要先複製一份");
+    await act(async () => release(await json(emptyOwnedPage)));
+    await waitFor(() => text().includes("要先複製一份"));
+    expect(text()).not.toContain("載入工作區複本清單中");
+    expect(writes).toEqual([]);
+  } finally {
+    release(await json(emptyOwnedPage));
+  }
+});
+
+test("a failed copy lookup reports one read failure and retries without creating another copy", async () => {
+  let reads = 0;
+  const writes = catalogLookup(() =>
+    ++reads === 1 ? json({ error: "listing unavailable" }, 503) : json(copiedPage),
+  );
+  await render(<SkillDetail />, () => text().includes("暫時無法讀取工作區複本清單"));
+  expect(
+    Array.from(container.querySelectorAll('[role="alert"]')).filter((item) =>
+      item.textContent?.includes("複本清單"),
+    ),
+  ).toHaveLength(1);
+  expect(text()).not.toContain("要先複製一份");
+  await activateCopyRead("再試一次");
+  await waitFor(() => text().includes("Existing workspace copy"));
+  expect(
+    Array.from(container.querySelectorAll("a")).filter(
+      (link) => link.textContent === "Existing workspace copy",
+    ),
+  ).toHaveLength(3);
+  expect(document.activeElement?.id).toBe("skill-copy-heading");
+  expect(reads).toBe(2);
+  expect(writes).toEqual([]);
+});
+
+test("an incomplete listing finds a copy beyond the first hundred assets and continues keyboard focus", async () => {
+  const seen: string[] = [];
+  const first = Array.from({ length: 100 }, (_, index) => ({
+    ...copiedSkill,
+    skill_id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+    forked_from_skill_id: undefined,
+  }));
+  const writes = catalogLookup((url) => {
+    seen.push(url.searchParams.get("offset") ?? "missing");
+    return json(
+      url.searchParams.get("offset") === "100"
+        ? { ...copiedPage, total: 101 }
+        : { skills: first, limit: 100, total: 101, truncated: true },
+    );
+  });
+  await render(<SkillDetail />, () => text().includes("100 / 101"));
+  expect(text()).not.toContain("要先複製一份");
+  await activateCopyRead("查找更多複本");
+  await waitFor(() => text().includes("Existing workspace copy"));
+  expect(document.activeElement?.textContent).toBe("Existing workspace copy");
+  expect(document.activeElement?.getAttribute("href")).toBe(
+    "/skills/abcdef01-2345-4789-abcd-0123456789ab",
+  );
+  expect(text()).not.toContain("尚未讀完");
+  expect(seen).toEqual(["0", "100"]);
+  expect(writes).toEqual([]);
+});
+
+test("a paused cached lookup withholds old copy guidance until its read reconnects", async () => {
+  const writes = catalogLookup(() => json(copiedPage));
+  await render(<SkillDetail />, () => text().includes("Existing workspace copy"));
+  await act(async () => {
+    onlineManager.setOnline(false);
+    void queryClient.invalidateQueries({ queryKey: queryKeys.skills.ownPages(100) });
+  });
+  await waitFor(() => text().includes("等待連線以讀取工作區複本清單"));
+  expect(text()).not.toContain("Existing workspace copy");
+  expect(text()).not.toContain("要先複製一份");
+  await act(async () => onlineManager.setOnline(true));
+  await waitFor(() => text().includes("Existing workspace copy"));
+  expect(writes).toEqual([]);
+});
+
+test("a cached read failure and held retry withhold old copies and preserve focus moved elsewhere", async () => {
+  let reads = 0;
+  let release!: (value: Response) => void;
+  const held = new Promise<Response>((resolve) => {
+    release = resolve;
+  });
+  const writes = catalogLookup(() => {
+    reads++;
+    return reads === 1
+      ? json(copiedPage)
+      : reads === 2
+        ? json({ error: "listing unavailable" }, 503)
+        : held;
+  });
+  const elsewhere = document.createElement("input");
+  document.body.appendChild(elsewhere);
+  try {
+    await render(<SkillDetail />, () => text().includes("Existing workspace copy"));
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.skills.ownPages(100) });
+    });
+    await waitFor(() => text().includes("暫時無法讀取工作區複本清單"));
+    expect(text()).not.toContain("Existing workspace copy");
+    await activateCopyRead("再試一次");
+    await waitFor(() => text().includes("載入工作區複本清單中"));
+    expect(text()).not.toContain("暫時無法讀取工作區複本清單");
+    expect(text()).not.toContain("Existing workspace copy");
+    elsewhere.focus();
+    await act(async () =>
+      release(
+        await json({ ...copiedPage, skills: [{ ...copiedSkill, name: "Current workspace copy" }] }),
+      ),
+    );
+    await waitFor(() => text().includes("Current workspace copy"));
+    expect(document.activeElement).toBe(elsewhere);
+    expect(reads).toBe(3);
+    expect(writes).toEqual([]);
+  } finally {
+    release(await json(copiedPage));
+    elsewhere.remove();
+  }
 });
 
 for (const change of ["another skill", "signed-out return"]) {

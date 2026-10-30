@@ -609,7 +609,7 @@ test("an exact Version continuation preselects that immutable Bundle member inst
       "/me/bundles": { body: { bundles: [] } },
       "/skills": {
         body: {
-          skills: [{ skill_id: SKILL }],
+          skills: [(platformResponse("/skills").body as { skills: unknown[] }).skills[0]],
           total: 1,
           limit: 100,
           truncated: false,
@@ -683,7 +683,7 @@ test("a Bundle member version read failure stays unknown and blocks creation", a
     "/me/bundles": { body: { bundles: [] } },
     "/skills": {
       body: {
-        skills: [{ skill_id: SKILL }],
+        skills: [(platformResponse("/skills").body as { skills: unknown[] }).skills[0]],
         total: 1,
         limit: 100,
         truncated: false,

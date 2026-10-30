@@ -169,7 +169,11 @@ function stubSession(options: StubSessionOptions = {}) {
         ),
       );
     }
-    return Promise.resolve(new Response(JSON.stringify({ skills: [] }), { status: 200 }));
+    return Promise.resolve(
+      new Response(JSON.stringify({ skills: [], total: 0, limit: 100, truncated: false }), {
+        status: 200,
+      }),
+    );
   });
   return { posted, searchGets };
 }

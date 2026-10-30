@@ -453,7 +453,7 @@ test("WS-004 a gallery card flags only what stops the skill being taken away", a
           ...SCANNED,
         },
         {
-          skill_id: "s-3",
+          skill_id: "00000000-0000-4000-8000-000000000003",
           name: "沒人判定過的",
           summary: "目錄裡還沒有人分類的內容。",
           redistribution: "unknown",
@@ -461,7 +461,7 @@ test("WS-004 a gallery card flags only what stops the skill being taken away", a
           ...SCANNED,
         },
         {
-          skill_id: "s-4",
+          skill_id: "00000000-0000-4000-8000-000000000004",
           name: "平台生成的",
           summary: "依任務描述生成出來的。",
           redistribution: "generated",
@@ -469,12 +469,12 @@ test("WS-004 a gallery card flags only what stops the skill being taken away", a
           ...SCANNED,
         },
         {
-          skill_id: "s-2",
+          skill_id: "00000000-0000-4000-8000-000000000002",
           name: "複製而來",
           summary: "從目錄複製一份的。",
           redistribution: "allowed",
           access_restriction: null,
-          forked_from_skill_id: "s-origin",
+          forked_from_skill_id: "00000000-0000-4000-8000-000000000005",
           ...FORKED,
         },
       ],
@@ -511,19 +511,20 @@ test("WS-004 a forked card reaches its source from the manage menu, and claims n
           summary: "從目錄複製一份的。",
           redistribution: "allowed",
           access_restriction: null,
-          forked_from_skill_id: "s-origin",
+          forked_from_skill_id: "00000000-0000-4000-8000-000000000005",
           ...FORKED,
         },
       ],
       limit: 100,
       truncated: false,
+      total: 1,
     }),
   );
   await render(<WorkspaceSkills />, () => text().includes("從目錄複製一份的"));
 
   const menu = container.querySelector(".skill-menu")!;
   expect(Array.from(menu.querySelectorAll("a"), (a) => a.getAttribute("href"))).toContain(
-    "/skills/s-origin",
+    "/skills/00000000-0000-4000-8000-000000000005",
   );
   expect(container.querySelector(".skill-card-flags")).toBeNull();
   expect(text()).not.toContain("未發現警告");
@@ -545,6 +546,7 @@ test("WS-004 a gallery card keeps the scan's warning count and drops the all-cle
       ],
       limit: 100,
       truncated: false,
+      total: 1,
     }),
   );
   await render(<WorkspaceSkills />, () => text().includes("掃出兩個警告"));
@@ -568,6 +570,7 @@ test("WS-004 the own-skills list links each row on to its files and packaging", 
       ],
       limit: 100,
       truncated: false,
+      total: 1,
     }),
   );
   await render(<WorkspaceSkills />, () => text().includes("CSV 清理"));
@@ -583,7 +586,7 @@ test("WS-004 the own-skills list links each row on to its files and packaging", 
 });
 
 test("IA-9 the empty own-skills list offers importing as a link, not as prose", async () => {
-  vi.stubGlobal("fetch", () => json({ skills: [], limit: 100, truncated: false }));
+  vi.stubGlobal("fetch", () => json({ skills: [], limit: 100, truncated: false, total: 0 }));
   await render(<WorkspaceSkills />, () => text().includes("還沒有任何小工具"));
 
   const hrefs = Array.from(container.querySelectorAll("a")).map(
@@ -597,7 +600,7 @@ test("IA-9 the empty own-skills list offers importing as a link, not as prose", 
 });
 
 test("空清單先說它是哪一種空，三張建立卡才是它的動作（§3 checklist 第 1 條）", async () => {
-  vi.stubGlobal("fetch", () => json({ skills: [], limit: 100, truncated: false }));
+  vi.stubGlobal("fetch", () => json({ skills: [], limit: 100, truncated: false, total: 0 }));
   await render(<WorkspaceSkills />, () => text().includes("還沒有任何小工具"));
 
   const absence = Array.from(container.querySelectorAll("p")).find((p) =>
@@ -682,7 +685,15 @@ function stubOwnSkillsWithFeatures(features?: Record<string, boolean>, invited =
         ...(features ? { features } : {}),
       });
     return json({
-      skills: [{ skill_id: SKILL, name: "CSV 清理", summary: "整理 CSV。", ...SCANNED }],
+      skills: [
+        {
+          skill_id: SKILL,
+          name: "CSV 清理",
+          summary: "整理 CSV。",
+          redistribution: "allowed",
+          ...SCANNED,
+        },
+      ],
       limit: 100,
       truncated: false,
       total: 1,
@@ -766,7 +777,7 @@ test("資產庫新增入口 ⛔ with the flag off, the hub has no generation pat
 });
 
 test("空資產庫 uses the full cards to teach each intake path", async () => {
-  vi.stubGlobal("fetch", () => json({ skills: [], limit: 100, truncated: false }));
+  vi.stubGlobal("fetch", () => json({ skills: [], limit: 100, truncated: false, total: 0 }));
   await render(<WorkspaceSkills />, () => text().includes("還沒有任何小工具"));
 
   expect(hub()!.querySelectorAll('[data-role="teaching"]').length).toBe(2);
@@ -812,7 +823,18 @@ test("WS-005 deleting a skill says what survives it before anything is destroyed
       });
     }
     return json({
-      skills: [{ skill_id: SKILL, name: "CSV 清理", summary: "整理 CSV。", ...SCANNED }],
+      skills: [
+        {
+          skill_id: SKILL,
+          name: "CSV 清理",
+          summary: "整理 CSV。",
+          redistribution: "allowed",
+          ...SCANNED,
+        },
+      ],
+      limit: 100,
+      total: 1,
+      truncated: false,
     });
   });
   await render(<WorkspaceSkills />, () => text().includes("CSV 清理"));
@@ -1434,6 +1456,7 @@ function stubDetailAsSignedIn(versions: unknown) {
     const url = String(input).replace(/^https?:\/\/[^/]+/, "");
     const path = url.split("?")[0];
     if (path === "/me") return json({ ...SESSION });
+    if (path === "/skills") return json({ skills: [], total: 0, limit: 100, truncated: false });
     if (path.endsWith("/versions")) return json(versions);
     if (path.startsWith("/api/skills/")) return json(skillDetail(SKILL, "PDF Summariser"));
     return json({ error: "not found" }, 404);
@@ -1534,6 +1557,7 @@ function bundleRouteHandlers(opts: BundleRouteOpts) {
               summary: "",
               redistribution: "allowed",
               access_restriction: null,
+              ...SCANNED,
             })),
             limit: 100,
             truncated: false,

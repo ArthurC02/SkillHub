@@ -171,7 +171,7 @@ function section(title: string) {
 const run = (id: string, name: string, status: string, verdict: string) => ({
   run_id: id,
   status,
-  skill_id: "skill-1",
+  skill_id: "00000000-0000-4000-8000-000000000001",
   skill_name: name,
   skill_version_id: "version-1",
   provider: "self-hosted",
@@ -207,11 +207,17 @@ test("workspace home separates decisions, active work, and owned assets from ser
       return json({
         skills: [
           {
-            skill_id: "skill-1",
+            skill_id: "00000000-0000-4000-8000-000000000001",
             name: "PDF Summariser",
             summary: "整理長篇 PDF",
             redistribution: "unknown",
-            risk: { scan_status: "scanned", level: "none", warnings: 0, disclosures: [] },
+            risk: {
+              scan_status: "scanned",
+              level: "none",
+              warnings: 0,
+              disclosures: [],
+              note: "靜態掃描完成。",
+            },
             verification: { value: "scanned", label: "已掃描", note: "靜態掃描完成。" },
           },
         ],

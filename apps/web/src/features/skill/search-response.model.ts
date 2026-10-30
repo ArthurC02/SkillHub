@@ -44,7 +44,7 @@ function isLabelled(value: unknown, values?: readonly string[]): boolean {
   );
 }
 
-function isRisk(value: unknown): boolean {
+export function isSkillRisk(value: unknown): boolean {
   return (
     isRecord(value) &&
     isMember(value.scan_status, ["scanned", "unavailable"]) &&
@@ -89,7 +89,7 @@ function isResult(value: unknown): boolean {
     isRank(value.rank) &&
     isLabelled(value.tier) &&
     isLabelled(value.category) &&
-    isRisk(value.risk) &&
+    isSkillRisk(value.risk) &&
     Array.isArray(value.dependencies) &&
     value.dependencies.every(isText) &&
     isCompatibility(value.compatibility) &&

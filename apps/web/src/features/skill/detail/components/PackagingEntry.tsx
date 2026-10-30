@@ -13,7 +13,8 @@ export function PackagingEntry({
   isLoggedIn: boolean;
 }) {
   const versions = useSkillVersions(skill.skill_id);
-  const copies = useOwnCopiesOf(skill.skill_id, isLoggedIn);
+  const lookup = useOwnCopiesOf(skill.skill_id, isLoggedIn);
+  const copies = lookup.copies;
 
   if (!isLoggedIn)
     return (
@@ -34,6 +35,8 @@ export function PackagingEntry({
         ，到它的頁面打包並下載。
       </p>
     );
+  if ((versions.data?.versions.length ?? 0) === 0 && !lookup.complete)
+    return <p className="note">工作區複本尚未確認，請先查看「複製一份到你的工作區」的查詢結果。</p>;
   if ((versions.data?.versions.length ?? 0) === 0)
     return (
       <p className="note">

@@ -165,7 +165,23 @@ function platformHandlers(over: Overrides, removedRef: { removed: boolean }) {
     (req: PlatformRequest) =>
       req.path === "/skills"
         ? json({
-            skills: over.skills ?? [{ skill_id: SKILL, name: "去重複工具", summary: "" }],
+            skills: (over.skills ?? [{ skill_id: SKILL, name: "去重複工具", summary: "" }]).map(
+              (skill) => ({
+                ...skill,
+                redistribution: "allowed",
+                risk: {
+                  scan_status: "unavailable",
+                  level: "unknown",
+                  warnings: 0,
+                  disclosures: [],
+                  note: "尚未掃描。",
+                },
+                verification: { value: "not_measured", label: "未測量", note: "尚未掃描。" },
+              }),
+            ),
+            total: over.skills?.length ?? 1,
+            limit: 100,
+            truncated: false,
           })
         : undefined,
     (req: PlatformRequest) =>
