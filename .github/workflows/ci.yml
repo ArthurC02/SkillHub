@@ -239,6 +239,7 @@ jobs:
             playwright-debs-${{ runner.os }}-
       - if: runner.os == 'Linux'
         timeout-minutes: 9
+        name: Install Linux browser dependencies
         run: |
           mkdir -p ~/playwright-debs
           find ~/playwright-debs -name '*.deb' -exec sudo cp -t /var/cache/apt/archives {} +
@@ -251,6 +252,7 @@ jobs:
               exit 1
             fi
             echo "::warning::playwright install-deps attempt $attempt stalled past 120 s or failed; resuming"
+            sudo dpkg --configure -a || sudo apt-get --fix-broken install --yes
           done
           find /var/cache/apt/archives -maxdepth 1 -name '*.deb' -exec cp -t ~/playwright-debs {} +
           npx playwright install ${{ matrix.browser }}
