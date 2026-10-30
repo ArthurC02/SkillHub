@@ -91,9 +91,10 @@ type ProviderSummary struct {
 }
 
 type PermissionSummary struct {
-	Content       PermissionSummaryContent `json:"summary"`
-	Hash          string                   `json:"summary_hash"`
-	EstimatedCost CostEstimate             `json:"estimated_cost"`
+	Content        PermissionSummaryContent `json:"summary"`
+	Hash           string                   `json:"summary_hash"`
+	EstimatedCost  CostEstimate             `json:"estimated_cost"`
+	CeilingCredits int64                    `json:"ceiling_credits,omitempty"`
 
 	Quota   *policy.QuotaView `json:"quota,omitempty"`
 	Blocked string            `json:"blocked,omitempty"`
@@ -153,6 +154,18 @@ func spendRefusal(ctx context.Context, s *Service, workspaceID pgtype.UUID) (str
 		return ReasonCreditBalance, nil
 	}
 	return refusalReason(platformBudgetVerdict(ctx, s.Gateway, s.Pool, budget.USD)), nil
+}
+
+func runCeilingCredits(ctx context.Context, s *Service) (int64, error) {
+	if s.Ledger == nil || s.Pool == nil {
+		return 0, nil
+	}
+	budget, err := runBudgetIn(ctx, s.queries(), s.Deployment)
+	if err != nil {
+		return 0, err
+	}
+	credits, _ := s.Ledger.CreditsForUSD(budget.USD)
+	return credits, nil
 }
 
 func capacityRefusal(ctx context.Context, s *Service, workspaceID pgtype.UUID) (string, error) {
@@ -340,6 +353,7 @@ func (s *Service) permissionSummaryFor(
 	blocked := ""
 	var quota *policy.QuotaView
 	var notes []string
+	var ceiling int64
 	// Skipped here: a second pool read would deadlock a caller already
 	// inside a transaction on a single-connection pool.
 	if held == nil {
@@ -348,6 +362,9 @@ func (s *Service) permissionSummaryFor(
 		}
 		quota = s.enforcedQuotaView(ctx, workspaceID)
 		notes = s.summaryNotes(ctx, snap)
+		if ceiling, err = runCeilingCredits(ctx, s); err != nil {
+			return PermissionSummary{}, err
+		}
 	}
 
 	if s.Ledger == nil {
@@ -359,12 +376,13 @@ func (s *Service) permissionSummaryFor(
 		return PermissionSummary{}, err
 	}
 	return PermissionSummary{
-		Content:       content,
-		Hash:          hex.EncodeToString(sum[:]),
-		EstimatedCost: estimate,
-		Quota:         quota,
-		Blocked:       blocked,
-		Notes:         notes,
+		Content:        content,
+		Hash:           hex.EncodeToString(sum[:]),
+		EstimatedCost:  estimate,
+		CeilingCredits: ceiling,
+		Quota:          quota,
+		Blocked:        blocked,
+		Notes:          notes,
 	}, nil
 }
 

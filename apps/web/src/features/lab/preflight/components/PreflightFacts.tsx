@@ -17,10 +17,12 @@ function isolationText(strength: string) {
 export function PreflightFacts({
   summary,
   cost,
+  ceiling,
   quota,
 }: {
   summary: PreflightSummary;
   cost: CostEstimate | undefined;
+  ceiling?: number;
   quota: RunQuota | undefined;
 }) {
   return (
@@ -34,6 +36,11 @@ export function PreflightFacts({
           </>
         ) : (
           <>未測量——這個伺服器版本沒有回報預估點數，不代表這次試跑不用點。</>
+        )}
+        {ceiling !== undefined && (
+          <p className="note">
+            開始時會確認點數夠付這次試跑的上限 {ceiling} 點；實際只扣用掉的點數。
+          </p>
         )}
       </dd>
       {quota && (

@@ -28495,6 +28495,11 @@ type RunPermissionSummary struct {
 	// covers what the run is allowed to touch, and a prediction is not a permission. Recalibrating the
 	// numbers against a larger sample must not silently revoke every confirmation a user has outstanding.
 	EstimatedCost RunCostEstimate `json:"estimated_cost"`
+	// The run's spending ceiling in Credit: the amount the balance is checked against when the run starts,
+	// which is what `credit_balance` refuses on. Only what the run actually spends is charged; this is not
+	// a cost and not a hold. Served beside the estimate so a balance that covers the estimate but not the
+	// ceiling is not refused without the number that decided it. Absent when no credit ledger is wired.
+	CeilingCredits OptInt64 `json:"ceiling_credits"`
 	// What the account has left (PDM-010), shown here because it answers the same kind of question
 	// `estimated_cost` does — what this run will use up — and the screen where a user decides to start
 	// one is where that belongs.
@@ -28551,6 +28556,11 @@ func (s *RunPermissionSummary) GetEstimatedCost() RunCostEstimate {
 	return s.EstimatedCost
 }
 
+// GetCeilingCredits returns the value of CeilingCredits.
+func (s *RunPermissionSummary) GetCeilingCredits() OptInt64 {
+	return s.CeilingCredits
+}
+
 // GetQuota returns the value of Quota.
 func (s *RunPermissionSummary) GetQuota() OptRunQuota {
 	return s.Quota
@@ -28579,6 +28589,11 @@ func (s *RunPermissionSummary) SetSummaryHash(val string) {
 // SetEstimatedCost sets the value of EstimatedCost.
 func (s *RunPermissionSummary) SetEstimatedCost(val RunCostEstimate) {
 	s.EstimatedCost = val
+}
+
+// SetCeilingCredits sets the value of CeilingCredits.
+func (s *RunPermissionSummary) SetCeilingCredits(val OptInt64) {
+	s.CeilingCredits = val
 }
 
 // SetQuota sets the value of Quota.

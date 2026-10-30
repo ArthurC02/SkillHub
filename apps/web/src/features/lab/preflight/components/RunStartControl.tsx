@@ -4,17 +4,19 @@ import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { isWriteResultUnknown } from "../../lab.service";
 import type { useConfirmAndStartRun } from "../../lab.service";
 import type { PreflightResponse } from "../../lab.service";
-import { BLOCKED_SENTENCE, startFailureSentence } from "../preflight.model";
+import { blockedSentence, startFailureSentence } from "../preflight.model";
 
 export function RunStartControl({
   start,
   hash,
   blocked,
+  ceiling,
   against,
 }: {
   start: ReturnType<typeof useConfirmAndStartRun>;
   hash: string;
   blocked: PreflightResponse["blocked"];
+  ceiling?: number;
   against?: string;
 }) {
   const runId = start.data?.run_id ?? "";
@@ -65,7 +67,7 @@ export function RunStartControl({
         </>
       ) : blocked ? (
         <p role="alert" className="notice">
-          {BLOCKED_SENTENCE[blocked]}
+          {blockedSentence(blocked, ceiling)}
         </p>
       ) : (
         <>

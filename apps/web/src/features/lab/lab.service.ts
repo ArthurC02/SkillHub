@@ -63,6 +63,7 @@ export interface PreflightResponse {
   summary: PreflightSummary;
   summary_hash: string;
   estimated_cost: CostEstimate;
+  ceiling_credits?: number;
   quota?: RunQuota;
   blocked?:
     | "access_restricted"

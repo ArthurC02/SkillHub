@@ -60252,6 +60252,12 @@ func (s *RunPermissionSummary) encodeFields(e *jx.Encoder) {
 		s.EstimatedCost.Encode(e)
 	}
 	{
+		if s.CeilingCredits.Set {
+			e.FieldStart("ceiling_credits")
+			s.CeilingCredits.Encode(e)
+		}
+	}
+	{
 		if s.Quota.Set {
 			e.FieldStart("quota")
 			s.Quota.Encode(e)
@@ -60273,13 +60279,14 @@ func (s *RunPermissionSummary) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfRunPermissionSummary = [6]string{
+var jsonFieldsNameOfRunPermissionSummary = [7]string{
 	0: "summary",
 	1: "summary_hash",
 	2: "estimated_cost",
-	3: "quota",
-	4: "blocked",
-	5: "notes",
+	3: "ceiling_credits",
+	4: "quota",
+	5: "blocked",
+	6: "notes",
 }
 
 // Decode decodes RunPermissionSummary from json.
@@ -60323,6 +60330,16 @@ func (s *RunPermissionSummary) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"estimated_cost\"")
 			}
+		case "ceiling_credits":
+			if err := func() error {
+				s.CeilingCredits.Reset()
+				if err := s.CeilingCredits.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"ceiling_credits\"")
+			}
 		case "quota":
 			if err := func() error {
 				s.Quota.Reset()
@@ -60344,7 +60361,7 @@ func (s *RunPermissionSummary) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"blocked\"")
 			}
 		case "notes":
-			requiredBitSet[0] |= 1 << 5
+			requiredBitSet[0] |= 1 << 6
 			if err := func() error {
 				s.Notes = make([]string, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -60373,7 +60390,7 @@ func (s *RunPermissionSummary) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b00100111,
+		0b01000111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

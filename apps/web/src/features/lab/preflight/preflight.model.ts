@@ -31,6 +31,19 @@ export const SCRIPT_LABEL: Record<PreflightSummary["scripts"]["status"], string>
   unavailable: "未知(套件無法讀取,未完成掃描)",
 };
 
+export function runCeilingCredits(value: unknown): number | undefined {
+  return Number.isInteger(value) && (value as number) > 0 ? (value as number) : undefined;
+}
+
+export function blockedSentence(
+  blocked: NonNullable<PreflightResponse["blocked"]>,
+  ceiling: number | undefined,
+): string {
+  if (blocked === "credit_balance" && ceiling !== undefined)
+    return `點數不夠這次試跑的上限 ${ceiling} 點，不能開始；實際只扣用掉的點數，但開始前餘額要夠付上限。請聯絡管理者為這個帳號加點；加點後重新整理這一頁就能開始。`;
+  return BLOCKED_SENTENCE[blocked];
+}
+
 export const BLOCKED_SENTENCE: Record<NonNullable<PreflightResponse["blocked"]>, string> = {
   access_restricted:
     "這個小工具的來源授權還在審查中,審查期間不能試跑。授權審查完成後這一頁就會讓你開始。",

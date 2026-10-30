@@ -10,7 +10,7 @@ import { PreflightShell } from "./components/PreflightShell";
 import { PreflightFacts } from "./components/PreflightFacts";
 import { RunStartControl } from "./components/RunStartControl";
 import { ApiError } from "../../../core/api/client";
-import { NOT_INVITED_SENTENCE } from "./preflight.model";
+import { NOT_INVITED_SENTENCE, runCeilingCredits } from "./preflight.model";
 import "./RunPreflight.page.css";
 
 type RunPreflightParams = { skillId?: string; testCaseId?: string };
@@ -160,12 +160,13 @@ function Preflight({ skill, linkedVersion, testCase, against }: PreflightProps) 
     blocked,
     notes,
   } = preflight.data;
+  const ceiling = runCeilingCredits(preflight.data.ceiling_credits);
 
   return (
     <PreflightShell {...shellProps}>
       <p>以下是這次試跑可以接觸的範圍。確認後才會開始執行。</p>
 
-      <PreflightFacts summary={summary} cost={cost} quota={quota} />
+      <PreflightFacts summary={summary} cost={cost} ceiling={ceiling} quota={quota} />
 
       {notes.map((n) => (
         <p key={n} className="notice">
@@ -173,7 +174,13 @@ function Preflight({ skill, linkedVersion, testCase, against }: PreflightProps) 
         </p>
       ))}
 
-      <RunStartControl start={start} hash={hash} blocked={blocked} against={against} />
+      <RunStartControl
+        start={start}
+        hash={hash}
+        blocked={blocked}
+        ceiling={ceiling}
+        against={against}
+      />
     </PreflightShell>
   );
 }

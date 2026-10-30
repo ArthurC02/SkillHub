@@ -67,6 +67,16 @@ export interface RunPermissionSummary {
      */
     estimatedCost: RunCostEstimate;
     /**
+     * The run's spending ceiling in Credit: the amount the balance is
+     * checked against when the run starts, which is what `credit_balance`
+     * refuses on. Only what the run actually spends is charged; this is
+     * not a cost and not a hold. Served beside the estimate so a balance
+     * that covers the estimate but not the ceiling is not refused without
+     * the number that decided it. Absent when no credit ledger is wired.
+     * 
+     */
+    ceilingCredits?: number;
+    /**
      * What the account has left (PDM-010), shown here because it answers
      * the same kind of question `estimated_cost` does — what this run will
      * use up — and the screen where a user decides to start one is where
@@ -173,6 +183,7 @@ export function RunPermissionSummaryFromJSONTyped(json: any, ignoreDiscriminator
         'summary': RunPermissionSummaryContentFromJSON(json['summary']),
         'summaryHash': json['summary_hash'],
         'estimatedCost': RunCostEstimateFromJSON(json['estimated_cost']),
+        'ceilingCredits': json['ceiling_credits'] == null ? undefined : json['ceiling_credits'],
         'quota': json['quota'] == null ? undefined : RunQuotaFromJSON(json['quota']),
         'blocked': json['blocked'] == null ? undefined : json['blocked'],
         'notes': json['notes'],
@@ -193,6 +204,7 @@ export function RunPermissionSummaryToJSONTyped(value?: RunPermissionSummary | n
         'summary': RunPermissionSummaryContentToJSON(value['summary']),
         'summary_hash': value['summaryHash'],
         'estimated_cost': RunCostEstimateToJSON(value['estimatedCost']),
+        'ceiling_credits': value['ceilingCredits'],
         'quota': RunQuotaToJSON(value['quota']),
         'blocked': value['blocked'],
         'notes': value['notes'],

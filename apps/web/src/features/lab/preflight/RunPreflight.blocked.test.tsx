@@ -106,6 +106,41 @@ test("an empty balance is named on the summary and tells the user who adds credi
   );
 });
 
+test("a balance short of the run's ceiling names the ceiling it was checked against", async () => {
+  platformWithPreflight({ blocked: "credit_balance", ceiling_credits: 600 });
+  const shown = await renderPreflight();
+
+  expect(startButton()).toBe(undefined);
+  expect(container.querySelector('[role="alert"].notice')?.textContent).toBe(
+    "點數不夠這次試跑的上限 600 點，不能開始；實際只扣用掉的點數，但開始前餘額要夠付上限。請聯絡管理者為這個帳號加點；加點後重新整理這一頁就能開始。",
+  );
+  expect(shown).toContain("開始時會確認點數夠付這次試跑的上限 600 點；實際只扣用掉的點數。");
+});
+
+test.each([
+  ["absent", undefined],
+  ["zero", 0],
+  ["negative", -1],
+  ["fractional", 1.5],
+  ["a string", "600"],
+])("an unusable ceiling (%s) is not stated as a number", async (_, ceiling) => {
+  platformWithPreflight({ blocked: "credit_balance", ceiling_credits: ceiling });
+  const shown = await renderPreflight();
+
+  expect(shown).not.toContain("的上限");
+  expect(shown).toContain(
+    "點數不足,不能開始這次試跑。請聯絡管理者為這個帳號加點;加點後重新整理這一頁就能開始。",
+  );
+});
+
+test("a run the balance covers still says what the balance is checked against", async () => {
+  platformWithPreflight({ ceiling_credits: 1 });
+  const shown = await renderPreflight();
+
+  expect(startButton()).toBeDefined();
+  expect(shown).toContain("開始時會確認點數夠付這次試跑的上限 1 點；實際只扣用掉的點數。");
+});
+
 test("a platform budget that cannot cover the run names when it recovers and offers no button", async () => {
   platformWithPreflight({ blocked: "platform_model_budget" });
   const shown = await renderPreflight();

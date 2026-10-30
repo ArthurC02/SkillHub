@@ -11195,6 +11195,17 @@ components:
             touch*, and a prediction is not a permission. Recalibrating the
             numbers against a larger sample must not silently revoke every
             confirmation a user has outstanding.
+        ceiling_credits:
+          type: integer
+          format: int64
+          minimum: 0
+          description: |
+            The run's spending ceiling in Credit: the amount the balance is
+            checked against when the run starts, which is what `credit_balance`
+            refuses on. Only what the run actually spends is charged; this is
+            not a cost and not a hold. Served beside the estimate so a balance
+            that covers the estimate but not the ceiling is not refused without
+            the number that decided it. Absent when no credit ledger is wired.
         quota:
           allOf:
             - $ref: "#/components/schemas/RunQuota"
