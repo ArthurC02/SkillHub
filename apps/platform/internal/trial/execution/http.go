@@ -487,13 +487,14 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	gate := h.Svc.DispatchGate()
 	out := make([]runListItem, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, runListItem{
 			Evaluation:     verdicts[pgconv.UUIDString(row.ID)],
 			RunID:          pgconv.UUIDString(row.ID),
 			Status:         row.Status,
-			StatusReason:   row.StatusReason,
+			StatusReason:   gate.ExplainQueued(r.Context(), row.Status, row.StatusReason),
 			SkillID:        pgconv.UUIDString(row.SkillID),
 			SkillName:      row.SkillName,
 			SkillVersionID: pgconv.UUIDString(row.SkillVersionID),
@@ -630,6 +631,7 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := toRunResponse(run)
+	resp.StatusReason = h.Svc.DispatchGate().ExplainQueued(r.Context(), resp.Status, resp.StatusReason)
 	if !h.fillLinkage(w, r, ws.ID, runID, &resp) {
 		return
 	}

@@ -79,8 +79,14 @@ func NewTraceService(pool *pgxpool.Pool, signer *trace.Signer, runs *run.Service
 		Pool: pool, Signer: signer,
 		ReadRunState: func(ctx context.Context, workspaceID, runID pgtype.UUID) (trace.RunState, bool, error) {
 			state, found, err := reads.TraceRun(ctx, workspaceID, runID)
+			reason := state.StatusReason
+			if reason == nil {
+				if queued := runs.DispatchGate().ExplainQueued(ctx, state.Status, ""); queued != "" {
+					reason = &queued
+				}
+			}
 			return trace.RunState{
-				Status: state.Status, StatusReason: state.StatusReason, Started: state.Started,
+				Status: state.Status, StatusReason: reason, Started: state.Started,
 			}, found, err
 		},
 		ReadIngestRunState: func(ctx context.Context, runID pgtype.UUID) (trace.IngestRunState, bool, error) {

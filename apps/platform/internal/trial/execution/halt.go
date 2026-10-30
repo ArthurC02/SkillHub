@@ -10,12 +10,15 @@ import (
 	"unicode/utf8"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	limits "github.com/ArthurC02/skillhub/apps/platform/internal/shared/contractlimits/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/halt"
 )
 
 var ErrDispatchHalted = errors.New("the execution environment is temporarily unavailable")
+
+const messageQueuedWhileDispatchPaused = "平台暫時停止開始新的試跑；恢復後這次試跑會自動開始，不必重新送出。"
 
 func (s *Service) halts() halt.Ledger { return halt.Ledger{Pool: s.Pool} }
 
@@ -47,6 +50,13 @@ func (g DispatchGate) ModelCallsHalted(ctx context.Context) bool {
 
 func (g DispatchGate) Paused(ctx context.Context) bool {
 	return g.ledger.FailClosed(ctx).DispatchPaused(g.providers())
+}
+
+func (g DispatchGate) ExplainQueued(ctx context.Context, status, reason string) string {
+	if status != string(gen.RunStatusQueued) || reason != "" || !g.Paused(ctx) {
+		return reason
+	}
+	return messageQueuedWhileDispatchPaused
 }
 
 func (g DispatchGate) heldWithin(ctx context.Context, from, to time.Time) time.Duration {

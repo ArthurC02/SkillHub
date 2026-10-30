@@ -1073,6 +1073,10 @@ type CancelRunAccepted struct {
 	// workload (`state_reason` on the provider contract), and the platform does not rewrite another
 	// system's words — so a reader can meet an English sentence here, and that is the mark of a relayed
 	// one.
+	//
+	// While dispatch is paused, a queued run with no reason of its own carries the platform's sentence
+	// saying so: the run keeps its place and starts by itself once dispatch resumes, so it is not
+	// resubmitted.
 	StatusReason OptString `json:"status_reason"`
 	// The skill the version belongs to. Served rather than left to the client to work out: applying
 	// improvement suggestions posts to POST /skills/{id}/versions/from-suggestions, and a run page that
@@ -26799,6 +26803,10 @@ type Run struct {
 	// workload (`state_reason` on the provider contract), and the platform does not rewrite another
 	// system's words — so a reader can meet an English sentence here, and that is the mark of a relayed
 	// one.
+	//
+	// While dispatch is paused, a queued run with no reason of its own carries the platform's sentence
+	// saying so: the run keeps its place and starts by itself once dispatch resumes, so it is not
+	// resubmitted.
 	StatusReason OptString `json:"status_reason"`
 	// The skill the version belongs to. Served rather than left to the client to work out: applying
 	// improvement suggestions posts to POST /skills/{id}/versions/from-suggestions, and a run page that
@@ -28011,6 +28019,10 @@ type RunListItem struct {
 	// workload (`state_reason` on the provider contract), and the platform does not rewrite another
 	// system's words — so a reader can meet an English sentence here, and that is the mark of a relayed
 	// one.
+	//
+	// While dispatch is paused, a queued run with no reason of its own carries the platform's sentence
+	// saying so: the run keeps its place and starts by itself once dispatch resumes, so it is not
+	// resubmitted.
 	StatusReason OptString `json:"status_reason"`
 	SkillID      uuid.UUID `json:"skill_id"`
 	// Joined into the row rather than resolved per item by the client: a history page is the one place
