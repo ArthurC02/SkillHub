@@ -2,6 +2,12 @@
 
 Notable changes to the Domain Memory plugin, newest first. The format follows Keep a Changelog, and versions follow Semantic Versioning: a minor version adds or changes behavior, a patch version only fixes it. Versions before 0.10.0 are recorded in the repository history only.
 
+## 6.1.2
+
+### Fixed
+
+- `quality-gates` lists shipped Git hooks in path order, so filesystem traversal order cannot change the report or fail the recorded-output check. Installed hooks remain separate, and shipped hooks still report `enabled: false`.
+
 ## 6.1.1
 
 ### Fixed
