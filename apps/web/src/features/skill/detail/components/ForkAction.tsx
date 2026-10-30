@@ -2,13 +2,11 @@ import { useEffect, useRef, type RefObject } from "react";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { Link } from "@tanstack/react-router";
 import { ApiError, isWriteResultUnknown } from "../../../../core/api/client";
-import { useForkSkill, useSkillVersions } from "../../skills.service";
+import { useForkSkill, useOwnCopiesOf, useSkillVersions } from "../../skills.service";
 import { SignInAction } from "../../../../shared/ui/SignIn";
 import { useUninvited } from "../../../../core/session/me.service";
 
 const FORK_UNINVITED_REASON_ID = "fork-uninvited-reason";
-
-export const FORK_BUTTON_LABEL = "以這個小工具為起點建立我自己的";
 
 function forkErrorMessage(error: unknown): string {
   if (isWriteResultUnknown(error))
@@ -43,8 +41,19 @@ function ForkControl({ skillId, available }: Omit<ForkContext, "isLoggedIn">) {
   const uncertain = fork.isError && isWriteResultUnknown(fork.error);
   const trigger = useRef<HTMLButtonElement>(null);
   const uninvited = useUninvited();
+  const copies = useOwnCopiesOf(skillId);
   return (
     <div>
+      {copies.length > 0 && !fork.isSuccess && (
+        <p className="note">
+          你的工作區已經有這個小工具的複本：
+          <Link to="/skills/$skillId" params={{ skillId: copies[0].skill_id }}>
+            {copies[0].name}
+          </Link>
+          {copies.length > 1 ? `（共 ${copies.length} 份）` : ""}
+          。要打包、試跑或修改，直接用它；再按一次會另外建立一份。
+        </p>
+      )}
       <button
         ref={trigger}
         type="button"
@@ -62,7 +71,7 @@ function ForkControl({ skillId, available }: Omit<ForkContext, "isLoggedIn">) {
             ? "已建立自己的版本"
             : uncertain
               ? "重新送出複製請求"
-              : FORK_BUTTON_LABEL}
+              : "以這個小工具為起點建立我自己的"}
       </button>
       {uninvited && (
         <p className="note" id={FORK_UNINVITED_REASON_ID}>

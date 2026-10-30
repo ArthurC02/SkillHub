@@ -1,15 +1,15 @@
 import { Loading } from "../../../../shared/ui/Loading";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { Link } from "@tanstack/react-router";
-import { useSkillVersions } from "../../skills.service";
+import { useOwnCopiesOf, useSkillVersions } from "../../skills.service";
 import { SignInAction } from "../../../../shared/ui/SignIn";
-import { FORK_BUTTON_LABEL } from "./ForkAction";
 
 // Ownership signal is the (workspace-scoped) versions list, empty for a non-owner —
 // not skill.version, which is present for every caller including the catalogue.
 // Own component (not inlined) so the page's early returns can't shift hook order.
 export function TrialEntry({ skillId, isLoggedIn }: { skillId: string; isLoggedIn: boolean }) {
   const versions = useSkillVersions(skillId);
+  const copies = useOwnCopiesOf(skillId, isLoggedIn);
 
   if (!isLoggedIn)
     return (
@@ -37,6 +37,19 @@ export function TrialEntry({ skillId, isLoggedIn }: { skillId: string; isLoggedI
     );
 
   const versionId = versions.data?.versions[0]?.version_id;
+  if (!versionId && copies.length > 0)
+    return (
+      <section>
+        <h2>試跑</h2>
+        <p>
+          這個小工具不在你的工作區，但你已經有一份複本：
+          <Link to="/skills/$skillId" params={{ skillId: copies[0].skill_id }}>
+            {copies[0].name}
+          </Link>
+          ，到它的頁面寫測試題並試跑。
+        </p>
+      </section>
+    );
 
   return (
     <section>
@@ -56,7 +69,7 @@ export function TrialEntry({ skillId, isLoggedIn }: { skillId: string; isLoggedI
         <p>
           這個小工具不在你的工作區。測試題屬於工作區，所以測試題清單裡看不到它、建立表單的小工具選單也選不到它——
           <strong>要先複製一份</strong>
-          ，才會有屬於你的版本可以試跑。下方的「{FORK_BUTTON_LABEL}」就是那一步。
+          ，才會有屬於你的版本可以試跑。下方的「複製一份到你的工作區」就是那一步。
         </p>
       )}
     </section>

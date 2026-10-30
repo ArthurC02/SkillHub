@@ -310,11 +310,20 @@ export function useEmbeddedSkillVersions(skillIds: string[]) {
   });
 }
 
-export function useOwnSkills() {
+export function useOwnSkills(enabled = true) {
   return useQuery({
     queryKey: queryKeys.skills.own,
     queryFn: () => apiFetch<OwnSkills>("/skills"),
+    enabled,
   });
+}
+
+export function useOwnCopiesOf(skillId: string, enabled = true) {
+  const own = useOwnSkills(enabled);
+  const source = skillId.toLowerCase();
+  return (own.data?.skills ?? []).filter(
+    (skill) => skill.forked_from_skill_id?.toLowerCase() === source,
+  );
 }
 
 export const OWN_SKILL_PAGE_SIZE = 24;

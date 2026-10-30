@@ -230,7 +230,39 @@ test("a successful 複製一份 hands off to the exact created version and canno
   );
 });
 
-test("the copy-first notes name the fork button by the label it actually carries", async () => {
+test("a catalog skill already copied into the workspace points at that copy instead of asking for another", async () => {
+  const copy = {
+    ...detailBody(),
+    skill_id: "abcdef01-2345-4789-abcd-0123456789ab",
+    name: "PDF Summariser-fork",
+    forked_from_skill_id: SKILL,
+  };
+  vi.stubGlobal("fetch", (input: string) => {
+    const path = String(input)
+      .replace(/^https?:\/\/[^/]+/, "")
+      .split("?")[0];
+    if (path === "/me") return json(ME);
+    if (path === "/skills") return json({ skills: [copy], limit: 100, truncated: false, total: 1 });
+    if (path.endsWith("/versions")) return json({ ...SKILL_VERSIONS, versions: [] });
+    if (path.startsWith("/api/skills/")) return json(detailBody());
+    return json({ error: "not found" }, 404);
+  });
+  await render(<SkillDetail />, () => text().includes("已經有這個小工具的複本"));
+
+  const links = Array.from(container.querySelectorAll("a")).filter(
+    (link) => link.textContent === "PDF Summariser-fork",
+  );
+  expect(links.map((link) => link.getAttribute("href"))).toEqual([
+    "/skills/abcdef01-2345-4789-abcd-0123456789ab",
+    "/skills/abcdef01-2345-4789-abcd-0123456789ab",
+    "/skills/abcdef01-2345-4789-abcd-0123456789ab",
+  ]);
+  expect(text()).toContain("到它的頁面打包並下載");
+  expect(text()).toContain("到它的頁面寫測試題並試跑");
+  expect(text()).not.toContain("要先複製一份");
+});
+
+test("the copy-first notes name the fork section by the heading it actually carries", async () => {
   vi.stubGlobal("fetch", (input: string) => {
     const path = String(input)
       .replace(/^https?:\/\/[^/]+/, "")
@@ -243,9 +275,9 @@ test("the copy-first notes name the fork button by the label it actually carries
   await render(<SkillDetail />, () => text().includes("要先複製一份"));
 
   const named = [...text().matchAll(/「([^」]+)」就是那一步/g)].map((match) => match[1]);
-  const buttons = Array.from(container.querySelectorAll("button")).map((b) => b.textContent);
+  const headings = Array.from(container.querySelectorAll("h2,h3")).map((h) => h.textContent);
   expect(named.length).toBeGreaterThanOrEqual(2);
-  for (const label of named) expect(buttons).toContain(label);
+  for (const label of named) expect(headings).toContain(label);
 });
 
 for (const change of ["another skill", "signed-out return"]) {

@@ -1,10 +1,9 @@
 import { Loading } from "../../../../shared/ui/Loading";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { Link } from "@tanstack/react-router";
-import { useSkillVersions } from "../../skills.service";
+import { useOwnCopiesOf, useSkillVersions } from "../../skills.service";
 import { SignInAction } from "../../../../shared/ui/SignIn";
 import type { SkillDetail as SkillDetailModel } from "../../../../core/api/types";
-import { FORK_BUTTON_LABEL } from "./ForkAction";
 
 export function PackagingEntry({
   skill,
@@ -14,6 +13,7 @@ export function PackagingEntry({
   isLoggedIn: boolean;
 }) {
   const versions = useSkillVersions(skill.skill_id);
+  const copies = useOwnCopiesOf(skill.skill_id, isLoggedIn);
 
   if (!isLoggedIn)
     return (
@@ -24,11 +24,21 @@ export function PackagingEntry({
     );
   if (versions.isPending) return <Loading what="這個小工具在你工作區的版本" />;
   if (versions.error) return <ReadFailure error={versions.error} what="這個小工具的版本" />;
+  if ((versions.data?.versions.length ?? 0) === 0 && copies.length > 0)
+    return (
+      <p className="note">
+        這個小工具不在你的工作區，但你已經有一份複本：
+        <Link to="/skills/$skillId" params={{ skillId: copies[0].skill_id }}>
+          {copies[0].name}
+        </Link>
+        ，到它的頁面打包並下載。
+      </p>
+    );
   if ((versions.data?.versions.length ?? 0) === 0)
     return (
       <p className="note">
         這個小工具不在你的工作區，所以沒有屬於你的版本可以打包。
-        <strong>要先複製一份</strong>——旁邊的「{FORK_BUTTON_LABEL}」就是那一步。
+        <strong>要先複製一份</strong>——旁邊的「複製一份到你的工作區」就是那一步。
       </p>
     );
 
