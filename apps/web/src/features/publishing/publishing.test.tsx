@@ -838,6 +838,90 @@ for (const source of ["skills", "detail", "versions"] as const) {
   }
 }
 
+for (const focus of ["new member", "edited field"]) {
+  test(`Bundle pagination waits for member facts before continuing focus to the ${focus}`, async () => {
+    publishingSearch = { bundleVersion: VERSION };
+    const lastId = "a0000000-0000-4000-8000-000000000024";
+    const base = (platformResponse("/skills").body as { skills: object[] }).skills[0];
+    const rows = Array.from({ length: 25 }, (_, index) => ({
+      ...base,
+      skill_id: index === 0 ? SKILL : `a0000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
+    }));
+    let finishDetails!: () => void;
+    let finishVersions!: () => void;
+    const details = new Promise<void>((resolve) => {
+      finishDetails = resolve;
+    });
+    const versions = new Promise<void>((resolve) => {
+      finishVersions = resolve;
+    });
+    let waiting = 0;
+    vi.stubGlobal("fetch", (input: string) => {
+      const url = new URL(String(input), "http://localhost");
+      if (url.pathname === "/skills") {
+        const offset = Number(url.searchParams.get("offset"));
+        return json({
+          skills: rows.slice(offset, offset + 24),
+          limit: 24,
+          total: 25,
+          truncated: offset === 0,
+        });
+      }
+      const response = platformResponse(String(input));
+      if (
+        url.pathname === `/api/skills/${lastId}` ||
+        url.pathname === `/skills/${lastId}/versions`
+      ) {
+        waiting++;
+        return (url.pathname.endsWith("/versions") ? versions : details).then(() =>
+          json(response.body, response.status),
+        );
+      }
+      return json(response.body, response.status);
+    });
+    const more = () =>
+      Array.from(container.querySelectorAll<HTMLButtonElement>("#bundle-workspace button")).find(
+        (button) => button.textContent === "載入更多小工具",
+      );
+    const last = () => container.querySelector<HTMLSelectElement>(`#bundle-member-${lastId}`);
+    try {
+      await render(
+        <PublishingWorkspace />,
+        () => document.activeElement?.getAttribute("data-bundle-version") === VERSION,
+      );
+      await act(async () => {
+        more()!.focus();
+        more()!.click();
+      });
+      await waitFor(() => waiting === 2);
+      await act(async () => finishDetails());
+      await waitFor(() => last() !== null);
+      expect(last()?.disabled).toBe(true);
+      expect(document.activeElement).toBe(document.body);
+      const name = container.querySelector<HTMLInputElement>(".bundle-form input")!;
+      if (focus === "edited field") {
+        await act(async () => {
+          name.focus();
+          Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
+            name,
+            "continued-bundle",
+          );
+          name.dispatchEvent(new Event("input", { bubbles: true }));
+        });
+      }
+      await act(async () => finishVersions());
+      await pollUntil(() => last()?.disabled === false, text, DEFAULT_WAIT_MS, {
+        flushBeforeFirstCheck: true,
+      });
+      expect(document.activeElement).toBe(focus === "edited field" ? name : last());
+      expect(name.value).toBe(focus === "edited field" ? "continued-bundle" : "");
+    } finally {
+      finishDetails();
+      finishVersions();
+    }
+  });
+}
+
 for (const scenario of [
   { name: "complete with every member", partial: false, missing: false, enabled: true },
   { name: "partial with every member", partial: true, missing: false, enabled: true },

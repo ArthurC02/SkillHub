@@ -6,6 +6,7 @@ import { Timestamp } from "../../../shared/ui/Timestamp";
 import { ListFreshness } from "../../../shared/ui/ListFreshness";
 import { ConfirmDelete } from "../../../shared/ui/ConfirmDelete";
 import { useContinuationFocus } from "../../../shared/ui/useContinuationFocus";
+import { usePaginationFocus } from "../../../shared/ui/usePaginationFocus";
 import { API_BASE_URL, canRetainLoadedPage } from "../../../core/api/client";
 import type { SkillVersionSummary } from "../../../core/api/types";
 import {
@@ -43,6 +44,11 @@ interface ContinuationChoice {
   memberVersion: SkillVersionSummary;
 }
 
+interface MemberFocus {
+  skillId: string;
+  bindTarget: (element: HTMLElement | null) => void;
+}
+
 function continuationFor(choices: MemberChoice[], selectedVersion?: string) {
   return choices
     .flatMap((choice) => choice.versions.map((memberVersion) => ({ choice, memberVersion })))
@@ -50,6 +56,7 @@ function continuationFor(choices: MemberChoice[], selectedVersion?: string) {
 }
 
 function useMemberChoices(): {
+  query: ReturnType<typeof useOwnSkillPages>;
   choices: MemberChoice[];
   isPending: boolean;
   paused: boolean;
@@ -58,7 +65,6 @@ function useMemberChoices(): {
   refresh: () => Promise<unknown>;
   fetching: boolean;
   hasNextPage: boolean;
-  fetchNextPage: () => void;
   fetchingNextPage: boolean;
   loaded: number;
 } {
@@ -88,6 +94,7 @@ function useMemberChoices(): {
   });
 
   return {
+    query: ownSkills,
     choices,
     isPending: queries.some((query) => query.isPending || query.fetchStatus !== "idle"),
     paused: queries.some((query) => query.fetchStatus === "paused"),
@@ -108,7 +115,6 @@ function useMemberChoices(): {
       }
     },
     hasNextPage: ownSkills.hasNextPage,
-    fetchNextPage: () => void ownSkills.fetchNextPage(),
     fetchingNextPage: ownSkills.isFetchingNextPage,
     loaded: loadedSkills?.skills.length ?? 0,
   };
@@ -125,6 +131,14 @@ export function BundleSection({ selectedVersion }: { selectedVersion?: string })
     error: choicesError,
     hasNextPage: hasMoreChoices,
   } = memberRead;
+  const { headingRef, loadMore, bindTarget, row } = usePaginationFocus(
+    {
+      ...memberRead.query,
+      fetchStatus: memberRead.paused ? "paused" : choicesPending ? "fetching" : "idle",
+      error: choicesError,
+    },
+    choices,
+  );
   const groupedBundles = useMemo(() => {
     const groups = new Map<string, BundleVersion[]>();
     for (const bundle of readableBundles?.bundles ?? []) {
@@ -154,14 +168,20 @@ export function BundleSection({ selectedVersion }: { selectedVersion?: string })
 
   return (
     <section id="bundle-workspace">
-      <h2 id="bundle-workspace-heading" tabIndex={-1}>
+      <h2 id="bundle-workspace-heading" tabIndex={-1} ref={headingRef}>
         Bundle
       </h2>
       <p className="note">
         每個 Bundle 是一個持續營運的產品單位；版本是不可變快照，最新建立版本不一定等於目前公開的
         Release。
       </p>
-      <BundleReadStatus bundles={bundles} overview={overview} members={memberRead} />
+      <BundleReadStatus
+        bundles={bundles}
+        overview={overview}
+        members={memberRead}
+        loadMore={loadMore}
+        buttonRef={bindTarget}
+      />
 
       {readableBundles &&
         (groupedBundles.length === 0 ? (
@@ -184,6 +204,7 @@ export function BundleSection({ selectedVersion }: { selectedVersion?: string })
         ))}
 
       <BundleCreationSection
+        memberFocus={row ? { skillId: row.skillId, bindTarget } : undefined}
         selectedVersion={selectedVersion}
         choices={choices}
         choicesPending={choicesPending}
@@ -198,10 +219,14 @@ function BundleReadStatus({
   bundles,
   overview,
   members,
+  loadMore,
+  buttonRef,
 }: {
   bundles: ReturnType<typeof useOwnBundles>;
   overview: ReturnType<typeof useOwnBundleOverview>;
   members: ReturnType<typeof useMemberChoices>;
+  loadMore: () => void;
+  buttonRef: (element: HTMLButtonElement | null) => void;
 }) {
   const readableBundles = bundles.error ? undefined : bundles.data;
   const lists = [bundles, overview];
@@ -250,7 +275,8 @@ function BundleReadStatus({
           type="button"
           disabled={members.fetchingNextPage || members.paused}
           aria-describedby={members.paused ? "bundle-members-read-status" : undefined}
-          onClick={members.fetchNextPage}
+          onClick={loadMore}
+          ref={buttonRef}
         >
           {members.fetchingNextPage ? "載入中…" : "載入更多小工具"}
         </button>
@@ -638,12 +664,14 @@ function BundleActionFeedback({
 }
 
 function BundleCreationSection({
+  memberFocus,
   selectedVersion,
   choices,
   choicesPending,
   choicesError,
   hasMoreChoices,
 }: {
+  memberFocus?: MemberFocus;
   selectedVersion?: string;
   choices: MemberChoice[];
   choicesPending: boolean;
@@ -669,6 +697,7 @@ function BundleCreationSection({
               : "建立第一個 Bundle"}
         </summary>
         <CreateBundleForm
+          memberFocus={memberFocus}
           choices={choices}
           choicesPending={choicesPending}
           choicesError={choicesError}
@@ -681,12 +710,14 @@ function BundleCreationSection({
 }
 
 function CreateBundleForm({
+  memberFocus,
   choices,
   choicesPending,
   choicesError,
   hasMoreChoices,
   selectedVersion,
 }: {
+  memberFocus?: MemberFocus;
   choices: MemberChoice[];
   choicesPending: boolean;
   choicesError: Error | null;
@@ -779,6 +810,7 @@ function CreateBundleForm({
         pending={create.isPending}
       />
       <BundleMemberChoices
+        memberFocus={memberFocus}
         choices={choices}
         choicesReady={choicesReady}
         hasMoreChoices={hasMoreChoices}
@@ -915,6 +947,7 @@ function BundleIdentityFields({
 }
 
 function BundleMemberChoices({
+  memberFocus,
   choices,
   choicesReady,
   hasMoreChoices,
@@ -925,6 +958,7 @@ function BundleMemberChoices({
   onSelect,
   pending,
 }: {
+  memberFocus?: MemberFocus;
   choices: MemberChoice[];
   choicesReady: boolean;
   hasMoreChoices: boolean;
@@ -957,7 +991,13 @@ function BundleMemberChoices({
           <label htmlFor={`bundle-member-${choice.skillId}`}>{choice.name}</label>
           <select
             id={`bundle-member-${choice.skillId}`}
-            ref={continuation?.choice.skillId === choice.skillId ? continuationSelect : undefined}
+            ref={
+              memberFocus?.skillId === choice.skillId
+                ? memberFocus.bindTarget
+                : continuation?.choice.skillId === choice.skillId
+                  ? continuationSelect
+                  : undefined
+            }
             value={selected.get(choice.skillId) ?? ""}
             onChange={(event) => onSelect(choice.skillId, event.target.value)}
             disabled={!choicesReady || pending}
