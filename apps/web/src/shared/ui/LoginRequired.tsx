@@ -44,7 +44,8 @@ export function ReadFailure({
     <>
       {children || (
         <p role="alert">
-          {rateLimitedSentence(error) ?? `暫時無法讀取${what}。請再試一次，或稍後再試。`}
+          {`暫時無法讀取${what}。`}
+          {rateLimitedSentence(error) ?? "請再試一次，或稍後再試。"}
         </p>
       )}
       {retry && (
