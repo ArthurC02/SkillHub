@@ -217,3 +217,18 @@ func TestSessionWorkspaceIDReturnsThePersonalWorkspaceID(t *testing.T) {
 		t.Errorf("id = %v, want %v", got, want.ID)
 	}
 }
+
+func TestALoginRefusedMidPurgeSaysInChineseThatTheAccountIsGoingAway(t *testing.T) {
+	w := httptest.NewRecorder()
+
+	if !writeRefusedLogin(w, ErrAccountPurging) {
+		t.Fatal("a purging account was not refused")
+	}
+
+	if w.Code != http.StatusConflict {
+		t.Fatalf("status = %d, want 409", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), "這個帳號正在永久刪除") {
+		t.Errorf("body = %q, want the plain Chinese reason", w.Body.String())
+	}
+}

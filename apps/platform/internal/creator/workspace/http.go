@@ -651,7 +651,7 @@ func writeGitHubFailure(w http.ResponseWriter, err error, refusal string) {
 func writeRefusedLogin(w http.ResponseWriter, err error) bool {
 	switch {
 	case errors.Is(err, ErrAccountPurging):
-		httpx.WriteError(w, http.StatusConflict, "account deletion is in progress")
+		httpx.WriteError(w, http.StatusConflict, "這個帳號正在永久刪除，刪除已經不可逆，無法再登入")
 	case errors.Is(err, ErrEmailTaken):
 		httpx.WriteError(w, http.StatusConflict, "這個 email 已經被另一個帳號使用，無法用這個帳號登入")
 	default:
