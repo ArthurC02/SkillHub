@@ -70,6 +70,7 @@ for (const outcome of outcomes) {
           await expect(page.getByRole("button", { name: "送出中…", exact: true })).toBeDisabled();
           const search = page.locator('header input[type="search"]');
           if (owner === "header search") await search.fill("下一個任務");
+          const scrollBeforeResult = await page.evaluate(() => scrollY);
           release();
           const result = page.getByRole("group", { name: "操作結果", exact: true });
           const feedback = result.getByRole(outcome.status === 200 ? "status" : "alert");
@@ -90,6 +91,9 @@ for (const outcome of outcomes) {
           await writeFile(info.outputPath("action-feedback-a11y.json"), JSON.stringify(report));
           expect(report.violations).toEqual([]);
           expect(report.incomplete).toEqual([]);
+          if (owner === "header search") {
+            expect(await page.evaluate(() => scrollY)).toBe(scrollBeforeResult);
+          }
           expect(
             await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
           ).toBe(true);

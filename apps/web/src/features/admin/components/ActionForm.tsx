@@ -33,7 +33,7 @@ function ActionFeedback({
           {done}
         </p>
       )}
-      <WriteFailure error={error} />
+      <WriteFailure error={error} reveal={false} />
     </div>
   );
 }
