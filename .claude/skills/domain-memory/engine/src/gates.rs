@@ -375,16 +375,15 @@ fn installed_hooks(root: &Path) -> Result<Vec<Gate>, String> {
 
 fn shipped_hooks(files: &[String], installed: &[Gate]) -> Vec<Gate> {
     let enabled: HashSet<&str> = installed.iter().map(|gate| gate.path.as_str()).collect();
-    files
-        .iter()
-        .filter(|path| {
-            GIT_HOOK_NAMES.contains(&file_name(path)) && !enabled.contains(path.as_str())
-        })
-        .map(|path| Gate {
-            enabled: Some(false),
-            ..Gate::new("hooks", format!("git:{}", file_name(path)), path)
-        })
-        .collect()
+    sorted_where(files, |path| {
+        GIT_HOOK_NAMES.contains(&file_name(path)) && !enabled.contains(path)
+    })
+    .iter()
+    .map(|path| Gate {
+        enabled: Some(false),
+        ..Gate::new("hooks", format!("git:{}", file_name(path)), path)
+    })
+    .collect()
 }
 
 fn ci_gates(root: &Path) -> Vec<Gate> {
@@ -462,4 +461,51 @@ pub fn quality_gates(given: &str) -> Result<Value, String> {
     let standard = if standard { "configured" } else { "none" };
     report.insert("standard", Value::Str(standard.to_string()));
     Ok(Value::Object(report))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Gate, shipped_hooks};
+
+    #[test]
+    fn shipped_hooks_are_ordered_by_path_and_exclude_installed_hooks() {
+        let installed = vec![Gate::new("hooks", "git:pre-commit", "hooks/pre-commit")];
+        for paths in [
+            [
+                "tools/commit-msg",
+                "hooks/pre-push",
+                "hooks/pre-commit",
+                "notes.txt",
+            ],
+            [
+                "notes.txt",
+                "hooks/pre-commit",
+                "hooks/pre-push",
+                "tools/commit-msg",
+            ],
+        ] {
+            let files = paths.map(String::from);
+            let actual: Vec<_> = shipped_hooks(&files, &installed)
+                .into_iter()
+                .map(|gate| (gate.kind, gate.tool, gate.path, gate.enabled))
+                .collect();
+            assert_eq!(
+                actual,
+                vec![
+                    (
+                        "hooks",
+                        "git:pre-push".into(),
+                        "hooks/pre-push".into(),
+                        Some(false)
+                    ),
+                    (
+                        "hooks",
+                        "git:commit-msg".into(),
+                        "tools/commit-msg".into(),
+                        Some(false)
+                    ),
+                ]
+            );
+        }
+    }
 }

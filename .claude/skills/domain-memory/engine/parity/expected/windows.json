@@ -2144,11 +2144,6 @@
    "stderr": "ERROR: invalid JSON: {fixture}\\changes\\p1\\domain-change-proposal.json\n",
    "stdout": ""
   },
-  "quality-gates installed hooks and shipped hooks are told apart": {
-   "exit": 0,
-   "stderr": "",
-   "stdout": "{\n  \"format\": \"domain-memory-quality-gates/v1\",\n  \"gates\": [\n    {\n      \"kind\": \"hooks\",\n      \"tool\": \"git:commit-msg\",\n      \"path\": \".git/hooks/commit-msg\"\n    },\n    {\n      \"kind\": \"hooks\",\n      \"tool\": \"git:pre-commit\",\n      \"path\": \".git/hooks/pre-commit\"\n    },\n    {\n      \"kind\": \"hooks\",\n      \"tool\": \"git:pre-push\",\n      \"path\": \"hooks/pre-push\",\n      \"enabled\": false\n    },\n    {\n      \"kind\": \"hooks\",\n      \"tool\": \"git:commit-msg\",\n      \"path\": \"tools/commit-msg\",\n      \"enabled\": false\n    }\n  ],\n  \"kinds_present\": [\n    \"hooks\"\n  ],\n  \"kinds_missing\": [\n    \"lint\",\n    \"types\",\n    \"architecture\",\n    \"tests\",\n    \"ci\"\n  ],\n  \"test_files\": 0,\n  \"standard\": \"none\"\n}\n"
-  },
   "quality-gates refuses a repository root that is a file": {
    "exit": 1,
    "stderr": "ERROR: repository root is not a directory: {fixture}\\readme.md\n",

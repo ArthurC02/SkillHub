@@ -14,11 +14,11 @@ function failureMessage(error: unknown): string {
   return "無法確認操作是否完成；請先重新整理目前狀態，再決定是否重試。";
 }
 
-export function WriteFailure({ error }: { error: unknown }) {
+export function WriteFailure({ error, reveal = true }: { error: unknown; reveal?: boolean }) {
   const alert = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
-    if (error) alert.current?.scrollIntoView?.({ block: "nearest" });
-  }, [error]);
+    if (error && reveal) alert.current?.scrollIntoView?.({ block: "nearest" });
+  }, [error, reveal]);
   return (
     <ReadFailure error={error} what="這個動作的結果">
       <p role="alert" ref={alert}>
