@@ -88,6 +88,7 @@ function stubOwner(detail: Record<string, unknown> = {}) {
     });
     const path = url.split("?")[0];
     if (path === "/me") return json(ME);
+    if (path === "/skills") return json({ skills: [], total: 0, limit: 100, truncated: false });
     if (path.endsWith("/category") && init?.method === "PUT") {
       const body = JSON.parse(String(init.body)) as { category: keyof typeof CATEGORIES };
       category = CATEGORIES[body.category] ?? category;
@@ -385,6 +386,7 @@ test("§2.13: 「無權檢視」三處都在，但那段解釋只講一次", asy
       .replace(/^https?:\/\/[^/]+/, "")
       .split("?")[0];
     if (path === "/me") return json(ME);
+    if (path === "/skills") return json({ skills: [], total: 0, limit: 100, truncated: false });
     if (path.endsWith("/versions")) return json({ versions: [] });
     if (path.startsWith("/api/skills/")) return json({ ...detailBody(), version: undefined });
     return json({ error: "not found" }, 404);
@@ -565,6 +567,7 @@ test("05 R-19: 類別儲存結果未確認時不宣稱一定沒有設定成功",
     const url = String(input).replace(/^https?:\/\/[^/]+/, "");
     const path = url.split("?")[0];
     if (path === "/me") return json(ME);
+    if (path === "/skills") return json({ skills: [], total: 0, limit: 100, truncated: false });
     if (path.endsWith("/category") && init?.method === "PUT") return json({ error: "boom" }, 500);
     if (path.endsWith("/versions")) return json(SKILL_VERSIONS);
     if (path.startsWith("/api/skills/")) return json(detailBody());

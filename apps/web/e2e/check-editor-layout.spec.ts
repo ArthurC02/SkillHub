@@ -90,8 +90,9 @@ for (const width of [375, 1280]) {
     await addJudge(page, 2);
     await addJudge(page, 3);
     await expect.poll(async () => (await flowState(page)).within).toBe(true);
-    await page.clock.install();
-    await page.clock.pauseAt(new Date());
+    const pausedAt = new Date();
+    await page.clock.install({ time: new Date(pausedAt.getTime() - info.timeout) });
+    await page.clock.pauseAt(pausedAt);
     for (const key of ["Enter", "Space"]) {
       await pan(page, 220);
       await expect.poll(async () => (await flowState(page)).within).toBe(false);

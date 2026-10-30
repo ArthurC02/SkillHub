@@ -47,8 +47,8 @@ export function SkillDetail() {
             {skill && <TrialEntry skillId={skillId} isLoggedIn={!!me} />}
             {retainFork && (
               <section>
-                <h2>複製一份到你的工作區</h2>
                 <ForkAction
+                  key={skillId}
                   skillId={skillId}
                   isLoggedIn={!!me}
                   available={Boolean(skill) && detail.fetchStatus === "idle"}

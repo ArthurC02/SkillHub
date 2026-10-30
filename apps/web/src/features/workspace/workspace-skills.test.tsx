@@ -12,6 +12,7 @@ let container: HTMLDivElement;
 let root: Root;
 
 beforeEach(() => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   queryClient.clear();
   container = document.createElement("div");
   document.body.appendChild(container);
@@ -84,7 +85,7 @@ const text = () => container.textContent ?? "";
 
 const ME = { ...SESSION, email: "a@b.c", display_name: "a" };
 const SKILL: OwnSkill = {
-  skill_id: "s-1",
+  skill_id: "11111111-1111-1111-1111-111111111111",
   name: "範例小工具",
   summary: "一個測試用的摘要",
   redistribution: "allowed",
@@ -92,11 +93,15 @@ const SKILL: OwnSkill = {
   verification: { value: "not_measured", label: "未測量", note: "" },
 };
 
-const SECOND: OwnSkill = { ...SKILL, skill_id: "s-2", name: "第二個小工具" };
+const SECOND: OwnSkill = {
+  ...SKILL,
+  skill_id: "22222222-2222-4222-8222-222222222222",
+  name: "第二個小工具",
+};
 
 const FIRST_PAGE = Array.from({ length: 24 }, (_, index) => ({
   ...SKILL,
-  skill_id: `page-skill-${index + 1}`,
+  skill_id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
   name: `分頁小工具 ${index + 1}`,
 }));
 
@@ -126,7 +131,10 @@ test("each Library card exposes its owner verification label and validation jour
     cards.map((card) =>
       card.querySelector<HTMLAnchorElement>("a.skill-card-validation")?.getAttribute("href"),
     ),
-  ).toEqual(["/lab/test-cases?skill=s-1", "/lab/test-cases?skill=s-2"]);
+  ).toEqual([
+    "/lab/test-cases?skill=11111111-1111-1111-1111-111111111111",
+    "/lab/test-cases?skill=22222222-2222-4222-8222-222222222222",
+  ]);
 });
 
 function pointAt(target: Element, type: string, pointerType: string) {
