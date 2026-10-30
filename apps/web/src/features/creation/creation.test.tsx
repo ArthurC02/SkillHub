@@ -81,7 +81,7 @@ const sample = (patch: Partial<Session> = {}): Session => ({
   created_at: "2026-09-05T00:00:00Z",
   updated_at: "2026-09-05T00:00:00Z",
   expires_at: "2026-09-06T00:00:00Z",
-  deadline: "2026-09-05T01:00:00Z",
+  deadline: "2099-09-05T01:00:00Z",
   ...patch,
 });
 const response = (v: unknown, status = 200) =>
@@ -1977,6 +1977,39 @@ test("an open session shows its deadline and retention", async () => {
   const expires = box.querySelector(`time[datetime="${v.expires_at}"]`);
   expect(deadline).toBeTruthy();
   expect(expires).toBeTruthy();
+});
+const pastDeadline = "這次創作已超過時間上限，不能再請 Agent 繼續";
+test.each([
+  ["passed", "2026-09-05T01:00:00Z", false],
+  ["still ahead", "2099-09-05T01:00:00Z", true],
+] as const)(
+  "an open session whose deadline has %s offers the composer: %s",
+  async (_, at, open) => {
+    const v = sample({ deadline: at });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string) => routeGet(url, [v], v)),
+    );
+    await render();
+    await resume();
+    await waitFor(() => box.textContent!.includes(pastDeadline) !== open);
+
+    expect(box.querySelector("textarea") !== null).toBe(open);
+    expect(box.textContent!.includes(pastDeadline)).toBe(!open);
+  },
+);
+test("the composer closes when the deadline arrives while the session is open", async () => {
+  const v = sample({ deadline: new Date(Date.now() + 1500).toISOString() });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [v], v)),
+  );
+  await render();
+  await resume();
+  expect(box.querySelector("textarea")).not.toBe(null);
+
+  await waitFor(() => box.textContent!.includes(pastDeadline));
+  expect(box.querySelector("textarea")).toBe(null);
 });
 test("a failed or unevaluated run warns before saving instead of claiming no run happened", async () => {
   const v = sample({

@@ -82,6 +82,7 @@ export function CreationSession(props: CreationSessionProps) {
   const candidateRun = useCandidateRun(p?.candidate?.test_case_id, p?.candidate?.version_id);
   const { terminal, working } = sessionPhase(session);
   const locked = busy || working || terminal;
+  const dock = composerDock(terminal, useDeadlinePassed(session?.deadline));
   const gate = startGate(!!session, credits.data, limits.data, budget);
   const perform: Perform = async (kind, extra = {}) => {
     if (!session) return;
@@ -155,7 +156,7 @@ export function CreationSession(props: CreationSessionProps) {
                 )}
               </div>
             </CreationTranscript>
-            {!terminal && (
+            <ComposerSlot dock={dock} failureBox={failureBox}>
               <Composer
                 {...composer.inputs}
                 hasSession={!!session}
@@ -175,11 +176,52 @@ export function CreationSession(props: CreationSessionProps) {
                 onError={setError}
                 onSubmit={submit}
               />
-            )}
-            {terminal && failureBox && <div className="composer-dock">{failureBox}</div>}
+            </ComposerSlot>
           </CreationReadState>
         </div>
       </div>
+    </div>
+  );
+}
+
+type ComposerDock = "open" | "past-deadline" | "closed";
+
+function composerDock(terminal: boolean, deadlinePassed: boolean): ComposerDock {
+  if (terminal) return "closed";
+  return deadlinePassed ? "past-deadline" : "open";
+}
+
+function useDeadlinePassed(deadline: string | undefined) {
+  const [passedDeadline, setPassedDeadline] = useState<string>();
+  useEffect(() => {
+    const at = deadline ? Date.parse(deadline) : Number.NaN;
+    if (!Number.isFinite(at)) return;
+    const wait = Math.min(Math.max(at - Date.now(), 0), 2 ** 31 - 1);
+    const timer = setTimeout(() => setPassedDeadline(deadline), wait);
+    return () => clearTimeout(timer);
+  }, [deadline]);
+  return deadline !== undefined && passedDeadline === deadline;
+}
+
+function ComposerSlot({
+  dock,
+  failureBox,
+  children,
+}: {
+  dock: ComposerDock;
+  failureBox: ReactNode;
+  children: ReactNode;
+}) {
+  if (dock === "open") return children;
+  if (dock === "closed")
+    return failureBox ? <div className="composer-dock">{failureBox}</div> : null;
+  return (
+    <div className="composer-dock">
+      {failureBox}
+      <p role="status" className="notice">
+        這次創作已超過時間上限，不能再請 Agent
+        繼續；已經做好的草稿仍可保存。要繼續改，請開始新的創作。
+      </p>
     </div>
   );
 }

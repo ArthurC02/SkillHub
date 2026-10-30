@@ -41,7 +41,7 @@ const SESSION = {
   created_at: "2026-09-28T00:00:00Z",
   updated_at: "2026-09-28T01:00:00Z",
   expires_at: "2026-10-05T00:00:00Z",
-  deadline: "2026-09-28T02:00:00Z",
+  deadline: "2099-09-28T02:00:00Z",
 };
 const SECOND_SESSION = {
   ...SESSION,
