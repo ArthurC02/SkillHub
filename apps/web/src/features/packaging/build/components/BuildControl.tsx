@@ -1,4 +1,4 @@
-import { ApiError } from "../../../../core/api/client";
+import { ApiError, userFacingReason } from "../../../../core/api/client";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import type { useCreateDownload, usePackagingPreview } from "../../packaging.service";
 
@@ -15,6 +15,11 @@ function BuildErrorReason({ error }: { error: unknown }) {
   if (error instanceof ApiError && error.status === 422 && error.message) {
     return <p role="alert">套件沒有建立：{error.message}。</p>;
   }
+  const lasting =
+    error instanceof ApiError && (error.status === 404 || error.status === 503)
+      ? userFacingReason(error)
+      : undefined;
+  if (lasting) return <p role="alert">套件沒有建立：{lasting}。</p>;
   return <p role="alert">套件沒有建立成功，可以再按一次。</p>;
 }
 

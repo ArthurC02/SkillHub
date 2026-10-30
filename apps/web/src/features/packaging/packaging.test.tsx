@@ -1154,7 +1154,41 @@ test("丙-150 打包預覽讀不到這個版本時，說回上一步重新挑一
 
   expect(text()).toContain("回上一步重新挑一次版本");
   expect(text()).not.toContain("skill version not found");
+  expect(button("再試一次")).toBeUndefined();
 });
+
+test("a preview the deployment cannot serve says the server's own Chinese reason", async () => {
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    if (url.endsWith("/versions")) return json(VERSIONS);
+    if (url.includes("/packaging/targets")) return json(targets);
+    if (url.includes("/packaging/preview"))
+      return json({ error: "這個部署沒有設定這個打包目標，請聯絡管理者" }, 503);
+    if (url.includes(`/api/skills/${SKILL}`)) return json(skill);
+    return json({ error: "not found" }, 404);
+  });
+  await render(<Packaging />, () => text().includes("標準 Agent 小工具套件"));
+
+  await waitFor(() =>
+    text().includes("無法確認預覽：這個部署沒有設定這個打包目標，請聯絡管理者。"),
+  );
+});
+
+test.each([
+  { status: 404, reason: "找不到這個 Skill 版本" },
+  { status: 503, reason: "這個部署沒有接上套件儲存，暫時拿不到套件內容，請聯絡管理者" },
+])(
+  "a build refused with $status says the server's reason, not another press",
+  async ({ status, reason }) => {
+    stubBuild(ME, () => json({ error: reason }, status));
+    await render(<Packaging />, () => text().includes("這些設定可以打包"));
+
+    await act(async () => button("建立下載套件")?.click());
+    await waitFor(() => text().includes(`套件沒有建立：${reason}。`));
+
+    expect(text()).not.toContain("可以再按一次");
+  },
+);
 
 test("丙-150 部署沒有設定打包目標時，503 說沒有預覽而不是英文句子", async () => {
   vi.stubGlobal("fetch", (input: string) => {

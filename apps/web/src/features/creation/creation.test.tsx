@@ -2200,6 +2200,30 @@ test("a failed session shows the raise form, refuses an out-of-band amount local
   await waitFor(() => posts.length === 1);
   expect(posts[0]).toMatchObject({ kind: "raise_budget", budget_credits: 2000 });
 });
+test.each([
+  { state: "saved", deadline: undefined },
+  { state: "cancelled", deadline: undefined },
+  { state: "queued", deadline: undefined },
+  { state: "working", deadline: undefined },
+  { state: "failed", deadline: "2020-01-01T00:00:00Z" },
+] as const)(
+  "a $state session past deadline $deadline offers no budget raise the server would refuse",
+  async ({ state, deadline }) => {
+    const v = sample({ state });
+    if (deadline) v.deadline = deadline;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string) => routeGet(url, [v], v)),
+    );
+    await render();
+    await resume();
+    await waitFor(() => box.textContent!.includes("費用"));
+    await waitFor(() => !box.querySelector('[aria-label="提高這次預算上限（點）"]'));
+
+    expect(box.querySelector('[aria-label="提高這次預算上限（點）"]')).toBeNull();
+    expect(box.textContent).not.toContain("提高預算後繼續");
+  },
+);
 test("a candidate with a test_case_id renders the 測試題 sentence and the run link carries it", async () => {
   const v = sample({ state: "candidate_ready" });
   v.snapshot.draft = {

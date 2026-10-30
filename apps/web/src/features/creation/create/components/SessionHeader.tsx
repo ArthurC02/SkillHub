@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import type { CreationLimits, CreationSession, CreationSnapshot } from "../../creation.service";
 import { creationStateLabel } from "../../creation.service";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
+import { useDeadlinePassed } from "../../../../shared/useDeadlinePassed";
 import { nextStepBudget, points, raiseBudgetProblem } from "../create.model";
 import type { Perform } from "../create.commands";
 import { AgentAvatar } from "./ConversationLog";
@@ -142,6 +143,8 @@ function SessionCostDetails({
   onRaiseBudget: (value: string) => void;
   onSubmitRaiseBudget: () => void;
 }) {
+  const deadlinePassed = useDeadlinePassed(session.deadline);
+  const canRaiseBudget = limits && !terminal && !working && !deadlinePassed;
   return (
     <details className="creation-details">
       <summary>
@@ -165,7 +168,7 @@ function SessionCostDetails({
             <Timestamp at={session.expires_at} />
           </p>
         )}
-        {limits && (
+        {canRaiseBudget && (
           <>
             <label>
               提高這次預算上限（點）
