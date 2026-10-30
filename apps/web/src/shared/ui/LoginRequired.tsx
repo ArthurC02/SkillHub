@@ -1,7 +1,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { SessionNotReadyError } from "../../core/api/client";
 import { SignInAction } from "./SignIn";
-import { unauthenticated } from "./LoginRequired.model";
+import { rateLimitedSentence, unauthenticated } from "./LoginRequired.model";
 
 export function LoginRequired({ what }: { what: string }) {
   return (
@@ -42,7 +42,11 @@ export function ReadFailure({
   if (unauthenticated(error)) return <LoginRequired what={what} />;
   return (
     <>
-      {children || <p role="alert">暫時無法讀取{what}。請再試一次，或稍後再試。</p>}
+      {children || (
+        <p role="alert">
+          {rateLimitedSentence(error) ?? `暫時無法讀取${what}。請再試一次，或稍後再試。`}
+        </p>
+      )}
       {retry && (
         <button
           type="button"
