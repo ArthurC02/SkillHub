@@ -805,7 +805,7 @@ test.each([
 
 test.each([
   { status: 404, retry: false, back: true },
-  { status: 403, retry: false, back: true },
+  { status: 403, retry: true, back: false },
   { status: 503, retry: true, back: false },
 ])(
   "a run read answering $status offers retry: $retry, a way back: $back",

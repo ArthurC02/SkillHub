@@ -1,6 +1,6 @@
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { unauthenticated } from "../../../shared/ui/LoginRequired.model";
-import { isLastingReadFailure } from "../../../core/api/client";
+import { ApiError, isLastingReadFailure } from "../../../core/api/client";
 import type { UseQueryResult } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useParams, useSearch } from "@tanstack/react-router";
@@ -104,7 +104,7 @@ export function RunTrace() {
   const general = useTrace(runId, "general");
   const readableRun = run.error ? undefined : run.data;
   const readableTrace = general.error ? undefined : general.data;
-  const runGone = isLastingReadFailure(run.error);
+  const runGone = run.error instanceof ApiError && run.error.status === 404 && !run.data;
   useRunDetailFollowsTrace(run, readableTrace?.status);
 
   return (
