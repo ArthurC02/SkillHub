@@ -182,6 +182,34 @@ test.each([
   if (status === 403) expect(text()).not.toContain("暫時無法讀取版本差異");
 });
 
+test.each([
+  [400, "a run cannot be compared with itself", false],
+  [404, "run not found", false],
+  [503, "database unavailable", true],
+])(
+  "EVAL-003 a comparison refused with %i offers a retry only when one could work",
+  async (status, error, retryable) => {
+    vi.stubGlobal("fetch", (input: string) => {
+      const url = String(input);
+      if (pathOf(url).endsWith("/comparison")) return json({ error }, status);
+      if (pathOf(url) === "/runs") {
+        return json(url.includes(`test_case_id=${TEST_CASE}`) ? RUNS : { runs: [FOREIGN_RUN] });
+      }
+      const response = platformResponse(url);
+      return json(response.body, response.status);
+    });
+    search = { against: OTHER_RUN };
+    await render(<RunCompare />);
+    await waitFor(() =>
+      text().includes(retryable ? "暫時無法讀取比較結果" : "這兩筆試跑紀錄不能比較"),
+    );
+
+    expect(
+      Array.from(container.querySelectorAll("button")).some((b) => b.textContent === "再試一次"),
+    ).toBe(retryable);
+  },
+);
+
 async function render(node: ReactNode) {
   await act(async () => {
     root = createRoot(container);
