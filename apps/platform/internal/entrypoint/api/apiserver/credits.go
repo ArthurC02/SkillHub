@@ -311,19 +311,19 @@ func (h *creditsHandler) Grant(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not found")
 		return
 	case errors.Is(err, credit.ErrZeroAmount):
-		httpx.WriteError(w, http.StatusBadRequest, "amount_credits must not be zero")
+		httpx.WriteError(w, http.StatusBadRequest, "授予的點數不能是 0；這次沒有變更任何點數。")
 		return
 	case errors.Is(err, credit.ErrReasonRequired):
-		httpx.WriteError(w, http.StatusBadRequest, "reason is required")
+		httpx.WriteError(w, http.StatusBadRequest, "請寫下授予理由；這次沒有變更任何點數。")
 		return
 	case errors.Is(err, credit.ErrBalanceOutOfRange):
-		httpx.WriteError(w, http.StatusBadRequest, fmt.Sprintf("the balance cannot go below %d; no credits were changed", credit.MinBalanceCredits))
+		httpx.WriteError(w, http.StatusBadRequest, fmt.Sprintf("餘額不能低於 %d 點；這次沒有變更任何點數。", credit.MinBalanceCredits))
 		return
 	case errors.Is(err, credit.ErrAccountGone):
-		httpx.WriteError(w, http.StatusConflict, "this account is being deleted; no credits were granted")
+		httpx.WriteError(w, http.StatusConflict, "這個帳號正在刪除中；這次沒有授予任何點數。")
 		return
 	case errors.Is(err, credit.ErrGrantKeyReused):
-		httpx.WriteError(w, http.StatusConflict, "this idempotency_key was already used for a different grant; no credits were changed")
+		httpx.WriteError(w, http.StatusConflict, "這次送出的識別碼已經用在另一筆不同的授予；這次沒有變更任何點數。請重新整理頁面後再送出。")
 		return
 	case err != nil:
 		slog.Error("credit grant failed", "workspace_id", pgconv.UUIDString(workspaceID), "error", err)

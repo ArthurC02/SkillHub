@@ -345,7 +345,7 @@ func TestACorrectionBelowTheLowestStoredBalanceIsRefusedAsABadRequest(t *testing
 	if code != http.StatusBadRequest {
 		t.Fatalf("a correction past the lowest stored balance: got %d (%v), want 400", code, body)
 	}
-	if msg, _ := body["error"].(string); msg != "the balance cannot go below -1000000; no credits were changed" {
+	if msg, _ := body["error"].(string); msg != "餘額不能低於 -1000000 點；這次沒有變更任何點數。" {
 		t.Errorf("error = %q, want the plain explanation", msg)
 	}
 	var entries int
@@ -460,9 +460,9 @@ func TestGrantRefusesAZeroAmountOrABlankReasonAndWritesNoEntry(t *testing.T) {
 		want                      int
 	}{
 		{"zero amount", grants, `{"amount_credits":0,"reason":"x"}`,
-			"amount_credits must not be zero", http.StatusBadRequest},
+			"授予的點數不能是 0；這次沒有變更任何點數。", http.StatusBadRequest},
 		{"blank reason", grants, `{"amount_credits":10,"reason":"   "}`,
-			"reason is required", http.StatusBadRequest},
+			"請寫下授予理由；這次沒有變更任何點數。", http.StatusBadRequest},
 		{"malformed workspace id", "/admin/credits/not-a-uuid/grants", `{"amount_credits":10,"reason":"x"}`,
 			"workspace not found", http.StatusNotFound},
 	}

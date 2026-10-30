@@ -794,6 +794,21 @@ test("OPS-003: a refused grant explains the next step without raw server text", 
   expect(has("操作未被接受；請核對輸入與目前狀態後再試。")()).toBe(false);
 });
 
+test.each([
+  [400, "餘額不能低於 -1000000 點；這次沒有變更任何點數。"],
+  [409, "這個帳號正在刪除中；這次沒有授予任何點數。"],
+])("OPS-003: a grant refused with %i shows the platform's own reason", async (status, reason) => {
+  stub(true, (path, method) =>
+    method === "POST" && path.endsWith("/grants") ? { body: { error: reason }, status } : undefined,
+  );
+  await lookUp("member@example.com");
+  await waitFor(has("授予點數"));
+  await type("#admin-grant-amount", "5");
+  await type("#admin-grant-note", "r");
+  await click(button("授予"));
+  await waitFor(has(`操作未被接受：${reason}`));
+});
+
 test("OPS-003: a grant whose outcome is unknown brings its explanation into view", async () => {
   const scrolled: Element[] = [];
   const original = HTMLElement.prototype.scrollIntoView;
