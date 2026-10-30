@@ -625,10 +625,37 @@ export type PlatformSettings = {
   judge_panel: { enabled: boolean; reason?: string; set_by_user_id?: string; set_at?: string };
 };
 
+export async function getPlatformSettings() {
+  const result = await apiFetch<unknown>("/admin/settings");
+  if (!isPlatformSettings(result)) throw new Error("Invalid platform settings response");
+  return result;
+}
+
+function isSetting(value: unknown): value is Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const setting = value as Record<string, unknown>;
+  return (
+    (setting.reason === undefined || typeof setting.reason === "string") &&
+    (setting.set_at === undefined ||
+      (typeof setting.set_at === "string" && Number.isFinite(Date.parse(setting.set_at)))) &&
+    (setting.set_by_user_id === undefined ||
+      (typeof setting.set_by_user_id === "string" &&
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          setting.set_by_user_id,
+        )))
+  );
+}
+
+function isPlatformSettings(value: unknown): value is PlatformSettings {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const panel = (value as Partial<PlatformSettings>).judge_panel;
+  return isSetting(panel) && typeof panel.enabled === "boolean";
+}
+
 export function usePlatformSettings() {
   return useQuery({
     queryKey: queryKeys.admin.settings,
-    queryFn: () => apiFetch<PlatformSettings>("/admin/settings"),
+    queryFn: getPlatformSettings,
     enabled: useOperator(),
   });
 }
@@ -637,8 +664,14 @@ export function useJudgePanelSwitch() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: { enabled: boolean; note: string }) =>
-      apiFetch<PlatformSettings>("/admin/settings/judge-panel", send("PUT", body)),
-    onSuccess: (settings) => queryClient.setQueryData(queryKeys.admin.settings, settings),
+      apiFetch<unknown>("/admin/settings/judge-panel", send("PUT", body)),
+    onSuccess: (settings) => {
+      if (isPlatformSettings(settings)) {
+        queryClient.setQueryData(queryKeys.admin.settings, settings);
+        return;
+      }
+      return queryClient.invalidateQueries({ queryKey: queryKeys.admin.settings });
+    },
   });
 }
 
@@ -671,10 +704,43 @@ export type RunSettings = {
   };
 };
 
+export async function getRunSettings() {
+  const result = await apiFetch<unknown>("/admin/settings/runs");
+  if (!isRunSettings(result)) throw new Error("Invalid run settings response");
+  return result;
+}
+
+function isNumericSetting(value: unknown, fields: string[]) {
+  return isSetting(value) && fields.every((field) => Number.isSafeInteger(value[field]));
+}
+
+function isRunSettings(value: unknown): value is RunSettings {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const settings = value as Partial<RunSettings>;
+  return (
+    isNumericSetting(settings.continuation_rounds, ["rounds", "min", "max"]) &&
+    isNumericSetting(settings.model_budget, [
+      "credits",
+      "default_credits",
+      "min_credits",
+      "max_credits",
+    ]) &&
+    isNumericSetting(settings.tokens_per_minute, ["limit", "default_limit", "min", "max"])
+  );
+}
+
+function reconcileRunSettings(queryClient: ReturnType<typeof useQueryClient>, settings: unknown) {
+  if (isRunSettings(settings)) {
+    queryClient.setQueryData(queryKeys.admin.runSettings, settings);
+    return;
+  }
+  return queryClient.invalidateQueries({ queryKey: queryKeys.admin.runSettings });
+}
+
 export function useRunSettings() {
   return useQuery({
     queryKey: queryKeys.admin.runSettings,
-    queryFn: () => apiFetch<RunSettings>("/admin/settings/runs"),
+    queryFn: getRunSettings,
     enabled: useOperator(),
   });
 }
@@ -683,8 +749,8 @@ export function useContinuationRounds() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: { rounds: number; note: string }) =>
-      apiFetch<RunSettings>("/admin/settings/runs/continuation-rounds", send("PUT", body)),
-    onSuccess: (settings) => queryClient.setQueryData(queryKeys.admin.runSettings, settings),
+      apiFetch<unknown>("/admin/settings/runs/continuation-rounds", send("PUT", body)),
+    onSuccess: (settings) => reconcileRunSettings(queryClient, settings),
   });
 }
 
@@ -692,11 +758,11 @@ export function useRunModelBudget() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: { credits?: number; note: string }) =>
-      apiFetch<RunSettings>(
+      apiFetch<unknown>(
         "/admin/settings/runs/model-budget",
         send(body.credits === undefined ? "DELETE" : "PUT", body),
       ),
-    onSuccess: (settings) => queryClient.setQueryData(queryKeys.admin.runSettings, settings),
+    onSuccess: (settings) => reconcileRunSettings(queryClient, settings),
   });
 }
 
@@ -704,11 +770,11 @@ export function useRunTokensPerMinute() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: { limit?: number; note: string }) =>
-      apiFetch<RunSettings>(
+      apiFetch<unknown>(
         "/admin/settings/runs/tokens-per-minute",
         send(body.limit === undefined ? "DELETE" : "PUT", body),
       ),
-    onSuccess: (settings) => queryClient.setQueryData(queryKeys.admin.runSettings, settings),
+    onSuccess: (settings) => reconcileRunSettings(queryClient, settings),
   });
 }
 

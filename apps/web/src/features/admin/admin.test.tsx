@@ -41,6 +41,82 @@ import {
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 import { preloadEveryPage } from "../../testing/pages";
 
+test.each(["judge", "rounds", "budget", "tokens"] as const)(
+  "an incomplete successful settings response for %s requires a fresh read without replaying the write",
+  async (kind) => {
+    const judge = kind === "judge";
+    const group =
+      kind === "rounds"
+        ? "continuation_rounds"
+        : kind === "budget"
+          ? "model_budget"
+          : "tokens_per_minute";
+    const valueKey = kind === "rounds" ? "rounds" : kind === "budget" ? "credits" : "limit";
+    const value = kind === "rounds" ? 5 : kind === "budget" ? 700 : 300000;
+    const id = judge
+      ? "admin-settings-judge-panel"
+      : kind === "rounds"
+        ? "admin-settings-rounds"
+        : kind === "budget"
+          ? "admin-settings-run-budget"
+          : "admin-settings-run-tpm";
+    const read = judge ? "/admin/settings" : "/admin/settings/runs";
+    const write = judge
+      ? "/admin/settings/judge-panel"
+      : kind === "rounds"
+        ? "/admin/settings/runs/continuation-rounds"
+        : kind === "budget"
+          ? "/admin/settings/runs/model-budget"
+          : "/admin/settings/runs/tokens-per-minute";
+    let written = false;
+    let recover = false;
+    stub(true, (path, method) => {
+      if (path === write && method === "PUT") {
+        written = true;
+        return { body: {}, status: 200 };
+      }
+      if (path === read && method === "GET") {
+        if (written && !recover) return { body: { error: "settings unavailable" }, status: 503 };
+        return {
+          body: judge
+            ? { judge_panel: { enabled: written } }
+            : written
+              ? {
+                  ...ADMIN_RUN_SETTINGS,
+                  [group]: { ...ADMIN_RUN_SETTINGS[group], [valueKey]: value },
+                }
+              : ADMIN_RUN_SETTINGS,
+          status: 200,
+        };
+      }
+      return undefined;
+    });
+    await mountAt("/admin/settings");
+    await waitFor(has("目前：3 輪"));
+    if (!judge) await type(`#${id}-value`, String(value));
+    await type(`#${id}-note`, "verify the setting");
+    await submit(`#${id}-note`);
+    await waitFor(has("目前設定尚未確認"));
+    await waitFor(has(judge ? "暫時無法讀取平台設定" : "暫時無法讀取試跑設定"));
+    expect(container.querySelector(`#${id}-note`)).toBeNull();
+    expect(field<HTMLElement>(`#${id}-result`).classList.contains("notice-success")).toBe(false);
+    expect(calls.filter((call) => call.url === read && call.method === "GET")).toHaveLength(2);
+    expect(calls.filter((call) => call.method === "PUT")).toHaveLength(1);
+    recover = true;
+    await click(button(judge ? "再讀取平台設定" : "再讀取試跑設定"));
+    const success = judge
+      ? "已開啟，需要模型判定的條件"
+      : kind === "rounds"
+        ? "已改為 5 輪"
+        : kind === "budget"
+          ? "已改為 700 點"
+          : "已改為每分鐘 300,000 tokens";
+    await waitFor(has(success));
+    expect(field<HTMLElement>(`#${id}-result`).classList.contains("notice-success")).toBe(true);
+    expect(calls.filter((call) => call.method === "PUT")).toHaveLength(1);
+  },
+);
+
 beforeAll(preloadEveryPage);
 
 type Call = { method: string; url: string; body?: Record<string, unknown> };
