@@ -3,12 +3,12 @@
   "proposal_id": "dataset-upload-reason-recite-2026-10-30",
   "proposer": "domain-memory-agent",
   "requirement_id": "dataset-upload-reason-recite",
-  "status": "submitted",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-10-30T13:49:27.387976Z",
-  "verified_at": null,
-  "finalized_at": null,
-  "applied_at": null,
+  "verified_at": "2026-10-30T13:49:46.594232Z",
+  "finalized_at": "2026-10-30T13:49:47.216479Z",
+  "applied_at": "2026-10-30T13:49:53.646879Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "9d75b28b4366bf73d00196b3ce72ea10ab09e792",
@@ -108,8 +108,26 @@
   ],
   "risk_flags": [],
   "open_questions": [],
-  "approvals": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-30T13:49:36.146814Z",
+      "scope": "re-cite the two dataset upload rules whose refusal returns now carry a reason (9d75b28b4); the rules themselves are unchanged",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "9d75b28b4366bf73d00196b3ce72ea10ab09e792",
+        "registry_digest": "sha256:2a24f1e1504e62e91ebe28c468d2693e18160065592a0b7211e2dc5e21640454",
+        "committed_digest": "sha256:2a24f1e1504e62e91ebe28c468d2693e18160065592a0b7211e2dc5e21640454"
+      }
+    }
+  ],
   "supersedes": [
     "testlab-harvest-rules-2026-10-17"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "14aecb0663840c9c46c486bb8b3a1f9e5172add2",
+    "registry_digest": "sha256:498fed71d2ab9fb0616ce2c5892de1f7620f390a8a74bd7b4321be349b63e1d2"
+  }
 }
