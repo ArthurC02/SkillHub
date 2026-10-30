@@ -48,10 +48,11 @@ function AgentSummary({ agent }: { agent: PlatformAgent }) {
   );
 }
 
-function hasDifferentSpendCap(first: PlatformAgent, second: PlatformAgent) {
-  return (
-    first.daily_spend_cap_usd_micros !== second.daily_spend_cap_usd_micros ||
-    first.daily_spend_cap_overridden !== second.daily_spend_cap_overridden
+function hasDifferentSpendCap(first: PlatformAgent, second: PlatformAgent | undefined) {
+  return Boolean(
+    second &&
+    (first.daily_spend_cap_usd_micros !== second.daily_spend_cap_usd_micros ||
+      first.daily_spend_cap_overridden !== second.daily_spend_cap_overridden),
   );
 }
 
@@ -68,10 +69,12 @@ function AgentRow({
 }) {
   const toggle = usePlatformAgentSwitch();
   const capChange = usePlatformAgentSpendCap();
-  const [completedCap, setCompletedCap] = useState<PlatformAgent | null>(null);
+  const [completedCap, setCompletedCap] = useState<{ receipt: PlatformAgent | undefined } | null>(
+    null,
+  );
   const next = !agent.enabled;
   const unverified = toggle.isSuccess && (!readable || agent.enabled !== toggle.variables.enabled);
-  const capMismatch = Boolean(completedCap && hasDifferentSpendCap(agent, completedCap));
+  const capMismatch = hasDifferentSpendCap(agent, completedCap?.receipt);
   const capUnverified = Boolean(completedCap && (!readable || fetching || capMismatch));
   const controlsReadable = readable && !unverified && !capMismatch;
   const result = useRef<HTMLParagraphElement>(null);
@@ -81,9 +84,9 @@ function AgentRow({
       result.current?.scrollIntoView?.({ block: "center" });
     }
   }, [toggle.isSuccess]);
-  if (!readable && !toggle.isSuccess && !completedCap) return null;
   return (
     <li
+      hidden={!readable && !toggle.isSuccess && !completedCap}
       className="download-item"
       onInput={() => {
         toggle.reset();
@@ -112,12 +115,13 @@ function AgentRow({
         change={capChange}
         onCompleted={(current) => {
           toggle.reset();
-          setCompletedCap(current);
+          setCompletedCap({ receipt: current });
         }}
       />
       {completedCap && (
         <SpendCapResult
-          completed={completedCap}
+          agent={agent}
+          completed={completedCap.receipt}
           unverified={capUnverified}
           fetching={fetching}
           refresh={refresh}

@@ -1936,6 +1936,70 @@ test("a refreshed answer-round limit replaces a stale draft with the current val
   expect(calls.filter((call) => call.method === "PUT")).toHaveLength(0);
 });
 
+test.each(["set", "restore"] as const)(
+  "an incomplete successful Agent cap response can confirm %s through a fresh read without replaying the write",
+  async (action) => {
+    let sent = false;
+    let recover = false;
+    const before = {
+      ...ADMIN_AGENTS.agents[0],
+      daily_spend_cap_usd_micros: action === "set" ? 2_000_000 : 1_000_000,
+      daily_spend_cap_overridden: true,
+    };
+    const after =
+      action === "restore"
+        ? ADMIN_AGENTS.agents[0]
+        : { ...before, daily_spend_cap_usd_micros: 2_000_000 };
+    stub(true, (path, method) => {
+      if (path === "/admin/agents/daily-report/spend-cap" && method === "PUT") {
+        sent = true;
+        return { body: {}, status: 200 };
+      }
+      if (path === "/admin/agents") {
+        if (sent && !recover) return { body: { error: "agent status unavailable" }, status: 503 };
+        return { body: { agents: [sent ? after : before] }, status: 200 };
+      }
+      return undefined;
+    });
+    await mountAt("/admin/agents");
+    await waitFor(has("（營運者設定；預設 $0.2000）"));
+    if (action === "set") await type("#admin-agent-daily-report-cap", "2.00");
+    const note = `#admin-agent-daily-report-cap-${action === "set" ? "set" : "clear"}-note`;
+    await type(note, "verify the cap");
+    await submit(note);
+    await waitFor(has("daily-report 的每日花費上限的變更請求已完成；最新上限尚未確認。"));
+    await waitFor(has("暫時無法讀取 Agent 控制"));
+    expect(
+      field<HTMLInputElement>("#admin-agent-daily-report-cap").closest<HTMLElement>("[hidden]")
+        ?.hidden,
+    ).toBe(true);
+    recover = true;
+    await click(button("重新整理此 Agent 的上限"));
+    await waitFor(
+      has(action === "restore" ? "目前顯示預設 $0.2000" : "目前顯示營運者設定 $2.0000"),
+    );
+    expect(field<HTMLInputElement>("#admin-agent-daily-report-cap").value).toBe(
+      action === "restore" ? "0.2" : "2",
+    );
+    expect(field<HTMLInputElement>("#admin-agent-daily-report-cap").readOnly).toBe(false);
+    if (action === "set") {
+      expect(field<HTMLTextAreaElement>("#admin-agent-daily-report-cap-set-note").value).toBe(
+        "verify the cap",
+      );
+    }
+    expect(calls.filter((call) => call.method === "PUT")).toEqual([
+      {
+        method: "PUT",
+        url: "/admin/agents/daily-report/spend-cap",
+        body: {
+          daily_spend_cap_usd_micros: action === "restore" ? null : 2_000_000,
+          note: "verify the cap",
+        },
+      },
+    ]);
+  },
+);
+
 test("OPS-011: an agent's daily spend cap accepts up to five dollars and sends micro-dollars", async () => {
   stub(true, (path, method) =>
     path === "/admin/agents/daily-report/spend-cap" && method === "PUT"

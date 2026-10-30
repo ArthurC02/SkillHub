@@ -579,11 +579,59 @@ export type PlatformAgentStep = {
   created_at: string;
 };
 
+function isAgentActor(value: unknown) {
+  return (
+    value === undefined ||
+    (typeof value === "string" &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value))
+  );
+}
+
+function isPlatformAgent(value: unknown): value is PlatformAgent {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const agent = value as Partial<PlatformAgent>;
+  return (
+    [agent.name, agent.purpose, agent.model_role].every((field) => typeof field === "string") &&
+    Number.isSafeInteger(agent.daily_spend_cap_usd_micros) &&
+    Number.isSafeInteger(agent.default_daily_spend_cap_usd_micros) &&
+    typeof agent.daily_spend_cap_overridden === "boolean" &&
+    typeof agent.enabled === "boolean" &&
+    [agent.tools, agent.actions].every(
+      (items) => Array.isArray(items) && items.every((item) => typeof item === "string"),
+    ) &&
+    isAgentActor(agent.owner_user_id)
+  );
+}
+
+function isPlatformAgentBrake(value: unknown): value is PlatformAgentBrake {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const brake = value as Partial<PlatformAgentBrake>;
+  return (
+    typeof brake.reason === "string" &&
+    typeof brake.engaged_at === "string" &&
+    Number.isFinite(Date.parse(brake.engaged_at)) &&
+    isAgentActor(brake.engaged_by_user_id)
+  );
+}
+
+export async function getPlatformAgents() {
+  const result = await apiFetch<unknown>("/admin/agents");
+  if (!result || typeof result !== "object" || Array.isArray(result))
+    throw new Error("Invalid Agent controls response");
+  const controls = result as { agents: PlatformAgent[]; brake?: PlatformAgentBrake };
+  if (
+    !Array.isArray(controls.agents) ||
+    !controls.agents.every(isPlatformAgent) ||
+    (controls.brake !== undefined && !isPlatformAgentBrake(controls.brake))
+  )
+    throw new Error("Invalid Agent controls response");
+  return controls;
+}
+
 export function usePlatformAgents() {
   return useQuery({
     queryKey: queryKeys.admin.agents,
-    queryFn: () =>
-      apiFetch<{ agents: PlatformAgent[]; brake?: PlatformAgentBrake }>("/admin/agents"),
+    queryFn: getPlatformAgents,
     enabled: useOperator(),
   });
 }
@@ -613,10 +661,10 @@ export function usePlatformAgentSpendCap() {
       daily_spend_cap_usd_micros: number | null;
       note: string;
     }) =>
-      apiFetch<PlatformAgent>(
+      apiFetch<unknown>(
         `/admin/agents/${encodeURIComponent(name)}/spend-cap`,
         send("PUT", body),
-      ),
+      ).then((agent) => (isPlatformAgent(agent) && agent.name === name ? agent : undefined)),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.agents }),
   });
 }

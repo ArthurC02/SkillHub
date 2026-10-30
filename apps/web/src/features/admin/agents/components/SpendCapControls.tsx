@@ -23,9 +23,9 @@ export function SpendCapControls({
   agent: PlatformAgent;
   readable: boolean;
   change: ReturnType<typeof usePlatformAgentSpendCap>;
-  onCompleted: (current: PlatformAgent) => void;
+  onCompleted: (current: PlatformAgent | undefined) => void;
 }) {
-  const draft = useSettingDraft(agent.daily_spend_cap_usd_micros / 1_000_000, false);
+  const draft = useSettingDraft(agent.daily_spend_cap_usd_micros / 1_000_000, change.isSuccess);
   const editableDollars = draft.value;
   const micros = dollarsToMicros(editableDollars);
   const restoring = change.variables?.daily_spend_cap_usd_micros === null;
@@ -38,10 +38,7 @@ export function SpendCapControls({
     change.mutate(
       { name: agent.name, daily_spend_cap_usd_micros: value, note },
       {
-        onSuccess: (current) => {
-          draft.accept(current.daily_spend_cap_usd_micros / 1_000_000);
-          onCompleted(current);
-        },
+        onSuccess: onCompleted,
       },
     );
   return (
@@ -113,12 +110,14 @@ export function SpendCapControls({
 }
 
 export function SpendCapResult({
+  agent,
   completed,
   unverified,
   fetching,
   refresh,
 }: {
-  completed: PlatformAgent;
+  agent: PlatformAgent;
+  completed: PlatformAgent | undefined;
   unverified: boolean;
   fetching: boolean;
   refresh: () => void;
@@ -136,20 +135,27 @@ export function SpendCapResult({
   return (
     <>
       <p
-        id={`admin-agent-${completed.name}-cap-result`}
+        id={`admin-agent-${agent.name}-cap-result`}
         ref={result}
         tabIndex={-1}
         className={`notice ${unverified ? "notice-warning" : "notice-success"}`}
         role="status"
         aria-busy={fetching}
       >
-        {completed.name} 的每日花費上限的變更請求已完成；
+        {agent.name} 的每日花費上限的變更請求已完成；
         {unverified
           ? "最新上限尚未確認。"
-          : `目前顯示${completed.daily_spend_cap_overridden ? "營運者設定" : "預設"} ${usd(completed.daily_spend_cap_usd_micros)}；下一次執行採用這個上限，進行中的執行不變。`}
+          : `目前顯示${agent.daily_spend_cap_overridden ? "營運者設定" : "預設"} ${usd(agent.daily_spend_cap_usd_micros)}；下一次執行採用這個上限，進行中的執行不變。`}
       </p>
       {unverified && (
-        <button type="button" disabled={fetching} onClick={refresh}>
+        <button
+          type="button"
+          disabled={fetching}
+          onClick={() => {
+            refresh();
+            result.current?.focus();
+          }}
+        >
           {fetching ? "重新整理中…" : "重新整理此 Agent 的上限"}
         </button>
       )}
