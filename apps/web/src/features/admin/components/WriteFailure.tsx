@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { ApiError } from "../../../core/api/client";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 
@@ -14,9 +15,15 @@ function failureMessage(error: unknown): string {
 }
 
 export function WriteFailure({ error }: { error: unknown }) {
+  const alert = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (error) alert.current?.scrollIntoView?.({ block: "nearest" });
+  }, [error]);
   return (
     <ReadFailure error={error} what="這個動作的結果">
-      <p role="alert">{failureMessage(error)}</p>
+      <p role="alert" ref={alert}>
+        {failureMessage(error)}
+      </p>
     </ReadFailure>
   );
 }

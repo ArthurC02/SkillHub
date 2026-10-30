@@ -794,6 +794,34 @@ test("OPS-003: a refused grant explains the next step without raw server text", 
   expect(has("操作未被接受；請核對輸入與目前狀態後再試。")()).toBe(false);
 });
 
+test("OPS-003: a grant whose outcome is unknown brings its explanation into view", async () => {
+  const scrolled: Element[] = [];
+  const original = HTMLElement.prototype.scrollIntoView;
+  HTMLElement.prototype.scrollIntoView = function (this: Element) {
+    scrolled.push(this);
+  };
+  try {
+    stub(true, (path, method) =>
+      method === "POST" && path.endsWith("/grants")
+        ? { body: { error: "grant failed" }, status: 500 }
+        : undefined,
+    );
+    await lookUp("member@example.com");
+    await waitFor(has("授予點數"));
+    await type("#admin-grant-amount", "5");
+    await type("#admin-grant-note", "r");
+    await click(button("授予"));
+    await waitFor(has("無法確認操作是否完成"));
+
+    expect(scrolled.map((element) => element.textContent)).toContain(
+      "無法確認操作是否完成；請先重新整理目前狀態，再決定是否重試。",
+    );
+  } finally {
+    if (original) HTMLElement.prototype.scrollIntoView = original;
+    else delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView;
+  }
+});
+
 test("OPS-004: takedown of the one skill found takes a reason and a second click", async () => {
   stub(true);
   await mountAt("/admin/skills", { q: SKILL });
