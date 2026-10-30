@@ -187,6 +187,8 @@ function DownloadHistory({ artifact }: { artifact: DownloadArtifact }) {
   );
 }
 
+const REPACKAGEABLE = new Set(["rejected", "lost", "expired", "purged"]);
+
 function DownloadActions({
   artifact,
   pending,
@@ -213,6 +215,20 @@ function DownloadActions({
       ) : (
         <span className="note">{artifact.serve_state.label}</span>
       )}
+      {REPACKAGEABLE.has(artifact.serve_state.value) &&
+      artifact.skill_id &&
+      artifact.skill_version_id ? (
+        <>
+          {" ｜ "}
+          <Link
+            to="/skills/$skillId/package"
+            params={{ skillId: artifact.skill_id }}
+            search={{ version: artifact.skill_version_id }}
+          >
+            重新打包這個版本
+          </Link>
+        </>
+      ) : null}
       {artifact.skill_id && artifact.skill_version_id ? (
         <>
           {" ｜ "}

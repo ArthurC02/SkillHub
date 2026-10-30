@@ -751,6 +751,44 @@ test("WS-004 an expired package stays in the list, says it expired, and offers n
   expect(links).toHaveLength(1);
 });
 
+for (const [state, offered] of [
+  ["expired", true],
+  ["lost", true],
+  ["purged", true],
+  ["rejected", true],
+  ["quarantined", false],
+] as const) {
+  test(`a ${state} package ${offered ? "offers" : "does not offer"} packaging the same version again`, async () => {
+    vi.stubGlobal("fetch", () =>
+      json({
+        downloads: [
+          {
+            ...artifact,
+            artifact_id: `${state}-1`,
+            servable: false,
+            serve_state: { value: state, label: `${state} label`, note: "這一份不再提供。" },
+          },
+        ],
+      }),
+    );
+    await render(<Downloads />, () => text().includes(`${state} label`));
+
+    const again = Array.from(container.querySelectorAll("a")).filter(
+      (a) => a.textContent === "重新打包這個版本",
+    );
+    expect(again.map((a) => a.getAttribute("href"))).toEqual(
+      offered ? [`/skills/${SKILL}/package?version=${VERSION}`] : [],
+    );
+  });
+}
+
+test("an available package offers its bytes, not packaging it again", async () => {
+  vi.stubGlobal("fetch", () => json({ downloads: [artifact] }));
+  await render(<Downloads />, () => text().includes("csv-cleanup-v2.zip"));
+
+  expect(text()).not.toContain("重新打包這個版本");
+});
+
 test("04 丙-91 a lost row shows its own note and none of the expired-row facts", async () => {
   vi.stubGlobal("fetch", () =>
     json({
