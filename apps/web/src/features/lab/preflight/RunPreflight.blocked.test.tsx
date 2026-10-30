@@ -116,6 +116,21 @@ test("a platform budget that cannot cover the run names when it recovers and off
   );
 });
 
+for (const [blocked, says] of [
+  ["workspace_concurrency", "這個工作區還有一次試跑沒有結束,一次只能跑一個"],
+  ["quota_daily", "今天的試跑次數已經用完"],
+  ["quota_window", "這段期間的試跑次數已經用完"],
+  ["quota_unavailable", "現在算不出這個工作區還剩幾次試跑"],
+] as const) {
+  test(`a run the ${blocked} gate would refuse is named before confirming and offers no button`, async () => {
+    platformWithPreflight({ blocked });
+    const shown = await renderPreflight();
+
+    expect(startButton(), `the run would be refused for ${blocked}`).toBe(undefined);
+    expect(shown).toContain(says);
+  });
+}
+
 test("a pair this deployment can run still offers the button", async () => {
   platformWithPreflight({});
   await renderPreflight();

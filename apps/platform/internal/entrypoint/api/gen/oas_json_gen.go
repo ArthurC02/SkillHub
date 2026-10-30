@@ -60123,6 +60123,14 @@ func (s *RunPermissionSummaryBlocked) Decode(d *jx.Decoder) error {
 		*s = RunPermissionSummaryBlockedCreditBalance
 	case RunPermissionSummaryBlockedPlatformModelBudget:
 		*s = RunPermissionSummaryBlockedPlatformModelBudget
+	case RunPermissionSummaryBlockedWorkspaceConcurrency:
+		*s = RunPermissionSummaryBlockedWorkspaceConcurrency
+	case RunPermissionSummaryBlockedQuotaDaily:
+		*s = RunPermissionSummaryBlockedQuotaDaily
+	case RunPermissionSummaryBlockedQuotaWindow:
+		*s = RunPermissionSummaryBlockedQuotaWindow
+	case RunPermissionSummaryBlockedQuotaUnavailable:
+		*s = RunPermissionSummaryBlockedQuotaUnavailable
 	default:
 		*s = RunPermissionSummaryBlocked(v)
 	}

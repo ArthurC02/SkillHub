@@ -28324,7 +28324,10 @@ type RunPermissionSummary struct {
 	// read the package, and `content_not_curated` the clean test mode refusing material that is neither in
 	// the public catalogue nor curated at this exact version, `credit_balance` a workspace whose balance
 	// cannot cover the run's ceiling, and `platform_model_budget` a platform-wide model budget whose
-	// remainder, after the ceilings of the runs still in flight, cannot cover this run's ceiling.
+	// remainder, after the ceilings of the runs still in flight, cannot cover this run's ceiling,
+	// `workspace_concurrency` a workspace that already has as many runs in progress as it may, and
+	// `quota_daily`, `quota_window` and `quota_unavailable` a run allowance that is spent for the day,
+	// spent for the rolling window, or cannot be counted right now.
 	//
 	// Every one of these is also refused when the run is created; this field exists so the refusal arrives
 	// before the user has read a permission summary and confirmed it.
@@ -28412,20 +28415,27 @@ func (*RunPermissionSummary) getRunPreflightRes() {}
 // read the package, and `content_not_curated` the clean test mode refusing material that is neither in
 // the public catalogue nor curated at this exact version, `credit_balance` a workspace whose balance
 // cannot cover the run's ceiling, and `platform_model_budget` a platform-wide model budget whose
-// remainder, after the ceilings of the runs still in flight, cannot cover this run's ceiling.
+// remainder, after the ceilings of the runs still in flight, cannot cover this run's ceiling,
+// `workspace_concurrency` a workspace that already has as many runs in progress as it may, and
+// `quota_daily`, `quota_window` and `quota_unavailable` a run allowance that is spent for the day,
+// spent for the rolling window, or cannot be counted right now.
 //
 // Every one of these is also refused when the run is created; this field exists so the refusal arrives
 // before the user has read a permission summary and confirmed it.
 type RunPermissionSummaryBlocked string
 
 const (
-	RunPermissionSummaryBlockedAccessRestricted    RunPermissionSummaryBlocked = "access_restricted"
-	RunPermissionSummaryBlockedCapabilityMismatch  RunPermissionSummaryBlocked = "capability_mismatch"
-	RunPermissionSummaryBlockedScanBlocked         RunPermissionSummaryBlocked = "scan_blocked"
-	RunPermissionSummaryBlockedScanUnavailable     RunPermissionSummaryBlocked = "scan_unavailable"
-	RunPermissionSummaryBlockedContentNotCurated   RunPermissionSummaryBlocked = "content_not_curated"
-	RunPermissionSummaryBlockedCreditBalance       RunPermissionSummaryBlocked = "credit_balance"
-	RunPermissionSummaryBlockedPlatformModelBudget RunPermissionSummaryBlocked = "platform_model_budget"
+	RunPermissionSummaryBlockedAccessRestricted     RunPermissionSummaryBlocked = "access_restricted"
+	RunPermissionSummaryBlockedCapabilityMismatch   RunPermissionSummaryBlocked = "capability_mismatch"
+	RunPermissionSummaryBlockedScanBlocked          RunPermissionSummaryBlocked = "scan_blocked"
+	RunPermissionSummaryBlockedScanUnavailable      RunPermissionSummaryBlocked = "scan_unavailable"
+	RunPermissionSummaryBlockedContentNotCurated    RunPermissionSummaryBlocked = "content_not_curated"
+	RunPermissionSummaryBlockedCreditBalance        RunPermissionSummaryBlocked = "credit_balance"
+	RunPermissionSummaryBlockedPlatformModelBudget  RunPermissionSummaryBlocked = "platform_model_budget"
+	RunPermissionSummaryBlockedWorkspaceConcurrency RunPermissionSummaryBlocked = "workspace_concurrency"
+	RunPermissionSummaryBlockedQuotaDaily           RunPermissionSummaryBlocked = "quota_daily"
+	RunPermissionSummaryBlockedQuotaWindow          RunPermissionSummaryBlocked = "quota_window"
+	RunPermissionSummaryBlockedQuotaUnavailable     RunPermissionSummaryBlocked = "quota_unavailable"
 )
 
 // AllValues returns all RunPermissionSummaryBlocked values.
@@ -28438,6 +28448,10 @@ func (RunPermissionSummaryBlocked) AllValues() []RunPermissionSummaryBlocked {
 		RunPermissionSummaryBlockedContentNotCurated,
 		RunPermissionSummaryBlockedCreditBalance,
 		RunPermissionSummaryBlockedPlatformModelBudget,
+		RunPermissionSummaryBlockedWorkspaceConcurrency,
+		RunPermissionSummaryBlockedQuotaDaily,
+		RunPermissionSummaryBlockedQuotaWindow,
+		RunPermissionSummaryBlockedQuotaUnavailable,
 	}
 }
 
@@ -28457,6 +28471,14 @@ func (s RunPermissionSummaryBlocked) MarshalText() ([]byte, error) {
 	case RunPermissionSummaryBlockedCreditBalance:
 		return []byte(s), nil
 	case RunPermissionSummaryBlockedPlatformModelBudget:
+		return []byte(s), nil
+	case RunPermissionSummaryBlockedWorkspaceConcurrency:
+		return []byte(s), nil
+	case RunPermissionSummaryBlockedQuotaDaily:
+		return []byte(s), nil
+	case RunPermissionSummaryBlockedQuotaWindow:
+		return []byte(s), nil
+	case RunPermissionSummaryBlockedQuotaUnavailable:
 		return []byte(s), nil
 	default:
 		return nil, errors.Errorf("invalid value: %q", s)
@@ -28486,6 +28508,18 @@ func (s *RunPermissionSummaryBlocked) UnmarshalText(data []byte) error {
 		return nil
 	case RunPermissionSummaryBlockedPlatformModelBudget:
 		*s = RunPermissionSummaryBlockedPlatformModelBudget
+		return nil
+	case RunPermissionSummaryBlockedWorkspaceConcurrency:
+		*s = RunPermissionSummaryBlockedWorkspaceConcurrency
+		return nil
+	case RunPermissionSummaryBlockedQuotaDaily:
+		*s = RunPermissionSummaryBlockedQuotaDaily
+		return nil
+	case RunPermissionSummaryBlockedQuotaWindow:
+		*s = RunPermissionSummaryBlockedQuotaWindow
+		return nil
+	case RunPermissionSummaryBlockedQuotaUnavailable:
+		*s = RunPermissionSummaryBlockedQuotaUnavailable
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)

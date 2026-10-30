@@ -107,7 +107,11 @@ export interface RunPermissionSummary {
      * this exact version, `credit_balance` a workspace whose balance
      * cannot cover the run's ceiling, and `platform_model_budget` a
      * platform-wide model budget whose remainder, after the ceilings of
-     * the runs still in flight, cannot cover this run's ceiling.
+     * the runs still in flight, cannot cover this run's ceiling,
+     * `workspace_concurrency` a workspace that already has as many runs
+     * in progress as it may, and `quota_daily`, `quota_window` and
+     * `quota_unavailable` a run allowance that is spent for the day, spent
+     * for the rolling window, or cannot be counted right now.
      * 
      * Every one of these is also refused when the run is created; this
      * field exists so the refusal arrives before the user has read a
@@ -137,6 +141,10 @@ export const RunPermissionSummaryBlockedEnum = {
     ContentNotCurated: 'content_not_curated',
     CreditBalance: 'credit_balance',
     PlatformModelBudget: 'platform_model_budget',
+    WorkspaceConcurrency: 'workspace_concurrency',
+    QuotaDaily: 'quota_daily',
+    QuotaWindow: 'quota_window',
+    QuotaUnavailable: 'quota_unavailable',
 } as const;
 export type RunPermissionSummaryBlockedEnum = typeof RunPermissionSummaryBlockedEnum[keyof typeof RunPermissionSummaryBlockedEnum];
 

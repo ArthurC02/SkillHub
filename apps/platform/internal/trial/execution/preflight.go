@@ -123,6 +123,9 @@ func (s *Service) blockingReason(
 	if reason, err := spendRefusal(ctx, s, workspaceID); reason != "" || err != nil {
 		return reason, err
 	}
+	if reason, err := capacityRefusal(ctx, s, workspaceID); reason != "" || err != nil {
+		return reason, err
+	}
 	if _, err := s.curatedContentRefusal(ctx, workspaceID, version.ID); !errors.Is(err, ErrContentNotCurated) {
 		return "", err
 	}
@@ -150,6 +153,24 @@ func spendRefusal(ctx context.Context, s *Service, workspaceID pgtype.UUID) (str
 		return ReasonCreditBalance, nil
 	}
 	return refusalReason(platformBudgetVerdict(ctx, s.Gateway, s.Pool, budget.USD)), nil
+}
+
+func capacityRefusal(ctx context.Context, s *Service, workspaceID pgtype.UUID) (string, error) {
+	if s.Pool == nil {
+		return "", nil
+	}
+	active, err := s.queries().CountActiveRuns(ctx, workspaceID)
+	if err != nil {
+		return "", err
+	}
+	if reason := refusalReason(ReasonWorkspaceConcurrency, runSlotVerdict(active)); reason != "" {
+		return reason, nil
+	}
+	reader := policy.UsageReader{
+		WorkspaceCreatedAt: s.WorkspaceCreatedAt,
+		CountRuns:          quotaRunCounter(s.queries()),
+	}
+	return refusalReason(policy.EnforceQuota(ctx, reader, s.Quota, workspaceID)), nil
 }
 
 type CostEstimate struct {

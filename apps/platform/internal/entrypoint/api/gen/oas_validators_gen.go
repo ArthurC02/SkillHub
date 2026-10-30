@@ -10360,6 +10360,14 @@ func (s RunPermissionSummaryBlocked) Validate() error {
 		return nil
 	case "platform_model_budget":
 		return nil
+	case "workspace_concurrency":
+		return nil
+	case "quota_daily":
+		return nil
+	case "quota_window":
+		return nil
+	case "quota_unavailable":
+		return nil
 	default:
 		return errors.Errorf("invalid value: %v", s)
 	}

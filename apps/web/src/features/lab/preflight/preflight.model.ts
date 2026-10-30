@@ -47,6 +47,14 @@ export const BLOCKED_SENTENCE: Record<NonNullable<PreflightResponse["blocked"]>,
     "點數不足,不能開始這次試跑。請聯絡管理者為這個帳號加點;加點後重新整理這一頁就能開始。",
   platform_model_budget:
     "平台的模型總額度今天剩下的不夠這次試跑的上限,所以現在不能開始,也不會扣點。額度在台北時間每天上午 8 點恢復,之後重新整理這一頁就能開始。",
+  workspace_concurrency:
+    "這個工作區還有一次試跑沒有結束,一次只能跑一個,所以現在不能開始。等它結束或到試跑清單取消它,再重新整理這一頁。",
+  quota_daily:
+    "今天的試跑次數已經用完,所以現在不能開始,也不會扣點。從今天最早那一次算起 24 小時後恢復。",
+  quota_window:
+    "這段期間的試跑次數已經用完,所以現在不能開始,也不會扣點。上方的試跑次數寫著下一次什麼時候恢復。",
+  quota_unavailable:
+    "現在算不出這個工作區還剩幾次試跑,沒算清楚之前不會開始,也不會扣點。稍後重新整理這一頁再試。",
 };
 
 export const NOT_INVITED_SENTENCE =

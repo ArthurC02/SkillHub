@@ -11216,7 +11216,7 @@ components:
             at all.
         blocked:
           type: string
-          enum: [access_restricted, capability_mismatch, scan_blocked, scan_unavailable, content_not_curated, credit_balance, platform_model_budget]
+          enum: [access_restricted, capability_mismatch, scan_blocked, scan_unavailable, content_not_curated, credit_balance, platform_model_budget, workspace_concurrency, quota_daily, quota_window, quota_unavailable]
           description: |
             Why this pair cannot start a run at all, absent when it can. A code
             rather than a sentence: the wording belongs to the interface, and an
@@ -11239,7 +11239,11 @@ components:
             this exact version, `credit_balance` a workspace whose balance
             cannot cover the run's ceiling, and `platform_model_budget` a
             platform-wide model budget whose remainder, after the ceilings of
-            the runs still in flight, cannot cover this run's ceiling.
+            the runs still in flight, cannot cover this run's ceiling,
+            `workspace_concurrency` a workspace that already has as many runs
+            in progress as it may, and `quota_daily`, `quota_window` and
+            `quota_unavailable` a run allowance that is spent for the day, spent
+            for the rolling window, or cannot be counted right now.
 
             Every one of these is also refused when the run is created; this
             field exists so the refusal arrives before the user has read a

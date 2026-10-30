@@ -71,7 +71,11 @@ export interface PreflightResponse {
     | "scan_unavailable"
     | "content_not_curated"
     | "credit_balance"
-    | "platform_model_budget";
+    | "platform_model_budget"
+    | "workspace_concurrency"
+    | "quota_daily"
+    | "quota_window"
+    | "quota_unavailable";
   notes: string[];
 }
 
