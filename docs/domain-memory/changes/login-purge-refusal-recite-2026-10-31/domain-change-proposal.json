@@ -3,12 +3,12 @@
   "proposal_id": "login-purge-refusal-recite-2026-10-31",
   "proposer": "domain-memory-agent",
   "requirement_id": "login-purge-refusal-recite",
-  "status": "submitted",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-10-30T18:42:43.964540Z",
-  "verified_at": null,
-  "finalized_at": null,
-  "applied_at": null,
+  "verified_at": "2026-10-30T18:42:55.227067Z",
+  "finalized_at": "2026-10-30T18:42:56.031149Z",
+  "applied_at": "2026-10-30T18:43:01.600507Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "99c19bf92ea60f9ed3428ebc57706be237d2e037",
@@ -90,8 +90,26 @@
   ],
   "risk_flags": [],
   "open_questions": [],
-  "approvals": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-30T18:42:54.434574Z",
+      "scope": "re-cite the one-live-account-per-email rule after the purge login refusal became Chinese; the rule itself is unchanged",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "99c19bf92ea60f9ed3428ebc57706be237d2e037",
+        "registry_digest": "sha256:8f4f8ad8a03dc5c76f81a7ac99584e4482419139d7fffa8f41ef68e3d7c79f96",
+        "committed_digest": "sha256:8f4f8ad8a03dc5c76f81a7ac99584e4482419139d7fffa8f41ef68e3d7c79f96"
+      }
+    }
+  ],
   "supersedes": [
     "shifted-recite-2026-10-24"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "4828ff11cb8a85e1ada5e14bb38d5c685b6fa9f2",
+    "registry_digest": "sha256:b48cbe0c65535b95da44c9128a3ab14db0f724c178720e9783c33700f3940c56"
+  }
 }
