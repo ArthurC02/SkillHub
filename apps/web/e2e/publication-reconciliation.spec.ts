@@ -55,7 +55,8 @@ for (const width of [375, 1280]) {
           ).toBeVisible();
           await input.fill("chosen-name");
         } else await expect(section).toContainText("已列入 Catalog");
-        await attestation.check();
+        await attestation.press("Space");
+        await expect(attestation).toBeChecked();
         await license.selectOption("MIT");
         if (scenario.action === "delist") {
           await section.getByRole("button", { name: "撤回", exact: true }).click();
