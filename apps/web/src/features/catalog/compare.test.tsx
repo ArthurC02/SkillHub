@@ -158,6 +158,30 @@ test("EVAL-003 comparison does not fetch a version diff outside the platform", a
   expect(calls.some((url) => url.includes("example.test/version-diff"))).toBe(false);
 });
 
+test.each([
+  [
+    403,
+    "此 Skill 的來源授權正在審查中，暫不提供版本差異。",
+    "此 Skill 的來源授權正在審查中，暫不提供版本差異。",
+  ],
+  [503, "service unavailable", "暫時無法讀取版本差異。請再試一次，或稍後再試。"],
+])("EVAL-003 a version diff refused with %i says %s", async (status, error, shown) => {
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    if (pathOf(url).endsWith("/versions/diff")) return json({ error }, status);
+    if (pathOf(url) === "/runs") {
+      return json(url.includes(`test_case_id=${TEST_CASE}`) ? RUNS : { runs: [FOREIGN_RUN] });
+    }
+    const response = platformResponse(url);
+    return json(response.body, response.status);
+  });
+  search = { against: OTHER_RUN };
+  await render(<RunCompare />);
+  await waitFor(() => text().includes(shown));
+
+  if (status === 403) expect(text()).not.toContain("暫時無法讀取版本差異");
+});
+
 async function render(node: ReactNode) {
   await act(async () => {
     root = createRoot(container);
