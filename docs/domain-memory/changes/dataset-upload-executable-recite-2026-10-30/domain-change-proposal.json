@@ -1,0 +1,115 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "dataset-upload-executable-recite-2026-10-30",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "dataset-upload-executable-recite",
+  "status": "submitted",
+  "change_classification": "routine",
+  "submitted_at": "2026-10-30T13:58:36.776006Z",
+  "verified_at": null,
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "ad6c6dcbed8ac6796a043df95e7ca8e4167cfcb3",
+    "registry_digest": "sha256:498fed71d2ab9fb0616ce2c5892de1f7620f390a8a74bd7b4321be349b63e1d2",
+    "committed_digest": "sha256:498fed71d2ab9fb0616ce2c5892de1f7620f390a8a74bd7b4321be349b63e1d2"
+  },
+  "affected_contexts": [
+    "testlab"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "<context-id>",
+    "invariant": "<falsifiable-rule>",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "<existing-or-proposed-collaboration>",
+    "consistency": "<synchronous-or-eventual>",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": null,
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-disguised-executable-is-refused",
+        "statement": "An upload whose leading bytes match an executable or archive signature is refused as an unsupported type, whatever its name.",
+        "contexts": [
+          "testlab"
+        ],
+        "examples": [
+          "data.csv beginning with the ELF magic is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/filetype.go",
+            "lines": {
+              "start": 61,
+              "end": 65
+            },
+            "content_sha256": "sha256:8a5fc45e661928c54624da6441d4ec36aa890a436412d19a40204b30d77238a6",
+            "excerpt_sha256": "sha256:4608079bf33bfb95f582fb4e4d0ce9b9ebae7f49441acbd8caf379bf0869c8a4",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/trial/design/filetype_test.go",
+            "lines": {
+              "start": 56,
+              "end": 75
+            },
+            "excerpt_sha256": "sha256:06fe609c44ac9d636307989282f4ad591018c4aa327e9c742cb7660cec2608d8"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-zip-entry-may-not-escape-its-archive",
+        "statement": "A zip upload is refused when any entry would escape the archive root by traversal or an absolute path.",
+        "contexts": [
+          "testlab"
+        ],
+        "examples": [
+          "A zip holding ../escape.txt is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/filetype.go",
+            "lines": {
+              "start": 112,
+              "end": 114
+            },
+            "content_sha256": "sha256:8a5fc45e661928c54624da6441d4ec36aa890a436412d19a40204b30d77238a6",
+            "excerpt_sha256": "sha256:985ba27d331b1636f5578d4500640d23b02e655549eebfbf261182bd07eb35d0",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/trial/design/filetype_test.go",
+            "lines": {
+              "start": 106,
+              "end": 121
+            },
+            "excerpt_sha256": "sha256:0f1417be9843b13d8f9b609f83bda4e55d3cc579224fdb822dba5d951d186766"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [],
+  "supersedes": [
+    "dataset-upload-reason-recite-2026-10-30"
+  ]
+}
