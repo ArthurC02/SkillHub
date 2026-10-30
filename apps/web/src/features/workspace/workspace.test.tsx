@@ -1728,6 +1728,9 @@ test("PACK-018 匯出為 Plugin 成功後顯示下載連結，且揭露句在按
 
 test("PACK-018 尚未發佈時可以送出發佈，422 顯示伺服器的字串", async () => {
   stubBundleRoutes({
+    ownSkills: [
+      { skill_id: SKILL, embedded: skillDetail(SKILL, "summariser"), versions: SKILL_VERSIONS },
+    ],
     bundles: [bundleRow("pdf-toolkit-422")],
     publication: () => ({ body: { error: "not published" }, status: 404 }),
     onPublish: () => ({
@@ -1736,7 +1739,7 @@ test("PACK-018 尚未發佈時可以送出發佈，422 顯示伺服器的字串"
     }),
   });
   await render(<BundleSection />, () => text().includes("pdf-toolkit-422"));
-  await waitFor(() => Boolean(button("首次發佈 v1.0.0")));
+  await waitFor(() => button("首次發佈 v1.0.0")?.disabled === false);
 
   await act(async () => button("首次發佈 v1.0.0")?.click());
   await waitFor(() => text().includes("Bundle 需要一段說明"));

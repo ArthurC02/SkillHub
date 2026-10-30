@@ -1,6 +1,11 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { OWN_BUNDLE, OWN_PUBLICATION, PUBLISHER } from "../src/testing/fixtures/platform";
+import {
+  OWN_BUNDLE,
+  OWN_PUBLICATION,
+  PUBLISHER,
+  platformResponse,
+} from "../src/testing/fixtures/platform";
 import type { Publication } from "../src/features/publishing/publishing.service";
 import { stubPlatform } from "./stub";
 
@@ -56,6 +61,21 @@ async function stubOperation(
   readFailure?: "unavailable" | "invalid",
 ) {
   await stubPlatform(page);
+  const own = (platformResponse("/skills").body as { skills: object[] }).skills[0];
+  await page.route("**/skills?*", (route) =>
+    route.fulfill({
+      json: {
+        skills: OWN_BUNDLE.members.map((member) => ({
+          ...own,
+          skill_id: member.skill_id,
+          name: member.name,
+        })),
+        total: OWN_BUNDLE.members.length,
+        limit: 24,
+        truncated: false,
+      },
+    }),
+  );
   const unexpectedWrites: string[] = [];
   await page.route("**/*", (route) => {
     if (["GET", "HEAD"].includes(route.request().method())) return route.fallback();

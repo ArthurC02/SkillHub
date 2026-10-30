@@ -225,6 +225,49 @@ function bundleOverview(latestVersion: BundleVersion, publication?: Publication)
   };
 }
 
+function bundleMemberRead(
+  input: string,
+  members = OWN_BUNDLE.members,
+  attestationRequired = false,
+) {
+  const path = String(input)
+    .replace(/^https?:\/\/[^/]+/, "")
+    .split("?")[0];
+  if (path === "/skills") {
+    const base = (platformResponse("/skills").body as { skills: object[] }).skills[0];
+    return json({
+      skills: members.map((member) => ({ ...base, skill_id: member.skill_id, name: member.name })),
+      limit: 24,
+      total: members.length,
+      truncated: false,
+    });
+  }
+  const member = members.find(
+    (member) =>
+      path === `/api/skills/${member.skill_id}` || path === `/skills/${member.skill_id}/versions`,
+  );
+  if (!member) return undefined;
+  return json(
+    path.endsWith("/versions")
+      ? {
+          versions: [
+            {
+              version_id: member.version_id,
+              version_number: member.version_number,
+              content_hash: member.content_hash,
+              created_at: OWN_BUNDLE.created_at,
+            },
+          ],
+        }
+      : {
+          ...skillDetail(member.skill_id, member.name),
+          redistribution: attestationRequired
+            ? { value: "generated", label: "平台生成", note: "" }
+            : { value: "allowed", label: "可散布", note: "" },
+        },
+  );
+}
+
 function bundleOperationFixture(
   action: "publish" | "delist",
   status: number,
@@ -321,20 +364,12 @@ function bundleOperationFixture(
           ? read
           : json(bundleOverview(OWN_BUNDLE, updated));
     }
-    if (needsAttestation && (path.startsWith("/skills") || path.startsWith("/api/skills/"))) {
-      const response = platformResponse(String(input));
-      return json(
-        path === `/api/skills/${SKILL}`
-          ? detail({ redistribution: { value: "generated", label: "平台生成", note: "" } })
-          : response.body,
-        response.status,
-      );
-    }
+    const members = bundleMemberRead(input, OWN_BUNDLE.members, needsAttestation);
+    if (members) return members;
     const routes: Record<string, unknown> = {
       "/me/publisher": OWN_PUBLISHER,
       "/me/publications": { publications: [] },
       "/me/bundles": { bundles: [OWN_BUNDLE, older] },
-      "/skills": { skills: [], total: 0, limit: 100, truncated: false },
       "/downloads": { downloads: [] },
     };
     return json(routes[path] ?? { error: "not found" }, path in routes ? 200 : 404);
@@ -491,11 +526,12 @@ test("Bundle concurrent cards follow the latest shared overview without blocking
         );
       });
     }
+    const members = bundleMemberRead(input);
+    if (members) return members;
     const routes: Record<string, unknown> = {
       "/me/publisher": OWN_PUBLISHER,
       "/me/publications": { publications: [] },
       "/me/bundles": { bundles },
-      "/skills": { skills: [], total: 0, limit: 100, truncated: false },
       "/downloads": { downloads: [] },
     };
     return json(routes[path] ?? {}, path in routes ? 200 : 404);
@@ -802,6 +838,125 @@ for (const source of ["skills", "detail", "versions"] as const) {
   }
 }
 
+for (const scenario of [
+  { name: "complete with every member", partial: false, missing: false, enabled: true },
+  { name: "partial with every member", partial: true, missing: false, enabled: true },
+  { name: "partial missing a member", partial: true, missing: true, enabled: false },
+]) {
+  test(`a Bundle checks its own members when the owned list is ${scenario.name}`, async () => {
+    const members = scenario.missing ? [OWN_BUNDLE.members[0]] : OWN_BUNDLE.members;
+    vi.stubGlobal("fetch", async (input: string) => {
+      const path = String(input)
+        .replace(/^https?:\/\/[^/]+/, "")
+        .split("?")[0];
+      if (path === "/me/bundles") return json({ bundles: [OWN_BUNDLE] });
+      if (path === "/me/bundles/overview") return json(bundleOverview(OWN_BUNDLE));
+      const read = bundleMemberRead(input, members);
+      if (read && path === "/skills" && scenario.partial) {
+        const page = (await (await read).json()) as Record<string, unknown>;
+        return json({ ...page, total: members.length + 1, truncated: true });
+      }
+      if (read) return read;
+      const response = platformResponse(String(input));
+      return json(response.body, response.status);
+    });
+    await render(
+      <PublishingWorkspace />,
+      () => Boolean(button(`首次發佈 v${OWN_BUNDLE.version}`)) && queryClient.isFetching() === 0,
+    );
+    expect(button(`首次發佈 v${OWN_BUNDLE.version}`)?.disabled).toBe(!scenario.enabled);
+    expect(text().includes("散布需求尚未確認")).toBe(!scenario.enabled);
+  });
+}
+
+for (const missing of ["one member", "all members"]) {
+  test(`a complete owned-skill list missing ${missing} cannot confirm a Bundle's redistribution requirements`, async () => {
+    let reads = 0;
+    let writes = 0;
+    vi.stubGlobal("fetch", (input: string, init?: RequestInit) => {
+      const path = String(input)
+        .replace(/^https?:\/\/[^/]+/, "")
+        .split("?")[0];
+      if (path === "/me/bundles") return json({ bundles: [OWN_BUNDLE] });
+      if (path === "/me/bundles/overview") return json(bundleOverview(OWN_BUNDLE));
+      if (init?.method && init.method !== "GET") writes++;
+      if (path === "/skills") {
+        reads++;
+        return bundleMemberRead(
+          input,
+          reads === 1
+            ? missing === "all members"
+              ? []
+              : [OWN_BUNDLE.members[0]]
+            : OWN_BUNDLE.members,
+        )!;
+      }
+      const members = bundleMemberRead(input);
+      if (members) return members;
+      const response = platformResponse(String(input));
+      return json(response.body, response.status);
+    });
+    await render(
+      <PublishingWorkspace />,
+      () => Boolean(button(`首次發佈 v${OWN_BUNDLE.version}`)) && queryClient.isFetching() === 0,
+    );
+    expect(button(`首次發佈 v${OWN_BUNDLE.version}`)?.disabled).toBe(true);
+    expect(text()).toContain("散布需求尚未確認");
+    const refresh = Array.from(
+      container.querySelectorAll<HTMLButtonElement>("#bundle-workspace button"),
+    ).find((button) => button.textContent === "重新整理")!;
+    await act(async () => refresh.click());
+    expect(reads).toBe(2);
+    await waitFor(() => button(`首次發佈 v${OWN_BUNDLE.version}`)?.disabled === false);
+    expect(button(`首次發佈 v${OWN_BUNDLE.version}`)?.disabled).toBe(false);
+    expect(text()).not.toContain("散布需求尚未確認");
+    expect(writes).toBe(0);
+  });
+}
+
+test("refreshing a Bundle rereads each member's redistribution requirements", async () => {
+  let attestationRequired = false;
+  let detailReads = 0;
+  let versionReads = 0;
+  vi.stubGlobal("fetch", (input: string) => {
+    const path = String(input)
+      .replace(/^https?:\/\/[^/]+/, "")
+      .split("?")[0];
+    if (path === "/me/bundles") return json({ bundles: [OWN_BUNDLE] });
+    if (path === "/me/bundles/overview") return json(bundleOverview(OWN_BUNDLE));
+    if (path.startsWith("/api/skills/")) detailReads++;
+    if (path.endsWith("/versions")) versionReads++;
+    const read = bundleMemberRead(input, OWN_BUNDLE.members, attestationRequired);
+    if (read) return read;
+    const response = platformResponse(String(input));
+    return json(response.body, response.status);
+  });
+  const article = () =>
+    container.querySelector(`article[aria-labelledby="bundle-${OWN_BUNDLE.bundle}"]`)!;
+  await render(
+    <PublishingWorkspace />,
+    () => button(`首次發佈 v${OWN_BUNDLE.version}`)?.disabled === false,
+  );
+  expect(article().querySelector('input[type="checkbox"]')).toBeNull();
+  const before = detailReads;
+  const versionsBefore = versionReads;
+  attestationRequired = true;
+  const refresh = Array.from(
+    container.querySelectorAll<HTMLButtonElement>("#bundle-workspace button"),
+  ).find((button) => button.textContent === "重新整理")!;
+  await act(async () => refresh.click());
+  await pollUntil(() => queryClient.isFetching() === 0, text, DEFAULT_WAIT_MS, {
+    flushBeforeFirstCheck: true,
+  });
+  expect(detailReads - before).toBe(2);
+  expect(versionReads - versionsBefore).toBe(2);
+  const attestation = article().querySelector<HTMLInputElement>('input[type="checkbox"]');
+  expect(attestation).not.toBeNull();
+  expect(attestation?.checked).toBe(false);
+  expect(button(`首次發佈 v${OWN_BUNDLE.version}`)?.disabled).toBe(true);
+  expect(text()).toContain("發佈前需要確認你有權重新散布所有成員");
+});
+
 test("an older Bundle row exports and first publishes the immutable version shown on that row", async () => {
   const bundle = {
     bundle: "pdf-toolkit",
@@ -856,12 +1011,13 @@ test("an older Bundle row exports and first publishes the immutable version show
         releases: [],
       });
     }
+    const members = bundleMemberRead(input, bundle.members);
+    if (members) return members;
     const routes: Record<string, { body: unknown; status?: number }> = {
       "/me/publisher": { body: OWN_PUBLISHER },
       "/me/publications": { body: { publications: [] } },
       "/me/bundles": { body: { bundles: [latest, bundle] } },
       "/me/bundles/overview": { body: bundleOverview(latest) },
-      "/skills": { body: { skills: [], total: 0, limit: 100, truncated: false } },
       "/downloads": { body: { downloads: [] } },
       "/me/bundles/pdf-toolkit/publication": {
         body: { error: "not published" },
@@ -938,12 +1094,13 @@ test("an older published Bundle row republishes the immutable version shown on t
       published = JSON.parse(String(init.body)) as Record<string, unknown>;
       return json(publication);
     }
+    const members = bundleMemberRead(input);
+    if (members) return members;
     const routes: Record<string, { body: unknown; status?: number }> = {
       "/me/publisher": { body: OWN_PUBLISHER },
       "/me/publications": { body: { publications: [] } },
       "/me/bundles": { body: { bundles: [OWN_BUNDLE, older] } },
       "/me/bundles/overview": { body: bundleOverview(OWN_BUNDLE, publication) },
-      "/skills": { body: { skills: [], total: 0, limit: 100, truncated: false } },
       "/downloads": { body: { downloads: [] } },
       [`/me/bundles/${OWN_BUNDLE.bundle}/publication`]: { body: publication },
     };

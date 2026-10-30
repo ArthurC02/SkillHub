@@ -55,6 +55,7 @@ function useMemberChoices(): {
   paused: boolean;
   error: Error | null;
   retryFailedReads: () => void;
+  refresh: () => Promise<unknown>;
   fetching: boolean;
   hasNextPage: boolean;
   fetchNextPage: () => void;
@@ -96,6 +97,7 @@ function useMemberChoices(): {
       versions.find((versionList) => versionList.error)?.error ??
       null,
     fetching: queries.some((query) => query.isFetching),
+    refresh: () => Promise.all(queries.map((query) => query.refetch())),
     retryFailedReads: () => {
       if (nextPageFailure) {
         void ownSkills.fetchNextPage();
@@ -148,10 +150,7 @@ export function BundleSection({ selectedVersion }: { selectedVersion?: string })
   const memberPolicyKnownOf = (version: BundleVersion) =>
     !choicesPending &&
     !choicesError &&
-    (!hasMoreChoices ||
-      version.members.every((member) =>
-        choices.some((choice) => choice.skillId === member.skill_id),
-      ));
+    version.members.every((member) => choices.some((choice) => choice.skillId === member.skill_id));
 
   return (
     <section id="bundle-workspace">
@@ -205,6 +204,7 @@ function BundleReadStatus({
   members: ReturnType<typeof useMemberChoices>;
 }) {
   const readableBundles = bundles.error ? undefined : bundles.data;
+  const lists = [bundles, overview];
   return (
     <>
       {bundles.isPending && <Loading what="Bundle 清單" />}
@@ -261,8 +261,9 @@ function BundleReadStatus({
           showWhenIdle
           subject="Bundle"
           updatedAt={bundles.dataUpdatedAt}
-          fetching={bundles.isFetching || overview.isFetching}
-          refetch={() => Promise.all([bundles.refetch(), overview.refetch()])}
+          fetching={lists.some((query) => query.isFetching) || members.fetching}
+          paused={lists.some((query) => query.fetchStatus === "paused") || members.paused}
+          refetch={() => Promise.all([bundles.refetch(), overview.refetch(), members.refresh()])}
         />
       )}
     </>
