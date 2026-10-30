@@ -497,6 +497,60 @@ test("DISC-009 帶不到 2 個 id 到站是正常狀態，不是失敗", async (
   ).toBe(false);
 });
 
+function stubSkillReads(goneStatus: number, goneIds: string[]) {
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    const id = [SKILL, SKILL_B, SKILL_C].find((each) => pathOf(url) === `/api/skills/${each}`);
+    if (id && goneIds.includes(id)) return json({ error: "gone" }, goneStatus);
+    if (id) return json(skillDetail(id, `小工具 ${id.slice(0, 4)}`));
+    const response = platformResponse(url);
+    return json(response.body, response.status);
+  });
+}
+
+const goneSentence =
+  "小工具已從目錄下架、已被刪除，或你沒有權限看到，未列入下表；重新讀取也不會出現。";
+
+test.each([410, 404])(
+  "DISC-009 a compared skill answering %i is named as gone, without a retry that cannot work",
+  async (status) => {
+    search = { ids: [SKILL, SKILL_B, SKILL_C].join(",") };
+    stubSkillReads(status, [SKILL_C]);
+    await render(<Compare />);
+    await waitFor(() => text().includes(goneSentence));
+
+    expect(text()).toContain(`有 1 個${goneSentence}`);
+    expect(text()).not.toContain("剩下的不夠 2 個");
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+    expect(
+      Array.from(container.querySelectorAll("button")).map((b) => b.textContent),
+    ).not.toContain("再試一次");
+    expect(container.querySelectorAll("thead th")).toHaveLength(3);
+  },
+);
+
+test("DISC-009 when the gone skills leave fewer than two, the page says to choose again", async () => {
+  search = { ids: [SKILL, SKILL_B, SKILL_C].join(",") };
+  stubSkillReads(410, [SKILL_B, SKILL_C]);
+  await render(<Compare />);
+  await waitFor(() => text().includes(goneSentence));
+
+  expect(text()).toContain(
+    `有 2 個${goneSentence}剩下的不夠 2 個可以比較，請從首頁的目錄重新選擇。`,
+  );
+  expect(container.querySelector(".compare-table")).toBeNull();
+});
+
+test("DISC-009 a transient read failure beside a gone skill still offers the retry", async () => {
+  search = { ids: [SKILL, SKILL_B, SKILL_C].join(",") };
+  stubSkillReads(503, [SKILL_B]);
+  await render(<Compare />);
+  await waitFor(() => container.querySelector('[role="alert"]') !== null);
+
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain("有 1 個小工具讀取失敗");
+  expect(text()).not.toContain(goneSentence);
+});
+
 test("comparison names its horizontal scroll region and shows how to reveal hidden columns", async () => {
   search = { ids: "skill-a,skill-b" };
   stubPlatform();

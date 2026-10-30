@@ -1,6 +1,6 @@
 import { Link, useSearch } from "@tanstack/react-router";
 import type { ReactNode } from "react";
-import { MAX_COMPARE, useEmbeddedSkillDetails } from "../../skill";
+import { MAX_COMPARE, unreadableSkillSentence, useEmbeddedSkillDetails } from "../../skill";
 import { CompatibilityStatus } from "../../../shared/ui/CompatibilityStatus";
 import { LabelledBadge } from "../../../shared/ui/LabelledBadge";
 import { LicenseBadge, LicenseNotes } from "../../../shared/ui/LicenseBadge";
@@ -286,8 +286,12 @@ export function Compare() {
   const fetching = results.some((result) => result.isFetching);
   const paused = results.some((result) => result.fetchStatus === "paused");
   const reading = fetching || paused;
-  const failed = results.filter((result) => result.isError).length;
-  const firstError = results.find((result) => result.error)?.error;
+  const gone = results.filter((result) => unreadableSkillSentence(result.error)).length;
+  const retryable = results.filter(
+    (result) => result.isError && !unreadableSkillSentence(result.error),
+  );
+  const failed = retryable.length;
+  const firstError = retryable[0]?.error;
 
   return (
     <section className="compare-page">
@@ -325,15 +329,20 @@ export function Compare() {
         <ReadFailure
           error={firstError}
           what="這些小工具"
-          retry={() =>
-            results.filter((result) => result.error).forEach((result) => void result.refetch())
-          }
+          retry={() => retryable.forEach((result) => void result.refetch())}
           focusTarget="skill-comparison-heading"
         >
           <p role="alert">有 {failed} 個小工具讀取失敗，未列入下表。請再試一次。</p>
         </ReadFailure>
       )}
 
+      {!reading && gone > 0 && (
+        <p role="status">
+          有 {gone}{" "}
+          個小工具已從目錄下架、已被刪除，或你沒有權限看到，未列入下表；重新讀取也不會出現。
+          {skills.length < 2 && "剩下的不夠 2 個可以比較，請從首頁的目錄重新選擇。"}
+        </p>
+      )}
       {!reading && skills.length >= 2 && <CompareTable skills={skills} />}
 
       <p>
