@@ -55,7 +55,7 @@ for (const owner of owners) {
           const heading = section.getByRole("heading", { name: owner.region, exact: true });
           const input = section.getByRole("textbox", { name: "發佈者名稱", exact: true });
           await input.fill("kept-namespace");
-          await section.getByRole("button", { name: "註冊", exact: true }).click();
+          await input.press("Enter");
           await expect.poll(() => reads).toBe(2);
           await expect(section.locator("form.publisher-form")).toHaveCount(0);
           await expect(section).not.toContainText("還沒有註冊發佈者名稱");
