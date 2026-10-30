@@ -28,7 +28,8 @@ export async function pollUntil(
     if (runningTest() !== owner) throw new PollOutlivedItsTest(`poll from "${owner}" outlived it`);
     if (!flushBeforeFirstCheck && done()) return;
     await flushOnce();
-    if (flushBeforeFirstCheck && done()) return;
+    if (runningTest() !== owner) throw new PollOutlivedItsTest(`poll from "${owner}" outlived it`);
+    if (done()) return;
   }
   throw new Error(`waitFor timed out; DOM was: ${describe() ?? ""}`);
 }
