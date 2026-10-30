@@ -171,9 +171,19 @@ export interface RunCreated {
   provider: string;
 }
 
-export function getPreflight(skillId: string, versionId: string, testCaseId: string) {
+export async function getPreflight(skillId: string, versionId: string, testCaseId: string) {
   const params = new URLSearchParams({ version_id: versionId, test_case_id: testCaseId });
-  return apiFetch<PreflightResponse>(`/skills/${skillId}/runs/preflight?${params.toString()}`);
+  const result = await apiFetch<PreflightResponse>(
+    `/skills/${skillId}/runs/preflight?${params.toString()}`,
+  );
+  if (
+    typeof result?.summary?.skill_version_id !== "string" ||
+    typeof result?.summary?.test_case_id !== "string" ||
+    result.summary.skill_version_id.toLowerCase() !== versionId.toLowerCase() ||
+    result.summary.test_case_id.toLowerCase() !== testCaseId.toLowerCase()
+  )
+    throw new Error("Invalid preflight response context");
+  return result;
 }
 
 export function usePreflight(
