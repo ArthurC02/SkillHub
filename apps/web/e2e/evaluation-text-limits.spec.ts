@@ -5,9 +5,6 @@ import { TEST_CASE } from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";
 
 test.describe.configure({ mode: "default" });
-test.beforeEach(({ browserName }) => {
-  test.slow(browserName === "webkit", "WebKit paints this page in software");
-});
 
 const fields = [
   {

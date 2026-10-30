@@ -1,5 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
+if (process.platform === "linux") process.env.WEBKIT_SKIA_ENABLE_CPU_RENDERING ??= "1";
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
