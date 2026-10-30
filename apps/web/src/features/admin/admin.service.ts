@@ -934,13 +934,82 @@ export type JourneyTrend = Trend & {
 export type TrendDays = 7 | 30 | 90;
 export const TREND_DAYS: TrendDays[] = [7, 30, 90];
 
-export function useTrend<T extends Trend<DailyCount>>(
-  path: "cost" | "credits" | "runs" | "operator-actions" | "funnel" | "journeys",
-  days: TrendDays,
-) {
+type TrendResponses = {
+  cost: Trend<DailyAmount>;
+  credits: CreditTrend;
+  runs: Trend;
+  "operator-actions": Trend;
+  funnel: FunnelTrend;
+  journeys: JourneyTrend;
+};
+
+export async function getTrend<P extends keyof TrendResponses>(path: P, days: TrendDays) {
+  const result = await apiFetch<unknown>(`/admin/trends/${path}?days=${days}`);
+  if (!isTrendResponse(result, path)) throw new Error("Invalid trend response");
+  return result;
+}
+
+function isTrendDate(value: unknown): value is string {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = Date.parse(`${value}T00:00:00Z`);
+  return Number.isFinite(date) && new Date(date).toISOString().slice(0, 10) === value;
+}
+
+function isTrendBucket(value: unknown, amount: boolean): value is DailyCount | DailyAmount {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const bucket = value as Partial<DailyAmount>;
+  return (
+    isTrendDate(bucket.day) &&
+    typeof bucket.key === "string" &&
+    Number.isSafeInteger(bucket.count) &&
+    (!amount || Number.isSafeInteger(bucket.total))
+  );
+}
+
+function isFunnelStage(value: unknown): value is FunnelStage {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const stage = value as Partial<FunnelStage>;
+  return [stage.key, stage.label, stage.grain].every((field) => typeof field === "string");
+}
+
+function isJourneyPeriod(value: unknown): value is JourneyPeriod {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const period = value as Partial<JourneyPeriod>;
+  return (
+    [period.searched, period.downloaded, period.within_promise].every(Number.isSafeInteger) &&
+    (period.median_minutes === undefined ||
+      (typeof period.median_minutes === "number" && Number.isFinite(period.median_minutes)))
+  );
+}
+
+function isTrendResponse<P extends keyof TrendResponses>(
+  value: unknown,
+  path: P,
+): value is TrendResponses[P] {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const trend = value as Partial<CreditTrend & FunnelTrend & JourneyTrend>;
+  if (
+    !isTrendDate(trend.from) ||
+    !isTrendDate(trend.to) ||
+    !Array.isArray(trend.buckets) ||
+    !trend.buckets.every((bucket) => isTrendBucket(bucket, path === "cost" || path === "credits"))
+  )
+    return false;
+  if (path === "credits") return Number.isSafeInteger(trend.balance_total);
+  if (path === "funnel") return Array.isArray(trend.stages) && trend.stages.every(isFunnelStage);
+  if (path === "journeys")
+    return (
+      Number.isSafeInteger(trend.promise_minutes) &&
+      Number.isSafeInteger(trend.journey_window_hours) &&
+      isJourneyPeriod(trend.period)
+    );
+  return true;
+}
+
+export function useTrend<P extends keyof TrendResponses>(path: P, days: TrendDays) {
   return useQuery({
     queryKey: queryKeys.admin.trend(path, days),
-    queryFn: () => apiFetch<T>(`/admin/trends/${path}?days=${days}`),
+    queryFn: () => getTrend(path, days),
     enabled: useOperator(),
     refetchOnWindowFocus: false,
   });

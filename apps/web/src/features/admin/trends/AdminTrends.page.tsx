@@ -11,7 +11,6 @@ import {
   type DailyCount,
   type FunnelTrend,
   type JourneyPeriod,
-  type JourneyTrend,
   type Trend,
   type TrendDays,
 } from "../admin.service";
@@ -133,7 +132,7 @@ function TrendRangeStatus({ ranges, days }: { ranges: Array<Trend | undefined>; 
   );
 }
 
-function FunnelSection({ funnel }: { funnel: ReturnType<typeof useTrend<FunnelTrend>> }) {
+function FunnelSection({ funnel }: { funnel: ReturnType<typeof useTrend<"funnel">> }) {
   const stages = funnel.data?.stages ?? [];
   return (
     <TrendSection
@@ -168,7 +167,7 @@ function journeySummary(period: JourneyPeriod, promise: number, window: number) 
     : `${reached}從第一次搜尋到按下下載的中位數是 ${period.median_minutes.toFixed(1)} 分鐘。`;
 }
 
-function JourneySection({ journeys }: { journeys: ReturnType<typeof useTrend<JourneyTrend>> }) {
+function JourneySection({ journeys }: { journeys: ReturnType<typeof useTrend<"journeys">> }) {
   const trend = journeys.data;
   return (
     <TrendSection
@@ -199,12 +198,12 @@ function JourneySection({ journeys }: { journeys: ReturnType<typeof useTrend<Jou
 
 export function AdminTrends() {
   const { days = 30 } = useSearch({ from: "/admin/trends" });
-  const cost = useTrend<Trend<DailyAmount>>("cost", days);
-  const credits = useTrend<CreditTrend>("credits", days);
-  const runs = useTrend<Trend>("runs", days);
-  const actions = useTrend<Trend>("operator-actions", days);
-  const funnel = useTrend<FunnelTrend>("funnel", days);
-  const journeys = useTrend<JourneyTrend>("journeys", days);
+  const cost = useTrend("cost", days);
+  const credits = useTrend("credits", days);
+  const runs = useTrend("runs", days);
+  const actions = useTrend("operator-actions", days);
+  const funnel = useTrend("funnel", days);
+  const journeys = useTrend("journeys", days);
   const reads = [cost, credits, runs, actions, funnel, journeys];
   const available = reads.filter((query) => query.data && !query.error);
   const fetching = reads.some((query) => query.isFetching);
