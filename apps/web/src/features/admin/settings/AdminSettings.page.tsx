@@ -239,7 +239,13 @@ export function AdminSettings() {
             <button
               type="button"
               disabled={settings.isFetching}
-              onClick={() => void settings.refetch()}
+              onClick={() => {
+                void settings.refetch();
+                (
+                  document.getElementById("admin-settings-judge-panel-heading") ??
+                  document.getElementById("main-content")
+                )?.focus();
+              }}
             >
               再讀取平台設定
             </button>
@@ -259,7 +265,13 @@ export function AdminSettings() {
             <button
               type="button"
               disabled={runSettings.isFetching}
-              onClick={() => void runSettings.refetch()}
+              onClick={() => {
+                void runSettings.refetch();
+                (
+                  document.getElementById("admin-settings-rounds-heading") ??
+                  document.getElementById("main-content")
+                )?.focus();
+              }}
             >
               再讀取試跑設定
             </button>
