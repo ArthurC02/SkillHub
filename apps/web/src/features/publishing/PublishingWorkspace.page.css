@@ -191,6 +191,10 @@
   margin-top: 0;
 }
 
+.publishing-workspace .bundle-version-item[tabindex="-1"] {
+  scroll-margin-block: calc(var(--app-header-clearance, 0px) + 24px) 24px;
+}
+
 .publishing-workspace .bundle-version-item .badge + .badge {
   margin-left: 8px;
 }

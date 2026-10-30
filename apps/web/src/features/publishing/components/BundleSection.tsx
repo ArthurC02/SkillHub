@@ -142,6 +142,19 @@ function useMemberChoices(): {
 export function BundleSection({ selectedVersion }: { selectedVersion?: string }) {
   const bundles = useOwnBundles();
   const readableBundles = bundles.error ? undefined : bundles.data;
+  const [creation, setCreation] = useState<{ request: number; result?: BundleVersion }>({
+    request: 0,
+  });
+  const createdRow = useRef<HTMLLIElement>(null);
+  const createdVersion = readableBundles?.bundles.find(
+    (version) =>
+      version.bundle === creation.result?.bundle && version.version === creation.result.version,
+  );
+  useContinuationFocus(
+    creation.request ? String(creation.request) : undefined,
+    Boolean(createdVersion),
+    createdRow,
+  );
   const overview = useOwnBundleOverview(Boolean(readableBundles?.bundles.length));
   const memberRead = useMemberChoices();
   const {
@@ -221,6 +234,11 @@ export function BundleSection({ selectedVersion }: { selectedVersion?: string })
                   overviewReady={overview.isSuccess}
                   memberGateOf={memberGateOf}
                   memberPolicyKnownOf={memberPolicyKnownOf}
+                  continuation={
+                    createdVersion?.bundle === bundle
+                      ? { version: createdVersion.version, target: createdRow }
+                      : undefined
+                  }
                 />
               </li>
             ))}
@@ -228,6 +246,8 @@ export function BundleSection({ selectedVersion }: { selectedVersion?: string })
         ))}
 
       <BundleCreationSection
+        onCreateStart={() => setCreation(({ request }) => ({ request: request + 1 }))}
+        onCreated={(result) => setCreation((current) => ({ ...current, result }))}
         memberFocus={row ? { skillId: row.skillId, bindTarget } : undefined}
         selectedVersion={selectedVersion}
         choices={choices}
@@ -327,6 +347,7 @@ function BundleOverviewCard({
   overviewReady,
   memberGateOf,
   memberPolicyKnownOf,
+  continuation,
 }: {
   bundle: string;
   versions: BundleVersion[];
@@ -334,6 +355,7 @@ function BundleOverviewCard({
   overviewReady: boolean;
   memberGateOf: (bundle: BundleVersion) => MemberGate;
   memberPolicyKnownOf: (version: BundleVersion) => boolean;
+  continuation?: { version: string; target: RefObject<HTMLLIElement | null> };
 }) {
   const delist = useDelistBundle(bundle);
   const publish = usePublishBundle(bundle);
@@ -402,7 +424,12 @@ function BundleOverviewCard({
       <h4>不可變版本</h4>
       <ul className="bundle-version-list">
         {versions.map((version, index) => (
-          <li key={version.version} className="bundle-version-item">
+          <li
+            key={version.version}
+            className="bundle-version-item"
+            ref={continuation?.version === version.version ? continuation.target : undefined}
+            tabIndex={continuation?.version === version.version ? -1 : undefined}
+          >
             <BundleVersionOperations
               bundle={version}
               isLatest={index === 0}
@@ -689,14 +716,21 @@ function BundleActionFeedback({
   );
 }
 
+interface BundleCreationEvents {
+  onCreateStart: () => void;
+  onCreated: (version: BundleVersion) => void;
+}
+
 function BundleCreationSection({
+  onCreateStart,
+  onCreated,
   memberFocus,
   selectedVersion,
   choices,
   choicesPending,
   choicesError,
   hasMoreChoices,
-}: {
+}: BundleCreationEvents & {
   memberFocus?: MemberFocus;
   selectedVersion?: string;
   choices: MemberChoice[];
@@ -723,6 +757,8 @@ function BundleCreationSection({
               : "建立第一個 Bundle"}
         </summary>
         <CreateBundleForm
+          onCreateStart={onCreateStart}
+          onCreated={onCreated}
           memberFocus={memberFocus}
           choices={choices}
           choicesPending={choicesPending}
@@ -736,13 +772,15 @@ function BundleCreationSection({
 }
 
 function CreateBundleForm({
+  onCreateStart,
+  onCreated,
   memberFocus,
   choices,
   choicesPending,
   choicesError,
   hasMoreChoices,
   selectedVersion,
-}: {
+}: BundleCreationEvents & {
   memberFocus?: MemberFocus;
   choices: MemberChoice[];
   choicesPending: boolean;
@@ -803,6 +841,7 @@ function CreateBundleForm({
         event.preventDefault();
         if (create.isPending || !choicesReady) return;
         const memberVersionIds = Array.from(selected.values());
+        onCreateStart();
         create.mutate(
           {
             name: name.trim(),
@@ -811,7 +850,8 @@ function CreateBundleForm({
             memberVersionIds,
           },
           {
-            onSuccess: () => {
+            onSuccess: (result) => {
+              onCreated(result);
               setName("");
               setVersion("");
               setDescription("");
