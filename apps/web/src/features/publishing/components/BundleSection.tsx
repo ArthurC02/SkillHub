@@ -8,7 +8,7 @@ import { ConfirmDelete } from "../../../shared/ui/ConfirmDelete";
 import { useContinuationFocus } from "../../../shared/ui/useContinuationFocus";
 import { usePaginationFocus } from "../../../shared/ui/usePaginationFocus";
 import { API_BASE_URL, canRetainLoadedPage } from "../../../core/api/client";
-import type { SkillVersionSummary } from "../../../core/api/types";
+import type { SkillDetail, SkillVersionSummary } from "../../../core/api/types";
 import {
   useEmbeddedSkillDetails,
   useEmbeddedSkillVersions,
@@ -26,7 +26,12 @@ import {
   type OwnerBundlePublicationSummary,
   type OwnerBundleSummary,
 } from "../publishing.service";
-import { actionFailureSentence, writeFailureSentence } from "../publishing.model";
+import {
+  actionFailureSentence,
+  PUBLISHING_REFUSAL_LABEL,
+  writeFailureSentence,
+} from "../publishing.model";
+import { packagingGate } from "../../packaging";
 import { AcquisitionFailure } from "./AcquisitionFailure";
 import { DeliveryAudience } from "./DeliveryAudience";
 
@@ -37,6 +42,19 @@ interface MemberChoice {
   name: string;
   versions: SkillVersionSummary[];
   needsAttestation: boolean;
+  refusal?: string;
+}
+
+interface MemberGate {
+  needsAttestation: boolean;
+  refusal?: string;
+}
+
+function memberRefusal(detail: SkillDetail) {
+  const gate = packagingGate(detail);
+  if (gate !== "license_hold" && gate !== "not_redistributable" && gate !== "license_unknown")
+    return undefined;
+  return `成員「${detail.name}」：${PUBLISHING_REFUSAL_LABEL[gate]}`;
 }
 
 interface ContinuationChoice {
@@ -90,6 +108,7 @@ function useMemberChoices(): {
       name: detail.name,
       versions: versions[i]?.error ? [] : (versions[i]?.data?.versions ?? []),
       needsAttestation: value === "self_supplied" || value === "generated",
+      refusal: memberRefusal(detail),
     });
   });
 
@@ -155,10 +174,15 @@ export function BundleSection({ selectedVersion }: { selectedVersion?: string })
       ),
     [overview.data, overview.error],
   );
-  const needsAttestationOf = useMemo(() => {
-    const bySkill = new Map(choices.map((choice) => [choice.skillId, choice.needsAttestation]));
-    return (version: BundleVersion) =>
-      version.members.some((member) => bySkill.get(member.skill_id) === true);
+  const memberGateOf = useMemo(() => {
+    const bySkill = new Map(choices.map((choice) => [choice.skillId, choice]));
+    return (version: BundleVersion): MemberGate => {
+      const members = version.members.map((member) => bySkill.get(member.skill_id));
+      return {
+        needsAttestation: members.some((choice) => choice?.needsAttestation === true),
+        refusal: members.find((choice) => choice?.refusal)?.refusal,
+      };
+    };
   }, [choices]);
 
   const memberPolicyKnownOf = (version: BundleVersion) =>
@@ -195,7 +219,7 @@ export function BundleSection({ selectedVersion }: { selectedVersion?: string })
                   versions={versions}
                   overview={overviewByBundle.get(bundle)}
                   overviewReady={overview.isSuccess}
-                  needsAttestationOf={needsAttestationOf}
+                  memberGateOf={memberGateOf}
                   memberPolicyKnownOf={memberPolicyKnownOf}
                 />
               </li>
@@ -301,14 +325,14 @@ function BundleOverviewCard({
   versions,
   overview,
   overviewReady,
-  needsAttestationOf,
+  memberGateOf,
   memberPolicyKnownOf,
 }: {
   bundle: string;
   versions: BundleVersion[];
   overview?: OwnerBundleSummary;
   overviewReady: boolean;
-  needsAttestationOf: (bundle: BundleVersion) => boolean;
+  memberGateOf: (bundle: BundleVersion) => MemberGate;
   memberPolicyKnownOf: (version: BundleVersion) => boolean;
 }) {
   const delist = useDelistBundle(bundle);
@@ -384,7 +408,7 @@ function BundleOverviewCard({
               isLatest={index === 0}
               publication={publication}
               publicationKnown={overviewReady && Boolean(overview)}
-              needsAttestation={needsAttestationOf(version)}
+              gate={memberGateOf(version)}
               memberPolicyKnown={memberPolicyKnownOf(version)}
               publish={publish}
               pending={pending}
@@ -465,7 +489,7 @@ function BundleVersionOperations({
   isLatest,
   publication,
   publicationKnown,
-  needsAttestation,
+  gate,
   memberPolicyKnown,
   publish,
   pending,
@@ -475,7 +499,7 @@ function BundleVersionOperations({
   isLatest: boolean;
   publication?: OwnerBundlePublicationSummary;
   publicationKnown: boolean;
-  needsAttestation: boolean;
+  gate: MemberGate;
   memberPolicyKnown: boolean;
   publish: ReturnType<typeof usePublishBundle>;
   pending: boolean;
@@ -509,7 +533,7 @@ function BundleVersionOperations({
         bundle={bundle}
         publication={publication}
         publicationKnown={publicationKnown}
-        needsAttestation={needsAttestation}
+        gate={gate}
         memberPolicyKnown={memberPolicyKnown}
         publish={publish}
         pending={pending}
@@ -523,7 +547,7 @@ function BundleVersionActions({
   bundle,
   publication,
   publicationKnown,
-  needsAttestation,
+  gate,
   memberPolicyKnown,
   publish,
   pending,
@@ -532,7 +556,7 @@ function BundleVersionActions({
   bundle: BundleVersion;
   publication?: OwnerBundlePublicationSummary;
   publicationKnown: boolean;
-  needsAttestation: boolean;
+  gate: MemberGate;
   memberPolicyKnown: boolean;
   publish: ReturnType<typeof usePublishBundle>;
   pending: boolean;
@@ -540,8 +564,10 @@ function BundleVersionActions({
 }) {
   const exportBundle = useExportBundle(bundle.bundle, bundle.version);
   const [attested, setAttested] = useState(false);
+  const { needsAttestation, refusal } = gate;
   const disabledReason =
-    needsAttestation && !attested ? "發佈前需要確認你有權重新散布所有成員。" : undefined;
+    refusal ??
+    (needsAttestation && !attested ? "發佈前需要確認你有權重新散布所有成員。" : undefined);
   const blockedReason = publicationKnown
     ? memberPolicyKnown
       ? disabledReason

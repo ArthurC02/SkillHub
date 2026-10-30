@@ -953,6 +953,45 @@ for (const scenario of [
   });
 }
 
+test.each([
+  [{ redistribution: { value: "blocked", label: "", note: "" } }, "這個小工具的授權不允許再散布"],
+  [
+    { redistribution: { value: "unknown", label: "", note: "" } },
+    "沒有人確認過這個小工具可不可以再散布",
+  ],
+  [{ access_restriction: { reason: "授權審查中" } }, "這個小工具的內容因授權問題尚未釐清而被保留"],
+  [{}, undefined],
+])(
+  "a Bundle whose member the release gate refuses names that member before publishing",
+  async (member, refusal) => {
+    const second = OWN_BUNDLE.members[1];
+    vi.stubGlobal("fetch", async (input: string) => {
+      const path = String(input)
+        .replace(/^https?:\/\/[^/]+/, "")
+        .split("?")[0];
+      if (path === "/me/bundles") return json({ bundles: [OWN_BUNDLE] });
+      if (path === "/me/bundles/overview") return json(bundleOverview(OWN_BUNDLE));
+      if (path === `/api/skills/${second.skill_id}`)
+        return json({
+          ...skillDetail(second.skill_id, second.name),
+          redistribution: { value: "allowed", label: "可散布", note: "" },
+          ...member,
+        });
+      const read = bundleMemberRead(input);
+      if (read) return read;
+      const response = platformResponse(String(input));
+      return json(response.body, response.status);
+    });
+    await render(
+      <PublishingWorkspace />,
+      () => Boolean(button(`首次發佈 v${OWN_BUNDLE.version}`)) && queryClient.isFetching() === 0,
+    );
+
+    expect(button(`首次發佈 v${OWN_BUNDLE.version}`)?.disabled).toBe(refusal !== undefined);
+    expect(text().includes(`成員「${second.name}」：${refusal}`)).toBe(refusal !== undefined);
+  },
+);
+
 for (const missing of ["one member", "all members"]) {
   test(`a complete owned-skill list missing ${missing} cannot confirm a Bundle's redistribution requirements`, async () => {
     let reads = 0;
