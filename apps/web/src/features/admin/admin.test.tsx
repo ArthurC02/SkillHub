@@ -1180,6 +1180,25 @@ test.each(["unknown", "blocked", "allowed"] as const)(
   },
 );
 
+test.each([
+  ["generated", false],
+  ["self_supplied", true],
+] as const)(
+  "OPS-004: a %s skill offers a redistribution verdict only when the platform would accept one (%s)",
+  async (redistribution, offered) => {
+    stub(true, (path) =>
+      path === "/admin/skills"
+        ? { body: { skills: [{ ...ADMIN_SKILLS.skills[0], redistribution }] }, status: 200 }
+        : undefined,
+    );
+    await mountAt("/admin/skills", { q: SKILL });
+    await waitFor(has("再散布判定"));
+
+    expect(document.querySelector("#admin-skill-redistribution") !== null).toBe(offered);
+    expect(has("「生成」是它來源的唯一紀錄，平台不接受改寫成其他判定")()).toBe(!offered);
+  },
+);
+
 test("OPS-004: releasing a skill needs licence evidence; blocking it does not", async () => {
   stub(true, (path, method) =>
     path === `/admin/skills/${SKILL}/redistribution` && method === "PUT"

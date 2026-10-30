@@ -18,6 +18,31 @@ export function GovernanceActions({
   onOutcome: (message: string) => void;
   onDraftChange: () => void;
 }) {
+  return (
+    <>
+      <h2>對「{skill.name}」的動作</h2>
+      <RestrictionAction skill={skill} onOutcome={onOutcome} onDraftChange={onDraftChange} />
+
+      <RedistributionAction skill={skill} onOutcome={onOutcome} onDraftChange={onDraftChange} />
+
+      <TakedownAction
+        skillId={skill.skill_id}
+        onTakedown={onTakedown}
+        onDraftChange={onDraftChange}
+      />
+    </>
+  );
+}
+
+function RedistributionAction({
+  skill,
+  onOutcome,
+  onDraftChange,
+}: {
+  skill: SkillGovernance;
+  onOutcome: (message: string) => void;
+  onDraftChange: () => void;
+}) {
   const redistribution = useGovernanceAction(skill.skill_id, "redistribution", ({ body }) =>
     onOutcome(
       `「${skill.name}」的再散布判定已改為「${body.value === "allowed" ? "可以再散布" : body.value === "blocked" ? "禁止再散布" : "尚未判定"}」。`,
@@ -30,102 +55,99 @@ export function GovernanceActions({
 
   return (
     <>
-      <h2>對「{skill.name}」的動作</h2>
-      <RestrictionAction skill={skill} onOutcome={onOutcome} onDraftChange={onDraftChange} />
-
       <h3>再散布判定</h3>
-      <details id="admin-skill-redistribution" onInput={onDraftChange}>
-        <summary>填寫判定與理由</summary>
-        <ActionForm
-          id="admin-redistribution"
-          submitLabel="送出判定"
-          pending={redistribution.isPending}
-          error={redistribution.error}
-          ready={
-            verdict !== "" &&
-            (!releasing || (licenseExpression.trim() !== "" && licenseSource !== ""))
-          }
-          contextKey={`${skill.skill_id}:${verdict}:${licenseExpression.trim()}:${licenseSource}`}
-          onSubmit={(note) => {
-            onDraftChange();
-            redistribution.mutate({
-              method: "PUT",
-              body: releasing
-                ? {
-                    value: verdict,
-                    note,
-                    license_expression: licenseExpression.trim(),
-                    license_source: licenseSource,
-                  }
-                : { value: verdict, note },
-            });
-          }}
-        >
-          <div className="field">
-            <label htmlFor="admin-redistribution-value">判定</label>
-            <select
-              id="admin-redistribution-value"
-              value={verdict}
-              required
-              onChange={(event) => {
-                onDraftChange();
-                setVerdict(event.target.value);
-                redistribution.reset();
-              }}
-              disabled={redistribution.isPending}
-            >
-              <option value="" disabled>
-                選擇判定
-              </option>
-              <option value="blocked">禁止再散布</option>
-              <option value="unknown">尚未判定</option>
-              <option value="allowed">可以再散布（要附授權證據）</option>
-            </select>
-          </div>
-          {releasing && (
-            <>
-              <div className="field">
-                <label htmlFor="admin-license-expression">授權條款（例如 MIT）</label>
-                <input
-                  id="admin-license-expression"
-                  value={licenseExpression}
-                  onChange={(event) => {
-                    onDraftChange();
-                    setLicenseExpression(event.target.value);
-                    redistribution.reset();
-                  }}
-                  readOnly={redistribution.isPending}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="admin-license-source">證據來源</label>
-                <select
-                  id="admin-license-source"
-                  value={licenseSource}
-                  onChange={(event) => {
-                    onDraftChange();
-                    setLicenseSource(event.target.value);
-                    redistribution.reset();
-                  }}
-                  disabled={redistribution.isPending}
-                >
-                  <option value="">選一個</option>
-                  <option value="manifest">SKILL.md 的宣告</option>
-                  <option value="manifest-referenced-file">SKILL.md 指向的授權檔</option>
-                  <option value="package-license-file">套件裡的授權檔</option>
-                  <option value="repo-license-file">儲存庫根目錄的授權檔</option>
-                </select>
-              </div>
-            </>
-          )}
-        </ActionForm>
-      </details>
-
-      <TakedownAction
-        skillId={skill.skill_id}
-        onTakedown={onTakedown}
-        onDraftChange={onDraftChange}
-      />
+      {skill.redistribution === "generated" ? (
+        <p className="note">
+          這是平台生成的小工具，「生成」是它來源的唯一紀錄，平台不接受改寫成其他判定。要讓它不能被讀取、試跑或打包，請改用上面的受限展示。
+        </p>
+      ) : (
+        <details id="admin-skill-redistribution" onInput={onDraftChange}>
+          <summary>填寫判定與理由</summary>
+          <ActionForm
+            id="admin-redistribution"
+            submitLabel="送出判定"
+            pending={redistribution.isPending}
+            error={redistribution.error}
+            ready={
+              verdict !== "" &&
+              (!releasing || (licenseExpression.trim() !== "" && licenseSource !== ""))
+            }
+            contextKey={`${skill.skill_id}:${verdict}:${licenseExpression.trim()}:${licenseSource}`}
+            onSubmit={(note) => {
+              onDraftChange();
+              redistribution.mutate({
+                method: "PUT",
+                body: releasing
+                  ? {
+                      value: verdict,
+                      note,
+                      license_expression: licenseExpression.trim(),
+                      license_source: licenseSource,
+                    }
+                  : { value: verdict, note },
+              });
+            }}
+          >
+            <div className="field">
+              <label htmlFor="admin-redistribution-value">判定</label>
+              <select
+                id="admin-redistribution-value"
+                value={verdict}
+                required
+                onChange={(event) => {
+                  onDraftChange();
+                  setVerdict(event.target.value);
+                  redistribution.reset();
+                }}
+                disabled={redistribution.isPending}
+              >
+                <option value="" disabled>
+                  選擇判定
+                </option>
+                <option value="blocked">禁止再散布</option>
+                <option value="unknown">尚未判定</option>
+                <option value="allowed">可以再散布（要附授權證據）</option>
+              </select>
+            </div>
+            {releasing && (
+              <>
+                <div className="field">
+                  <label htmlFor="admin-license-expression">授權條款（例如 MIT）</label>
+                  <input
+                    id="admin-license-expression"
+                    value={licenseExpression}
+                    onChange={(event) => {
+                      onDraftChange();
+                      setLicenseExpression(event.target.value);
+                      redistribution.reset();
+                    }}
+                    readOnly={redistribution.isPending}
+                  />
+                </div>
+                <div className="field">
+                  <label htmlFor="admin-license-source">證據來源</label>
+                  <select
+                    id="admin-license-source"
+                    value={licenseSource}
+                    onChange={(event) => {
+                      onDraftChange();
+                      setLicenseSource(event.target.value);
+                      redistribution.reset();
+                    }}
+                    disabled={redistribution.isPending}
+                  >
+                    <option value="">選一個</option>
+                    <option value="manifest">SKILL.md 的宣告</option>
+                    <option value="manifest-referenced-file">SKILL.md 指向的授權檔</option>
+                    <option value="package-license-file">套件裡的授權檔</option>
+                    <option value="repo-license-file">儲存庫根目錄的授權檔</option>
+                  </select>
+                </div>
+              </>
+            )}
+          </ActionForm>
+        </details>
+      )}
     </>
   );
 }
