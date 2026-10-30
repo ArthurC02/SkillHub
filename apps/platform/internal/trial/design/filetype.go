@@ -15,10 +15,9 @@ import (
 var ErrUnsupportedType = errors.New("testlab: the file is not one of the types a dataset accepts")
 
 const (
-	reasonExecutableOrArchive = "這是可執行檔、腳本，或 zip 以外的壓縮格式"
-	reasonUnreadableZip       = "這個 zip 讀不出來，可能已經損毀"
-	reasonZipEscapesRoot      = "zip 裡有檔案路徑跳出壓縮檔本身（例如 ../ 或絕對路徑）"
-	reasonZipSymlink          = "zip 裡有捷徑（符號連結）"
+	reasonUnreadableZip  = "這個 zip 讀不出來，可能已經損毀"
+	reasonZipEscapesRoot = "zip 裡有檔案路徑跳出壓縮檔本身（例如 ../ 或絕對路徑）"
+	reasonZipSymlink     = "zip 裡有捷徑（符號連結）"
 )
 
 func unsupported(reason string) error {
@@ -61,7 +60,7 @@ func detectContentType(content DatasetContent) (string, error) {
 	}
 	for _, magic := range deniedMagic {
 		if bytes.HasPrefix(head, magic) {
-			return "", unsupported(reasonExecutableOrArchive)
+			return "", ErrUnsupportedType
 		}
 	}
 
@@ -74,7 +73,7 @@ func detectContentType(content DatasetContent) (string, error) {
 	}
 	for _, magic := range deniedMagicUnlessText {
 		if bytes.HasPrefix(head, magic) {
-			return "", unsupported(reasonExecutableOrArchive)
+			return "", ErrUnsupportedType
 		}
 	}
 	if !allowedSniffed[base] {

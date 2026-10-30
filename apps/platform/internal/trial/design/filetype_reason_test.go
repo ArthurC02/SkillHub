@@ -32,10 +32,10 @@ func TestARefusedUploadSaysWhichRuleItBroke(t *testing.T) {
 		data []byte
 		want string
 	}{
-		{"executable", append([]byte{0x7f, 'E', 'L', 'F'}, bytes.Repeat([]byte{0}, 64)...),
-			"不支援這種檔案類型：這是可執行檔、腳本，或 zip 以外的壓縮格式。"},
-		{"pe executable", append([]byte{'M', 'Z', 0x90}, bytes.Repeat([]byte{0}, 64)...),
-			"不支援這種檔案類型：這是可執行檔、腳本，或 zip 以外的壓縮格式。"},
+		{"executable, named by nothing it matched", append([]byte{0x7f, 'E', 'L', 'F'}, bytes.Repeat([]byte{0}, 64)...),
+			"不支援這種檔案類型"},
+		{"pe executable, named by nothing it matched", append([]byte{'M', 'Z', 0x90}, bytes.Repeat([]byte{0}, 64)...),
+			"不支援這種檔案類型"},
 		{"broken zip", append([]byte("PK\x03\x04"), bytes.Repeat([]byte{0xff}, 64)...),
 			"不支援這種檔案類型：這個 zip 讀不出來，可能已經損毀。"},
 		{"path escaping the zip", zipOf(t, map[string]string{"../escape.txt": "x"}),
