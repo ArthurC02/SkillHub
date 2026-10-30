@@ -11,6 +11,7 @@ import {
   usePlatformAgents,
 } from "../admin.service";
 import { Loading } from "../../../shared/ui/Loading";
+import { RecordReadFailure } from "../components/RecordReadFailure";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { ListFreshness } from "../../../shared/ui/ListFreshness";
 import { Timestamp } from "../../../shared/ui/Timestamp";
@@ -196,13 +197,7 @@ function AgentRunDetail({ id }: { id: string }) {
         </Link>
       </p>
       {detail.isPending && <Loading what="執行紀錄" />}
-      <ReadFailure
-        error={detail.error}
-        what="執行紀錄"
-        retry={() => void detail.refetch()}
-        retrying={detail.isFetching}
-        focusTarget="admin-agent-run-heading"
-      />
+      <RecordReadFailure query={detail} what="執行紀錄" focusTarget="admin-agent-run-heading" />
       {live && opened && (
         <>
           <p role="status" className="notice">

@@ -5404,6 +5404,84 @@ test("OPS-012: a failed run's report is shown as not checked, and its list row n
   expect(has("2 步；花費 $0.0031")()).toBe(false);
 });
 
+test.each([
+  {
+    param: "run",
+    collection: "runs",
+    id: AGENT_REPORT_RUN,
+    what: "執行紀錄",
+    status: 404,
+    retryable: false,
+  },
+  {
+    param: "run",
+    collection: "runs",
+    id: AGENT_REPORT_RUN,
+    what: "執行紀錄",
+    status: 400,
+    retryable: false,
+  },
+  {
+    param: "run",
+    collection: "runs",
+    id: AGENT_REPORT_RUN,
+    what: "執行紀錄",
+    status: 503,
+    retryable: true,
+  },
+  {
+    param: "finding",
+    collection: "findings",
+    id: AGENT_FINDING,
+    what: "這件事",
+    status: 404,
+    retryable: false,
+  },
+  {
+    param: "finding",
+    collection: "findings",
+    id: AGENT_FINDING,
+    what: "這件事",
+    status: 503,
+    retryable: true,
+  },
+  {
+    param: "proposal",
+    collection: "proposals",
+    id: AGENT_PROPOSAL,
+    what: "這個提案",
+    status: 404,
+    retryable: false,
+  },
+  {
+    param: "proposal",
+    collection: "proposals",
+    id: AGENT_PROPOSAL,
+    what: "這個提案",
+    status: 503,
+    retryable: true,
+  },
+])(
+  "OPS-012: a $param detail answering $status offers a retry only when rereading can help",
+  async ({ param, collection, id, what, status, retryable }) => {
+    stub(true, (path) =>
+      path === `/admin/agents/${collection}/${id}`
+        ? { body: { error: "not found" }, status }
+        : undefined,
+    );
+    await mountAt("/admin/agents", { [param]: id });
+    await waitFor(() => Boolean(container.querySelector('[role="alert"]')));
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe(
+      retryable
+        ? `暫時無法讀取${what}。請再試一次，或稍後再試。`
+        : `找不到${what}，重新讀取也不會出現。`,
+    );
+    expect(
+      Array.from(container.querySelectorAll("button")).some((b) => b.textContent === "再試一次"),
+    ).toBe(retryable);
+  },
+);
+
 test("OPS-012: a truncated Agent run list names its exact total and display limit", async () => {
   stub(true, (path) =>
     path === "/admin/agents/runs"

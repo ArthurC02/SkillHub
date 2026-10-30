@@ -8,7 +8,7 @@ import {
   type FindingStatus,
 } from "../../admin.service";
 import { Loading } from "../../../../shared/ui/Loading";
-import { ReadFailure } from "../../../../shared/ui/LoginRequired";
+import { RecordReadFailure } from "../../components/RecordReadFailure";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
 import { ActionForm } from "../../components/ActionForm";
 import { FINDING_EVENT, FINDING_MOVES, FINDING_STATUS } from "./findingLabels";
@@ -76,13 +76,7 @@ function FindingReadRecovery({
 }) {
   return (
     <>
-      <ReadFailure
-        error={detail.error}
-        what="這件事"
-        retry={() => void detail.refetch()}
-        retrying={detail.isFetching}
-        focusTarget="admin-finding-heading"
-      />
+      <RecordReadFailure query={detail} what="這件事" focusTarget="admin-finding-heading" />
       {unverified && !detail.error && (
         <button type="button" disabled={detail.isFetching} onClick={() => void detail.refetch()}>
           重新整理這件事

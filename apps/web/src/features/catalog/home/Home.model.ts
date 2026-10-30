@@ -34,6 +34,10 @@ export function queryLengthError(trimmed: string): string | null {
     : null;
 }
 
+export function linkedQueryError(query: string | undefined): string {
+  return query === undefined ? "" : (queryLengthError(query.trim()) ?? "");
+}
+
 export function clearedFilterFields(): SearchFilters {
   return {
     script: undefined,

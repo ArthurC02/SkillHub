@@ -6,7 +6,7 @@ import {
   type PlatformAgentProposalDetail,
 } from "../../admin.service";
 import { Loading } from "../../../../shared/ui/Loading";
-import { ReadFailure } from "../../../../shared/ui/LoginRequired";
+import { RecordReadFailure } from "../../components/RecordReadFailure";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
 import { ActionForm } from "../../components/ActionForm";
 import { PROPOSAL_STATUS, PROPOSAL_TIER, actionLabel, previewLine } from "./proposalLabels";
@@ -127,13 +127,7 @@ export function ProposalDetail({ id }: { id: string }) {
           {DECIDED[decide.variables.decision]}
         </p>
       )}
-      <ReadFailure
-        error={detail.error}
-        what="這個提案"
-        retry={() => void detail.refetch()}
-        retrying={detail.isFetching}
-        focusTarget="admin-proposal-heading"
-      />
+      <RecordReadFailure query={detail} what="這個提案" focusTarget="admin-proposal-heading" />
       {proposal && !detail.error && (
         <>
           <p>

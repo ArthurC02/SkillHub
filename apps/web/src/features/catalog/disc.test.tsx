@@ -561,6 +561,31 @@ test("DISC-001 搜尋文字超過 2000 字：送出前擋下並說明，不打�
   expect(calls.some((url) => url.includes("/api/skills/search"))).toBe(false);
 });
 
+test.each([
+  [2000, true],
+  [2001, false],
+])(
+  "DISC-001 搜尋網址帶 %i 字：超過上限時直接說明、不打伺服器也不給重試",
+  async (length, searched) => {
+    const calls = stubSearch(EMPTY);
+    await render(<App />);
+
+    await act(async () => {
+      await router.navigate({ to: "/", search: { q: "a".repeat(length) } });
+    });
+    await waitFor(() => !container.textContent?.includes("搜尋中…"));
+
+    expect(calls.some((url) => url.includes(`/api/skills/search?q=${"a".repeat(length)}&`))).toBe(
+      searched,
+    );
+    const alert = container.querySelector('[role="alert"]');
+    expect(alert?.textContent ?? null).toBe(
+      searched ? null : "搜尋文字最多 2000 字，目前 2001 字。",
+    );
+    expect(container.textContent).not.toContain("再試一次");
+  },
+);
+
 test("the catalogue presents every product in one compact scan surface", async () => {
   stubCategoryCatalog(SHELF_PAGES);
   await browseCatalogue();

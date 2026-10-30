@@ -18,7 +18,7 @@ function forkErrorMessage(error: unknown): string {
     if (error.status === 403)
       return "這個帳號還沒有封測邀請，所以複製沒有成功。想試的話，用頁尾的「回報問題」選「我想要的東西，這裡沒有」告訴我們你想做什麼。";
     if (error.status === 409)
-      return "你的工作區已經有同名的小工具，通常就是你先前複製的那一份，可以直接到資產庫使用它；要重新複製，先在資產庫刪掉那一份。";
+      return "你的工作區裡這個小工具的副本已經有 10 份，名稱都用完了，所以這次沒有複製；先在資產庫刪掉一份不需要的副本，再複製一次。";
     if (error.status === 404) return "這個小工具已經不在了（可能被下架或刪除），所以無法複製。";
   }
   return "這次複製請求未獲接受，請重新確認小工具資訊後再試。";
@@ -230,7 +230,7 @@ function ForkResult({
               另開資產庫確認複製結果
             </Link>
           )}
-          {nameConflict && <Link to="/library">前往資產庫找出同名小工具</Link>}
+          {nameConflict && <Link to="/library">前往資產庫整理副本</Link>}
         </ReadFailure>
       )}
       {fork.isSuccess && (

@@ -177,18 +177,18 @@ test("丙-153: 複製一份 403（沒有封測邀請）印中文句，不印 bet
   expect(text()).not.toContain("closed beta");
 });
 
-test("丙-150: 複製一份 409（同名）說出同名並指出資產庫裡的出路，不印 ErrNameTaken 的英文句", async () => {
+test("複製一份 409（副本名稱用完）說出副本已滿並指出資產庫裡的出路，不印 ErrNameTaken 的英文句", async () => {
   stubOwner(() => json({ error: "a skill with this name already exists in your workspace" }, 409));
   await render(<SkillDetail />, settledAsOwner);
   await clickFork();
-  await waitFor(() => text().includes("你的工作區已經有同名的小工具"));
+  await waitFor(() => text().includes("副本已經有 10 份"));
 
   expect(text()).toContain(
-    "你的工作區已經有同名的小工具，通常就是你先前複製的那一份，可以直接到資產庫使用它；要重新複製，先在資產庫刪掉那一份。",
+    "你的工作區裡這個小工具的副本已經有 10 份，名稱都用完了，所以這次沒有複製；先在資產庫刪掉一份不需要的副本，再複製一次。",
   );
   expect(text()).not.toContain("already exists in your workspace");
   const recovery = Array.from(container.querySelectorAll("a")).find(
-    (link) => link.textContent === "前往資產庫找出同名小工具",
+    (link) => link.textContent === "前往資產庫整理副本",
   );
   expect(recovery?.getAttribute("href")).toBe("/library");
 });

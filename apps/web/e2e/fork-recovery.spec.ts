@@ -78,7 +78,7 @@ for (const [status, message] of [
   [401, "複製小工具需要登入。"],
   [403, "這個帳號還沒有封測邀請"],
   [404, "這個小工具已經不在了"],
-  [409, "你的工作區已經有同名的小工具，"],
+  [409, "副本已經有 10 份，名稱都用完了"],
 ] as const) {
   test(`HTTP ${status} refuses a fork without suggesting that its outcome is unknown`, async ({
     page,
@@ -114,7 +114,7 @@ for (const [status, message] of [
     ).toHaveCount(0);
     if (status === 409)
       await expect(
-        page.getByRole("link", { name: "前往資產庫找出同名小工具", exact: true }),
+        page.getByRole("link", { name: "前往資產庫整理副本", exact: true }),
       ).toHaveAttribute("href", "/library");
     expect(writes).toBe(1);
     await verifyLayout(page, `refused-${status}`);

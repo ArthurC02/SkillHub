@@ -23,6 +23,7 @@ import {
   filtersFromSearch,
   nextSelection,
   parseSelection,
+  linkedQueryError,
   queryLengthError,
 } from "./Home.model";
 import "./Home.page.css";
@@ -65,10 +66,11 @@ export function Home() {
   const loggedIn = !!useMe().data;
 
   const filters: SearchFilters = filtersFromSearch(search);
+  const linkedError = linkedQueryError(search.q);
   const result = useCorrectedSkillSearch(
     search.q ?? "",
     filters,
-    search.q !== undefined,
+    search.q !== undefined && !linkedError,
     search.correction,
   );
   const data = result.error || search.q === undefined ? undefined : result.data;
@@ -135,7 +137,7 @@ export function Home() {
       <SearchHeroForm
         compact={!browsing}
         draft={draft}
-        queryError={queryError}
+        queryError={queryError || linkedError}
         onDraftChange={(value) => {
           setDraft(value);
           if (queryError) setQueryError("");
