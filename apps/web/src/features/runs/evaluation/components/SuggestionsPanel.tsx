@@ -1,6 +1,7 @@
 import { Loading } from "../../../../shared/ui/Loading";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { focusFeedback } from "../../../../shared/ui/focusFeedback";
+import { useContinuationFocus } from "../../../../shared/ui/useContinuationFocus";
 import { ApiError } from "../../../../core/api/client";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -37,6 +38,13 @@ export function SuggestionsPanel({
   const skillId = run?.skill_id;
   const apply = useApplySuggestions(runId);
   const applied = apply.data;
+  const [applyRequest, setApplyRequest] = useState(0);
+  const continuation = useRef<HTMLAnchorElement>(null);
+  useContinuationFocus(
+    applyRequest ? String(applyRequest) : undefined,
+    readable && apply.isSuccess,
+    continuation,
+  );
   const error = apply.error;
   const unknown = Boolean(error) && isApplyResultUnknown(error);
   const [decisionStates, setDecisionStates] = useState(
@@ -83,6 +91,7 @@ export function SuggestionsPanel({
         unknown={unknown}
         decisionStates={decisionStates}
         onDecisionStateChange={setDecisionState}
+        onApplyStart={() => setApplyRequest((request) => request + 1)}
       />
       <ReadFailure error={error} what="建立新版本">
         <div ref={failure} role="alert" tabIndex={-1} aria-label="建立版本結果">
@@ -107,6 +116,7 @@ export function SuggestionsPanel({
           testCaseId={run?.test_case_id}
           sourceConfirmed={Boolean(run)}
           runId={runId}
+          continuationRef={continuation}
         />
       )}
     </section>
@@ -154,6 +164,7 @@ function SuggestionsContent({
   unknown,
   decisionStates,
   onDecisionStateChange,
+  onApplyStart,
 }: {
   suggestions: ReturnType<typeof useRunSuggestions>;
   runId: string;
@@ -164,6 +175,7 @@ function SuggestionsContent({
   unknown: boolean;
   decisionStates: ReadonlyMap<string, SuggestionDecisionState>;
   onDecisionStateChange: (id: string, state?: SuggestionDecisionState) => void;
+  onApplyStart: () => void;
 }) {
   const decisionsUnsettled = [...decisionStates.values()].some(
     (state) => state.pending || state.unconfirmed,
@@ -229,13 +241,14 @@ function SuggestionsContent({
             type="button"
             disabled={Object.values(holds).some(Boolean)}
             aria-describedby={buildHoldNoteId(holds)}
-            onClick={() =>
+            onClick={() => {
+              onApplyStart();
               apply.mutate({
                 skillId: skillId as string,
                 evaluationId: suggestions.data.evaluation_id,
                 suggestionIds: accepted.map((s) => s.suggestion_id),
-              })
-            }
+              });
+            }}
           >
             {unknown ? "核對後仍" : ""}以已接受的 {accepted.length} 項建議建立新版本
           </button>

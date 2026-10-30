@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import type { RefObject } from "react";
 import type { VersionFromSuggestions } from "../../evaluation.service";
 import { BLOCKED_REASON_LABEL } from "../evaluation.model";
 
@@ -7,11 +8,13 @@ export function AppliedResult({
   testCaseId,
   sourceConfirmed,
   runId,
+  continuationRef,
 }: {
   result: VersionFromSuggestions;
   testCaseId?: string;
   sourceConfirmed: boolean;
   runId: string;
+  continuationRef: RefObject<HTMLAnchorElement | null>;
 }) {
   return (
     <div role="status">
@@ -42,6 +45,7 @@ export function AppliedResult({
       ) : testCaseId ? (
         <p>
           <Link
+            ref={continuationRef}
             to="/skills/$skillId/test-cases/$testCaseId/runs/new"
             params={{ skillId: result.skill_id, testCaseId }}
             search={{ version: result.version_id, against: runId }}
@@ -57,6 +61,7 @@ export function AppliedResult({
       )}
       <p>
         <Link
+          ref={sourceConfirmed && testCaseId ? undefined : continuationRef}
           to="/skills/$skillId/versions/$versionId"
           params={{ skillId: result.skill_id, versionId: result.version_id }}
         >
