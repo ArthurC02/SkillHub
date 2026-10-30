@@ -1,0 +1,97 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "login-purge-refusal-recite-2026-10-31",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "login-purge-refusal-recite",
+  "status": "submitted",
+  "change_classification": "routine",
+  "submitted_at": "2026-10-30T18:42:43.964540Z",
+  "verified_at": null,
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "99c19bf92ea60f9ed3428ebc57706be237d2e037",
+    "registry_digest": "sha256:8f4f8ad8a03dc5c76f81a7ac99584e4482419139d7fffa8f41ef68e3d7c79f96",
+    "committed_digest": "sha256:8f4f8ad8a03dc5c76f81a7ac99584e4482419139d7fffa8f41ef68e3d7c79f96"
+  },
+  "affected_contexts": [
+    "identity"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "<context-id>",
+    "invariant": "<falsifiable-rule>",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "<existing-or-proposed-collaboration>",
+    "consistency": "<synchronous-or-eventual>",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": null,
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "one-live-account-per-email",
+        "statement": "Two live accounts never share an email: emails are compared after trimming and lower-casing, a sign-up whose email belongs to a live account is refused, and an email held only by a deleted account can be used again.",
+        "contexts": [
+          "identity"
+        ],
+        "examples": [
+          "Signing up as ' Alice@Example.COM ' while alice@example.com belongs to a live account is refused as email-taken (HTTP 409).",
+          "Signing up with the email of an account that is already deleted succeeds and yields a session."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/workspace/account.go",
+            "lines": {
+              "start": 71,
+              "end": 73
+            },
+            "excerpt_sha256": "sha256:a3bc73b95a85ac3220605a631f5a6a58741106dab883c4539b3ed0424c045d84"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/service.go",
+            "lines": {
+              "start": 200,
+              "end": 209
+            },
+            "excerpt_sha256": "sha256:f0faa6d0e7ace9070133c48e727de6d0ed2e179adc560f0f95d0d5db7e91f646"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/signup_integration_test.go",
+            "lines": {
+              "start": 73,
+              "end": 96
+            },
+            "excerpt_sha256": "sha256:e7a14bc510df45d790bb87a03107f79a00d271e91c4413000cceb3e691d6edcc"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/http.go",
+            "lines": {
+              "start": 651,
+              "end": 661
+            },
+            "content_sha256": "sha256:07a5f0dad80afa7ec9a9b4122dc4ebaea52e1d6003d82e518e73cfa68f9d0fcd",
+            "excerpt_sha256": "sha256:942c6c558865fee6dd979e9944b00b306b01dbd95d7e122ebd7aad514e6470c3",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [],
+  "supersedes": [
+    "shifted-recite-2026-10-24"
+  ]
+}

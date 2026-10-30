@@ -1,0 +1,29 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "login-purge-refusal-recite",
+  "proposal_id": "login-purge-refusal-recite-2026-10-31",
+  "registry_revision": {
+    "observed_commit": "99c19bf92ea60f9ed3428ebc57706be237d2e037",
+    "registry_digest": "sha256:8f4f8ad8a03dc5c76f81a7ac99584e4482419139d7fffa8f41ef68e3d7c79f96",
+    "committed_digest": "sha256:8f4f8ad8a03dc5c76f81a7ac99584e4482419139d7fffa8f41ef68e3d7c79f96"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": ".claude/skills/domain-memory/engine/bin/windows-x86_64/domain-memory.exe verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/login-purge-refusal-recite-2026-10-31 --path apps/platform/internal/creator/workspace/account.go --path apps/platform/internal/creator/workspace/http.go --path apps/platform/internal/creator/workspace/service.go --path apps/platform/internal/creator/workspace/signup_integration_test.go",
+      "command_profile": "architecture",
+      "exit_code": 0,
+      "output_sha256": "sha256:ce32b7d0b0d3cf7259a3a7e3fdffe50da51f937b979d8789556491cf1600512d",
+      "finished_at": "2026-10-30T18:42:44.214601Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}
