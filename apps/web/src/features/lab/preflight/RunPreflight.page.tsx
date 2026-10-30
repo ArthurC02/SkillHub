@@ -44,6 +44,13 @@ export function RunPreflight() {
 function PreflightReadFailure({ preflight }: { preflight: ReturnType<typeof usePreflight> }) {
   if (preflight.error instanceof ApiError && preflight.error.status === 403)
     return <p role="alert">{NOT_INVITED_SENTENCE}</p>;
+  if (preflight.error instanceof ApiError && preflight.error.status === 404)
+    return (
+      <p role="alert">
+        找不到這個小工具版本或測試題，可能已被刪除；重新讀取也不會出現。
+        <Link to="/lab/test-cases">回到測試題清單</Link>
+      </p>
+    );
   return (
     <ReadFailure
       error={preflight.error}

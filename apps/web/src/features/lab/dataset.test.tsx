@@ -367,6 +367,26 @@ test("02:TEST-002 changing the 測試題 clears what was uploaded to the previou
   expect(container.textContent).not.toContain("請先選擇一個檔案");
 });
 
+test("a test case that no longer exists offers the list instead of a retry that cannot succeed", async () => {
+  stubPlatform();
+  await renderUpload();
+  await act(async () => {
+    await router.navigate({
+      to: "/lab/test-cases/$testCaseId/datasets",
+      params: { testCaseId: OTHER },
+      search: { version: VERSION },
+    });
+  });
+  await waitFor(() => (container.textContent ?? "").includes("找不到這個測試題"));
+
+  const buttons = Array.from(container.querySelectorAll("button"), (b) => b.textContent);
+  expect(buttons).not.toContain("再試一次");
+  expect(container.querySelector('main a[href="/lab/test-cases"]')?.textContent).toBe(
+    "回到測試題清單",
+  );
+  expect(container.querySelector(`main a[href^="/lab/test-cases/${OTHER}"]`)).toBeNull();
+});
+
 function uploadButton(): HTMLButtonElement {
   return Array.from(container.querySelectorAll("button")).find((b) => b.textContent === "上傳")!;
 }

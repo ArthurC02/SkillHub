@@ -104,7 +104,7 @@ export function RunTrace() {
   const general = useTrace(runId, "general");
   const readableRun = run.error ? undefined : run.data;
   const readableTrace = general.error ? undefined : general.data;
-  const questions = retainedQuestions(runId, general);
+  const runGone = isLastingReadFailure(run.error);
   useRunDetailFollowsTrace(run, readableTrace?.status);
 
   return (
@@ -124,10 +124,17 @@ export function RunTrace() {
         <ReadFailure
           error={run.error}
           what="這次試跑"
-          retry={() => void run.refetch()}
+          retry={runGone ? undefined : () => void run.refetch()}
           retrying={run.isFetching}
           focusTarget="run-heading"
-        />
+        >
+          {runGone && (
+            <p role="alert">
+              找不到這次試跑，或它不屬於你的工作區，重新讀取也不會出現。
+              <Link to="/workspace/runs">回到試跑紀錄</Link>
+            </p>
+          )}
+        </ReadFailure>
         {readableRun && (
           <>
             <SkillWorkspaceNav
@@ -144,6 +151,36 @@ export function RunTrace() {
         )}
       </header>
 
+      {!runGone && (
+        <RunWorkspaceBody
+          runId={runId}
+          mode={mode}
+          setMode={setMode}
+          readableRun={readableRun}
+          general={general}
+        />
+      )}
+    </article>
+  );
+}
+
+function RunWorkspaceBody({
+  runId,
+  mode,
+  setMode,
+  readableRun,
+  general,
+}: {
+  runId: string;
+  mode: "general" | "advanced";
+  setMode: (mode: "general" | "advanced") => void;
+  readableRun: ReturnType<typeof useRun>["data"];
+  general: UseQueryResult<TraceSummary>;
+}) {
+  const readableTrace = general.error ? undefined : general.data;
+  const questions = retainedQuestions(runId, general);
+  return (
+    <>
       <section className="run-workspace-panel run-decision" id="run-decision">
         <EvaluationPanel runId={runId} runStatus={readableTrace?.status} />
         {readableTrace && <InFlight summary={readableTrace} />}
@@ -205,6 +242,6 @@ export function RunTrace() {
           </section>
         </div>
       </div>
-    </article>
+    </>
   );
 }

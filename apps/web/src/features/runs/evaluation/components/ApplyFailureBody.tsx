@@ -1,4 +1,4 @@
-import { ApiError } from "../../../../core/api/client";
+import { ApiError, userFacingReason } from "../../../../core/api/client";
 import { Link } from "@tanstack/react-router";
 import { isApplyResultUnknown, readRejectedSuggestions } from "../../evaluation.service";
 import { BLOCKED_REASON_LABEL } from "../evaluation.model";
@@ -40,5 +40,12 @@ export function ApplyFailureBody({ error, skillId }: { error: unknown; skillId?:
       </>
     );
   }
+  if (error.status === 400 || error.status === 404)
+    return (
+      <>
+        <p>{userFacingReason(error) ?? "套用失敗。"}</p>
+        <p>再按一次也不會成功，請重新確認各項建議的套用狀態。</p>
+      </>
+    );
   return <p>套用失敗，可以再按一次。</p>;
 }

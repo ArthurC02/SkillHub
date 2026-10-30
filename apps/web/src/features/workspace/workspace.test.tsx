@@ -15,6 +15,7 @@ import {
   ME as SESSION,
   IMPORT_LIMITS,
   platformResponse,
+  RUNS,
   SKILL_VERSIONS,
   VERSION,
   VERSION_DIFF,
@@ -1182,6 +1183,7 @@ function stubRunPage(artifacts: unknown[], onDelete?: (url: string) => void, tru
       return Promise.resolve(new Response(null, { status: 204 }));
     }
     if (url.includes("/artifacts")) return json({ artifacts, truncated });
+    if (url.split("?")[0].endsWith(`/runs/${RUN}`)) return json(RUNS.runs[0]);
     if (url.includes("/trace"))
       return json({
         run_id: RUN,

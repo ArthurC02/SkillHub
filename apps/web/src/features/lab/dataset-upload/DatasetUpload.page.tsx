@@ -30,6 +30,7 @@ export function DatasetUpload() {
   const { version } = useSearch({ strict: false }) as UploadSearch;
   const testCase = useTestCase(testCaseId);
   const data = testCase.error ? undefined : testCase.data;
+  const testCaseGone = testCase.error instanceof ApiError && testCase.error.status === 404;
 
   return (
     <section className="dataset-upload-page">
@@ -40,16 +41,18 @@ export function DatasetUpload() {
       <ReadFailure
         error={testCase.error}
         what="測試題"
-        retry={() => void testCase.refetch()}
+        retry={testCaseGone ? undefined : () => void testCase.refetch()}
         retrying={testCase.isFetching}
         focusTarget="dataset-heading"
       >
-        {testCase.error instanceof ApiError && testCase.error.status === 404 && (
-          <p role="alert">找不到這個測試題。</p>
-        )}
+        {testCaseGone && <p role="alert">找不到這個測試題，可能已被刪除。</p>}
       </ReadFailure>
       {data ? (
         <DatasetUploadForm key={testCaseId} testCase={data} version={version} />
+      ) : testCaseGone ? (
+        <p>
+          <Link to="/lab/test-cases">回到測試題清單</Link>
+        </p>
       ) : (
         <p>
           <Link to="/lab/test-cases/$testCaseId" params={{ testCaseId }} search={{ version }}>

@@ -21,6 +21,7 @@ export function uploadErrorSentence(error: unknown): string {
   if ([400, 413, 415].includes(status)) {
     return "上傳沒有成功，請檢查檔案類型與大小後再試一次。";
   }
+  if (status === 404) return "這個測試題已不存在，上傳沒有成功；請回到測試題清單。";
   return "上傳沒有成功，可以再按一次。";
 }
 

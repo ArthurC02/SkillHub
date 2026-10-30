@@ -76,6 +76,9 @@ test.each<[string, Error]>([
 test.each<[number, string]>([
   [400, "上傳沒有成功，請檢查檔案類型與大小後再試一次。"],
   [401, "上傳沒有成功，可以再按一次。"],
+  [403, "上傳沒有成功，可以再按一次。"],
+  [404, "這個測試題已不存在，上傳沒有成功；請回到測試題清單。"],
+  [405, "上傳沒有成功，可以再按一次。"],
   [499, "上傳沒有成功，可以再按一次。"],
 ])("HTTP %i is a reported refusal rather than an unknown result", (status, message) => {
   const error = new ApiError(status, "request refused");

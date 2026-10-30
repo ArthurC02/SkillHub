@@ -803,6 +803,30 @@ test.each([
   }
 });
 
+test.each([
+  { status: 404, retry: false, back: true },
+  { status: 403, retry: false, back: true },
+  { status: 503, retry: true, back: false },
+])(
+  "a run read answering $status offers retry: $retry, a way back: $back",
+  async ({ status, retry, back }) => {
+    vi.stubGlobal("fetch", () =>
+      Promise.resolve(
+        new Response(JSON.stringify({ error: "找不到這個 Run" }), {
+          status,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+    await render();
+    await waitFor(() => (container.textContent ?? "").includes("這次試跑"));
+
+    const buttons = Array.from(container.querySelectorAll("button"), (b) => b.textContent);
+    expect(buttons.includes("再試一次")).toBe(retry);
+    expect(container.querySelector('[role="alert"] a[href="/workspace/runs"]') !== null).toBe(back);
+  },
+);
+
 test("returning to the general view does not ask for the trace again", async () => {
   vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
   try {

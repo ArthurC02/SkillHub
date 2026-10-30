@@ -617,6 +617,31 @@ test("an uninvited account is told at the preflight summary, before confirming a
   expect(platform.calls.some((call) => call.url.includes("/runs/preflight/confirm"))).toBe(false);
 });
 
+test("a preflight for a version or test case that is gone offers the list, not a retry", async () => {
+  const platform = stubPlatform();
+  platform.failPreflight(404);
+  await renderLab();
+
+  await waitFor(() => text().includes("找不到這個小工具版本或測試題"));
+  expect(text()).not.toContain("暫時無法讀取權限摘要");
+  expect(
+    Array.from(document.querySelectorAll("button")).some((b) => b.textContent?.includes("再試")),
+  ).toBe(false);
+  expect(document.querySelector('[role="alert"] a[href="/lab/test-cases"]')).not.toBeNull();
+  expect(confirmButton()).toBeUndefined();
+});
+
+test("a preflight that fails for a while still offers a retry", async () => {
+  const platform = stubPlatform();
+  platform.failPreflight(503);
+  await renderLab();
+
+  await waitFor(() => text().includes("暫時無法讀取權限摘要"));
+  expect(
+    Array.from(document.querySelectorAll("button")).some((b) => b.textContent === "再試一次"),
+  ).toBe(true);
+});
+
 test("a 503 on run-start leaves the outcome unconfirmed without exposing the server message", async () => {
   const platform = stubPlatform();
   platform.failRunWith(503, { error: "sandbox pool temporarily unavailable" });
