@@ -279,6 +279,28 @@ test("switching to another version asks for the distribution right again", async
   expect(rightsBox()!.checked).toBe(false);
 });
 
+test.each([
+  ["generated", false],
+  ["self_supplied", true],
+] as const)(
+  "a %s 小工具 offers the version upload only when the platform would accept one (%s)",
+  async (value, accepted) => {
+    stubVersions();
+    const previousFetch = globalThis.fetch;
+    vi.stubGlobal("fetch", (input: string, init?: RequestInit) =>
+      String(input).split("?")[0].endsWith(`/api/skills/${SKILL}`)
+        ? json({ ...skillDetail(SKILL, "PDF Summariser"), redistribution: { value } })
+        : previousFetch(input, init),
+    );
+    await render(() => text().includes("已列入 Catalog"));
+
+    expect(container.querySelector("#skill-version-file") !== null).toBe(accepted);
+    const importLink = container.querySelector('a[href="/workspace/import"]');
+    expect(importLink?.textContent === "把套件匯入成一個新的小工具").toBe(!accepted);
+    expect(text().includes("生成的小工具不接受上傳的新版本")).toBe(!accepted);
+  },
+);
+
 test("a historical version labels the current 小工具 summary without presenting it as version content", async () => {
   routeVersion = SKILL_VERSIONS.versions[1].version_id;
   stubVersions();

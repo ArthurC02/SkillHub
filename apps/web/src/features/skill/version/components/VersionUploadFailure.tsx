@@ -9,7 +9,8 @@ function uploadRefusalMessage(error: unknown) {
   if (error instanceof ApiError) {
     if (error.status === 413) return "檔案超過上限，請縮小套件再上傳。";
     if (error.status === 404) return "找不到這個小工具，它可能已被刪除。";
-    if (error.status === 422) return "套件未通過驗證，但無法讀取檢查細節。請檢查套件後再上傳。";
+    if (error.status === 422)
+      return userFacingReason(error) ?? "套件未通過驗證，但無法讀取檢查細節。請檢查套件後再上傳。";
   }
   return (
     userFacingReason(error) ??

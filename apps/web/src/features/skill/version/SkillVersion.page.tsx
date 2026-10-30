@@ -75,6 +75,7 @@ export function SkillVersion() {
           versionId={versionId}
           versions={context?.list ?? []}
           showUpload={canRetainVersionUpload(skill, versions)}
+          generated={skill.data?.redistribution?.value === "generated"}
           contextConfirmed={context?.confirmed === true}
         />
       </div>
@@ -538,12 +539,14 @@ function VersionRail({
   versionId,
   versions,
   showUpload,
+  generated,
   contextConfirmed,
 }: {
   skillId: string;
   versionId: string;
   versions: SkillVersionSummary[];
   showUpload: boolean;
+  generated: boolean;
   contextConfirmed: boolean;
 }) {
   if (versions.length === 0 && !showUpload) return null;
@@ -572,7 +575,16 @@ function VersionRail({
           <p className="note">小工具與版本脈絡可讀取後，才能切換版本。</p>
         )}
       </section>
-      {showUpload && (
+      {showUpload && generated && (
+        <section>
+          <h3>上傳新版本</h3>
+          <p className="note">
+            生成的小工具不接受上傳的新版本。要在這份內容上加你自己的版本，請
+            <Link to="/workspace/import">把套件匯入成一個新的小工具</Link>。
+          </p>
+        </section>
+      )}
+      {showUpload && !generated && (
         <VersionUpload
           skillId={skillId}
           versionId={versionId}

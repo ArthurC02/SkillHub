@@ -287,6 +287,25 @@ test("丙-151: 413 印「檔案超過上限，請縮小套件再上傳。」", a
   expect(text()).not.toContain("file is larger than");
 });
 
+test("a 422 without findings shows the server's own reason instead of a package problem", async () => {
+  const reason = "平台不會把上傳的內容接在生成的 Skill 後面當成新版本。";
+  stubOwner(() => json({ error: reason }, 422));
+  await render();
+  await submitUpload();
+  await waitFor(() => text().includes(reason));
+
+  expect(text()).not.toContain("套件未通過驗證，但無法讀取檢查細節");
+});
+
+test("a 422 without findings or readable words still says the package was not accepted", async () => {
+  stubOwner(() => json({ error: "unprocessable" }, 422));
+  await render();
+  await submitUpload();
+  await waitFor(() => text().includes("套件未通過驗證，但無法讀取檢查細節。請檢查套件後再上傳。"));
+
+  expect(text()).not.toContain("unprocessable");
+});
+
 test("a 429 carrying the server's wait time shows that time", async () => {
   stubOwner(() => json({ error: "太多請求了，請在 9 秒後再試。" }, 429));
   await render();
