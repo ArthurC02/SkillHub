@@ -260,7 +260,11 @@ for (const outcome of ["lost response", "unavailable", "malformed receipt"]) {
       page.getByRole("status").filter({ hasText: "小工具資訊尚未重新確認，暫時無法開始複製。" }),
     ).toBeVisible();
     sourceFailed = false;
-    await page.getByRole("button", { name: "再試一次", exact: true }).click();
+    await page
+      .locator("section")
+      .filter({ hasText: "暫時無法讀取這個小工具" })
+      .getByRole("button", { name: "再試一次", exact: true })
+      .click();
     await expect(page.getByRole("button", { name: "重新送出複製請求", exact: true })).toBeEnabled();
     await expect(failure).toContainText("尚未確認");
     const [popup] = await Promise.all([context.waitForEvent("page"), lookup.click()]);

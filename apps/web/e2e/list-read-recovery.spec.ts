@@ -91,6 +91,7 @@ for (const list of lists) {
           : route.fulfill({
               json: {
                 [list.key]: empty && reads === 1 ? [] : list.rows,
+                limit: list.pageSize,
                 total: empty && reads === 1 ? 0 : list.rows.length,
                 truncated: false,
               },
@@ -148,7 +149,8 @@ for (const list of lists) {
             json: {
               [list.key]:
                 firstReads === 1 ? pagedRows.slice(0, list.name === "assets" ? 24 : 51) : list.rows,
-              total: pagedRows.length,
+              limit: list.pageSize,
+              total: firstReads === 1 ? pagedRows.length : list.rows.length,
               truncated: firstReads === 1,
             },
           });
@@ -163,6 +165,7 @@ for (const list of lists) {
           : route.fulfill({
               json: {
                 [list.key]: [pagedRows[list.pageSize]],
+                limit: list.pageSize,
                 total: pagedRows.length,
                 truncated: false,
               },
@@ -214,7 +217,7 @@ for (const cached of [false, true]) {
     await page.route("**/skills?*", (route) => {
       reads += 1;
       return cached && reads === 1
-        ? route.fulfill({ json: { skills: [] } })
+        ? route.fulfill({ json: { skills: [], limit: 24, total: 0, truncated: false } })
         : reads === (cached ? 2 : 1)
           ? route.fulfill({ status: 503, json: { error: "service unavailable" } })
           : route.fulfill({ json: skills });
