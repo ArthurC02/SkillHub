@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { focusFeedback } from "../../../shared/ui/focusFeedback";
 import { AcquisitionResultUnknown } from "../acquisition.model";
-import { actionFailureSentence } from "../publishing.model";
+import { acquisitionFailureSentence } from "../publishing.model";
 
 export function AcquisitionFailure({
   error,
@@ -26,7 +26,7 @@ export function AcquisitionFailure({
       <p role="alert" tabIndex={-1} ref={message}>
         {error instanceof AcquisitionResultUnknown
           ? error.message
-          : actionFailureSentence(error, fallback)}
+          : acquisitionFailureSentence(error, fallback)}
       </p>
       {error instanceof AcquisitionResultUnknown && (
         <p>

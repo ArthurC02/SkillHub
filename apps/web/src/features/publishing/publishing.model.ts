@@ -1,4 +1,4 @@
-import { ApiError, isWriteResultUnknown } from "../../core/api/client";
+import { ApiError, isWriteResultUnknown, userFacingReason } from "../../core/api/client";
 import type { SkillDetail } from "../../core/api/types";
 import { packagingGate } from "../packaging";
 
@@ -20,7 +20,7 @@ export type PublishingRefusalReason =
   | "license_not_declarable";
 
 export const PUBLISHING_REFUSAL_LABEL: Record<PublishingRefusalReason, string> = {
-  no_publisher: "這個帳號還沒有註冊發佈者名稱，要先到帳號頁註冊一個才能發佈。",
+  no_publisher: "這個帳號還沒有註冊發佈者名稱；先在「發佈者名稱」註冊一個，才能發佈。",
   already_registered: "這個帳號已經有一個發佈者名稱了，一個帳號只能有一個，不能再註冊第二個。",
   name_taken: "這個名稱已經被別人取走了，換一個名稱再試一次。",
   name_held:
@@ -92,6 +92,8 @@ export function writeFailureSentence(error: unknown, action: string): string {
   if (sentence) return sentence;
   if (isWriteResultUnknown(error))
     return `尚未確認${action}是否已完成；上面的狀態已重新讀取，請先看過再決定要不要重送。`;
+  if (error instanceof ApiError && error.status === 404)
+    return `${action}沒有成功：要用到的小工具、版本或發佈物已經不在了，重送也不會成功；重新整理頁面看看最新狀態。`;
   return `${action}沒有成功，可以再試一次。`;
 }
 
@@ -100,6 +102,12 @@ const SERVER_WORDED_STATUSES = new Set([403, 409, 422]);
 // Bundle and acquisition refusals carry reasons this table does not list
 // (they are already Chinese from the server); a 500 here is not, so only the
 // statuses that are always a deliberate refusal fall back to error.message.
+export function acquisitionFailureSentence(error: unknown, fallback: string): string {
+  const serverWords =
+    error instanceof ApiError && error.status === 422 ? userFacingReason(error) : undefined;
+  return serverWords ?? actionFailureSentence(error, fallback);
+}
+
 export function actionFailureSentence(error: unknown, fallback: string): string {
   const sentence = refusalSentence(error);
   if (sentence) return sentence;
