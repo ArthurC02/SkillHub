@@ -185,3 +185,27 @@ func TestHarnessIgnoresProseAboutAgentCalls(t *testing.T) {
 		t.Fatalf("a comment mentioning agent() was treated as a call: %v", problems)
 	}
 }
+
+func TestHarnessRejectsARoleThatPreloadsAMissingSkill(t *testing.T) {
+	t.Parallel()
+	for name, c := range map[string]struct {
+		skills  string
+		missing bool
+	}{
+		"an existing skill":           {"skills: [x]\n", false},
+		"no skills line":              {"", false},
+		"an empty list":               {"skills: []\n", false},
+		"a deleted skill":             {"skills: [gone]\n", true},
+		"one present and one deleted": {"skills: [x, gone]\n", true},
+	} {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			agent := "---\nname: x\ndescription: y\nmodel: opus\neffort: high\n" + c.skills + "---\n\nBody.\n"
+			problems := harnessProblems(writeHarnessFixture(t, cleanSkill, agent, "# 導覽\n"))
+			named := len(problems) == 1 && strings.Contains(problems[0], `preloads skill "gone"`)
+			if named != c.missing || (!c.missing && len(problems) != 0) {
+				t.Fatalf("problems = %v, want a missing-skill problem: %v", problems, c.missing)
+			}
+		})
+	}
+}

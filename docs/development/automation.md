@@ -114,7 +114,7 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 
 **新增一個區域的三步配方**（不新增角色）：①在該目錄放 `AGENTS.md`（指標表：要做的事 → 先讀哪段 → 沒讀會被哪個閘門擋；加一行 `@AGENTS.md` 的 `CLAUDE.md`），遵循[開發者指示](./agent-instructions.md)的分層／派工流程；②在 `.claude/rules/` 加一條 `paths:` 指向它，規則提示改讀該區域 `AGENTS.md`；③在根 `AGENTS.md`〈分區指標與攔阻〉的表加一列。
 
-**守它的機器**：名冊裡的 `harness`（技能不引用本地文件、角色必須指定 `model` 且不得 fable／sol／inherit、角色必須指定 `effort`、根 `AGENTS.md` 不超過上限、workflow 的每個 `agent(` 同一行有 `model:` 與 `effort:` 且 `meta.name` 等於檔名）與 `apps/platform/internal/shared/skillpkg/repo_skills_test.go`（技能過產品自己的 `skillpkg.Validate`）。
+**守它的機器**：名冊裡的 `harness`（技能不引用本地文件、角色必須指定 `model` 且不得 fable／sol／inherit、角色必須指定 `effort`、角色 `skills:` 預載的技能必須存在、根 `AGENTS.md` 不超過上限、workflow 的每個 `agent(` 同一行有 `model:` 與 `effort:` 且 `meta.name` 等於檔名）與 `apps/platform/internal/shared/skillpkg/repo_skills_test.go`（技能過產品自己的 `skillpkg.Validate`）。
 
 ## 常見失敗
 

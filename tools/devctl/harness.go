@@ -28,6 +28,7 @@ var agentModelLine = regexp.MustCompile(`(?m)^model:\s*(\S+)\s*$`)
 var (
 	agentEffortLine = regexp.MustCompile(`(?m)^effort:\s*(\S+)\s*$`)
 	effortLevels    = strings.Fields("low medium high xhigh max")
+	agentSkillsLine = regexp.MustCompile(`(?m)^skills:\s*\[([^\]]*)\]\s*$`)
 )
 
 func harnessProblems(root string) []string {
@@ -110,6 +111,27 @@ func harnessAgentProblems(root string) []string {
 					"or inherit", relative, m[1]))
 		}
 		problems = append(problems, roleEffortProblems(relative, frontmatter)...)
+		problems = append(problems, roleSkillProblems(root, relative, frontmatter)...)
+	}
+	return problems
+}
+
+func roleSkillProblems(root, relative, frontmatter string) []string {
+	m := agentSkillsLine.FindStringSubmatch(frontmatter)
+	if m == nil {
+		return nil
+	}
+	var problems []string
+	for _, name := range strings.Split(m[1], ",") {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(harnessSkillsDir), name, "SKILL.md")); err != nil {
+			problems = append(problems, fmt.Sprintf(
+				"harness: %s preloads skill %q, which has no %s/%s/SKILL.md; the role starts without it and nothing says so",
+				relative, name, harnessSkillsDir, name))
+		}
 	}
 	return problems
 }
