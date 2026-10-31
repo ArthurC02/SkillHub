@@ -405,7 +405,7 @@ docker run --rm --network container:skillhub-postgres-1 \
 
 決策與理由在[開發自動化與依賴治理](../adr/README.md#開發自動化與依賴治理)（漏洞與其餘依賴治理規則）；這裡只放動手時要知道的事。
 
-**新增一個直接依賴之前**，回答五個問題，答案寫進 commit message：標準庫、平台或已經裝的依賴做得到嗎（做得到就不加）；授權在允許清單上嗎；還有人維護嗎（最近一年有發佈、安全問題有回應）；會多拉進幾個傳遞依賴；需要 install script 嗎（`ignore-scripts=true` 會讓它失效，需要就寫 ADR）。`apps/web` 的執行期依賴另外要一份 ADR（system.md §4.8，前例見[營運後台](../adr/README.md#營運後台)）。
+**新增一個直接依賴之前**，回答五個問題，答案寫進 commit message：標準庫、平台或已經裝的依賴做得到嗎（做得到就不加）；授權在允許清單上嗎；還有人維護嗎（最近一年有發佈、安全問題有回應）；會多拉進幾個傳遞依賴；需要 install script 嗎（`ignore-scripts=true` 會讓它失效，需要就寫 ADR）。`apps/web` 的執行期依賴另外要一份 ADR（理由見[設計系統、信任訊號與畫面用語](../adr/README.md#設計系統信任訊號與畫面用語)的最小依賴面，前例見[營運後台](../adr/README.md#營運後台)）。
 
 **這些版本要一起動**。Dependabot 會提出升級，但通常只改到其中一處；node、go、python、uv、task、golangci-lint 由 `dependency-policy` 比對每個位置，不一致就 FAIL 並列出各位置的值（見[開發自動化與依賴治理](../adr/README.md#開發自動化與依賴治理)）：
 

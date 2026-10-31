@@ -74,6 +74,7 @@ Agent Skill 平台：Catalog、輕鬆創建、私人訂製與公開散布。架�
 | `apps/platform/` | [`apps/platform/AGENTS.md`](apps/platform/AGENTS.md)（route、Bounded Context、query 所有權的紅線）；動 `internal/` 再讀 [`internal/AGENTS.md`](apps/platform/internal/AGENTS.md)＋目標套件的 `doc.go` |
 | `apps/llm/` | [`apps/llm/AGENTS.md`](apps/llm/AGENTS.md) |
 | `apps/sandbox/` | [`apps/sandbox/AGENTS.md`](apps/sandbox/AGENTS.md) |
+| `infra/images/` | [`infra/images/AGENTS.md`](infra/images/AGENTS.md)（改 runtime 映像要升版本、先問負責人） |
 | `docs/` | [`docs/AGENTS.md`](docs/AGENTS.md)（文件維護規則） |
 
 Claude Code 另有 `.claude/` 下的 rules、角色、技能、workflows 與 `skillhub-guards` 外掛，當場擋紅線；它們不取代文件，只是提早發現（見 automation.md〈Harness〉）。
