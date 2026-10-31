@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -133,7 +134,18 @@ func domainMemoryReleaseProblems(root string) []string {
 		domainMemoryReleaseFile, recorded.Version, current.Version, domainMemoryReleaseCmd)}
 }
 
-func recordDomainMemoryRelease(root string, out io.Writer) error {
+func committedBinariesCurrent(root string) error {
+	cmd := exec.Command("cargo", "run", "--quiet", "--locked", "--example", "build_binaries", "--", "--check")
+	cmd.Dir = filepath.Join(root, filepath.FromSlash(domainMemoryPluginDir), "engine")
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("the committed engine binaries are not built from the current source, so a release recorded now "+
+			"would go stale on the rebuild; run cargo run --example build_binaries in %s first, then %s\n%s",
+			cmd.Dir, domainMemoryReleaseCmd, output)
+	}
+	return nil
+}
+
+func recordDomainMemoryRelease(root string, out io.Writer, binariesCurrent func(root string) error) error {
 	current, err := currentDomainMemoryRelease(root)
 	if err != nil {
 		return err
@@ -144,6 +156,9 @@ func recordDomainMemoryRelease(root string, out io.Writer) error {
 	}
 	if err == nil && contentChangedWithoutBump(current, recorded) {
 		return errors.New(bumpMessage(current.Version))
+	}
+	if err := binariesCurrent(root); err != nil {
+		return err
 	}
 	data, err := json.MarshalIndent(current, "", "  ")
 	if err != nil {
