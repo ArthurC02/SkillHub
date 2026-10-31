@@ -4,8 +4,10 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 type githubStub func(path string) (int, string)
@@ -76,5 +78,90 @@ func TestExitCode(t *testing.T) {
 		if got := exitCode(c.code, c.err); got != c.want {
 			t.Errorf("%s: exitCode(%d, %v) = %d, want %d", c.name, c.code, c.err, got, c.want)
 		}
+	}
+}
+
+func TestARedRunNamesTheFailingAssertionsFromItsAnnotations(t *testing.T) {
+	t.Parallel()
+	failure := func(message string) string {
+		return `{"annotation_level":"failure","message":` + strconv.Quote(message) + `}`
+	}
+	annotations := []string{
+		failure("Process completed with exit code 1."),
+		`{"annotation_level":"warning","message":"The ubuntu-latest label will migrate"}`,
+		failure("--- FAIL: TestHalt (0.5s)\n    halt_test.go:133: refused with the English sentence"),
+	}
+	for i := 0; i < ciAnnotationsPerJob; i++ {
+		annotations = append(annotations, failure("another failure"))
+	}
+	client := githubClient{repo: "o/r", http: &http.Client{Transport: githubStub(func(path string) (int, string) {
+		switch {
+		case strings.Contains(path, "/annotations"):
+			return http.StatusOK, "[" + strings.Join(annotations, ",") + "]"
+		case strings.Contains(path, "/jobs"):
+			return http.StatusOK, `{"jobs":[{"id":42,"name":"platform","conclusion":"failure","steps":[{"name":"Platform tests","conclusion":"failure"}]}]}`
+		}
+		return http.StatusOK, `{"workflow_runs":[{"id":7,"name":"CI","status":"completed","conclusion":"failure"}]}`
+	})}}
+
+	var out strings.Builder
+	code, err := reportCIStatusOnce(client, strings.Repeat("a", 40), &out)
+
+	if err != nil || code != ciRed {
+		t.Fatalf("code, err = %d, %v; want red", code, err)
+	}
+	report := out.String()
+	for _, want := range []string{"failure platform: Platform tests", "--- FAIL: TestHalt", "halt_test.go:133: refused", "… more annotations"} {
+		if !strings.Contains(report, want) {
+			t.Errorf("report lacks %q:\n%s", want, report)
+		}
+	}
+	for _, noise := range []string{"Process completed with exit code", "ubuntu-latest"} {
+		if strings.Contains(report, noise) {
+			t.Errorf("report carries the noise %q:\n%s", noise, report)
+		}
+	}
+	if got := strings.Count(report, "another failure"); got != ciAnnotationsPerJob-1 {
+		t.Errorf("showed %d extra failures, want %d (the cap less the one named failure)", got, ciAnnotationsPerJob-1)
+	}
+}
+
+func TestWaitingAsksAgainWhenGitHubFailsOnItsSideButNotWhenItRefuses(t *testing.T) {
+	t.Parallel()
+	for _, c := range []struct {
+		name     string
+		first    int
+		wantCode int
+		wantErr  bool
+	}{
+		{"a 502 is asked again", http.StatusBadGateway, ciGreen, false},
+		{"a 504 is asked again", http.StatusGatewayTimeout, ciGreen, false},
+		{"a 404 is not", http.StatusNotFound, 2, true},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			calls := 0
+			paused := 0
+			client := githubClient{repo: "o/r", token: "t", pause: func(time.Duration) { paused++ },
+				http: &http.Client{Transport: githubStub(func(path string) (int, string) {
+					if strings.Contains(path, "/jobs") {
+						return http.StatusOK, `{"jobs":[]}`
+					}
+					calls++
+					if calls == 1 {
+						return c.first, `{}`
+					}
+					return http.StatusOK, `{"workflow_runs":[{"id":7,"name":"CI","status":"completed","conclusion":"success"}]}`
+				})}}
+
+			code, err := pollCIStatusUntilDecided(client, strings.Repeat("a", 40), io.Discard)
+
+			if code != c.wantCode || (err != nil) != c.wantErr {
+				t.Fatalf("code, err = %d, %v; want %d, error %v", code, err, c.wantCode, c.wantErr)
+			}
+			if c.wantErr == (paused > 0) {
+				t.Errorf("paused %d times; a refusal must not wait and a server failure must", paused)
+			}
+		})
 	}
 }

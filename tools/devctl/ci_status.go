@@ -38,6 +38,7 @@ type workflowRun struct {
 }
 
 type workflowJob struct {
+	ID         int64  `json:"id"`
 	Name       string `json:"name"`
 	Conclusion string `json:"conclusion"`
 	Steps      []struct {
@@ -50,6 +51,44 @@ type githubClient struct {
 	repo  string
 	token string
 	http  *http.Client
+	pause func(time.Duration)
+}
+
+type githubHTTPError struct {
+	path   string
+	status int
+	detail string
+}
+
+func (e githubHTTPError) Error() string {
+	return fmt.Sprintf("GET %s: HTTP %d%s", e.path, e.status, e.detail)
+}
+
+type checkAnnotation struct {
+	Level   string `json:"annotation_level"`
+	Message string `json:"message"`
+}
+
+const (
+	ciAnnotationsPerJob    = 5
+	ciAnnotationLinesShown = 8
+	ciRunnerExitAnnotation = "Process completed with exit code"
+)
+
+func githubMayAnswerLater(err error) bool {
+	var refused githubHTTPError
+	if errors.As(err, &refused) {
+		return refused.status >= http.StatusInternalServerError
+	}
+	return err != nil
+}
+
+func (c githubClient) wait(d time.Duration) {
+	if c.pause != nil {
+		c.pause(d)
+		return
+	}
+	time.Sleep(d)
 }
 
 var githubRemote = regexp.MustCompile(`github\.com[:/]([^/]+)/([^/]+?)(?:\.git)?/?$`)
@@ -139,7 +178,12 @@ func pollCIStatusUntilDecided(client githubClient, sha string, out io.Writer) (i
 	for {
 		runs, err := client.runsFor(sha)
 		if err != nil {
-			return 2, err
+			if !githubMayAnswerLater(err) || time.Since(started) > ciStalledWait {
+				return 2, err
+			}
+			fmt.Fprintf(out, "GitHub did not answer (%v); asking again in %s\n", err, interval)
+			client.wait(interval)
+			continue
 		}
 		code, verdict := ciVerdict(runs)
 		waitedOut := time.Since(started) > ciStalledWait || (code == ciNoRuns && time.Since(started) > ciNoRunsWait)
@@ -147,7 +191,7 @@ func pollCIStatusUntilDecided(client githubClient, sha string, out io.Writer) (i
 			client.report(out, sha, verdict, runs)
 			return code, nil
 		}
-		time.Sleep(interval)
+		client.wait(interval)
 	}
 }
 
@@ -217,7 +261,7 @@ func (c githubClient) get(path string, into any) error {
 		if response.Header.Get("X-RateLimit-Remaining") == "0" {
 			detail = fmt.Sprintf(" (rate limit exhausted until unix %s; unauthenticated calls get 60 an hour)", response.Header.Get("X-RateLimit-Reset"))
 		}
-		return fmt.Errorf("GET %s: HTTP %d%s", path, response.StatusCode, detail)
+		return githubHTTPError{path: path, status: response.StatusCode, detail: detail}
 	}
 	return json.NewDecoder(response.Body).Decode(into)
 }
@@ -247,11 +291,11 @@ func (c githubClient) report(out io.Writer, sha, verdict string, runs []workflow
 			fmt.Fprintf(out, "    jobs unavailable: %v\n", err)
 			continue
 		}
-		reportJobs(out, page.Jobs)
+		c.reportJobs(out, page.Jobs)
 	}
 }
 
-func reportJobs(out io.Writer, jobs []workflowJob) {
+func (c githubClient) reportJobs(out io.Writer, jobs []workflowJob) {
 	var skipped []string
 	for _, job := range jobs {
 		switch job.Conclusion {
@@ -260,6 +304,7 @@ func reportJobs(out io.Writer, jobs []workflowJob) {
 			skipped = append(skipped, job.Name)
 		default:
 			fmt.Fprintf(out, "    %s %s: %s\n", orDash(job.Conclusion), job.Name, strings.Join(failedSteps(job), " | "))
+			c.reportFailureAnnotations(out, job)
 		}
 	}
 	if len(skipped) > 0 {
@@ -282,4 +327,28 @@ func orDash(value string) string {
 		return "-"
 	}
 	return value
+}
+
+func (c githubClient) reportFailureAnnotations(out io.Writer, job workflowJob) {
+	var annotations []checkAnnotation
+	if err := c.get(fmt.Sprintf("/check-runs/%d/annotations", job.ID), &annotations); err != nil {
+		fmt.Fprintf(out, "      annotations unavailable: %v\n", err)
+		return
+	}
+	shown := 0
+	for _, annotation := range annotations {
+		if annotation.Level != "failure" || strings.HasPrefix(annotation.Message, ciRunnerExitAnnotation) {
+			continue
+		}
+		if shown == ciAnnotationsPerJob {
+			fmt.Fprintf(out, "      … more annotations on the run page\n")
+			return
+		}
+		shown++
+		lines := strings.Split(strings.TrimSpace(annotation.Message), "\n")
+		if len(lines) > ciAnnotationLinesShown {
+			lines = append(lines[:ciAnnotationLinesShown], "…")
+		}
+		fmt.Fprintf(out, "      %s\n", strings.Join(lines, "\n      "))
+	}
 }
