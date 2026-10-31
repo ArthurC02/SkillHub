@@ -10,8 +10,6 @@ export const meta = {
 
 const run = (prompt, opts = {}) => agent(prompt, { ...opts, model: opts.model ?? 'sonnet', effort: opts.effort ?? 'medium' })
 
-// One reader per group. src/features/creation/generate/ stays out: its entry must stay hidden
-// from closed-beta users, and listing its text invites someone to "improve" it.
 const DEFAULT_GROUPS = [
   { key: 'home', files: ['src/features/catalog/home/'] },
   { key: 'detail', files: ['src/features/skill/detail/','src/shared/ui/LabelledBadge.tsx', 'src/shared/ui/LicenseBadge.tsx', 'src/shared/ui/RiskIndicator.tsx'] },

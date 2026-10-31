@@ -96,6 +96,13 @@ func committedProblems(root, rangeSpec string, out io.Writer) ([]string, error) 
 	for _, warning := range guardsWarnings {
 		fmt.Fprintln(out, statusWarn, warning)
 	}
+	advice, err := committedDecisionCommentWarnings(root, rangeSpec, newDecisionJudge(root))
+	if err != nil {
+		return nil, err
+	}
+	for _, warning := range advice {
+		fmt.Fprintln(out, statusWarn, warning)
+	}
 	return append(append(append(append(format, comments...), evidence...), bump...), guards...), nil
 }
 

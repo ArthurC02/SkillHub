@@ -10,7 +10,6 @@ export const meta = {
 
 const run = (prompt, opts = {}) => agent(prompt, { ...opts, model: opts.model ?? 'sonnet', effort: opts.effort ?? 'medium' })
 
-// src/features/creation/generate/ stays out: its entry must stay hidden from closed-beta users.
 const WEB = 'apps/web/'
 const GO = 'apps/platform/internal/'
 const DEFAULT_LINES = [
