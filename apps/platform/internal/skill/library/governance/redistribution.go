@@ -164,7 +164,7 @@ func redistributionRefusal(refused registry.Refused, value string) error {
 	case registry.RefusedGeneratedIsPermanent:
 		return restrictionInputError(
 			"這個小工具是平台生成的，「平台生成」是它來源的唯一紀錄，覆寫會讓它回到搜尋結果與摘要佇列；" +
-				"要讓它不再被讀取、試跑或打包，改用存取限制")
+				"要讓它不再被讀取、試跑或打包，改用「設定受限展示」")
 	}
 	return refused
 }

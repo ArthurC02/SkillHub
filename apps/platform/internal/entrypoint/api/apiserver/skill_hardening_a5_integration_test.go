@@ -173,7 +173,7 @@ func TestAnOperatorCannotUnhideAGeneratedSkillBySettingItBlocked(t *testing.T) {
 	}
 
 	msg, _ := body["error"].(string)
-	if !strings.Contains(msg, "access_restriction") {
+	if !strings.Contains(msg, "設定受限展示") {
 		t.Errorf("the refusal must point at the hold that does work, got %q", msg)
 	}
 
