@@ -33,6 +33,9 @@ const (
 	devtoolsDockerfile = "infra/images/devtools/Dockerfile"
 	toolchainYAML      = "tools/toolchain.yaml"
 	ciWorkflow         = ".github/workflows/ci.yml"
+	toolRuff           = "ruff"
+	toolZizmor         = "zizmor"
+	toolPglite         = "pglite"
 )
 
 var versionsThatMoveTogether = []versionGroup{
@@ -77,7 +80,7 @@ var versionsThatMoveTogether = []versionGroup{
 		{toolchainYAML, toolchainPin("redocly")},
 		{ciWorkflow, regexp.MustCompile(`@redocly/cli@(\S+)`)},
 	}},
-	{"ruff", []versionSite{
+	{toolRuff, []versionSite{
 		{"apps/llm/uv.lock", regexp.MustCompile(`(?m)^name = "ruff"\nversion = "([^"]+)"`)},
 		{ciWorkflow, regexp.MustCompile(`pip install ruff==(\S+)`)},
 	}},

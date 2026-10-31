@@ -236,7 +236,7 @@ func checkPgliteInstall(root string, toolchain map[string]string) []checkResult 
 		toolchainKey string
 		nodeModule   string
 	}{
-		{"pglite", "pglite", "@electric-sql/pglite"},
+		{toolPglite, toolPglite, "@electric-sql/pglite"},
 		{"pglite-socket", "pglite_socket", "@electric-sql/pglite-socket"},
 		{"pglite-pgvector", "pglite_pgvector", "@electric-sql/pglite-pgvector"},
 	}
@@ -244,7 +244,7 @@ func checkPgliteInstall(root string, toolchain map[string]string) []checkResult 
 	results := make([]checkResult, 0, len(packages))
 	for _, pkg := range packages {
 		want := toolchain[pkg.toolchainKey]
-		pkgJSON := filepath.Join(root, "tools", "pglite", "node_modules", filepath.FromSlash(pkg.nodeModule), "package.json")
+		pkgJSON := filepath.Join(root, "tools", toolPglite, "node_modules", filepath.FromSlash(pkg.nodeModule), "package.json")
 		got, err := readNodePackageVersion(pkgJSON)
 		switch {
 		case err != nil:

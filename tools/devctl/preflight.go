@@ -212,8 +212,8 @@ func formatterFor(root, file string) (formatter, bool) {
 		}, true
 	case strings.HasPrefix(file, dirAppsLLM+"/") && strings.HasSuffix(file, extPy):
 		return formatter{
-			name: "ruff", dir: dirAppsLLM, cmd: "uv",
-			args: []string{cmdRun, "--no-sync", "ruff", "format", "--stdin-filename", strings.TrimPrefix(file, dirAppsLLM+"/"), "-"},
+			name: toolRuff, dir: dirAppsLLM, cmd: "uv",
+			args: []string{cmdRun, "--no-sync", toolRuff, "format", "--stdin-filename", strings.TrimPrefix(file, dirAppsLLM+"/"), "-"},
 			fix:  "task format:llm",
 		}, true
 	}

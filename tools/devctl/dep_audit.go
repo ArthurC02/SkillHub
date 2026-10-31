@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -73,7 +74,7 @@ func depAudit(root string, args []string, out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	for _, key := range []string{"govulncheck", "pip_audit", "go_licenses", "zizmor"} {
+	for _, key := range []string{"govulncheck", "pip_audit", "go_licenses", toolZizmor} {
 		if toolchain[key] == "" {
 			return fmt.Errorf("%s version is missing from tools/toolchain.yaml", key)
 		}
@@ -109,6 +110,11 @@ func depAudit(root string, args []string, out io.Writer) error {
 	fmt.Fprintln(out, "checked the licenses of shipped dependencies")
 	fail = append(fail, licenseFail...)
 	note = append(note, licenseNote...)
+	if scope.full {
+		lookup := latestReleaseFrom(&http.Client{Timeout: toolchainLookupTimeout})
+		note = append(note, toolchainFreshnessNotes(toolchain, lookup, time.Now())...)
+		fmt.Fprintln(out, "checked tools/toolchain.yaml pins against their latest releases")
+	}
 	return reportAudit(fail, note, info, out)
 }
 
@@ -443,7 +449,7 @@ func sortFindings(findings []vulnFinding) {
 }
 
 func scanWorkflows(root string, toolchain map[string]string) ([]vulnFinding, error) {
-	args := []string{"zizmor==" + toolchain["zizmor"], "--format", "json"}
+	args := []string{toolZizmor + "==" + toolchain[toolZizmor], "--format", "json"}
 	if os.Getenv("GH_TOKEN") == "" && os.Getenv("GITHUB_TOKEN") == "" {
 		args = append(args, "--offline")
 	}
