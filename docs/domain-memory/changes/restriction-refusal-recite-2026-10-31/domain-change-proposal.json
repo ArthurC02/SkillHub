@@ -3,12 +3,12 @@
   "proposal_id": "restriction-refusal-recite-2026-10-31",
   "proposer": "domain-memory-agent",
   "requirement_id": "restriction-refusal-recite",
-  "status": "submitted",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-10-31T05:30:55.500644Z",
-  "verified_at": null,
-  "finalized_at": null,
-  "applied_at": null,
+  "verified_at": "2026-10-31T05:31:15.560489Z",
+  "finalized_at": "2026-10-31T05:31:16.407731Z",
+  "applied_at": "2026-10-31T05:31:20.097822Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "136147a117eda68ab6de8638d55ec11e4011c313",
@@ -73,8 +73,26 @@
   ],
   "risk_flags": [],
   "open_questions": [],
-  "approvals": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-31T05:31:14.903920Z",
+      "scope": "re-cite a-restriction-reason-must-be-known at restriction_test.go 14-72; rule unchanged, only refusal wording translated",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "136147a117eda68ab6de8638d55ec11e4011c313",
+        "registry_digest": "sha256:b48cbe0c65535b95da44c9128a3ab14db0f724c178720e9783c33700f3940c56",
+        "committed_digest": "sha256:b48cbe0c65535b95da44c9128a3ab14db0f724c178720e9783c33700f3940c56"
+      }
+    }
+  ],
   "supersedes": [
     "shifted-recite-2026-10-24"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "ff2a9809f515615567cb836732e95c6ba55d96b6",
+    "registry_digest": "sha256:3afaa114af60239be647f1fb491631524e2c75d6b4f1aa186cb1aff2eeade411"
+  }
 }
