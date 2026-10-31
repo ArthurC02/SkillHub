@@ -8,8 +8,8 @@ RUN git init -q . \
     && git fetch -q --depth 1 https://github.com/wal-g/wal-g "$WALG_COMMIT" \
     && git checkout -q FETCH_HEAD
 RUN --mount=type=cache,target=/go/pkg/mod \
-    go get google.golang.org/grpc@v1.83.2 golang.org/x/crypto@v0.57.0 golang.org/x/net@v0.60.0 \
-        go.opentelemetry.io/otel/sdk@v1.45.0 \
+    go get google.golang.org/grpc@v1.83.2 golang.org/x/crypto@v0.58.0 golang.org/x/net@v0.62.0 \
+        go.opentelemetry.io/otel/sdk@v1.45.0 github.com/go-jose/go-jose/v4@v4.1.6 \
     && go mod tidy \
     && CGO_ENABLED=0 go build -trimpath -buildvcs=false -ldflags="-s -w" -o /out/wal-g ./main/pg
 
@@ -25,7 +25,7 @@ FROM pgvector/pgvector:pg18@sha256:2358fcba361ed2233a5ed81b5fe4ca779ccb304120ce5
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends --only-upgrade libpcre2-8-0 openssl libssl3 \
-        perl-base perl libperl5.36 perl-modules-5.36 \
+        perl-base perl libperl5.36 perl-modules-5.36 libsasl2-2 libsasl2-modules-db \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=wal-g /out/wal-g /out/gosu /usr/local/bin/
