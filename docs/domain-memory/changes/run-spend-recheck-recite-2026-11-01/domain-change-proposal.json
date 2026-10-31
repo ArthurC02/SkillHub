@@ -3,12 +3,12 @@
   "proposal_id": "run-spend-recheck-recite-2026-11-01",
   "proposer": "domain-memory-agent",
   "requirement_id": "run-spend-recheck-recite",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-10-31T17:39:54.051497Z",
   "verified_at": "2026-10-31T17:40:10.728708Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-10-31T18:11:32.786619Z",
+  "applied_at": "2026-10-31T18:11:39.923859Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "3c81dd756d1bb9d5d7d783ef9489cc8e0d73c43f",
@@ -90,5 +90,9 @@
   ],
   "supersedes": [
     "run-unreadable-spend-reread-2026-10-20"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "6f8e600ced6fe1b3fbb95ec1868f8a539c8ca334",
+    "registry_digest": "sha256:752cfd6f5e4d5102eb50ea507c5bf1fc91f9b1ec07d8454dda9267f7244af82e"
+  }
 }

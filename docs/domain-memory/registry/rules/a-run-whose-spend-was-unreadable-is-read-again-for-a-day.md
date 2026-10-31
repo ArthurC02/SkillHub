@@ -3,10 +3,10 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-20T01:50:58.366587Z"
+    at: "2026-10-31T17:39:54.456397Z"
 sources:
   - resource: "apps/platform/internal/trial/execution/supervisor.go#L89-107"
-    excerpt_sha256: "sha256:aadd6c04e5a0f6f30b7cd61fd1b9d30db8ecb7569ec2bf99f39291608d2d8dd4"
+    excerpt_sha256: "sha256:f6a13bb325fe8454a48ace4121ae9549c114b233b3ce2559741d657e72e668a0"
   - resource: "apps/platform/internal/entrypoint/api/apiserver/run_credit_integration_test.go#L210-267"
     excerpt_sha256: "sha256:1856434a054972081409699eff0458fc8e20bfe126364c234fd2f736916b979a"
 ---
