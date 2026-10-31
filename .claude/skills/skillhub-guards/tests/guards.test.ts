@@ -308,6 +308,37 @@ test('an allowance is spent by the push it let through, so the next one is refus
   expect((await $.tool.call({ tool: 'Bash', command: 'git push' })).deny).toMatch(/runtime image tag/)
 })
 
+const movingHeadWorld = (on: On, state: { head: string, imageCommit: string }) => {
+  on('session.root', () => ({ value: ROOT }))
+  on('process.run', (_, e) => {
+    const argv = e.argv.join(' ')
+    const stdout = argv.includes('rev-parse HEAD') ? state.head
+      : argv.includes('log -1') ? state.imageCommit
+        : argv.includes('@{u}...HEAD') ? IMAGE_FILE : ''
+    return { value: { exitCode: 0, stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+  })
+  on('tool.call', () => ({ result: 'ran' }))
+}
+
+test('an allowance follows the image commit, so an unrelated commit on top does not void it', async ($, on) => {
+  const state = { head: 'aaaa1111', imageCommit: 'cccc3333' }
+  movingHeadWorld(on, state)
+  expect((await $.tool.call({ tool: 'Bash', command: 'git push' })).deny).toMatch(/runtime image tag/)
+  await grantLastDenied($)
+  state.head = 'bbbb2222'
+  expect((await $.tool.call({ tool: 'Bash', command: 'git push' })).deny).toBeUndefined()
+})
+
+test('a new image commit after the allowance is refused again', async ($, on) => {
+  const state = { head: 'aaaa1111', imageCommit: 'cccc3333' }
+  movingHeadWorld(on, state)
+  await $.tool.call({ tool: 'Bash', command: 'git push' })
+  await grantLastDenied($)
+  state.head = 'dddd4444'
+  state.imageCommit = 'dddd4444'
+  expect((await $.tool.call({ tool: 'Bash', command: 'git push' })).deny).toMatch(/runtime image tag/)
+})
+
 const LINKED = 'c:/scratch/wt'
 const WORKTREES = `worktree ${ROOT}\nHEAD 1111\nbranch refs/heads/main\n\nworktree ${LINKED}\nHEAD 2222\ndetached\n\n`
 

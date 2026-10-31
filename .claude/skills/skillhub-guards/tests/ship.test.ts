@@ -63,7 +63,6 @@ test('a clean ship lints, stages each file, commits from stdin, checks fast-forw
     'commit -F - -- apps/web/a.ts docs/x.md',
     'fetch --quiet',
     'merge-base --is-ancestor origin/main HEAD',
-    'rev-parse HEAD',
     'rev-parse --verify --quiet @{u}',
     'diff --name-only @{u}...HEAD -- infra/images/runtime-agent-sdk',
     'push --quiet',

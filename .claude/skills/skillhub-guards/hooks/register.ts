@@ -256,12 +256,13 @@ export function pushDirectory(command: string, sessionRoot: string): string {
 }
 
 async function runtimeImagePushGate($: EngineInterface, root: string): Promise<Gate> {
-  const head = (await $.process.run(['git', '-C', root, 'rev-parse', 'HEAD'])).stdout.trim()
   const upstream = await $.process.run(['git', '-C', root, 'rev-parse', '--verify', '--quiet', '@{u}'])
   const base = upstream.exitCode === 0 ? '@{u}' : 'origin/main'
   const changed = await $.process.run(['git', '-C', root, 'diff', '--name-only', `${base}...HEAD`, '--', RUNTIME_IMAGE])
   if (changed.stdout.trim() === '') return {}
-  return gate($, `push of ${head.slice(0, 8)} touching ${RUNTIME_IMAGE}`,
+  const imageCommit = (await $.process.run(['git', '-C', root, 'log', '-1', '--format=%H', `${base}..HEAD`, '--', RUNTIME_IMAGE]))
+    .stdout.trim()
+  return gate($, `push publishing ${imageCommit.slice(0, 8)} of ${RUNTIME_IMAGE}`,
     'this push publishes a new runtime image tag, which cannot be withdrawn; ask the owner first ' +
     '(.claude/rules/tests.md).')
 }
