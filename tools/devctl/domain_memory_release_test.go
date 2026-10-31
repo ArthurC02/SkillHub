@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -9,6 +10,12 @@ import (
 )
 
 const releasedManifest = `{"name": "domain-memory", "version": "0.1.0"}`
+
+func binariesBuiltFromSource(string) error { return nil }
+
+func binariesBuiltFromOlderSource(string) error {
+	return errors.New("binaries built from older source")
+}
 
 func releasedPlugin(t *testing.T) gitRepo {
 	t.Helper()
@@ -22,7 +29,7 @@ func releasedPlugin(t *testing.T) gitRepo {
 		".claude/skills/domain-memory/engine/parity/cases.json":   "[]\n",
 		"tools/devctl/go.mod":                                     "module devctl\n",
 	})
-	if err := recordDomainMemoryRelease(repo.root, io.Discard); err != nil {
+	if err := recordDomainMemoryRelease(repo.root, io.Discard, binariesBuiltFromSource); err != nil {
 		t.Fatalf("record the first release: %v", err)
 	}
 	return repo
@@ -124,9 +131,31 @@ func TestRecordingRefusesAContentChangeWithoutABumpAndLeavesTheRecord(t *testing
 		t.Fatal(err)
 	}
 	editPlugin(t, repo, "SKILL.md", "# Domain Memory\nRead the Registry first.\n")
-	err = recordDomainMemoryRelease(repo.root, io.Discard)
+	err = recordDomainMemoryRelease(repo.root, io.Discard, binariesBuiltFromSource)
 	if err == nil || !strings.Contains(err.Error(), "still says version 0.1.0") {
 		t.Fatalf("err = %v, want a refusal naming version 0.1.0", err)
+	}
+	after, err := os.ReadFile(recordPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(after) != string(before) {
+		t.Fatalf("record changed on refusal:\n%s\nwas\n%s", after, before)
+	}
+}
+
+func TestRecordingRefusesABumpWhoseBinariesAreNotRebuiltAndLeavesTheRecord(t *testing.T) {
+	t.Parallel()
+	repo := releasedPlugin(t)
+	recordPath := filepath.Join(repo.root, "tools", "devctl", "domain-memory-release.json")
+	before, err := os.ReadFile(recordPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	editPlugin(t, repo, ".claude-plugin/plugin.json", `{"name": "domain-memory", "version": "0.1.1"}`)
+	err = recordDomainMemoryRelease(repo.root, io.Discard, binariesBuiltFromOlderSource)
+	if err == nil || err.Error() != "binaries built from older source" {
+		t.Fatalf("err = %v, want the binaries check's refusal", err)
 	}
 	after, err := os.ReadFile(recordPath)
 	if err != nil {
@@ -142,7 +171,7 @@ func TestRecordingAfterABumpClearsTheProblem(t *testing.T) {
 	repo := releasedPlugin(t)
 	editPlugin(t, repo, "SKILL.md", "# Domain Memory\nRead the Registry first.\n")
 	editPlugin(t, repo, ".claude-plugin/plugin.json", `{"name": "domain-memory", "version": "0.1.1"}`)
-	if err := recordDomainMemoryRelease(repo.root, io.Discard); err != nil {
+	if err := recordDomainMemoryRelease(repo.root, io.Discard, binariesBuiltFromSource); err != nil {
 		t.Fatalf("record after bump: %v", err)
 	}
 	if problems := domainMemoryReleaseProblems(repo.root); len(problems) != 0 {

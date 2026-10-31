@@ -104,7 +104,7 @@ func runRepoCheckCommand(root, command string, args []string) (int, error) {
 	case "automation-check":
 		return 0, automationCheck(root, os.Stdout)
 	case cmdDomainMemoryRelease:
-		return 0, recordDomainMemoryRelease(root, os.Stdout)
+		return 0, recordDomainMemoryRelease(root, os.Stdout, committedBinariesCurrent)
 	default:
 		return 0, commentLint(root, args, os.Stdout)
 	}
