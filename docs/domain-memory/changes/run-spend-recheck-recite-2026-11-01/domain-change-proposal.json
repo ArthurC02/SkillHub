@@ -1,0 +1,94 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "run-spend-recheck-recite-2026-11-01",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "run-spend-recheck-recite",
+  "status": "verified",
+  "change_classification": "routine",
+  "submitted_at": "2026-10-31T17:39:54.051497Z",
+  "verified_at": "2026-10-31T17:40:10.728708Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "3c81dd756d1bb9d5d7d783ef9489cc8e0d73c43f",
+    "registry_digest": "sha256:5011331e95c701d6bf399bca21cdaedc644a7a08aefb1999d00e4ff263f172ef",
+    "committed_digest": "sha256:5011331e95c701d6bf399bca21cdaedc644a7a08aefb1999d00e4ff263f172ef"
+  },
+  "affected_contexts": [
+    "run"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "<context-id>",
+    "invariant": "<falsifiable-rule>",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "<existing-or-proposed-collaboration>",
+    "consistency": "<synchronous-or-eventual>",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": null,
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-run-whose-spend-was-unreadable-is-read-again-for-a-day",
+        "statement": "A cleaned Run whose cost was not settled at its real spend is queued for another cleanup by supervision, at most once every 5 minutes, until a read settles it or a day has passed since it finished; a settled Run is never queued for spend again.",
+        "contexts": [
+          "run"
+        ],
+        "examples": [
+          "A Run whose spend was unreadable at cleanup and finished 23 h 59 min ago is queued; one that finished 24 h 1 min ago is not; once the spend reads $0.0382 it is charged 50 credits and no longer queued."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/supervisor.go",
+            "lines": {
+              "start": 89,
+              "end": 107
+            },
+            "content_sha256": "sha256:adfc6267afa7931562e93dbce4be8ccbc5ab737ea25d832edf031c2e7fb89f4d",
+            "excerpt_sha256": "sha256:f6a13bb325fe8454a48ace4121ae9549c114b233b3ce2559741d657e72e668a0",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/run_credit_integration_test.go",
+            "lines": {
+              "start": 210,
+              "end": 267
+            },
+            "excerpt_sha256": "sha256:1856434a054972081409699eff0458fc8e20bfe126364c234fd2f736916b979a"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-31T17:39:54.456397Z",
+      "scope": "re-cite a-run-whose-spend-was-unreadable-is-read-again-for-a-day at supervisor.go 89-107; rule unchanged, the recheck sweep now also waits for the gateway's spend write window",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "3c81dd756d1bb9d5d7d783ef9489cc8e0d73c43f",
+        "registry_digest": "sha256:5011331e95c701d6bf399bca21cdaedc644a7a08aefb1999d00e4ff263f172ef",
+        "committed_digest": "sha256:5011331e95c701d6bf399bca21cdaedc644a7a08aefb1999d00e4ff263f172ef"
+      }
+    }
+  ],
+  "supersedes": [
+    "run-unreadable-spend-reread-2026-10-20"
+  ]
+}

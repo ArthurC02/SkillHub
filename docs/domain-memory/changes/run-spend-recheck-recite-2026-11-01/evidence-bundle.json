@@ -1,0 +1,29 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "run-spend-recheck-recite",
+  "proposal_id": "run-spend-recheck-recite-2026-11-01",
+  "registry_revision": {
+    "observed_commit": "3c81dd756d1bb9d5d7d783ef9489cc8e0d73c43f",
+    "registry_digest": "sha256:5011331e95c701d6bf399bca21cdaedc644a7a08aefb1999d00e4ff263f172ef",
+    "committed_digest": "sha256:5011331e95c701d6bf399bca21cdaedc644a7a08aefb1999d00e4ff263f172ef"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": ".claude/skills/domain-memory/engine/bin/windows-x86_64/domain-memory.exe verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/run-spend-recheck-recite-2026-11-01 --path apps/platform/internal/entrypoint/api/apiserver/run_credit_integration_test.go --path apps/platform/internal/trial/execution/supervisor.go",
+      "command_profile": "architecture",
+      "exit_code": 0,
+      "output_sha256": "sha256:315e86b45468b8f6e2e062334bf7a01f59669e30d44661f162da9ea9447f2cbb",
+      "finished_at": "2026-10-31T17:39:54.387583Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}
