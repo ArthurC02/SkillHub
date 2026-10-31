@@ -591,7 +591,8 @@ jobs:
       - run: golangci-lint fmt --diff
         working-directory: tools/devctl
       - run: go -C tools/devctl vet ./...
-      - run: go -C tools/devctl test -race -count=1 ./...
+      - name: devctl tests
+        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'devctl tests' go -C tools/devctl test -race -count=1 ./...
       - name: Agent automation contract
         run: go -C tools/devctl run . automation-check
       - name: Generate portable Agent artifacts from Claude sources

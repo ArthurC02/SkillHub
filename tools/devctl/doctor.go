@@ -197,7 +197,7 @@ func checkClaudeWorkspaceTrust(root, configPath string) checkResult {
 		return checkResult{name: name, status: statusWarn, detail: fmt.Sprintf("cannot read %s: %v", configPath, err)}
 	}
 	sameFolder := func(path string) bool {
-		clean := func(p string) string { return strings.TrimRight(filepath.ToSlash(p), "/") }
+		clean := func(p string) string { return strings.TrimRight(strings.ReplaceAll(p, `\`, "/"), "/") }
 		return strings.EqualFold(clean(path), clean(root))
 	}
 	var spellings, untrusted []string
