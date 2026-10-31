@@ -102,6 +102,11 @@ type CostEvent struct {
 	IdempotencyKey string
 }
 
+type RecordedCost struct {
+	UsdMicros int64
+	Source    CostSource
+}
+
 type DebitEntry struct {
 	CostEventID string
 	UserID      pgtype.UUID
@@ -129,7 +134,7 @@ type LedgerStore interface {
 
 	RecordCostEvent(ctx context.Context, tx DBTX, e CostEvent) (id string, existed bool, err error)
 
-	CostEventExists(ctx context.Context, tx DBTX, idempotencyKey string) (bool, error)
+	RecordedCost(ctx context.Context, tx DBTX, idempotencyKey string) (RecordedCost, bool, error)
 
 	ApplyDebit(ctx context.Context, tx DBTX, d DebitEntry) (balanceAfter int64, existed bool, err error)
 

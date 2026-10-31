@@ -94,14 +94,20 @@ func (q *Queries) AggregateSessionSummariesWindow(ctx context.Context, arg Aggre
 }
 
 const getCostEventByIdempotencyKey = `-- name: GetCostEventByIdempotencyKey :one
-SELECT id FROM cost_events WHERE idempotency_key = $1
+SELECT id, usd_micros, cost_source FROM cost_events WHERE idempotency_key = $1
 `
 
-func (q *Queries) GetCostEventByIdempotencyKey(ctx context.Context, idempotencyKey string) (pgtype.UUID, error) {
+type GetCostEventByIdempotencyKeyRow struct {
+	ID         pgtype.UUID
+	UsdMicros  int64
+	CostSource string
+}
+
+func (q *Queries) GetCostEventByIdempotencyKey(ctx context.Context, idempotencyKey string) (GetCostEventByIdempotencyKeyRow, error) {
 	row := q.db.QueryRow(ctx, getCostEventByIdempotencyKey, idempotencyKey)
-	var id pgtype.UUID
-	err := row.Scan(&id)
-	return id, err
+	var i GetCostEventByIdempotencyKeyRow
+	err := row.Scan(&i.ID, &i.UsdMicros, &i.CostSource)
+	return i, err
 }
 
 const getLatestCostStatistics = `-- name: GetLatestCostStatistics :one

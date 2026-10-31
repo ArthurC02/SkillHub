@@ -77,7 +77,19 @@ func (s *Service) CostRecorded(ctx context.Context, idempotencyKey string) (bool
 	if s.Store == nil {
 		return false, ErrUnavailable
 	}
-	return s.Store.CostEventExists(ctx, nil, idempotencyKey)
+	_, found, err := s.Store.RecordedCost(ctx, nil, idempotencyKey)
+	return found, err
+}
+
+func (s *Service) GatewayCostUSD(ctx context.Context, idempotencyKey string) (usd float64, found bool, err error) {
+	if s.Store == nil {
+		return 0, false, ErrUnavailable
+	}
+	cost, found, err := s.Store.RecordedCost(ctx, nil, idempotencyKey)
+	if err != nil || !found || cost.Source != CostSourceGateway {
+		return 0, false, err
+	}
+	return float64(cost.UsdMicros) / microsPerUSD, true, nil
 }
 
 type ChargeInput struct {

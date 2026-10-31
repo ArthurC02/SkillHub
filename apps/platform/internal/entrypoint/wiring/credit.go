@@ -146,6 +146,9 @@ func WireCreationCredit(target *creation.Service, svc *credit.Service, pool *pgx
 
 func WireCreditDisplay(svc *credit.Service, runs *run.Service, traces *trace.Service, evaluations *eval.Service) {
 	traces.Credits = svc.CreditsForUSD
+	traces.SettledCostUSD = func(ctx context.Context, runID pgtype.UUID) (float64, bool, error) {
+		return svc.GatewayCostUSD(ctx, runCostKey(runID))
+	}
 	evaluations.Credits = svc.CreditsForUSD
 }
 

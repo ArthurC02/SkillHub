@@ -73,18 +73,18 @@ func (s *PostgresStore) RecordCostEvent(ctx context.Context, tx DBTX, e CostEven
 	if lookupErr != nil {
 		return "", false, fmt.Errorf("credit: read replayed cost event: %w", lookupErr)
 	}
-	return pgconv.UUIDString(existing), true, nil
+	return pgconv.UUIDString(existing.ID), true, nil
 }
 
-func (s *PostgresStore) CostEventExists(ctx context.Context, tx DBTX, idempotencyKey string) (bool, error) {
-	_, err := s.q(tx).GetCostEventByIdempotencyKey(ctx, idempotencyKey)
+func (s *PostgresStore) RecordedCost(ctx context.Context, tx DBTX, idempotencyKey string) (RecordedCost, bool, error) {
+	row, err := s.q(tx).GetCostEventByIdempotencyKey(ctx, idempotencyKey)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return false, nil
+		return RecordedCost{}, false, nil
 	}
 	if err != nil {
-		return false, fmt.Errorf("credit: read cost event: %w", err)
+		return RecordedCost{}, false, fmt.Errorf("credit: read cost event: %w", err)
 	}
-	return true, nil
+	return RecordedCost{UsdMicros: row.UsdMicros, Source: CostSource(row.CostSource)}, true, nil
 }
 
 func (s *PostgresStore) ApplyDebit(ctx context.Context, tx DBTX, d DebitEntry) (int64, bool, error) {

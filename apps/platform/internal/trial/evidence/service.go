@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"slices"
 	"sort"
 	"time"
@@ -28,7 +29,8 @@ type Service struct {
 	ReadIngestRunState func(context.Context, pgtype.UUID) (IngestRunState, bool, error)
 	ReadRunTransitions func(ctx context.Context, workspaceID, runID pgtype.UUID) ([]RunTransition, error)
 
-	Credits func(usd float64) (credits int64, ok bool)
+	Credits        func(usd float64) (credits int64, ok bool)
+	SettledCostUSD func(ctx context.Context, runID pgtype.UUID) (usd float64, settled bool, err error)
 }
 
 type RunState struct {
@@ -600,6 +602,7 @@ func (s *Service) General(ctx context.Context, workspaceID, runID pgtype.UUID) (
 	}
 	if summary.Usage != nil {
 		summary.Usage.CostUSD = fold.costUSD
+		s.preferSettledCost(ctx, runID, summary.Usage)
 		s.priceInCredits(summary.Usage)
 	}
 	summary.Truncated = summary.SkillsTotal > len(summary.Skills) || summary.ErrorsTotal > len(summary.Errors)
@@ -626,6 +629,21 @@ func (s *Service) General(ctx context.Context, workspaceID, runID pgtype.UUID) (
 	}
 
 	return summary, nil
+}
+
+func (s *Service) preferSettledCost(ctx context.Context, runID pgtype.UUID, usage *UsageSummary) {
+	if s.SettledCostUSD == nil {
+		return
+	}
+	usd, settled, err := s.SettledCostUSD(ctx, runID)
+	if err != nil {
+		slog.Warn("could not read this run's settled cost; showing the sandbox's own reading",
+			"run_id", pgconv.UUIDString(runID), "error", err)
+		return
+	}
+	if settled {
+		usage.CostUSD, usage.CostSource = &usd, "gateway"
+	}
 }
 
 func (s *Service) priceInCredits(usage *UsageSummary) {

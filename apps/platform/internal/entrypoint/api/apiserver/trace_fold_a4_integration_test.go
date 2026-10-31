@@ -186,6 +186,51 @@ func TestTraceGeneralFoldReadsUsageTheWayTheContractDoes(t *testing.T) {
 	}
 }
 
+func TestTraceGeneralShowsTheRunsSettledCostOverTheSandboxsReading(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, "trace-settled-cost")
+	sandboxReading := `{"scope":"run_total","model":"gpt-5-mini","input_tokens":1000,"output_tokens":100,"cost_usd":0.5,"cost_source":"gateway"}`
+	settle := func(runID, source string, usdMicros int64) {
+		t.Helper()
+		if _, err := pool.Exec(context.Background(), `
+			INSERT INTO cost_events (kind, model, usd_micros, cost_source, workspace_id, ref_type, ref_id, idempotency_key)
+			VALUES ('run', '', $1, $2, $3, 'run', $4, $5)`,
+			usdMicros, source, c.workspaceID, runID, "run:"+runID); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	cases := []struct {
+		name        string
+		source      string
+		wantCredits int64
+	}{
+		{"a gateway settlement replaces the sandbox's undercounted reading", "gateway", 780},
+		{"an estimated settlement is not a reading, so the sandbox's stays", "estimated", 650},
+		{"no settlement yet leaves the sandbox's reading", "", 650},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			runID := seedRun(t, pool, c.workspaceID, seedSkill(t, pool, c.workspaceID, "trace-settled-"+tc.source))
+			insertTraceEvents(t, pool, c.workspaceID, runID, 1, []int64{1}, "usage", sandboxReading)
+			if tc.source != "" {
+				settle(runID, tc.source, 600_000)
+			}
+			u := c.foldedUsage(t, runID)
+			if u == nil {
+				t.Fatal("usage events did not reach the summary")
+			}
+			if u.CostCredits == nil || *u.CostCredits != tc.wantCredits {
+				t.Errorf("cost = %v credits, want %d", derefCredits(u.CostCredits), tc.wantCredits)
+			}
+			if u.CostSource != "gateway" {
+				t.Errorf("cost_source = %q, want gateway", u.CostSource)
+			}
+		})
+	}
+}
+
 type foldUsage struct {
 	Model        string `json:"model"`
 	InputTokens  int64  `json:"input_tokens"`

@@ -47,7 +47,7 @@ GROUP BY 1, 2
 ORDER BY 1, 2;
 
 -- name: GetCostEventByIdempotencyKey :one
-SELECT id FROM cost_events WHERE idempotency_key = $1;
+SELECT id, usd_micros, cost_source FROM cost_events WHERE idempotency_key = $1;
 
 -- name: ListSessionStepCosts :many
 SELECT ref_id::uuid AS session_id, user_id, usd_micros, cost_source, created_at
