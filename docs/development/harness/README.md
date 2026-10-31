@@ -18,7 +18,7 @@
 | 送達 | 「先讀哪一份、會被哪個檢查擋」的指標 | 根 `AGENTS.md` 的分區表、各目錄 `AGENTS.md`、`.claude/rules/` | 前兩者所有工具；rules 只有 Claude Code |
 | 角色 | 按風險切的兩個子代理：writer／verify | `.claude/agents/` | Claude Code |
 | 程序 | 換一個 repo 還成立的做法 | `.claude/skills/` | Claude Code |
-| 編排 | 固定形狀的多代理程序：什麼平行、哪步驗證、最後跑哪個閘門（2026-09-04 起） | `.claude/workflows/` | Claude Code |
+| 編排 | 固定形狀的多代理程序：什麼平行、哪步驗證、最後跑哪個閘門 | `.claude/workflows/` | Claude Code |
 | 攔阻 | 真的會拒絕的指令；守 harness 自己的機器 | `skillhub-guards` 外掛、`permissions.deny`、`automation-check` 的 `harness`、`skillpkg` 的 dogfood 測試 | 外掛與 deny 只有 Claude；機器所有人 |
 
 **兩條判準**貫穿全部：知識放哪一層，問「**換一個 repo 還成立嗎**」；任何一條規則落地，問「**旁邊那台機器在哪**」。
