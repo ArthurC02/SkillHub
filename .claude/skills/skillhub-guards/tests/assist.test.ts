@@ -122,8 +122,21 @@ test('the mutation tool runs the test on the broken file and puts the original b
   const result = await $.tool.call(call as never) as { result: string, isError?: boolean }
   expect(result.result).toMatch(/^RED/)
   expect(result.result).toContain('file restored byte for byte')
-  expect(runs).toEqual([['go', 'test', './...']])
+  expect(runs).toEqual([['go', 'test', './...'], ['go', 'test', './...']])
   expect(files[`${ROOT}/a.go`]).toBe('if a < b {')
+})
+
+test('a probe whose command already fails reports no red and never breaks the file', async ($, on) => {
+  const files: Record<string, string> = { [`${ROOT}/a.go`]: 'if a <= b {' }
+  const runs: string[][] = []
+  host(on, files, runs)
+  const call = { tool: 'mcp__skillhub-guards__mutation_probe' as const,
+    file: 'a.go', find: '<=', replace: '<', argv: ['go', 'test', './...'] }
+  const result = await $.tool.call(call as never) as { result: string, isError?: boolean }
+  expect(result.result).toMatch(/^BASELINE NOT GREEN: the command fails before anything is broken \(exit 1\)/)
+  expect(result.isError).toBe(true)
+  expect(runs).toEqual([['go', 'test', './...']])
+  expect(files[`${ROOT}/a.go`]).toBe('if a <= b {')
 })
 
 test('a platform go test is sent to the shell with the test database', async ($, on) => {

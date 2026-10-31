@@ -28,6 +28,7 @@ Usage:
   devctl image-gate  runtime image source gates: digest-pinned base, upgrade record, image content matches its published version
   devctl preflight [--hook]  check unpushed commits for what CI would fail on (--hook reads git's pre-push input)
   devctl fix-proof message-file  warn when a fix commit's message reports no test seen failing without the change (the commit-msg hook runs it)
+  devctl comment-advice file  read {"old","new"} text of an edit on stdin and warn on added comments that read like decision records (skillhub-guards runs it)
   devctl ci-status [ref | --sha ref] [--wait]  every workflow run for a commit; exit 0 green, 1 red, 2 GitHub unreadable, 3 pending, 4 no runs
   devctl dep-audit [--full]  fail on fixable vulnerabilities, disallowed licenses and workflow findings (--full: vulnerabilities in every project, dev dependencies too)
 `
@@ -72,7 +73,7 @@ func runCommand(root, command string, args []string) (int, error) {
 		return runSetupCommand(root, command, args)
 	case cmdGen, "agent-sync", "automation-check", "comment-lint", cmdDomainMemoryRelease:
 		return runRepoCheckCommand(root, command, args)
-	case "test-report", "seed-clean", "image-gate", cmdPreflight, "ci-status", "dep-audit", "fix-proof":
+	case "test-report", "seed-clean", "image-gate", cmdPreflight, "ci-status", "dep-audit", "fix-proof", "comment-advice":
 		return runPipelineCommand(root, command, args)
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command %q\n\n%s", command, usage)
@@ -128,6 +129,8 @@ func runPipelineCommand(root, command string, args []string) (int, error) {
 		return ciStatus(root, args, os.Stdout)
 	case "fix-proof":
 		return 0, fixProof(root, args, os.Stdout)
+	case "comment-advice":
+		return 0, commentAdvice(root, args, os.Stdin, os.Stdout)
 	default:
 		return 0, depAudit(root, args, os.Stdout)
 	}

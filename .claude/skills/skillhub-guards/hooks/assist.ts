@@ -51,9 +51,9 @@ export const mutationVerdict = (exitCode: number, output: string) => {
 
 export const MUTATION_TOOL_SPEC = {
   name: MUTATION_TOOL,
-  description: 'Prove a test catches a defect: replaces one exact snippet in a product file, runs the given ' +
-    'test command, always restores the file byte for byte, and reports RED, GREEN or BUILD FAILED with the ' +
-    'failing lines. Use it for every "fixed X" claim instead of editing and reverting by hand.',
+  description: 'Prove a test catches a defect: runs the given test command once as is (it must pass), replaces ' +
+    'one exact snippet in a product file, runs the command again, always restores the file byte for byte, and ' +
+    'reports RED, GREEN, BUILD FAILED or BASELINE NOT GREEN with the failing lines. Use it for every "fixed X" claim instead of editing and reverting by hand.',
   inputSchema: {
     type: 'object',
     properties: {

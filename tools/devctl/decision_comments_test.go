@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -184,5 +185,63 @@ func TestPreflightAdvisesOnADecisionRecordInThePushedRange(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "WARN apps/x.go:3 reads like a decision record") {
 		t.Fatalf("preflight did not advise on the pushed decision record:\n%s", out.String())
+	}
+}
+
+func TestAnEditIsJudgedOnlyOnTheCommentsItAdds(t *testing.T) {
+	t.Parallel()
+	fake, judge := newFakeJudge(t, decisionWhen("owner"), http.StatusOK)
+	before := "package x\n\n// Until last week the owner decided.\nfunc A() {}\n"
+	after := before + "\n// The owner ruled this in review.\nfunc B() {}\n\n// B walks the list once.\nfunc C() {}\n"
+	advice := editCommentAdvice("apps/x.go", before, after, judge)
+	if len(advice) != 1 || !strings.HasPrefix(advice[0], `apps/x.go: the comment "The owner ruled this in review." reads like a decision record (0.45)`) {
+		t.Fatalf("want only the added owner comment: %v", advice)
+	}
+	if fake.requests.Load() != 1 {
+		t.Fatalf("want one request for the two added comments, got %d", fake.requests.Load())
+	}
+}
+
+func TestAnEditJudgesNothingWhenNoCoveredCommentIsAdded(t *testing.T) {
+	t.Parallel()
+	for name, edit := range map[string][3]string{
+		"unchanged comment": {"apps/x.go", "// The owner decided.\n", "// The owner decided.\nfunc A() {}\n"},
+		"test file":         {"apps/x_test.go", "", "// The owner decided.\n"},
+		"markdown heading":  {"docs/x.md", "", "# The owner decided\n"},
+		"uncovered dir":     {"docs/x.go", "", "// The owner decided.\n"},
+	} {
+		fake, judge := newFakeJudge(t, decisionWhen("owner"), http.StatusOK)
+		if advice := editCommentAdvice(edit[0], edit[1], edit[2], judge); len(advice) != 0 || fake.requests.Load() != 0 {
+			t.Errorf("%s: advice %v after %d requests", name, advice, fake.requests.Load())
+		}
+	}
+	fake, judge := newFakeJudge(t, decisionWhen("owner"), http.StatusOK)
+	keyless := decisionJudge{baseURL: judge.baseURL, client: judge.client}
+	if advice := editCommentAdvice("apps/x.go", "", "// The owner decided.\n", keyless); len(advice) != 0 || fake.requests.Load() != 0 {
+		t.Errorf("no key: advice %v after %d requests", advice, fake.requests.Load())
+	}
+}
+
+func TestAnEditWhoseJudgeIsDownGetsOneSkippedLine(t *testing.T) {
+	t.Parallel()
+	_, judge := newFakeJudge(t, decisionWhen("owner"), http.StatusServiceUnavailable)
+	advice := editCommentAdvice("apps/x.go", "", "// The owner decided.\n", judge)
+	if len(advice) != 1 || !strings.HasPrefix(advice[0], "decision-comment advice skipped (judge answered 503") {
+		t.Fatalf("want one skipped line: %v", advice)
+	}
+}
+
+func TestCommentAdviceTakesAnAbsolutePathAndTheEditOnStdin(t *testing.T) {
+	root := t.TempDir()
+	_, judge := newFakeJudge(t, decisionWhen("owner"), http.StatusOK)
+	original := decisionJudgeBaseURL
+	decisionJudgeBaseURL = judge.baseURL
+	t.Cleanup(func() { decisionJudgeBaseURL = original })
+	t.Setenv(decisionJudgeKeyName, "test-key")
+	var out bytes.Buffer
+	in := strings.NewReader(`{"old":"","new":"// The owner decided.\n"}`)
+	if err := commentAdvice(root, []string{filepath.Join(root, "apps", "x.go")}, in, &out); err != nil ||
+		!strings.HasPrefix(out.String(), `apps/x.go: the comment "The owner decided." reads like a decision record`) {
+		t.Fatalf("comment-advice did not judge the edit as apps/x.go: %v %q", err, out.String())
 	}
 }

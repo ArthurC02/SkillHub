@@ -207,11 +207,37 @@ async function status($: EngineInterface, root: string): Promise<string | undefi
   return result.exitCode === 0 ? result.stdout : undefined
 }
 
-async function readHeader($: EngineInterface, path: string): Promise<string> {
+async function readWhole($: EngineInterface, path: string): Promise<string> {
   try {
-    return (await $.fs.read(path)).slice(0, 4096)
+    return await $.fs.read(path)
   } catch {
     return ''
+  }
+}
+
+async function readHeader($: EngineInterface, path: string): Promise<string> {
+  return (await readWhole($, path)).slice(0, 4096)
+}
+
+const COMMENT_LIKE = /^\s*(?:\/\/|#|\/\*|\*|--)/
+const PROSE_FILE = /\.(?:md|mdx|json|txt)$/i
+const COMMENT_ADVICE_TIMEOUT_MS = 30_000
+
+export const addsCommentLines = (path: string, before: string, after: string): boolean => {
+  if (PROSE_FILE.test(path)) return false
+  const existing = new Set(before.split('\n').map(line => line.trim()))
+  return after.split('\n').some(line => COMMENT_LIKE.test(line) && !existing.has(line.trim()))
+}
+
+async function commentAdvice($: EngineInterface, root: string, path: string, before: string, after: string): Promise<string[]> {
+  if (!addsCommentLines(path, before, after)) return []
+  try {
+    const run = await $.process.run(['go', '-C', `${root}/tools/devctl`, 'run', '.', 'comment-advice', path],
+      { stdin: JSON.stringify({ old: before, new: after }), timeoutMs: COMMENT_ADVICE_TIMEOUT_MS })
+    if (run.exitCode !== 0) return []
+    return run.stdout.split('\n').filter(line => line.trim() !== '').map(line => `skillhub-guards: ${line}`)
+  } catch {
+    return []
   }
 }
 
@@ -413,12 +439,20 @@ export const register: Register = on => {
     const mutated = replaceOnce(original, input.find, input.replace)
     if (typeof mutated !== 'string') return { result: mutated.problem, isError: true as const }
 
+    const runTest = () => $.process.run(input.argv, {
+      cwd: input.cwd ? `${root}/${input.cwd}` : root, env: input.env, timeoutMs: MUTATION_TIMEOUT_MS,
+    })
+    const baseline = await runTest()
+    if (baseline.exitCode !== 0) {
+      const { summary } = mutationVerdict(baseline.exitCode, `${baseline.stdout}\n${baseline.stderr}`)
+      return { result: `BASELINE NOT GREEN: the command fails before anything is broken (exit ${baseline.exitCode}), ` +
+        `so a failure with the mutant proves nothing; make it pass or fix the command first\n\n${summary}`, isError: true as const }
+    }
+
     await $.fs.write(path, mutated)
     let run
     try {
-      run = await $.process.run(input.argv, {
-        cwd: input.cwd ? `${root}/${input.cwd}` : root, env: input.env, timeoutMs: MUTATION_TIMEOUT_MS,
-      })
+      run = await runTest()
     } finally {
       await $.fs.write(path, original)
     }
@@ -452,8 +486,11 @@ export const register: Register = on => {
         granted = foreign.granted
       }
     }
+    const before = e.tool === 'Edit' ? e.old_string : await readWhole($, path)
     const result = await spendOnSuccess($, granted, await next(e))
-    if (result.deny === undefined && result.isError !== true) await remember($, [path])
-    return result
+    if (result.deny !== undefined || result.isError === true) return result
+    await remember($, [path])
+    const advice = await commentAdvice($, await $.session.root(), path, before, e.tool === 'Edit' ? e.new_string : e.content)
+    return advice.length === 0 ? result : { ...result, context: [...(result.context ?? []), ...advice] }
   })
 }

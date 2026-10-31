@@ -1,7 +1,7 @@
 import type { On } from 'claude-code'
 import { expect, test } from 'claude-code/testing'
 import {
-  attributedToCommand, isAgentCache, isGeneratedHeader, needsSignature, pushDirectory, redLineProblem, spawnProblem,
+  addsCommentLines, attributedToCommand, isAgentCache, isGeneratedHeader, needsSignature, pushDirectory, redLineProblem, spawnProblem,
   subagentCommandProblem, worktreePaths,
 } from '../hooks/register'
 
@@ -428,4 +428,59 @@ test('the main session is refused a red line through either shell', async ($, on
 
 test('a heredoc commit message that mentions git stash is not a red line', () => {
   expect(redLineProblem("git commit -q -F - <<'EOF'\nnever git stash; it takes others' work\nEOF")).toBeUndefined()
+})
+
+test('only a comment line the edit adds outside prose files asks for comment advice', () => {
+  expect(addsCommentLines('apps/x.go', 'func A() {}', '// The owner decided.\nfunc A() {}')).toBe(true)
+  expect(addsCommentLines('apps/x.py', '', 'x = 1  # trailing\n    # leading')).toBe(true)
+  expect(addsCommentLines('apps/x.go', '// The owner decided.', '  // The owner decided.\nfunc A() {}')).toBe(false)
+  expect(addsCommentLines('apps/x.go', '', 'func A() {}\nx := a / b')).toBe(false)
+  expect(addsCommentLines('docs/x.md', '', '# Heading')).toBe(false)
+  expect(addsCommentLines('docs/x.MDX', '', '// x')).toBe(false)
+})
+
+const adviceWorld = (on: On, devctl: { exitCode: number, stdout: string }, existing = '') => {
+  const asked: { argv: string[], input?: string }[] = []
+  on('session.root', () => ({ value: ROOT }))
+  on('process.run', (_, e) => {
+    const isAdvice = e.argv.includes('comment-advice')
+    if (isAdvice) asked.push({ argv: [...e.argv], input: e.init?.stdin })
+    return { value: { exitCode: isAdvice ? devctl.exitCode : 0, stdout: isAdvice ? devctl.stdout : '', stderr: '',
+      isStdoutTruncated: false, isStderrTruncated: false } }
+  })
+  on('fs.read', () => ({ value: existing }))
+  on('tool.call', () => ({ result: 'ran' }))
+  return asked
+}
+
+test('an edit that adds a comment carries the advice to the model after the edit', async ($, on) => {
+  const asked = adviceWorld(on, { exitCode: 0, stdout: 'apps/x.go: the comment "The owner decided." reads like a decision record (0.91): keep it\n' })
+  const result = await $.tool.call({ tool: 'Edit', file_path: `${ROOT}/apps/x.go`, old_string: 'func A() {}', new_string: '// The owner decided.\nfunc A() {}' })
+  expect(result.deny).toBeUndefined()
+  expect(result.context).toEqual(['skillhub-guards: apps/x.go: the comment "The owner decided." reads like a decision record (0.91): keep it'])
+  expect(asked.length).toBe(1)
+  expect(asked[0].argv.slice(-2)).toEqual(['comment-advice', `${ROOT}/apps/x.go`])
+  expect(JSON.parse(asked[0].input ?? '')).toEqual({ old: 'func A() {}', new: '// The owner decided.\nfunc A() {}' })
+})
+
+test('a write is compared with the file it replaces, so a kept comment is not judged again', async ($, on) => {
+  const kept = '// A walks the list once.\nfunc A() {}\n'
+  const asked = adviceWorld(on, { exitCode: 0, stdout: 'x\n' }, kept)
+  const result = await $.tool.call({ tool: 'Write', file_path: `${ROOT}/apps/x.go`, content: kept + 'func B() {}\n' })
+  expect(result.context).toBeUndefined()
+  expect(asked).toEqual([])
+})
+
+test('an edit without a new comment line never starts devctl', async ($, on) => {
+  const asked = adviceWorld(on, { exitCode: 0, stdout: 'x\n' })
+  await $.tool.call({ tool: 'Edit', file_path: `${ROOT}/apps/x.go`, old_string: 'a', new_string: 'b' })
+  await $.tool.call({ tool: 'Edit', file_path: `${ROOT}/docs/x.md`, old_string: 'a', new_string: '# The owner decided' })
+  expect(asked).toEqual([])
+})
+
+test('a failing devctl leaves the edit result untouched', async ($, on) => {
+  adviceWorld(on, { exitCode: 1, stdout: 'go: cannot find main module\n' })
+  const result = await $.tool.call({ tool: 'Edit', file_path: `${ROOT}/apps/x.go`, old_string: 'a', new_string: '// note\na' })
+  expect(result.deny).toBeUndefined()
+  expect(result.context).toBeUndefined()
 })

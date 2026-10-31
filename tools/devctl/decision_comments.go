@@ -3,7 +3,9 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path"
@@ -93,27 +95,40 @@ func newCommentBlocks(root, rangeSpec string) ([]commentBlock, error) {
 	end, start := rangeEnd(rangeSpec), rangeStart(rangeSpec)
 	var blocks []commentBlock
 	for _, file := range lines(names) {
-		prefixes, ok := commentPrefixesFor(path.Base(file))
-		if !ok || !commentBudgetCovers(file) || isTestSource(file) {
+		if _, ok := judgedCommentPrefixes(file); !ok {
 			continue
 		}
 		blob, err := gitOutput(root, "cat-file", "blob", end+":"+file)
 		if err != nil {
 			return nil, err
 		}
-		before := map[string]bool{}
-		if base, err := gitOutput(root, "cat-file", "blob", start+":"+file); err == nil {
-			for _, block := range commentBlocks(file, base, prefixes) {
-				before[block.text] = true
-			}
-		}
-		for _, block := range commentBlocks(file, blob, prefixes) {
-			if !before[block.text] {
-				blocks = append(blocks, block)
-			}
-		}
+		base, _ := gitOutput(root, "cat-file", "blob", start+":"+file)
+		blocks = append(blocks, addedCommentBlocks(file, base, blob)...)
 	}
 	return blocks, nil
+}
+
+func judgedCommentPrefixes(file string) ([]string, bool) {
+	prefixes, ok := commentPrefixesFor(path.Base(file))
+	return prefixes, ok && commentBudgetCovers(file) && !isTestSource(file)
+}
+
+func addedCommentBlocks(file, before, after string) []commentBlock {
+	prefixes, ok := judgedCommentPrefixes(file)
+	if !ok {
+		return nil
+	}
+	existing := map[string]bool{}
+	for _, block := range commentBlocks(file, before, prefixes) {
+		existing[block.text] = true
+	}
+	var added []commentBlock
+	for _, block := range commentBlocks(file, after, prefixes) {
+		if !existing[block.text] {
+			added = append(added, block)
+		}
+	}
+	return added
 }
 
 func rangeStart(rangeSpec string) string {
@@ -237,10 +252,52 @@ func committedDecisionCommentWarnings(root, rangeSpec string, judge decisionJudg
 	var warnings []string
 	for i, block := range blocks {
 		if probabilities[i] >= decisionLogThreshold {
-			warnings = append(warnings, fmt.Sprintf(
-				"%s:%d reads like a decision record (%.2f): keep how the code works in the comment and move why it was decided to the commit message",
-				block.file, block.line, probabilities[i]))
+			warnings = append(warnings, fmt.Sprintf("%s:%d reads like a decision record (%.2f): %s",
+				block.file, block.line, probabilities[i], decisionRecordAdvice))
 		}
 	}
 	return warnings, nil
+}
+
+const decisionRecordAdvice = "keep how the code works in the comment and move why it was decided to the commit message"
+
+func commentAdvice(root string, args []string, in io.Reader, out io.Writer) error {
+	if len(args) != 1 {
+		return errors.New("usage: devctl comment-advice file < {\"old\":…,\"new\":…}")
+	}
+	file := args[0]
+	if relative, err := filepath.Rel(root, file); err == nil && filepath.IsAbs(file) {
+		file = relative
+	}
+	file = filepath.ToSlash(file)
+	var edit struct {
+		Old string `json:"old"`
+		New string `json:"new"`
+	}
+	if err := json.NewDecoder(in).Decode(&edit); err != nil {
+		return err
+	}
+	for _, advice := range editCommentAdvice(file, edit.Old, edit.New, newDecisionJudge(root)) {
+		fmt.Fprintln(out, advice)
+	}
+	return nil
+}
+
+func editCommentAdvice(file, before, after string, judge decisionJudge) []string {
+	blocks := addedCommentBlocks(file, before, after)
+	if len(blocks) == 0 || !judge.hasKey() {
+		return nil
+	}
+	probabilities, err := judge.decisionLogProbabilities(blocks)
+	if err != nil {
+		return []string{fmt.Sprintf("decision-comment advice skipped (%v)", err)}
+	}
+	var advice []string
+	for i, block := range blocks {
+		if probabilities[i] >= decisionLogThreshold {
+			advice = append(advice, fmt.Sprintf("%s: the comment %q reads like a decision record (%.2f): %s",
+				file, firstLine(block.text), probabilities[i], decisionRecordAdvice))
+		}
+	}
+	return advice
 }
