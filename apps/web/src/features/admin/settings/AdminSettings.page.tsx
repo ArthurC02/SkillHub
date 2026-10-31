@@ -252,18 +252,11 @@ export function AdminSettings() {
             </button>
           </ReadFailure>
           {settings.data && (
-            <>
-              <JudgePanel
-                panel={settings.data.judge_panel}
-                readable={!settings.error}
-                refreshing={settings.isFetching}
-              />
-              <InjectionCheck
-                check={settings.data.injection_check}
-                readable={!settings.error}
-                refreshing={settings.isFetching}
-              />
-            </>
+            <JudgePanel
+              panel={settings.data.judge_panel}
+              readable={!settings.error}
+              refreshing={settings.isFetching}
+            />
           )}
         </div>
         <div>
@@ -304,6 +297,13 @@ export function AdminSettings() {
             </>
           )}
         </div>
+        {settings.data && (
+          <InjectionCheck
+            check={settings.data.injection_check}
+            readable={!settings.error}
+            refreshing={settings.isFetching}
+          />
+        )}
       </div>
     </AdminPage>
   );

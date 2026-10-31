@@ -3753,14 +3753,14 @@ test("OPS-008: a kind with no events in the range is named instead of drawn", as
   expect(has("這段期間沒有事件：儲值、更正。")()).toBe(true);
   expect(
     has(
-      "這段期間沒有事件：創作步驟、創作會話、搜尋向量、搜尋意圖分析、平台 Agent、索引增強、改善建議、試跑、搜尋理由。",
+      "這段期間沒有事件：創作步驟、創作會話、搜尋向量、搜尋意圖分析、平台 Agent、索引增強、評審前的注入檢查、改善建議、試跑、搜尋理由。",
     )(),
   ).toBe(true);
   const absent = Array.from(container.querySelectorAll("details")).find((details) =>
     details.textContent?.includes("這段期間沒有事件：創作步驟"),
   )!;
   expect(absent.open).toBe(false);
-  expect(absent.querySelector("summary")?.textContent).toBe("這段期間有 9 類沒有事件");
+  expect(absent.querySelector("summary")?.textContent).toBe("這段期間有 10 類沒有事件");
 });
 
 test("OPS-008: a range in the address is asked for, and a range the page does not offer falls back to 30", async () => {
