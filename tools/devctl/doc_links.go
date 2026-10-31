@@ -19,6 +19,7 @@ var docLinkSkippedDirs = map[string]string{
 	dirDevctlCache: "codegen scratch output",
 
 	dirNodeModules: "dependencies",
+	dirVenv:        "dependencies",
 	dirPycache:     "build output",
 	dirGit:         "git internals",
 	dirWorktrees:   "other checkouts of this repository",
