@@ -6,6 +6,12 @@ import { CriterionSection } from "./CriterionSection";
 import { MatchLegend } from "./MatchLegend";
 import { EvidenceList } from "./EvidenceList";
 
+const INJECTION_CHECK_LINE = {
+  flagged: "注入檢查：輸出裡有疑似對評審下指令的文字",
+  clear: "注入檢查：沒有發現對評審下指令的文字",
+  unchecked: "注入檢查：這次沒有回答，結果不明",
+} as const;
+
 function credits(value: number | null): string {
   return value === null ? "未測量" : `${value} 點`;
 }
@@ -43,6 +49,12 @@ export function EvaluationReport({
         <p className="notice notice-warning">
           判定所依據的材料不完整（Trace 有缺漏、Artifact 讀不到，或輸入被截斷）。
           在這個前提下，逐條判定不會記為通過。
+        </p>
+      )}
+
+      {evaluation.injection_check?.status === "flagged" && (
+        <p className="notice notice-warning">
+          這次試跑的輸出裡有疑似對評審下指令的文字。判定照常進行，請自己看逐條結果引用的證據。
         </p>
       )}
 
@@ -100,6 +112,9 @@ export function EvaluationReport({
               Judge：這次沒有跑（沒有驗收條件，或平台沒有設定 Judge），所以沒有模型與 prompt
               版本可記
             </li>
+          )}
+          {evaluation.injection_check && (
+            <li>{INJECTION_CHECK_LINE[evaluation.injection_check.status]}</li>
           )}
           <li>Rubric 版本：{evaluation.rubric_version ?? "無 rubric（不是採用預設 rubric）"}</li>
           <li>

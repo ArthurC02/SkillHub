@@ -34,6 +34,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/evalsettings"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/judging"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/llmadapter"
 )
 
@@ -134,6 +135,7 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 	backfillSvc := newBackfillService(pool, deps, halted)
 	wireCostRecording(creditSvc, set.CreationSearch, creationVersions, backfillSvc, set.Evaluations)
 	wiring.WireCreditDisplay(creditSvc, set.Runs, traceSvc, set.Evaluations)
+	set.Evaluations.Judging.ScreeningPolicy = wiring.InjectionCheckPolicy(creditSvc, &evalsettings.Service{Pool: pool})
 	wiring.WireRunCredit(set.Runs, creditSvc, pool)
 	workers := river.NewWorkers()
 	addDomainWorkers(set, workers)
@@ -181,7 +183,10 @@ func wireEvaluationModelAndEvents(evaluations *eval.Service, pool *pgxpool.Pool,
 		return outbox.EventsOfType(ctx, pool, page)
 	}
 	evaluations.Judge = llmadapter.JudgeOrNone(llm)
-	evaluations.PanelEnabled = (&evalsettings.Service{Pool: pool}).JudgePanelEnabled
+	evaluations.Judging = judging.Options{
+		PanelEnabled: (&evalsettings.Service{Pool: pool}).JudgePanelEnabled,
+		Screener:     llmadapter.ScreenerOrNone(llm),
+	}
 	evaluations.Suggester = llmadapter.SuggesterOrNone(llm)
 }
 

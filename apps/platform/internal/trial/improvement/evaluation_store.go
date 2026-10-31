@@ -11,6 +11,8 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/judging"
 )
 
 func loadEvaluation(ctx context.Context, q *gen.Queries, workspaceID, id pgtype.UUID) (*Evaluation, error) {
@@ -192,6 +194,8 @@ func writeCompletion(ctx context.Context, q *gen.Queries, e *Evaluation) (gen.Ev
 		EvidenceComplete:      v.evidenceComplete,
 		CostUsd:               numeric(v.costUSD),
 		CostSource:            costSource(v.costUSD),
+		InjectionCheck:        screeningStatus(v.screening),
+		InjectionProbability:  screeningProbability(v.screening),
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return e.row, errEvaluationSettled
@@ -241,4 +245,19 @@ func settleEvaluation(
 	}
 	settle(e)
 	return saveUnlessRefused(ctx, tx, e)
+}
+
+func screeningStatus(s *judging.Screening) *string {
+	if s == nil {
+		return nil
+	}
+	status := string(s.Status)
+	return &status
+}
+
+func screeningProbability(s *judging.Screening) *float64 {
+	if s == nil {
+		return nil
+	}
+	return pgconv.Clone(s.Probability)
 }

@@ -28,6 +28,8 @@ UPDATE evaluations SET
     evidence_complete = @evidence_complete,
     cost_usd = @cost_usd,
     cost_source = @cost_source,
+    injection_check = sqlc.narg(injection_check),
+    injection_probability = sqlc.narg(injection_probability),
     evaluated_at = now(),
     updated_at = now()
 WHERE id = @id AND workspace_id = @workspace_id AND status = 'pending'
@@ -179,10 +181,21 @@ ORDER BY created_at DESC, id;
 SELECT * FROM evaluation_settings;
 
 -- name: SetEvaluationSettings :one
-INSERT INTO evaluation_settings (judge_panel, reason, set_by)
-VALUES (@judge_panel, @reason, sqlc.narg(set_by))
+INSERT INTO evaluation_settings (judge_panel, reason, set_by, set_at)
+VALUES (@judge_panel, @reason, sqlc.narg(set_by), now())
 ON CONFLICT (singleton) DO UPDATE
 SET judge_panel = EXCLUDED.judge_panel, reason = EXCLUDED.reason, set_by = EXCLUDED.set_by, set_at = now()
+RETURNING *;
+
+-- name: SetEvaluationInjectionCheck :one
+INSERT INTO evaluation_settings (judge_panel, injection_check, injection_check_credits_per_million_tokens,
+                                 injection_check_reason, injection_check_set_at)
+VALUES (false, @injection_check, @credits_per_million_tokens, @reason, now())
+ON CONFLICT (singleton) DO UPDATE
+SET injection_check = EXCLUDED.injection_check,
+    injection_check_credits_per_million_tokens = EXCLUDED.injection_check_credits_per_million_tokens,
+    injection_check_reason = EXCLUDED.injection_check_reason,
+    injection_check_set_at = now()
 RETURNING *;
 
 -- name: ListRunsWithAnEvaluation :many

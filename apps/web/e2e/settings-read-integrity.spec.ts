@@ -24,7 +24,10 @@ for (const width of [375, 1280]) {
           return route.fulfill({
             json:
               kind === "judge"
-                ? { judge_panel: { enabled: unavailable ? "false" : false } }
+                ? {
+                    judge_panel: { enabled: unavailable ? "false" : false },
+                    injection_check: { enabled: false },
+                  }
                 : {
                     ...ADMIN_RUN_SETTINGS,
                     tokens_per_minute: {
@@ -116,7 +119,7 @@ for (const width of [375, 1280]) {
           return route.fulfill({ status: 503, json: { error: "settings unavailable" } });
         return route.fulfill({
           json: judge
-            ? { judge_panel: { enabled: written } }
+            ? { judge_panel: { enabled: written }, injection_check: { enabled: false } }
             : {
                 ...ADMIN_RUN_SETTINGS,
                 tokens_per_minute: {

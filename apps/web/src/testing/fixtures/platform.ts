@@ -1253,6 +1253,7 @@ export const ADMIN_TREND_ACTIONS = {
 
 export const ADMIN_SETTINGS = {
   judge_panel: { enabled: false },
+  injection_check: { enabled: false },
 } satisfies PlatformSettings;
 
 export const ADMIN_RUN_SETTINGS = {

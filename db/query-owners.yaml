@@ -295,6 +295,7 @@ scope:
   SetPlatformAgentSpendCapOverride: platform-wide
   GetPlatformAgentSpendCap: platform-wide
   SetEvaluationSettings: platform-wide
+  SetEvaluationInjectionCheck: platform-wide
   SetRunSettings: platform-wide
   SetRunModelBudgetSetting: platform-wide
   SetRunRateLimitSetting: platform-wide

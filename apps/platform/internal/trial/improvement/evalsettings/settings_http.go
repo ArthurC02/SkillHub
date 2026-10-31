@@ -25,8 +25,16 @@ type judgePanelView struct {
 	SetAt       string `json:"set_at,omitempty"`
 }
 
+type injectionCheckView struct {
+	Enabled                 bool   `json:"enabled"`
+	CreditsPerMillionTokens int64  `json:"credits_per_million_tokens,omitempty"`
+	Reason                  string `json:"reason,omitempty"`
+	SetAt                   string `json:"set_at,omitempty"`
+}
+
 type settingsView struct {
-	JudgePanel judgePanelView `json:"judge_panel"`
+	JudgePanel     judgePanelView     `json:"judge_panel"`
+	InjectionCheck injectionCheckView `json:"injection_check"`
 }
 
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
@@ -67,6 +75,37 @@ func (h *Handler) SetJudgePanel(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, viewOfSettings(settings))
 }
 
+func (h *Handler) SetInjectionCheck(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Enabled                 *bool  `json:"enabled"`
+		CreditsPerMillionTokens *int64 `json:"credits_per_million_tokens"`
+		Note                    string `json:"note"`
+	}
+	if !httpx.DecodeJSON(w, r, maxSettingsBodyBytes, &body, "body must be JSON") {
+		return
+	}
+	if body.Enabled == nil || body.CreditsPerMillionTokens == nil {
+		httpx.WriteError(w, http.StatusBadRequest, "enabled and credits_per_million_tokens are required")
+		return
+	}
+	operator, ok := h.Actor(r)
+	if !ok {
+		httpx.WriteError(w, http.StatusNotFound, "not found")
+		return
+	}
+	settings, err := h.Svc.SetInjectionCheck(r.Context(), operator, *body.Enabled, *body.CreditsPerMillionTokens, body.Note)
+	switch {
+	case errors.Is(err, ErrSettingsReasonRequired):
+		httpx.WriteError(w, http.StatusBadRequest, "note is required and at most 1000 characters")
+	case errors.Is(err, ErrInjectionCheckPrice):
+		httpx.WriteError(w, http.StatusBadRequest, "credits_per_million_tokens must be between 1 and 1000000")
+	case err != nil:
+		httpx.WriteError(w, http.StatusInternalServerError, "settings update failed")
+	default:
+		httpx.WriteJSON(w, http.StatusOK, viewOfSettings(settings))
+	}
+}
+
 func viewOfSettings(s Settings) settingsView {
 	panel := judgePanelView{Enabled: s.JudgePanel}
 	if s.Changed {
@@ -76,5 +115,10 @@ func viewOfSettings(s Settings) settingsView {
 			panel.SetByUserID = pgconv.UUIDString(s.SetBy)
 		}
 	}
-	return settingsView{JudgePanel: panel}
+	check := injectionCheckView{Enabled: s.InjectionCheck.Enabled, CreditsPerMillionTokens: s.InjectionCheck.CreditsPerMillionTokens}
+	if s.InjectionCheck.Changed {
+		check.Reason = s.InjectionCheck.Reason
+		check.SetAt = s.InjectionCheck.SetAt.UTC().Format(time.RFC3339)
+	}
+	return settingsView{JudgePanel: panel, InjectionCheck: check}
 }

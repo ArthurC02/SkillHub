@@ -79,7 +79,7 @@ test.each(["judge", "rounds", "budget", "tokens"] as const)(
         if (written && !recover) return { body: { error: "settings unavailable" }, status: 503 };
         return {
           body: judge
-            ? { judge_panel: { enabled: written } }
+            ? { judge_panel: { enabled: written }, injection_check: { enabled: false } }
             : written
               ? {
                   ...ADMIN_RUN_SETTINGS,
@@ -1738,6 +1738,7 @@ test("OPS-011: switching the judge panel on sends the choice with its reason and
       return {
         body: {
           judge_panel: { enabled, reason: "measure agreement", set_at: "2026-10-09T08:00:00Z" },
+          injection_check: { enabled: false },
         },
         status: 200,
       };
@@ -1761,10 +1762,55 @@ test("OPS-011: switching the judge panel on sends the choice with its reason and
   expect(button("關閉評審團")).toBeDefined();
 });
 
+test("switching the injection check on sends its price with the reason and shows the priced state", async () => {
+  stub(true, (path, method) =>
+    path === "/admin/settings/injection-check" && method === "PUT"
+      ? {
+          body: {
+            judge_panel: { enabled: false },
+            injection_check: {
+              enabled: true,
+              credits_per_million_tokens: 1000000,
+              reason: "second signal",
+              set_at: "2026-11-01T08:00:00Z",
+            },
+          },
+          status: 200,
+        }
+      : undefined,
+  );
+  await mountAt("/admin/settings");
+  await waitFor(has("尚未定價"));
+  await type("#admin-settings-injection-check-note", "second signal");
+  expect(button("開啟注入檢查").disabled).toBe(true);
+
+  for (const price of ["0", "1000001", "2.5"]) {
+    await type("#admin-settings-injection-check-price", price);
+    expect(button("開啟注入檢查").disabled).toBe(true);
+  }
+  await type("#admin-settings-injection-check-price", "1");
+  expect(button("開啟注入檢查").disabled).toBe(false);
+  await type("#admin-settings-injection-check-price", "1000000");
+  await click(button("開啟注入檢查"));
+  await waitFor(has("已開啟，下一次需要模型判定的評估會先檢查輸出。"));
+  expect(calls.find((c) => c.method === "PUT")).toEqual({
+    method: "PUT",
+    url: "/admin/settings/injection-check",
+    body: { enabled: true, credits_per_million_tokens: 1000000, note: "second signal" },
+  });
+  expect(has("開啟：判定前先檢查輸出")()).toBe(true);
+  expect(has("每百萬輸入 token 1000000 點")()).toBe(true);
+  expect(has("理由：second signal")()).toBe(true);
+  expect(button("關閉注入檢查")).toBeDefined();
+});
+
 test("a judge panel change focuses its result and editing the next reason clears the old confirmation", async () => {
   stub(true, (path, method) =>
     path === "/admin/settings/judge-panel" && method === "PUT"
-      ? { body: { judge_panel: { enabled: true } }, status: 200 }
+      ? {
+          body: { judge_panel: { enabled: true }, injection_check: { enabled: false } },
+          status: 200,
+        }
       : undefined,
   );
   await mountAt("/admin/settings");
@@ -1791,7 +1837,7 @@ test.each(["judge panel", "answer rounds"] as const)(
       path === writePath && method === "PUT"
         ? {
             body: judge
-              ? { judge_panel: { enabled: true } }
+              ? { judge_panel: { enabled: true }, injection_check: { enabled: false } }
               : {
                   continuation_rounds: { rounds: 5, min: 1, max: 10 },
                   model_budget: ADMIN_RUN_SETTINGS.model_budget,
@@ -1876,7 +1922,7 @@ test("unreadable cached platform settings hide their controls and retry each set
       return {
         body:
           path === "/admin/settings"
-            ? { judge_panel: { enabled: false } }
+            ? { judge_panel: { enabled: false }, injection_check: { enabled: false } }
             : {
                 continuation_rounds: { rounds: 3, min: 1, max: 10 },
                 model_budget: ADMIN_RUN_SETTINGS.model_budget,

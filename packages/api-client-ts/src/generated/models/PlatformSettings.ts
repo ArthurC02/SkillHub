@@ -13,6 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
+import type { PlatformSettingsInjectionCheck } from './PlatformSettingsInjectionCheck';
+import {
+    PlatformSettingsInjectionCheckFromJSON,
+    PlatformSettingsInjectionCheckFromJSONTyped,
+    PlatformSettingsInjectionCheckToJSON,
+    PlatformSettingsInjectionCheckToJSONTyped,
+} from './PlatformSettingsInjectionCheck';
 import type { PlatformSettingsJudgePanel } from './PlatformSettingsJudgePanel';
 import {
     PlatformSettingsJudgePanelFromJSON,
@@ -30,6 +37,10 @@ export interface PlatformSettings {
     /**
      * 
      */
+    injectionCheck: PlatformSettingsInjectionCheck;
+    /**
+     * 
+     */
     judgePanel: PlatformSettingsJudgePanel;
 }
 
@@ -37,6 +48,7 @@ export interface PlatformSettings {
  * Check if a given object implements the PlatformSettings interface.
  */
 export function instanceOfPlatformSettings(value: object): value is PlatformSettings {
+    if ((!('injectionCheck' in (value as Record<string, any>)) && !('injection_check' in (value as Record<string, any>))) || ((value as Record<string, any>)['injectionCheck'] === undefined && (value as Record<string, any>)['injection_check'] === undefined)) return false;
     if ((!('judgePanel' in (value as Record<string, any>)) && !('judge_panel' in (value as Record<string, any>))) || ((value as Record<string, any>)['judgePanel'] === undefined && (value as Record<string, any>)['judge_panel'] === undefined)) return false;
     return true;
 }
@@ -51,6 +63,7 @@ export function PlatformSettingsFromJSONTyped(json: any, ignoreDiscriminator: bo
     }
     return {
         
+        'injectionCheck': PlatformSettingsInjectionCheckFromJSON(json['injection_check']),
         'judgePanel': PlatformSettingsJudgePanelFromJSON(json['judge_panel']),
     };
 }
@@ -66,6 +79,7 @@ export function PlatformSettingsToJSONTyped(value?: PlatformSettings | null, ign
 
     return {
         
+        'injection_check': PlatformSettingsInjectionCheckToJSON(value['injectionCheck']),
         'judge_panel': PlatformSettingsJudgePanelToJSON(value['judgePanel']),
     };
 }

@@ -357,6 +357,26 @@ func (c *Client) JudgeRun(ctx context.Context, req JudgeRunRequest) (*JudgeRunRe
 	return post[JudgeRunRequest, JudgeRunResponse](ctx, c, "/judge-run", req)
 }
 
+type CheckInjectionRequest struct {
+	RunID        string          `json:"run_id"`
+	EvaluationID string          `json:"evaluation_id"`
+	FinalOutput  string          `json:"final_output"`
+	Artifacts    []JudgeArtifact `json:"artifacts"`
+	TraceDigest  TraceDigest     `json:"trace_digest"`
+
+	TimeoutSeconds float64 `json:"timeout_seconds,omitempty"`
+}
+
+type CheckInjectionResponse struct {
+	Probability float64 `json:"probability"`
+	Model       string  `json:"model"`
+	InputTokens int64   `json:"input_tokens"`
+}
+
+func (c *Client) CheckInjection(ctx context.Context, req CheckInjectionRequest) (*CheckInjectionResponse, error) {
+	return post[CheckInjectionRequest, CheckInjectionResponse](ctx, c, "/v1/check-injection", req)
+}
+
 type TargetFile struct {
 	Path    string `json:"path"`
 	Content string `json:"content"`

@@ -428,6 +428,7 @@ function stubPlatform(options: {
   pending?: boolean;
   accepted?: boolean;
   testCase?: boolean;
+  injectionCheck?: "flagged" | "clear" | "unchecked";
 }) {
   const json = (body: unknown, status = 200) =>
     Promise.resolve(
@@ -468,7 +469,9 @@ function stubPlatform(options: {
       return json(
         options.pending
           ? { ...evaluation, status: "pending", overall: "undetermined", evaluated_at: null }
-          : evaluation,
+          : options.injectionCheck
+            ? { ...evaluation, injection_check: { status: options.injectionCheck } }
+            : evaluation,
       );
     if (url.includes("/suggestions/s1/diff")) return json(blockedDiff);
     if (url.includes("/suggestions"))
@@ -536,6 +539,35 @@ test("a succeeded run whose task failed reads as 執行完成 plus 未符合, ne
       notice.textContent?.includes("材料不完整"),
     ),
   ).toBe(true);
+});
+
+test.each([
+  ["flagged", true, "注入檢查：輸出裡有疑似對評審下指令的文字"],
+  ["clear", false, "注入檢查：沒有發現對評審下指令的文字"],
+  ["unchecked", false, "注入檢查：這次沒有回答，結果不明"],
+] as const)(
+  "an injection check that answered %s is reported beside the verdict",
+  async (status, warns, line) => {
+    stubPlatform({ evaluated: true, injectionCheck: status });
+    await render("succeeded");
+
+    const text = container.textContent ?? "";
+    expect(text).toContain("任務判定：未符合");
+    expect(text).toContain(line);
+    const warned = Array.from(container.querySelectorAll(".notice-warning")).some((notice) =>
+      notice.textContent?.includes("疑似對評審下指令"),
+    );
+    expect(warned).toBe(warns);
+  },
+);
+
+test("an evaluation without an injection check says nothing about one", async () => {
+  stubPlatform({ evaluated: true });
+  await render("succeeded");
+
+  await waitFor(() => (container.textContent ?? "").includes("任務判定"));
+  expect(container.textContent).not.toContain("注入檢查");
+  expect(container.textContent).not.toContain("對評審下指令");
 });
 
 test("a passed verdict uses the completed-result role without implying it from run execution", async () => {

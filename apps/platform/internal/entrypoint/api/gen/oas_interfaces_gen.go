@@ -541,6 +541,10 @@ type SetEvaluationFeedbackRes interface {
 	setEvaluationFeedbackRes()
 }
 
+type SetInjectionCheckRes interface {
+	setInjectionCheckRes()
+}
+
 type SetJudgePanelRes interface {
 	setJudgePanelRes()
 }

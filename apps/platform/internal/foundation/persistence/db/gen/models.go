@@ -300,7 +300,7 @@ type BundleVersion struct {
 // One paid model call made by the platform, with model, token counts, cost in micro-dollars and whether the cost was measured or estimated. Immutable and never deleted; recomputing statistics creates new windows instead of changing events.
 type CostEvent struct {
 	ID pgtype.UUID
-	// Which feature made the paid call: creation_step (one step of an interactive creation session), search_embedding (embedding a search query), index_enrich (enriching a skill's catalog metadata), review (an AI review), suggestion (an improvement suggestion), generate (generating a skill from a description), run (a trial run), match_reasons, suggest_criteria, search_intent (search-time model calls) or platform_agent (a platform agent step).
+	// Which feature made the paid call: creation_step (one step of an interactive creation session), search_embedding (embedding a search query), index_enrich (enriching a skill's catalog metadata), review (an AI review), injection_check (asking whether a run's output addresses its reviewer, priced by the operator), suggestion (an improvement suggestion), generate (generating a skill from a description), run (a trial run), match_reasons, suggest_criteria, search_intent (search-time model calls) or platform_agent (a platform agent step).
 	Kind string
 	// Identifier of the model that served the call, as the gateway reported it.
 	Model string
@@ -346,7 +346,7 @@ type CostSessionSummary struct {
 // One percentile summary (median, 90th, 95th, maximum cost) of a kind of model call over a time window, used to decide whether a paid call may start and what it is expected to cost. Derived data recomputed daily.
 type CostStatistic struct {
 	ID pgtype.UUID
-	// Kind of model call or session these percentiles describe. The call kinds match cost_events.kind: creation_step, search_embedding, index_enrich, review, suggestion, generate, run, match_reasons, suggest_criteria, search_intent and platform_agent; creation_session is the extra kind for a whole interactive creation session, so a new session can be refused before it starts when the balance cannot cover one.
+	// Kind of model call or session these percentiles describe. The call kinds match cost_events.kind: creation_step, search_embedding, index_enrich, review, injection_check, suggestion, generate, run, match_reasons, suggest_criteria, search_intent and platform_agent; creation_session is the extra kind for a whole interactive creation session, so a new session can be refused before it starts when the balance cannot cover one.
 	Kind string
 	// Inclusive start of the time window the samples were taken from.
 	WindowStart pgtype.Timestamptz
@@ -647,6 +647,10 @@ type Evaluation struct {
 	SupersededAt pgtype.Timestamptz
 	// Why this evaluation has the improvement suggestions it has, written once after the verdict: restricted (the skill is under a licence hold), not_needed (the verdict leaves nothing to improve), no_evidence (the verdict cites nothing a suggestion could quote), unavailable (the suggestion model call failed), none_proposed (the model answered with no proposals), none_kept (every proposal failed evidence or storage checks), kept (at least one suggestion stored). Null when the deployment has no suggestion model or the evaluation predates this column.
 	SuggestionOutcome *string
+	// Whether the run's output, artifacts and trace were checked for text addressed to the evaluator instead of the user, written once with the verdict: flagged (the check answered at or above the line, and the verdict was still decided as usual), clear (the check answered below the line), unchecked (the check was due but did not answer, so nothing is known). NULL when the check was switched off for this evaluation or the evaluation predates the check.
+	InjectionCheck *string
+	// The probability the injection check answered, between 0 and 1. Present exactly when injection_check is flagged or clear.
+	InjectionProbability *float64
 }
 
 // One evaluation set run against one skill version, every test case the given number of trials.
@@ -730,7 +734,7 @@ type EvaluationModelUsage struct {
 	EvaluationID pgtype.UUID
 	// The workspace of the evaluation; the evaluation must belong to it.
 	WorkspaceID pgtype.UUID
-	// Which step of the evaluation made the call. judge: deciding the verdict. suggest: writing improvement suggestions. Each evaluation has at most one row per operation.
+	// Which step of the evaluation made the call. judge: deciding the verdict. suggest: writing improvement suggestions. injection_check: asking whether the run's output addresses the evaluator. Each evaluation has at most one row per operation.
 	Operation string
 	// The model that actually served the call, as reported by the gateway.
 	Model string
@@ -747,18 +751,26 @@ type EvaluationModelUsage struct {
 	CreatedAt  pgtype.Timestamptz
 }
 
-// Operator-set evaluation policy. An absent row means every setting is at its default: one judge, no panel.
+// Operator-set evaluation policy. An absent row means every setting is at its default: one judge, no panel, no injection check.
 type EvaluationSetting struct {
 	// Always true; the primary key makes the table hold at most one row.
 	Singleton bool
 	// Whether evaluations are judged by a panel of several judges instead of a single judge.
 	JudgePanel bool
-	// Why the operator chose this setting.
-	Reason string
-	// The operator who last changed the setting; null if that account was later removed.
+	// Why the operator last changed judge_panel. NULL while judge_panel has never been changed, even when the row exists for another setting.
+	Reason *string
+	// The operator who last changed judge_panel; NULL while it has never been changed, or once that account is removed.
 	SetBy pgtype.UUID
-	// When the setting was last changed.
+	// When judge_panel was last changed; NULL while it has never been changed.
 	SetAt pgtype.Timestamptz
+	// Whether every judged evaluation also asks whether the run's output addresses the evaluator. Off by default; the verdict is decided the same way either way.
+	InjectionCheck bool
+	// What the operator says one million input tokens of the injection check cost, in credits. The gateway records these calls as free, so this is the only price the platform has for them. Required while the check is on; kept when it is switched off.
+	InjectionCheckCreditsPerMillionTokens *int32
+	// Why the operator last changed the injection check. NULL while it has never been changed. Who changed it is in the audit log.
+	InjectionCheckReason *string
+	// When the injection check was last changed; NULL while it has never been changed.
+	InjectionCheckSetAt pgtype.Timestamptz
 }
 
 // One proposed improvement produced from an evaluation, with the problem, evidence, target file, proposed change, expected impact and the user's decision. Accepting a suggestion creates a new skill version rather than editing in place.

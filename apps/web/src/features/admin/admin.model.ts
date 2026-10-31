@@ -52,6 +52,7 @@ export const COST_KIND: Record<string, string> = {
   platform_agent: "平台 Agent",
   index_enrich: "索引增強",
   review: "評審",
+  injection_check: "評審前的注入檢查",
   suggestion: "改善建議",
   generate: "單次生成",
   run: "試跑",

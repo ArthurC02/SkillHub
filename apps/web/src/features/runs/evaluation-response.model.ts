@@ -5,6 +5,7 @@ import type {
   DeterministicFindingCategoryEnum,
   DeterministicFindingSeverityEnum,
   EvaluationCostSourceEnum,
+  EvaluationInjectionCheckStatusEnum,
   EvaluationOverallEnum,
   EvaluationRevisionOverallEnum,
   EvaluationStatusEnum,
@@ -129,6 +130,11 @@ const EVALUATION_STATUSES = contractEnum<EvaluationStatusEnum>({
   pending: true,
   completed: true,
   failed: true,
+});
+const INJECTION_CHECK_STATUSES = contractEnum<EvaluationInjectionCheckStatusEnum>({
+  flagged: true,
+  clear: true,
+  unchecked: true,
 });
 const EVALUATION_OVERALLS = contractEnum<EvaluationOverallEnum>({
   met: true,
@@ -334,6 +340,12 @@ function matchesEvaluationIdentity(
   );
 }
 
+function isOptionalInjectionCheck(value: unknown): boolean {
+  return (
+    value === undefined || (isRecord(value) && isMember(value.status, INJECTION_CHECK_STATUSES))
+  );
+}
+
 export function isEvaluationResponse(
   value: unknown,
   runId: string,
@@ -352,6 +364,7 @@ export function isEvaluationResponse(
     isNullableDate(value.evaluated_at) &&
     (value.superseded_at === undefined || isNullableDate(value.superseded_at)) &&
     isCost(value.cost) &&
+    isOptionalInjectionCheck(value.injection_check) &&
     (value.feedback === undefined || isFeedback(value.feedback)) &&
     Array.isArray(value.criterion_results) &&
     value.criterion_results.every(isCriterion) &&

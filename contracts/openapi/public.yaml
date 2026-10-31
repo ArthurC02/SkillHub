@@ -3817,6 +3817,52 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /admin/settings/injection-check:
+    put:
+      operationId: setInjectionCheck
+      summary: Switch the injection check beside the judge on or off, and price it (02:EVAL-001)
+      description: |
+        Operator only. On, every judged evaluation also asks whether the run's
+        output, artifacts and trace address the evaluator instead of the user;
+        the answer is shown with the verdict and never changes it. The gateway
+        records these calls as free, so the operator states what one million
+        input tokens cost and the platform records each call's cost at that
+        price, marked as estimated. The next evaluation reads the new value.
+        Writes the change and its audit event in one transaction.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled, credits_per_million_tokens, note]
+              properties:
+                enabled: { type: boolean }
+                credits_per_million_tokens:
+                  type: integer
+                  minimum: 1
+                  maximum: 1000000
+                  description: What one million input tokens of the check cost, in credits. Kept while the check is off.
+                note:
+                  type: string
+                  maxLength: 1000
+                  description: Why, in the operator's own words. Whitespace does not satisfy it.
+      responses:
+        "200":
+          description: The settings as they now stand.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformSettings" }
+        "400":
+          description: Body is not JSON, `enabled` or `credits_per_million_tokens` is missing, the price is outside 1–1000000, or `note` is blank or over 1000 characters.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /admin/agents/brake:
     put:
       operationId: engagePlatformAgentBrake
@@ -7866,8 +7912,18 @@ components:
           description: The operator who last enabled or disabled the agent; absent until somebody has.
     PlatformSettings:
       type: object
-      required: [judge_panel]
+      required: [judge_panel, injection_check]
       properties:
+        injection_check:
+          type: object
+          required: [enabled]
+          properties:
+            enabled: { type: boolean }
+            credits_per_million_tokens:
+              type: integer
+              description: Present once an operator has priced the check.
+            reason: { type: string, description: Present once an operator has changed the setting. }
+            set_at: { type: string, format: date-time }
         judge_panel:
           type: object
           required: [enabled]
@@ -11877,6 +11933,21 @@ components:
             the honest outcome and the UI has to keep saying so.
         cost:
           $ref: "#/components/schemas/EvaluationCost"
+        injection_check:
+          type: object
+          description: |
+            Whether the run's output, artifacts and trace were checked for text
+            addressed to the evaluator instead of the user. Absent when the
+            operator had the check switched off, or the evaluation needed no
+            judge. `flagged` does not change any criterion's result: the judge
+            decided as usual and the person reading should look at the cited
+            evidence themselves. `unchecked` means the check was due and did not
+            answer, so nothing is known either way.
+          required: [status]
+          properties:
+            status:
+              type: string
+              enum: [flagged, clear, unchecked]
         feedback:
           type: object
           description: |

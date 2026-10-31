@@ -260,6 +260,7 @@ func cloneVerdict(v assessment) assessment {
 	v.findings = cloneFindings(v.findings)
 	v.costUSD = pgconv.Clone(v.costUSD)
 	v.usage = cloneUsage(v.usage)
+	v.screening = v.screening.Clone()
 	return v
 }
 

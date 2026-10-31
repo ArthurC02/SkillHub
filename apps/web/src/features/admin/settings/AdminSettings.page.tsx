@@ -14,6 +14,7 @@ import { AdminPage } from "../components/AdminPage";
 import { ActionForm } from "../components/ActionForm";
 import { useSettingDraft } from "../components/useSettingDraft";
 import { SettingsResult } from "./SettingsResult";
+import { InjectionCheck } from "./InjectionCheck";
 import { RunModelBudget } from "./RunModelBudget";
 import { RunTokensPerMinute } from "./RunTokensPerMinute";
 import "./AdminSettings.page.css";
@@ -251,11 +252,18 @@ export function AdminSettings() {
             </button>
           </ReadFailure>
           {settings.data && (
-            <JudgePanel
-              panel={settings.data.judge_panel}
-              readable={!settings.error}
-              refreshing={settings.isFetching}
-            />
+            <>
+              <JudgePanel
+                panel={settings.data.judge_panel}
+                readable={!settings.error}
+                refreshing={settings.isFetching}
+              />
+              <InjectionCheck
+                check={settings.data.injection_check}
+                readable={!settings.error}
+                refreshing={settings.isFetching}
+              />
+            </>
           )}
         </div>
         <div>

@@ -233,6 +233,7 @@ func mountOperatorRoutes(mux *http.ServeMux, d Deps) {
 	mux.HandleFunc("POST /admin/evaluation/graders", auth.RequireOperator(d.Graders.CreatePlatformGrader))
 	mux.HandleFunc("POST /admin/evaluation/graders/{id}/versions", auth.RequireOperator(d.Graders.RevisePlatformGrader))
 	mux.HandleFunc("PUT /admin/settings/judge-panel", auth.RequireOperator(d.Settings.SetJudgePanel))
+	mux.HandleFunc("PUT /admin/settings/injection-check", auth.RequireOperator(d.Settings.SetInjectionCheck))
 	mux.HandleFunc("GET /admin/settings/runs", auth.RequireOperator(d.RunSettings.Get))
 	mux.HandleFunc("PUT /admin/settings/runs/continuation-rounds", auth.RequireOperator(d.RunSettings.SetContinuationRounds))
 	mux.HandleFunc("PUT /admin/settings/runs/model-budget", auth.RequireOperator(d.RunSettings.SetRunModelBudget))

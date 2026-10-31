@@ -510,7 +510,7 @@ for (const policy of ["judge panel", "answer rounds"] as const) {
         );
         return route.fulfill({
           json: judge
-            ? { judge_panel: { enabled: true } }
+            ? { judge_panel: { enabled: true }, injection_check: { enabled: false } }
             : { ...ADMIN_RUN_SETTINGS, continuation_rounds: { rounds: 5, min: 1, max: 10 } },
         });
       },

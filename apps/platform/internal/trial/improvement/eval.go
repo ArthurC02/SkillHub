@@ -83,7 +83,7 @@ type Service struct {
 	ReadRuntimeCompatibility func(context.Context, pgtype.UUID) (facts.RuntimeCompatibility, bool, error)
 
 	JudgeModel         string
-	PanelEnabled       func(context.Context) (bool, error)
+	Judging            judging.Options
 	JudgePromptVersion string
 }
 
@@ -148,6 +148,15 @@ func recordModelUsage(
 		CompletionTokens: usage.CompletionTokens,
 		CostUsd:          numeric(cost),
 		CostSource:       costSource(cost),
+	})
+}
+
+func recordScreeningUsage(ctx context.Context, q *gen.Queries, ref evaluationRef, screening *judging.Screening) error {
+	if screening == nil || screening.Probability == nil {
+		return nil
+	}
+	return recordModelUsage(ctx, q, ref, "injection_check", modelCall{
+		model: screening.Model, usage: &modelport.ModelUsage{PromptTokens: screening.InputTokens},
 	})
 }
 
@@ -243,6 +252,7 @@ func (s *Service) Evaluate(ctx context.Context, workspaceID, runID pgtype.UUID) 
 func (s *Service) settleJudgement(ctx context.Context, m facts.Material, ev gen.Evaluation, v assessment) error {
 	ref := evaluationRef{workspaceID: ev.WorkspaceID, evaluationID: ev.ID, runID: m.Run.ID}
 	s.recordEvalCost(ctx, s.Pool, credit.KindReview, ref, modelCall{model: v.model, promptVersion: v.promptVersion, usage: v.usage})
+	recordScreeningCost(ctx, s.Credit, s.Pool, ref, v.screening)
 	return s.completeAndSuggest(ctx, m, ev, v)
 }
 
@@ -302,14 +312,18 @@ type assessment struct {
 	rubricVersion    string
 	costUSD          *float64
 
-	usage *modelport.ModelUsage
+	usage     *modelport.ModelUsage
+	screening *judging.Screening
 }
 
 func (s *Service) judge(ctx context.Context, m facts.Material, ev gen.Evaluation) (assessment, error) {
 	within := s.Budgets.Within(ctx, JudgeBudget)
 	callCtx, cancel := context.WithTimeout(ctx, judgeTimeout)
 	defer cancel()
-	judges := judging.Judges{Judge: s.Judge, PanelEnabled: s.PanelEnabled}
+	judges := judging.Judges{
+		Judge: s.Judge, PanelEnabled: s.Judging.PanelEnabled,
+		Screener: s.Judging.Screener, ScreeningPolicy: s.Judging.ScreeningPolicy,
+	}
 	o, err := judges.Assess(callCtx, m, pgconv.UUIDString(ev.ID), within)
 	if err != nil {
 		return assessment{}, err
@@ -324,6 +338,7 @@ func (s *Service) judge(ctx context.Context, m facts.Material, ev gen.Evaluation
 		rubricVersion:    o.RubricVersion,
 		costUSD:          o.Usage.ReportedCostUSD(),
 		usage:            o.Usage,
+		screening:        o.Screening,
 	}, nil
 }
 
@@ -458,6 +473,9 @@ func (s *Service) complete(ctx context.Context, m facts.Material, ev gen.Evaluat
 	ref := evaluationRef{workspaceID: ev.WorkspaceID, evaluationID: ev.ID, runID: m.Run.ID}
 	call := modelCall{model: v.model, promptVersion: v.promptVersion, usage: v.usage}
 	if err := recordModelUsage(ctx, q, ref, "judge", call); err != nil {
+		return err
+	}
+	if err := recordScreeningUsage(ctx, q, ref, v.screening); err != nil {
 		return err
 	}
 

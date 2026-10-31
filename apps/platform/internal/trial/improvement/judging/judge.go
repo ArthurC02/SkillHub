@@ -39,11 +39,14 @@ type Outcome struct {
 	PromptVersion    string
 	RubricVersion    string
 	Usage            *modelport.ModelUsage
+	Screening        *Screening
 }
 
 type Judges struct {
-	Judge        modelport.Judge
-	PanelEnabled func(context.Context) (bool, error)
+	Judge           modelport.Judge
+	PanelEnabled    func(context.Context) (bool, error)
+	Screener        modelport.Screener
+	ScreeningPolicy func(context.Context) (ScreeningPolicy, error)
 }
 
 func (j Judges) Assess(ctx context.Context, m facts.Material, evaluationID string, within time.Duration) (Outcome, error) {
@@ -55,7 +58,10 @@ func (j Judges) Assess(ctx context.Context, m facts.Material, evaluationID strin
 	digest, truncation, dropped, trimmedEvents := sent.digest, sent.truncation, sent.dropped, sent.trimmedEvents
 	req.Within = within
 
+	screened := make(chan *Screening, 1)
+	go func() { screened <- j.screen(ctx, req) }()
 	answers, err := j.judgeAll(ctx, req)
+	screening := <-screened
 	if err != nil {
 		return Outcome{}, err
 	}
@@ -72,6 +78,7 @@ func (j Judges) Assess(ctx context.Context, m facts.Material, evaluationID strin
 		Model:            panelModel(answers),
 		PromptVersion:    orUnknown(answers[0].PromptVersion),
 		Usage:            panelUsage(answers),
+		Screening:        screening,
 	}
 
 	if req.Rubric != nil && m.Rubric != nil {

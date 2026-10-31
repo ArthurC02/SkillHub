@@ -343,6 +343,58 @@ paths:
                 $ref: "#/components/schemas/Error"
         "503":
           $ref: "#/components/responses/Unavailable"
+  /v1/check-injection:
+    post:
+      operationId: checkInjection
+      summary: Ask whether a Run's output addresses its evaluator instead of the user (EVAL-001)
+      description: |
+        A second signal beside the judge, never a verdict. One structured
+        decision - true or false with a confidence - over the same untrusted
+        material the judge reads: does it carry instructions aimed at the
+        evaluator, a reviewer, a model or an agent, rather than content
+        written for the person who asked for the Skill's work. The answer is
+        a probability; Go draws the line, records the result on the
+        evaluation and shows it. The judge still judges and
+        nothing here changes a criterion's result.
+
+        It fails differently from the judge on purpose: no text is generated,
+        so there is no verdict for the output to talk into. The call goes
+        through the gateway's pass-through to the provider's decisions
+        interface. The gateway records such calls as free, so the response
+        reports the input tokens and Go prices them itself.
+
+        Not every provider offers this interface; a deployment without it
+        answers 503 and the evaluation records that the check could not run.
+        No retry and no timeout policy: both are Go's.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckInjectionRequest"
+      responses:
+        "200":
+          description: The decision and what it cost in input tokens.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckInjectionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          description: Request failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "502":
+          description: Gateway error, or an answer that is not the one decision asked for.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          $ref: "#/components/responses/Unavailable"
   /v1/generate-skill:
     post:
       operationId: generateSkill
@@ -1658,6 +1710,57 @@ components:
             one is what the user's workload spent, the other what the platform's
             verdict spent, and they are never added into one number.
 
+    CheckInjectionRequest:
+      type: object
+      description: |
+        The untrusted half of what the judge sees: the final reply, the
+        artifact excerpts and the trace digest. The user's prompt and the
+        criteria are left out because they are the user's own words, which
+        may legitimately address a model.
+      required: [run_id, evaluation_id, final_output, trace_digest]
+      additionalProperties: false
+      properties:
+        run_id:
+          type: string
+          description: The platform Run id. Correlation in the log, never authority.
+        evaluation_id:
+          type: string
+          description: The evaluation row this call belongs to. Correlation, as above.
+        final_output:
+          type: string
+          maxLength: 40000  # one-number: maxFinalOutput
+        artifacts:
+          type: array
+          items:
+            $ref: "#/components/schemas/JudgeArtifact"
+          maxItems: 500  # one-number: maxArtifactRows
+          default: []
+        trace_digest:
+          $ref: "#/components/schemas/TraceDigest"
+        timeout_seconds:
+          type: number
+          exclusiveMinimum: 0
+          description: Go's remaining deadline for this call; the service never waits longer than its own ceiling.
+    CheckInjectionResponse:
+      type: object
+      required: [probability, model, input_tokens]
+      additionalProperties: false
+      properties:
+        probability:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: |
+            The provider's probability that the material addresses the
+            evaluator, a reviewer, a model or an agent. Where to draw the line
+            is Go's decision, not this service's.
+        model:
+          type: string
+          description: The model that answered.
+        input_tokens:
+          type: integer
+          minimum: 0
+          description: Input tokens the provider counted; the call produces no output tokens.
     TargetFile:
       type: object
       description: One package file the caller wants a proposal against.

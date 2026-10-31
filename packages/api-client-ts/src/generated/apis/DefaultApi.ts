@@ -709,6 +709,11 @@ import {
     SetEvaluationFeedbackRequestToJSON,
 } from '../models/SetEvaluationFeedbackRequest';
 import {
+    type SetInjectionCheckRequest,
+    SetInjectionCheckRequestFromJSON,
+    SetInjectionCheckRequestToJSON,
+} from '../models/SetInjectionCheckRequest';
+import {
     type SetModelCallBudgetRequest,
     SetModelCallBudgetRequestFromJSON,
     SetModelCallBudgetRequestToJSON,
@@ -1988,6 +1993,13 @@ export interface SetEvaluationFeedbackOperationRequest {
      * 
      */
     setEvaluationFeedbackRequest: SetEvaluationFeedbackRequest;
+}
+
+export interface SetInjectionCheckOperationRequest {
+    /**
+     * 
+     */
+    setInjectionCheckRequest: SetInjectionCheckRequest;
 }
 
 export interface SetJudgePanelRequest {
@@ -5601,6 +5613,30 @@ export interface DefaultApiInterface {
      * Say whether the judgement was helpful (EVAL-001)
      */
     setEvaluationFeedback(requestParameters: SetEvaluationFeedbackOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Evaluation>;
+
+    /**
+     * Creates request options for setInjectionCheck without sending the request
+     * @param {SetInjectionCheckRequest} setInjectionCheckRequest 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    setInjectionCheckRequestOpts(requestParameters: SetInjectionCheckOperationRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. On, every judged evaluation also asks whether the run\'s output, artifacts and trace address the evaluator instead of the user; the answer is shown with the verdict and never changes it. The gateway records these calls as free, so the operator states what one million input tokens cost and the platform records each call\'s cost at that price, marked as estimated. The next evaluation reads the new value. Writes the change and its audit event in one transaction. 
+     * @summary Switch the injection check beside the judge on or off, and price it (02:EVAL-001)
+     * @param {SetInjectionCheckRequest} setInjectionCheckRequest 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    setInjectionCheckRaw(requestParameters: SetInjectionCheckOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PlatformSettings>>;
+
+    /**
+     * Operator only. On, every judged evaluation also asks whether the run\'s output, artifacts and trace address the evaluator instead of the user; the answer is shown with the verdict and never changes it. The gateway records these calls as free, so the operator states what one million input tokens cost and the platform records each call\'s cost at that price, marked as estimated. The next evaluation reads the new value. Writes the change and its audit event in one transaction. 
+     * Switch the injection check beside the judge on or off, and price it (02:EVAL-001)
+     */
+    setInjectionCheck(requestParameters: SetInjectionCheckOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformSettings>;
 
     /**
      * Creates request options for setJudgePanel without sending the request
@@ -12891,6 +12927,55 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async setEvaluationFeedback(requestParameters: SetEvaluationFeedbackOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Evaluation> {
         const response = await this.setEvaluationFeedbackRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for setInjectionCheck without sending the request
+     */
+    async setInjectionCheckRequestOpts(requestParameters: SetInjectionCheckOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['setInjectionCheckRequest'] == null) {
+            throw new runtime.RequiredError(
+                'setInjectionCheckRequest',
+                'Required parameter "setInjectionCheckRequest" was null or undefined when calling setInjectionCheck().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/admin/settings/injection-check`;
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SetInjectionCheckRequestToJSON(requestParameters['setInjectionCheckRequest']),
+        };
+    }
+
+    /**
+     * Operator only. On, every judged evaluation also asks whether the run\'s output, artifacts and trace address the evaluator instead of the user; the answer is shown with the verdict and never changes it. The gateway records these calls as free, so the operator states what one million input tokens cost and the platform records each call\'s cost at that price, marked as estimated. The next evaluation reads the new value. Writes the change and its audit event in one transaction. 
+     * Switch the injection check beside the judge on or off, and price it (02:EVAL-001)
+     */
+    async setInjectionCheckRaw(requestParameters: SetInjectionCheckOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PlatformSettings>> {
+        const requestOptions = await this.setInjectionCheckRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PlatformSettingsFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. On, every judged evaluation also asks whether the run\'s output, artifacts and trace address the evaluator instead of the user; the answer is shown with the verdict and never changes it. The gateway records these calls as free, so the operator states what one million input tokens cost and the platform records each call\'s cost at that price, marked as estimated. The next evaluation reads the new value. Writes the change and its audit event in one transaction. 
+     * Switch the injection check beside the judge on or off, and price it (02:EVAL-001)
+     */
+    async setInjectionCheck(requestParameters: SetInjectionCheckOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlatformSettings> {
+        const response = await this.setInjectionCheckRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

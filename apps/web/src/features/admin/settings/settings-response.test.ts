@@ -13,7 +13,11 @@ type Group = keyof typeof fields;
 type Case = [string, "platform" | "runs", unknown];
 const valid: Case[] = [
   ["standard platform", "platform", ADMIN_SETTINGS],
-  ["enabled panel", "platform", { judge_panel: { enabled: true } }],
+  [
+    "enabled panel",
+    "platform",
+    { judge_panel: { enabled: true }, injection_check: { enabled: false } },
+  ],
   ["standard runs", "runs", ADMIN_RUN_SETTINGS],
 ];
 const metadata = {
@@ -21,7 +25,11 @@ const metadata = {
   set_by_user_id: "11111111-2222-3333-4444-555555555555",
   set_at: "2026-09-06T08:00:00+08:00",
 };
-valid.push(["panel metadata", "platform", { judge_panel: { enabled: false, ...metadata } }]);
+valid.push([
+  "panel metadata",
+  "platform",
+  { judge_panel: { enabled: false, ...metadata }, injection_check: { enabled: false } },
+]);
 for (const value of [-9007199254740991, 0, 9007199254740991]) {
   const body = structuredClone(ADMIN_RUN_SETTINGS);
   for (const group of Object.keys(fields) as Group[]) {
@@ -33,6 +41,15 @@ for (const value of [-9007199254740991, 0, 9007199254740991]) {
   }
   valid.push([`integer boundary ${value}`, "runs", body]);
 }
+
+valid.push([
+  "priced injection check",
+  "platform",
+  {
+    judge_panel: { enabled: false },
+    injection_check: { enabled: true, credits_per_million_tokens: 1, ...metadata },
+  },
+]);
 
 test.each(valid)("complete %s settings preserve their response", async (_name, kind, body) => {
   const fetch = vi.fn((_input: RequestInfo | URL) =>
@@ -54,7 +71,11 @@ for (const kind of ["platform", "runs"] as const) {
     invalid.push([`${kind} body ${JSON.stringify(body)}`, kind, body]);
 }
 for (const panel of [null, [], {}, { enabled: null }, { enabled: "false" }, { enabled: 0 }]) {
-  invalid.push([`panel ${JSON.stringify(panel)}`, "platform", { judge_panel: panel }]);
+  invalid.push([
+    `panel ${JSON.stringify(panel)}`,
+    "platform",
+    { judge_panel: panel, injection_check: { enabled: false } },
+  ]);
 }
 for (const group of Object.keys(fields) as Group[]) {
   for (const value of [undefined, null, []]) {
@@ -85,7 +106,7 @@ for (const [field, value] of [
   invalid.push([
     `panel ${field} ${JSON.stringify(value)}`,
     "platform",
-    { judge_panel: { enabled: false, [field]: value } },
+    { judge_panel: { enabled: false, [field]: value }, injection_check: { enabled: false } },
   ]);
   for (const group of Object.keys(fields) as Group[]) {
     invalid.push([
@@ -94,6 +115,23 @@ for (const [field, value] of [
       { ...ADMIN_RUN_SETTINGS, [group]: { ...ADMIN_RUN_SETTINGS[group], [field]: value } },
     ]);
   }
+}
+
+invalid.push(["no injection check", "platform", { judge_panel: { enabled: false } }]);
+for (const check of [
+  null,
+  {},
+  { enabled: "true" },
+  { enabled: true, credits_per_million_tokens: 0 },
+  { enabled: true, credits_per_million_tokens: 1.5 },
+  { enabled: true, credits_per_million_tokens: "50" },
+  { enabled: true, set_at: "not a time" },
+]) {
+  invalid.push([
+    "injection check " + JSON.stringify(check),
+    "platform",
+    { judge_panel: { enabled: false }, injection_check: check },
+  ]);
 }
 
 test.each(invalid)("settings with %s stay unreadable", async (_name, kind, body) => {

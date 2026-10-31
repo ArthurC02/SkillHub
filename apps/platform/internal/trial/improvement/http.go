@@ -44,9 +44,14 @@ type evaluationView struct {
 	RubricVersion         string                    `json:"rubric_version,omitempty"`
 	EvidenceComplete      bool                      `json:"evidence_complete"`
 	Cost                  costView                  `json:"cost"`
+	InjectionCheck        *injectionCheckView       `json:"injection_check,omitempty"`
 	Feedback              *feedbackView             `json:"feedback,omitempty"`
 	EvaluatedAt           *string                   `json:"evaluated_at"`
 	SupersededAt          *string                   `json:"superseded_at"`
+}
+
+type injectionCheckView struct {
+	Status string `json:"status"`
 }
 
 type costView struct {
@@ -236,6 +241,9 @@ func (s *Service) view(ctx context.Context, workspaceID pgtype.UUID, ev Evaluati
 		Cost:                  costViewOf(ev, s.Credits),
 		EvaluatedAt:           optionalTime(ev.EvaluatedAt),
 		SupersededAt:          optionalTime(ev.SupersededAt),
+	}
+	if ev.InjectionCheck != nil {
+		view.InjectionCheck = &injectionCheckView{Status: *ev.InjectionCheck}
 	}
 	if ev.FeedbackHelpful != nil {
 		view.Feedback = &feedbackView{

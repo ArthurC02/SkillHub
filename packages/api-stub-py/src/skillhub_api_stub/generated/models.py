@@ -511,6 +511,43 @@ class JudgeRunResponse(BaseModel):
     )
 
 
+class CheckInjectionRequest(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    run_id: str = Field(
+        ..., description='The platform Run id. Correlation in the log, never authority.'
+    )
+    evaluation_id: str = Field(
+        ...,
+        description='The evaluation row this call belongs to. Correlation, as above.',
+    )
+    final_output: constr(max_length=40000)
+    artifacts: list[JudgeArtifact] | None = Field(
+        [], max_length=500, validate_default=True
+    )
+    trace_digest: TraceDigest
+    timeout_seconds: PositiveFloat | None = Field(
+        None,
+        description="Go's remaining deadline for this call; the service never waits longer than its own ceiling.",
+    )
+
+
+class CheckInjectionResponse(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    probability: confloat(ge=0.0, le=1.0) = Field(
+        ...,
+        description="The provider's probability that the material addresses the\nevaluator, a reviewer, a model or an agent. Where to draw the line\nis Go's decision, not this service's.\n",
+    )
+    model: str = Field(..., description='The model that answered.')
+    input_tokens: conint(ge=0) = Field(
+        ...,
+        description='Input tokens the provider counted; the call produces no output tokens.',
+    )
+
+
 class TargetFile(BaseModel):
     model_config = ConfigDict(
         extra='forbid',

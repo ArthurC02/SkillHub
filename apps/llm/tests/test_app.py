@@ -31,6 +31,7 @@ def test_every_capability_route_is_guarded():
         ("/suggest-improvements", "POST"),
         ("/v1/agent/step", "POST"),
         ("/v1/analyze-intent", "POST"),
+        ("/v1/check-injection", "POST"),
         ("/v1/creation/step", "POST"),
         ("/v1/enrich-skill", "POST"),
         ("/v1/generate-skill", "POST"),

@@ -8378,6 +8378,12 @@ type Evaluation struct {
 	// the UI has to keep saying so.
 	EvidenceComplete bool           `json:"evidence_complete"`
 	Cost             EvaluationCost `json:"cost"`
+	// Whether the run's output, artifacts and trace were checked for text addressed to the evaluator
+	// instead of the user. Absent when the operator had the check switched off, or the evaluation needed
+	// no judge. `flagged` does not change any criterion's result: the judge decided as usual and the
+	// person reading should look at the cited evidence themselves. `unchecked` means the check was due and
+	// did not answer, so nothing is known either way.
+	InjectionCheck OptEvaluationInjectionCheck `json:"injection_check"`
 	// The user's own answer about this judgement (EVAL-001 第 4 條). Absent means nobody answered, which
 	// is not the same as "not helpful".
 	Feedback OptEvaluationFeedback `json:"feedback"`
@@ -8446,6 +8452,11 @@ func (s *Evaluation) GetEvidenceComplete() bool {
 // GetCost returns the value of Cost.
 func (s *Evaluation) GetCost() EvaluationCost {
 	return s.Cost
+}
+
+// GetInjectionCheck returns the value of InjectionCheck.
+func (s *Evaluation) GetInjectionCheck() OptEvaluationInjectionCheck {
+	return s.InjectionCheck
 }
 
 // GetFeedback returns the value of Feedback.
@@ -8521,6 +8532,11 @@ func (s *Evaluation) SetEvidenceComplete(val bool) {
 // SetCost sets the value of Cost.
 func (s *Evaluation) SetCost(val EvaluationCost) {
 	s.Cost = val
+}
+
+// SetInjectionCheck sets the value of InjectionCheck.
+func (s *Evaluation) SetInjectionCheck(val OptEvaluationInjectionCheck) {
+	s.InjectionCheck = val
 }
 
 // SetFeedback sets the value of Feedback.
@@ -9535,6 +9551,73 @@ func (s *EvaluationGraderScope) UnmarshalText(data []byte) error {
 		return nil
 	case EvaluationGraderScopeWorkspace:
 		*s = EvaluationGraderScopeWorkspace
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Whether the run's output, artifacts and trace were checked for text addressed to the evaluator
+// instead of the user. Absent when the operator had the check switched off, or the evaluation needed
+// no judge. `flagged` does not change any criterion's result: the judge decided as usual and the
+// person reading should look at the cited evidence themselves. `unchecked` means the check was due and
+// did not answer, so nothing is known either way.
+type EvaluationInjectionCheck struct {
+	Status EvaluationInjectionCheckStatus `json:"status"`
+}
+
+// GetStatus returns the value of Status.
+func (s *EvaluationInjectionCheck) GetStatus() EvaluationInjectionCheckStatus {
+	return s.Status
+}
+
+// SetStatus sets the value of Status.
+func (s *EvaluationInjectionCheck) SetStatus(val EvaluationInjectionCheckStatus) {
+	s.Status = val
+}
+
+type EvaluationInjectionCheckStatus string
+
+const (
+	EvaluationInjectionCheckStatusFlagged   EvaluationInjectionCheckStatus = "flagged"
+	EvaluationInjectionCheckStatusClear     EvaluationInjectionCheckStatus = "clear"
+	EvaluationInjectionCheckStatusUnchecked EvaluationInjectionCheckStatus = "unchecked"
+)
+
+// AllValues returns all EvaluationInjectionCheckStatus values.
+func (EvaluationInjectionCheckStatus) AllValues() []EvaluationInjectionCheckStatus {
+	return []EvaluationInjectionCheckStatus{
+		EvaluationInjectionCheckStatusFlagged,
+		EvaluationInjectionCheckStatusClear,
+		EvaluationInjectionCheckStatusUnchecked,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s EvaluationInjectionCheckStatus) MarshalText() ([]byte, error) {
+	switch s {
+	case EvaluationInjectionCheckStatusFlagged:
+		return []byte(s), nil
+	case EvaluationInjectionCheckStatusClear:
+		return []byte(s), nil
+	case EvaluationInjectionCheckStatusUnchecked:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *EvaluationInjectionCheckStatus) UnmarshalText(data []byte) error {
+	switch EvaluationInjectionCheckStatus(data) {
+	case EvaluationInjectionCheckStatusFlagged:
+		*s = EvaluationInjectionCheckStatusFlagged
+		return nil
+	case EvaluationInjectionCheckStatusClear:
+		*s = EvaluationInjectionCheckStatusClear
+		return nil
+	case EvaluationInjectionCheckStatusUnchecked:
+		*s = EvaluationInjectionCheckStatusUnchecked
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)
@@ -17298,6 +17381,52 @@ func (o OptEvaluationFeedback) Or(d EvaluationFeedback) EvaluationFeedback {
 	return d
 }
 
+// NewOptEvaluationInjectionCheck returns new OptEvaluationInjectionCheck with value set to v.
+func NewOptEvaluationInjectionCheck(v EvaluationInjectionCheck) OptEvaluationInjectionCheck {
+	return OptEvaluationInjectionCheck{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptEvaluationInjectionCheck is optional EvaluationInjectionCheck.
+type OptEvaluationInjectionCheck struct {
+	Value EvaluationInjectionCheck
+	Set   bool
+}
+
+// IsSet returns true if OptEvaluationInjectionCheck was set.
+func (o OptEvaluationInjectionCheck) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptEvaluationInjectionCheck) Reset() {
+	var v EvaluationInjectionCheck
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptEvaluationInjectionCheck) SetTo(v EvaluationInjectionCheck) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptEvaluationInjectionCheck) Get() (v EvaluationInjectionCheck, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptEvaluationInjectionCheck) Or(d EvaluationInjectionCheck) EvaluationInjectionCheck {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptEvaluationPairedDifference returns new OptEvaluationPairedDifference with value set to v.
 func NewOptEvaluationPairedDifference(v EvaluationPairedDifference) OptEvaluationPairedDifference {
 	return OptEvaluationPairedDifference{
@@ -24506,12 +24635,23 @@ func (s *PlatformAgentStep) SetCreatedAt(val time.Time) {
 
 // Ref: #/components/schemas/PlatformSettings
 type PlatformSettings struct {
-	JudgePanel PlatformSettingsJudgePanel `json:"judge_panel"`
+	InjectionCheck PlatformSettingsInjectionCheck `json:"injection_check"`
+	JudgePanel     PlatformSettingsJudgePanel     `json:"judge_panel"`
+}
+
+// GetInjectionCheck returns the value of InjectionCheck.
+func (s *PlatformSettings) GetInjectionCheck() PlatformSettingsInjectionCheck {
+	return s.InjectionCheck
 }
 
 // GetJudgePanel returns the value of JudgePanel.
 func (s *PlatformSettings) GetJudgePanel() PlatformSettingsJudgePanel {
 	return s.JudgePanel
+}
+
+// SetInjectionCheck sets the value of InjectionCheck.
+func (s *PlatformSettings) SetInjectionCheck(val PlatformSettingsInjectionCheck) {
+	s.InjectionCheck = val
 }
 
 // SetJudgePanel sets the value of JudgePanel.
@@ -24520,7 +24660,57 @@ func (s *PlatformSettings) SetJudgePanel(val PlatformSettingsJudgePanel) {
 }
 
 func (*PlatformSettings) getPlatformSettingsRes() {}
+func (*PlatformSettings) setInjectionCheckRes()   {}
 func (*PlatformSettings) setJudgePanelRes()       {}
+
+type PlatformSettingsInjectionCheck struct {
+	Enabled bool `json:"enabled"`
+	// Present once an operator has priced the check.
+	CreditsPerMillionTokens OptInt `json:"credits_per_million_tokens"`
+	// Present once an operator has changed the setting.
+	Reason OptString   `json:"reason"`
+	SetAt  OptDateTime `json:"set_at"`
+}
+
+// GetEnabled returns the value of Enabled.
+func (s *PlatformSettingsInjectionCheck) GetEnabled() bool {
+	return s.Enabled
+}
+
+// GetCreditsPerMillionTokens returns the value of CreditsPerMillionTokens.
+func (s *PlatformSettingsInjectionCheck) GetCreditsPerMillionTokens() OptInt {
+	return s.CreditsPerMillionTokens
+}
+
+// GetReason returns the value of Reason.
+func (s *PlatformSettingsInjectionCheck) GetReason() OptString {
+	return s.Reason
+}
+
+// GetSetAt returns the value of SetAt.
+func (s *PlatformSettingsInjectionCheck) GetSetAt() OptDateTime {
+	return s.SetAt
+}
+
+// SetEnabled sets the value of Enabled.
+func (s *PlatformSettingsInjectionCheck) SetEnabled(val bool) {
+	s.Enabled = val
+}
+
+// SetCreditsPerMillionTokens sets the value of CreditsPerMillionTokens.
+func (s *PlatformSettingsInjectionCheck) SetCreditsPerMillionTokens(val OptInt) {
+	s.CreditsPerMillionTokens = val
+}
+
+// SetReason sets the value of Reason.
+func (s *PlatformSettingsInjectionCheck) SetReason(val OptString) {
+	s.Reason = val
+}
+
+// SetSetAt sets the value of SetAt.
+func (s *PlatformSettingsInjectionCheck) SetSetAt(val OptDateTime) {
+	s.SetAt = val
+}
 
 type PlatformSettingsJudgePanel struct {
 	Enabled bool `json:"enabled"`
@@ -31369,6 +31559,52 @@ func (s *SetEvaluationFeedbackReq) SetComment(val OptString) {
 type SetEvaluationFeedbackUnauthorized Error
 
 func (*SetEvaluationFeedbackUnauthorized) setEvaluationFeedbackRes() {}
+
+type SetInjectionCheckBadRequest Error
+
+func (*SetInjectionCheckBadRequest) setInjectionCheckRes() {}
+
+type SetInjectionCheckNotFound Error
+
+func (*SetInjectionCheckNotFound) setInjectionCheckRes() {}
+
+type SetInjectionCheckReq struct {
+	Enabled bool `json:"enabled"`
+	// What one million input tokens of the check cost, in credits. Kept while the check is off.
+	CreditsPerMillionTokens int `json:"credits_per_million_tokens"`
+	// Why, in the operator's own words. Whitespace does not satisfy it.
+	Note string `json:"note"`
+}
+
+// GetEnabled returns the value of Enabled.
+func (s *SetInjectionCheckReq) GetEnabled() bool {
+	return s.Enabled
+}
+
+// GetCreditsPerMillionTokens returns the value of CreditsPerMillionTokens.
+func (s *SetInjectionCheckReq) GetCreditsPerMillionTokens() int {
+	return s.CreditsPerMillionTokens
+}
+
+// GetNote returns the value of Note.
+func (s *SetInjectionCheckReq) GetNote() string {
+	return s.Note
+}
+
+// SetEnabled sets the value of Enabled.
+func (s *SetInjectionCheckReq) SetEnabled(val bool) {
+	s.Enabled = val
+}
+
+// SetCreditsPerMillionTokens sets the value of CreditsPerMillionTokens.
+func (s *SetInjectionCheckReq) SetCreditsPerMillionTokens(val int) {
+	s.CreditsPerMillionTokens = val
+}
+
+// SetNote sets the value of Note.
+func (s *SetInjectionCheckReq) SetNote(val string) {
+	s.Note = val
+}
 
 type SetJudgePanelBadRequest Error
 

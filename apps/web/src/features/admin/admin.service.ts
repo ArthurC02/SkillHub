@@ -671,6 +671,12 @@ export function usePlatformAgentSpendCap() {
 
 export type PlatformSettings = {
   judge_panel: { enabled: boolean; reason?: string; set_by_user_id?: string; set_at?: string };
+  injection_check: {
+    enabled: boolean;
+    credits_per_million_tokens?: number;
+    reason?: string;
+    set_at?: string;
+  };
 };
 
 export async function getPlatformSettings() {
@@ -696,8 +702,15 @@ function isSetting(value: unknown): value is Record<string, unknown> {
 
 function isPlatformSettings(value: unknown): value is PlatformSettings {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  const panel = (value as Partial<PlatformSettings>).judge_panel;
-  return isSetting(panel) && typeof panel.enabled === "boolean";
+  const { judge_panel: panel, injection_check: check } = value as Partial<PlatformSettings>;
+  return (
+    isSetting(panel) &&
+    typeof panel.enabled === "boolean" &&
+    isSetting(check) &&
+    typeof check.enabled === "boolean" &&
+    (check.credits_per_million_tokens === undefined ||
+      (Number.isInteger(check.credits_per_million_tokens) && check.credits_per_million_tokens > 0))
+  );
 }
 
 export function usePlatformSettings() {
@@ -705,6 +718,21 @@ export function usePlatformSettings() {
     queryKey: queryKeys.admin.settings,
     queryFn: getPlatformSettings,
     enabled: useOperator(),
+  });
+}
+
+export function useInjectionCheckSwitch() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { enabled: boolean; credits_per_million_tokens: number; note: string }) =>
+      apiFetch<unknown>("/admin/settings/injection-check", send("PUT", body)),
+    onSuccess: (settings) => {
+      if (isPlatformSettings(settings)) {
+        queryClient.setQueryData(queryKeys.admin.settings, settings);
+        return;
+      }
+      return queryClient.invalidateQueries({ queryKey: queryKeys.admin.settings });
+    },
   });
 }
 

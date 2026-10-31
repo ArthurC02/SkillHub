@@ -2,6 +2,7 @@ package wiring
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -17,6 +18,8 @@ import (
 	trace "github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 	eval "github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/evalsettings"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/judging"
 )
 
 func NewCreditService(pool *pgxpool.Pool) (*credit.Service, error) {
@@ -218,4 +221,20 @@ func (l runCreditLedger) Settle(ctx context.Context, tx pgx.Tx, r run.RunSettlem
 
 func (l runCreditLedger) FinalCostRecorded(ctx context.Context, runID pgtype.UUID) (bool, error) {
 	return l.credits.CostRecorded(ctx, runCostKey(runID))
+}
+
+var errInjectionCheckUnpriced = errors.New("the injection check's price in credits has no dollar value under this deployment's credit settings")
+
+func InjectionCheckPolicy(svc *credit.Service, settings *evalsettings.Service) func(context.Context) (judging.ScreeningPolicy, error) {
+	return func(ctx context.Context) (judging.ScreeningPolicy, error) {
+		on, credits, err := settings.InjectionCheckPolicy(ctx)
+		if err != nil || !on {
+			return judging.ScreeningPolicy{}, err
+		}
+		usd, ok := svc.USDForCredits(credits)
+		if !ok {
+			return judging.ScreeningPolicy{}, errInjectionCheckUnpriced
+		}
+		return judging.ScreeningPolicy{On: true, USDPerMillionTokens: usd}, nil
+	}
 }

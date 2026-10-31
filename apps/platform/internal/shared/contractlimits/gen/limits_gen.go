@@ -85,6 +85,8 @@ const (
 	SetContinuationRoundsBodyNoteMaxLength                    = 1000
 	SetContinuationRoundsBodyRoundsMaximum                    = 10
 	SetEvaluationFeedbackBodyCommentMaxLength                 = 2000
+	SetInjectionCheckBodyCreditsPerMillionTokensMaximum       = 1000000
+	SetInjectionCheckBodyNoteMaxLength                        = 1000
 	SetJudgePanelBodyNoteMaxLength                            = 1000
 	SetModelCallBudgetBodyReasonMaxLength                     = 1000
 	SetPlatformAgentEnabledBodyNoteMaxLength                  = 1000

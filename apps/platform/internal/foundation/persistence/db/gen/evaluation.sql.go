@@ -37,10 +37,12 @@ UPDATE evaluations SET
     evidence_complete = $8,
     cost_usd = $9,
     cost_source = $10,
+    injection_check = $11,
+    injection_probability = $12,
     evaluated_at = now(),
     updated_at = now()
-WHERE id = $11 AND workspace_id = $12 AND status = 'pending'
-RETURNING id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at, suggestion_outcome
+WHERE id = $13 AND workspace_id = $14 AND status = 'pending'
+RETURNING id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at, suggestion_outcome, injection_check, injection_probability
 `
 
 type CompleteEvaluationParams struct {
@@ -54,6 +56,8 @@ type CompleteEvaluationParams struct {
 	EvidenceComplete      bool
 	CostUsd               pgtype.Numeric
 	CostSource            *string
+	InjectionCheck        *string
+	InjectionProbability  *float64
 	ID                    pgtype.UUID
 	WorkspaceID           pgtype.UUID
 }
@@ -70,6 +74,8 @@ func (q *Queries) CompleteEvaluation(ctx context.Context, arg CompleteEvaluation
 		arg.EvidenceComplete,
 		arg.CostUsd,
 		arg.CostSource,
+		arg.InjectionCheck,
+		arg.InjectionProbability,
 		arg.ID,
 		arg.WorkspaceID,
 	)
@@ -97,6 +103,8 @@ func (q *Queries) CompleteEvaluation(ctx context.Context, arg CompleteEvaluation
 		&i.EvaluatedAt,
 		&i.SupersededAt,
 		&i.SuggestionOutcome,
+		&i.InjectionCheck,
+		&i.InjectionProbability,
 	)
 	return i, err
 }
@@ -110,7 +118,7 @@ VALUES (
     $1, $2, $3, $4, $5,
     $6, $7, $8
 )
-RETURNING id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at, suggestion_outcome
+RETURNING id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at, suggestion_outcome, injection_check, injection_probability
 `
 
 type CreateEvaluationParams struct {
@@ -159,6 +167,8 @@ func (q *Queries) CreateEvaluation(ctx context.Context, arg CreateEvaluationPara
 		&i.EvaluatedAt,
 		&i.SupersededAt,
 		&i.SuggestionOutcome,
+		&i.InjectionCheck,
+		&i.InjectionProbability,
 	)
 	return i, err
 }
@@ -256,7 +266,7 @@ UPDATE evaluations SET
     evaluated_at = now(),
     updated_at = now()
 WHERE id = $4 AND workspace_id = $5 AND status = 'pending'
-RETURNING id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at, suggestion_outcome
+RETURNING id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at, suggestion_outcome, injection_check, injection_probability
 `
 
 type FailEvaluationParams struct {
@@ -299,6 +309,8 @@ func (q *Queries) FailEvaluation(ctx context.Context, arg FailEvaluationParams) 
 		&i.EvaluatedAt,
 		&i.SupersededAt,
 		&i.SuggestionOutcome,
+		&i.InjectionCheck,
+		&i.InjectionProbability,
 	)
 	return i, err
 }
@@ -336,7 +348,7 @@ func (q *Queries) FindLiveTraceEvents(ctx context.Context, arg FindLiveTraceEven
 }
 
 const getCurrentEvaluation = `-- name: GetCurrentEvaluation :one
-SELECT id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at, suggestion_outcome FROM evaluations
+SELECT id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at, suggestion_outcome, injection_check, injection_probability FROM evaluations
 WHERE run_id = $1 AND workspace_id = $2 AND superseded_at IS NULL
 `
 
@@ -371,12 +383,14 @@ func (q *Queries) GetCurrentEvaluation(ctx context.Context, arg GetCurrentEvalua
 		&i.EvaluatedAt,
 		&i.SupersededAt,
 		&i.SuggestionOutcome,
+		&i.InjectionCheck,
+		&i.InjectionProbability,
 	)
 	return i, err
 }
 
 const getEvaluation = `-- name: GetEvaluation :one
-SELECT id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at, suggestion_outcome FROM evaluations
+SELECT id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at, suggestion_outcome, injection_check, injection_probability FROM evaluations
 WHERE id = $1 AND workspace_id = $2
 `
 
@@ -411,12 +425,14 @@ func (q *Queries) GetEvaluation(ctx context.Context, arg GetEvaluationParams) (E
 		&i.EvaluatedAt,
 		&i.SupersededAt,
 		&i.SuggestionOutcome,
+		&i.InjectionCheck,
+		&i.InjectionProbability,
 	)
 	return i, err
 }
 
 const getEvaluationRevision = `-- name: GetEvaluationRevision :one
-SELECT id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at, suggestion_outcome FROM evaluations
+SELECT id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at, suggestion_outcome, injection_check, injection_probability FROM evaluations
 WHERE id = $1 AND run_id = $2 AND workspace_id = $3
 `
 
@@ -452,12 +468,14 @@ func (q *Queries) GetEvaluationRevision(ctx context.Context, arg GetEvaluationRe
 		&i.EvaluatedAt,
 		&i.SupersededAt,
 		&i.SuggestionOutcome,
+		&i.InjectionCheck,
+		&i.InjectionProbability,
 	)
 	return i, err
 }
 
 const getEvaluationSettings = `-- name: GetEvaluationSettings :one
-SELECT singleton, judge_panel, reason, set_by, set_at FROM evaluation_settings
+SELECT singleton, judge_panel, reason, set_by, set_at, injection_check, injection_check_credits_per_million_tokens, injection_check_reason, injection_check_set_at FROM evaluation_settings
 `
 
 func (q *Queries) GetEvaluationSettings(ctx context.Context) (EvaluationSetting, error) {
@@ -469,6 +487,10 @@ func (q *Queries) GetEvaluationSettings(ctx context.Context) (EvaluationSetting,
 		&i.Reason,
 		&i.SetBy,
 		&i.SetAt,
+		&i.InjectionCheck,
+		&i.InjectionCheckCreditsPerMillionTokens,
+		&i.InjectionCheckReason,
+		&i.InjectionCheckSetAt,
 	)
 	return i, err
 }
@@ -584,7 +606,7 @@ func (q *Queries) ListEvaluationActivityFacts(ctx context.Context, workspaceID p
 }
 
 const listEvaluationRevisions = `-- name: ListEvaluationRevisions :many
-SELECT id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at, suggestion_outcome FROM evaluations
+SELECT id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at, suggestion_outcome, injection_check, injection_probability FROM evaluations
 WHERE run_id = $1 AND workspace_id = $2
 ORDER BY created_at DESC, id DESC
 `
@@ -626,6 +648,8 @@ func (q *Queries) ListEvaluationRevisions(ctx context.Context, arg ListEvaluatio
 			&i.EvaluatedAt,
 			&i.SupersededAt,
 			&i.SuggestionOutcome,
+			&i.InjectionCheck,
+			&i.InjectionProbability,
 		); err != nil {
 			return nil, err
 		}
@@ -826,7 +850,7 @@ func (q *Queries) ListSuggestionsAppliedToVersion(ctx context.Context, arg ListS
 }
 
 const lockCurrentEvaluation = `-- name: LockCurrentEvaluation :one
-SELECT id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at, suggestion_outcome FROM evaluations
+SELECT id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at, suggestion_outcome, injection_check, injection_probability FROM evaluations
 WHERE run_id = $1 AND workspace_id = $2 AND superseded_at IS NULL
 FOR UPDATE
 `
@@ -862,12 +886,14 @@ func (q *Queries) LockCurrentEvaluation(ctx context.Context, arg LockCurrentEval
 		&i.EvaluatedAt,
 		&i.SupersededAt,
 		&i.SuggestionOutcome,
+		&i.InjectionCheck,
+		&i.InjectionProbability,
 	)
 	return i, err
 }
 
 const lockEvaluation = `-- name: LockEvaluation :one
-SELECT id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at, suggestion_outcome FROM evaluations
+SELECT id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at, suggestion_outcome, injection_check, injection_probability FROM evaluations
 WHERE id = $1 AND workspace_id = $2
 FOR UPDATE
 `
@@ -903,6 +929,8 @@ func (q *Queries) LockEvaluation(ctx context.Context, arg LockEvaluationParams) 
 		&i.EvaluatedAt,
 		&i.SupersededAt,
 		&i.SuggestionOutcome,
+		&i.InjectionCheck,
+		&i.InjectionProbability,
 	)
 	return i, err
 }
@@ -1017,7 +1045,7 @@ UPDATE evaluations SET
     feedback_comment = $2,
     updated_at = now()
 WHERE id = $3 AND workspace_id = $4
-RETURNING id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at, suggestion_outcome
+RETURNING id, workspace_id, run_id, overall, summary, criterion_results, judge_model, feedback_helpful, feedback_comment, created_at, updated_at, status, judge_prompt_version, rubric_version, evidence_complete, deterministic_findings, cost_usd, cost_source, cost_is_lower_bound, evaluated_at, superseded_at, suggestion_outcome, injection_check, injection_probability
 `
 
 type SetEvaluationFeedbackParams struct {
@@ -1058,21 +1086,58 @@ func (q *Queries) SetEvaluationFeedback(ctx context.Context, arg SetEvaluationFe
 		&i.EvaluatedAt,
 		&i.SupersededAt,
 		&i.SuggestionOutcome,
+		&i.InjectionCheck,
+		&i.InjectionProbability,
+	)
+	return i, err
+}
+
+const setEvaluationInjectionCheck = `-- name: SetEvaluationInjectionCheck :one
+INSERT INTO evaluation_settings (judge_panel, injection_check, injection_check_credits_per_million_tokens,
+                                 injection_check_reason, injection_check_set_at)
+VALUES (false, $1, $2, $3, now())
+ON CONFLICT (singleton) DO UPDATE
+SET injection_check = EXCLUDED.injection_check,
+    injection_check_credits_per_million_tokens = EXCLUDED.injection_check_credits_per_million_tokens,
+    injection_check_reason = EXCLUDED.injection_check_reason,
+    injection_check_set_at = now()
+RETURNING singleton, judge_panel, reason, set_by, set_at, injection_check, injection_check_credits_per_million_tokens, injection_check_reason, injection_check_set_at
+`
+
+type SetEvaluationInjectionCheckParams struct {
+	InjectionCheck          bool
+	CreditsPerMillionTokens *int32
+	Reason                  *string
+}
+
+func (q *Queries) SetEvaluationInjectionCheck(ctx context.Context, arg SetEvaluationInjectionCheckParams) (EvaluationSetting, error) {
+	row := q.db.QueryRow(ctx, setEvaluationInjectionCheck, arg.InjectionCheck, arg.CreditsPerMillionTokens, arg.Reason)
+	var i EvaluationSetting
+	err := row.Scan(
+		&i.Singleton,
+		&i.JudgePanel,
+		&i.Reason,
+		&i.SetBy,
+		&i.SetAt,
+		&i.InjectionCheck,
+		&i.InjectionCheckCreditsPerMillionTokens,
+		&i.InjectionCheckReason,
+		&i.InjectionCheckSetAt,
 	)
 	return i, err
 }
 
 const setEvaluationSettings = `-- name: SetEvaluationSettings :one
-INSERT INTO evaluation_settings (judge_panel, reason, set_by)
-VALUES ($1, $2, $3)
+INSERT INTO evaluation_settings (judge_panel, reason, set_by, set_at)
+VALUES ($1, $2, $3, now())
 ON CONFLICT (singleton) DO UPDATE
 SET judge_panel = EXCLUDED.judge_panel, reason = EXCLUDED.reason, set_by = EXCLUDED.set_by, set_at = now()
-RETURNING singleton, judge_panel, reason, set_by, set_at
+RETURNING singleton, judge_panel, reason, set_by, set_at, injection_check, injection_check_credits_per_million_tokens, injection_check_reason, injection_check_set_at
 `
 
 type SetEvaluationSettingsParams struct {
 	JudgePanel bool
-	Reason     string
+	Reason     *string
 	SetBy      pgtype.UUID
 }
 
@@ -1085,6 +1150,10 @@ func (q *Queries) SetEvaluationSettings(ctx context.Context, arg SetEvaluationSe
 		&i.Reason,
 		&i.SetBy,
 		&i.SetAt,
+		&i.InjectionCheck,
+		&i.InjectionCheckCreditsPerMillionTokens,
+		&i.InjectionCheckReason,
+		&i.InjectionCheckSetAt,
 	)
 	return i, err
 }

@@ -20,6 +20,8 @@ from skillhub_llm.app import app
         "SuggestCriteriaResponse",
         "JudgeRunRequest",
         "JudgeRunResponse",
+        "CheckInjectionRequest",
+        "CheckInjectionResponse",
         "SuggestImprovementsRequest",
         "SuggestImprovementsResponse",
         "GenerateSkillRequest",

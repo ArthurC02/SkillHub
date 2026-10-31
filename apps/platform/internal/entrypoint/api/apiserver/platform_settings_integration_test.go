@@ -162,3 +162,65 @@ func TestAnOperatorSwitchesTheJudgePanelAndTheNextEvaluationReadsIt(t *testing.T
 		t.Error("the panel is still on after the operator switched it off")
 	}
 }
+
+func TestAnOperatorPricesAndSwitchesTheInjectionCheckWithoutRewritingThePanelsReason(t *testing.T) {
+	pool := requireDB(t)
+	clearEvaluationSettings(t, pool)
+	a := newAPI(t, pool)
+	operator := a.login(t, freshName("operator-injection-check"))
+	a.auth.Operators = map[string]bool{operator.userID: true}
+	svc := &evalsettings.Service{Pool: pool}
+
+	code, settings := operatorCall(t, operator, http.MethodGet, "/admin/settings", "")
+	check, _ := settings["injection_check"].(map[string]any)
+	if code != http.StatusOK || check["enabled"] != false || check["credits_per_million_tokens"] != nil || check["reason"] != nil {
+		t.Fatalf("untouched settings: %d %v, want the check off, unpriced and unexplained", code, settings)
+	}
+
+	refusesEach(t, operator, "/admin/settings/injection-check", map[string]string{
+		"no enabled":         `{"credits_per_million_tokens":50,"note":"n"}`,
+		"no price":           `{"enabled":true,"note":"n"}`,
+		"a price of zero":    `{"enabled":true,"credits_per_million_tokens":0,"note":"n"}`,
+		"a price over a cap": `{"enabled":true,"credits_per_million_tokens":1000001,"note":"n"}`,
+		"a blank note":       `{"enabled":true,"credits_per_million_tokens":50,"note":" "}`,
+		"not JSON":           `on`,
+	})
+	if on, _, err := svc.InjectionCheckPolicy(context.Background()); err != nil || on {
+		t.Fatalf("a refused change switched the check to %v (%v)", on, err)
+	}
+
+	for _, price := range []string{"1", "1000000"} {
+		code, settings = operatorCall(t, operator, http.MethodPut, "/admin/settings/injection-check",
+			`{"enabled":true,"credits_per_million_tokens":`+price+`,"note":"second signal"}`)
+		check, _ = settings["injection_check"].(map[string]any)
+		if code != http.StatusOK || check["enabled"] != true || check["credits_per_million_tokens"] != mustFloat(t, price) ||
+			check["reason"] != "second signal" || check["set_at"] == nil {
+			t.Fatalf("switching on at %s credits: %d %v", price, code, settings)
+		}
+	}
+	panel, _ := settings["judge_panel"].(map[string]any)
+	if panel["enabled"] != false || panel["reason"] != nil || panel["set_at"] != nil {
+		t.Errorf("judge_panel = %v after only the injection check changed, want it off with no reason of its own", panel)
+	}
+	if on, credits, err := svc.InjectionCheckPolicy(context.Background()); err != nil || !on || credits != 1000000 {
+		t.Errorf("the next evaluation reads the check as %v at %d credits (%v), want on at 1000000", on, credits, err)
+	}
+	if n := countRow(t, pool, `SELECT count(*) FROM audit_events WHERE action = $1 AND metadata->>'setting' = 'injection_check'
+		AND metadata->>'reason' = 'second signal' AND (metadata->>'to')::boolean`, audit.ActionEvaluationSettingsSet); n != 2 {
+		t.Errorf("switching on twice wrote %d matching audit events, want 2", n)
+	}
+
+	if code, _ := operatorCall(t, operator, http.MethodPut, "/admin/settings/judge-panel", `{"enabled":true,"note":"panel"}`); code != http.StatusOK {
+		t.Fatalf("switching the panel on: %d", code)
+	}
+	code, settings = operatorCall(t, operator, http.MethodPut, "/admin/settings/injection-check",
+		`{"enabled":false,"credits_per_million_tokens":40,"note":"done"}`)
+	check, _ = settings["injection_check"].(map[string]any)
+	panel, _ = settings["judge_panel"].(map[string]any)
+	if code != http.StatusOK || check["enabled"] != false || check["credits_per_million_tokens"] != float64(40) || check["reason"] != "done" {
+		t.Fatalf("switching off: %d %v", code, settings)
+	}
+	if panel["enabled"] != true || panel["reason"] != "panel" {
+		t.Errorf("judge_panel = %v after the check was switched off, want the panel's own change kept", panel)
+	}
+}

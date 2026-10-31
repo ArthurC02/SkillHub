@@ -29,6 +29,7 @@ type EvaluationRecord struct {
 	EvaluatedAt           pgtype.Timestamptz
 	SupersededAt          pgtype.Timestamptz
 	SuggestionOutcome     *string
+	InjectionCheck        *string
 }
 
 func evaluationRecordOf(row gen.Evaluation) EvaluationRecord {
@@ -41,6 +42,6 @@ func evaluationRecordOf(row gen.Evaluation) EvaluationRecord {
 		EvidenceComplete: row.EvidenceComplete, DeterministicFindings: row.DeterministicFindings,
 		CostUSD: row.CostUsd, CostSource: row.CostSource, CostIsLowerBound: row.CostIsLowerBound,
 		EvaluatedAt: row.EvaluatedAt, SupersededAt: row.SupersededAt,
-		SuggestionOutcome: row.SuggestionOutcome,
+		SuggestionOutcome: row.SuggestionOutcome, InjectionCheck: row.InjectionCheck,
 	}
 }

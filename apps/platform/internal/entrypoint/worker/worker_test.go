@@ -188,11 +188,25 @@ func TestBuildWorkersLetsTheEvaluationServiceReadThePanelSettingEachTime(t *test
 	if err != nil {
 		t.Fatalf("BuildWorkers: %v", err)
 	}
-	if set.Evaluations.PanelEnabled == nil {
+	if set.Evaluations.Judging.PanelEnabled == nil {
 		t.Fatal("the evaluation service cannot read the judge panel setting, so an operator's switch would never take effect")
 	}
-	if _, err := set.Evaluations.PanelEnabled(context.Background()); err == nil {
+	if _, err := set.Evaluations.Judging.PanelEnabled(context.Background()); err == nil {
 		t.Error("the panel setting was answered without reaching the unreachable test database, so it is not read from the settings table")
+	}
+}
+
+func TestBuildWorkersLetsTheEvaluationServiceReadTheInjectionCheckSettingEachTime(t *testing.T) {
+	pool, deps := testDeps(t)
+	set, err := BuildWorkers(pool, deps)
+	if err != nil {
+		t.Fatalf("BuildWorkers: %v", err)
+	}
+	if set.Evaluations.Judging.ScreeningPolicy == nil {
+		t.Fatal("the evaluation service cannot read the injection check setting, so an operator's switch would never take effect")
+	}
+	if _, err := set.Evaluations.Judging.ScreeningPolicy(context.Background()); err == nil {
+		t.Error("the injection check setting was answered without reaching the unreachable test database, so it is not read from the settings table")
 	}
 }
 

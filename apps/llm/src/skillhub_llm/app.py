@@ -35,6 +35,7 @@ from skillhub_llm.gateway import (
 )
 from skillhub_llm.gateway import client as _client
 from skillhub_llm.generate import router as generate_router
+from skillhub_llm.injection import router as injection_router
 from skillhub_llm.intent import router as intent_router
 from skillhub_llm.untrusted import data_block_rules, fence, scrub
 
@@ -81,6 +82,7 @@ app.include_router(generate_router, dependencies=budgeted)
 app.include_router(creation_router, dependencies=protected)
 app.include_router(agent_router, dependencies=protected)
 app.include_router(intent_router, dependencies=budgeted)
+app.include_router(injection_router, dependencies=budgeted)
 logger = logging.getLogger("skillhub_llm")
 
 

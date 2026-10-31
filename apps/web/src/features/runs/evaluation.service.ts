@@ -64,6 +64,8 @@ export type EvaluationCost = {
   note: string;
 };
 
+export type InjectionCheckStatus = "flagged" | "clear" | "unchecked";
+
 export type Evaluation = {
   evaluation_id: string;
   run_id: string;
@@ -77,6 +79,7 @@ export type Evaluation = {
   rubric_version?: string;
   evidence_complete: boolean;
   cost: EvaluationCost;
+  injection_check?: { status: InjectionCheckStatus };
   feedback?: { helpful: boolean; comment?: string; submitted_at: string };
   evaluated_at: string | null;
   superseded_at?: string | null;

@@ -146,6 +146,10 @@ const complete: [string, unknown, string?][] = [
   ],
   ["empty revision means current", EVALUATION, ""],
   ["extra metadata", { ...EVALUATION, extra: true }],
+  ...(["flagged", "clear", "unchecked"] as const).map((status): [string, unknown] => [
+    `injection check ${status}`,
+    { ...EVALUATION, injection_check: { status } },
+  ]),
 ];
 
 test.each(complete)(
@@ -225,6 +229,9 @@ const badCosts: [string, unknown][] = [
 ];
 
 const bad: [string, unknown][] = [
+  ["an unknown injection check status", { ...EVALUATION, injection_check: { status: "passed" } }],
+  ["an injection check without a status", { ...EVALUATION, injection_check: {} }],
+  ["an injection check that is not an object", { ...EVALUATION, injection_check: "flagged" }],
   ["null body", null],
   ["array body", []],
   ["primitive body", true],

@@ -163,7 +163,7 @@ func TestTheEvaluationAsksTheJudgesItsServiceWasGiven(t *testing.T) {
 	}
 	ev := gen.Evaluation{ID: pgtype.UUID{Bytes: [16]byte{1}, Valid: true}}
 
-	v, err := (&Service{Judge: judge, PanelEnabled: on}).judge(context.Background(), m, ev)
+	v, err := (&Service{Judge: judge, Judging: judging.Options{PanelEnabled: on}}).judge(context.Background(), m, ev)
 	if err != nil {
 		t.Fatal(err)
 	}

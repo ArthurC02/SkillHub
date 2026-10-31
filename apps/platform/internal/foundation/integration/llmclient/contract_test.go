@@ -50,6 +50,8 @@ var wireTypes = map[string]reflect.Type{
 	"JudgeEvidenceRef":              reflect.TypeOf(JudgeEvidenceRef{}),
 	"JudgeRunRequest":               reflect.TypeOf(JudgeRunRequest{}),
 	"JudgeRunResponse":              reflect.TypeOf(JudgeRunResponse{}),
+	"CheckInjectionRequest":         reflect.TypeOf(CheckInjectionRequest{}),
+	"CheckInjectionResponse":        reflect.TypeOf(CheckInjectionResponse{}),
 	"JudgeSkill":                    reflect.TypeOf(JudgeSkill{}),
 	"JudgeVerdict":                  reflect.TypeOf(JudgeVerdict{}),
 	"MatchReason":                   reflect.TypeOf(MatchReason{}),

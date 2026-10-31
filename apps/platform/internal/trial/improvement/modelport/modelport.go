@@ -108,6 +108,24 @@ type Judge interface {
 	JudgeRun(ctx context.Context, req JudgeRequest) (*Judgement, error)
 }
 
+type ScreeningRequest struct {
+	RunID        string
+	EvaluationID string
+	FinalOutput  string
+	Artifacts    []JudgeArtifact
+	TraceDigest  TraceDigest
+}
+
+type ScreeningAnswer struct {
+	Probability float64
+	Model       string
+	InputTokens int64
+}
+
+type Screener interface {
+	Screen(ctx context.Context, req ScreeningRequest) (*ScreeningAnswer, error)
+}
+
 type TargetFile struct {
 	Path    string
 	Content string

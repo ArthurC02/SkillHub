@@ -27,6 +27,27 @@ func SuggesterOrNone(c *llmclient.Client) modelport.Suggester {
 	return modelOverHTTP{client: c}
 }
 
+func ScreenerOrNone(c *llmclient.Client) modelport.Screener {
+	if c == nil {
+		return nil
+	}
+	return modelOverHTTP{client: c}
+}
+
+func (a modelOverHTTP) Screen(ctx context.Context, req modelport.ScreeningRequest) (*modelport.ScreeningAnswer, error) {
+	resp, err := a.client.CheckInjection(ctx, llmclient.CheckInjectionRequest{
+		RunID:        req.RunID,
+		EvaluationID: req.EvaluationID,
+		FinalOutput:  req.FinalOutput,
+		Artifacts:    wireArtifacts(req.Artifacts),
+		TraceDigest:  wireDigest(req.TraceDigest),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &modelport.ScreeningAnswer{Probability: resp.Probability, Model: resp.Model, InputTokens: resp.InputTokens}, nil
+}
+
 func (a modelOverHTTP) JudgeRun(ctx context.Context, req modelport.JudgeRequest) (*modelport.Judgement, error) {
 	resp, err := a.client.JudgeRun(ctx, llmclient.JudgeRunRequest{
 		RunID:        req.RunID,

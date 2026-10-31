@@ -27,6 +27,13 @@ import {
     DeterministicFindingToJSON,
     DeterministicFindingToJSONTyped,
 } from './DeterministicFinding';
+import type { EvaluationInjectionCheck } from './EvaluationInjectionCheck';
+import {
+    EvaluationInjectionCheckFromJSON,
+    EvaluationInjectionCheckFromJSONTyped,
+    EvaluationInjectionCheckToJSON,
+    EvaluationInjectionCheckToJSONTyped,
+} from './EvaluationInjectionCheck';
 import type { EvaluationCost } from './EvaluationCost';
 import {
     EvaluationCostFromJSON,
@@ -139,6 +146,10 @@ export interface Evaluation {
     /**
      * 
      */
+    injectionCheck?: EvaluationInjectionCheck;
+    /**
+     * 
+     */
     feedback?: EvaluationFeedback;
     /**
      * Null while the evaluation is still pending.
@@ -216,6 +227,7 @@ export function EvaluationFromJSONTyped(json: any, ignoreDiscriminator: boolean)
         'rubricVersion': json['rubric_version'] == null ? undefined : json['rubric_version'],
         'evidenceComplete': json['evidence_complete'],
         'cost': EvaluationCostFromJSON(json['cost']),
+        'injectionCheck': json['injection_check'] == null ? undefined : EvaluationInjectionCheckFromJSON(json['injection_check']),
         'feedback': json['feedback'] == null ? undefined : EvaluationFeedbackFromJSON(json['feedback']),
         'evaluatedAt': (json['evaluated_at'] == null ? null : parseDateTime(json['evaluated_at'])),
         'supersededAt': json['superseded_at'] === undefined ? undefined : json['superseded_at'] === null ? null : (parseDateTime(json['superseded_at'])),
@@ -245,6 +257,7 @@ export function EvaluationToJSONTyped(value?: Evaluation | null, ignoreDiscrimin
         'rubric_version': value['rubricVersion'],
         'evidence_complete': value['evidenceComplete'],
         'cost': EvaluationCostToJSON(value['cost']),
+        'injection_check': EvaluationInjectionCheckToJSON(value['injectionCheck']),
         'feedback': EvaluationFeedbackToJSON(value['feedback']),
         'evaluated_at': value['evaluatedAt'] == null ? value['evaluatedAt'] : serializeDateTime(value['evaluatedAt']),
         'superseded_at': value['supersededAt'] == null ? value['supersededAt'] : serializeDateTime(value['supersededAt']),
