@@ -31,7 +31,7 @@
 | C5 | 高衝突區只由主 Agent 序列化：`contracts/`、`db/migrations/`、`db/queries/`、generated 目錄、`go.sum`／`package-lock.json`／`uv.lock`、`Taskfile.yml`、`.github/workflows/`。 |
 | C6 | codegen（`task gen:sql`／`task gen:openapi`）只由主 Agent 跑；提交前 `task gen:check`。generated 檔禁止手改。 |
 | C7 | **不寫註解。** 唯一例外：艱難演算法，一個區塊最多 3 行，說明它怎麼運作。施工日誌、決策說明、需求編號、日期一律禁止。 |
-| C8 | 每個宣稱修好的東西都要有一次紅（§8；[automation.md](automation.md) 開發自動化第 9 條）。 |
+| C8 | 每個宣稱修好的東西都要有一次紅（§8；根 `AGENTS.md` 開發自動化第 6 條）。 |
 
 Git 紀律（禁止 `git stash`、不對他人修改用 `git reset`／`git clean`／`git checkout -- <path>`、只以明確 pathspec stage）與子代理紀律（預設唯讀、每次派工指定 model、禁用旗艦級、不做 git 寫入）是 repo 級規則，正文在根 [`AGENTS.md`](../../AGENTS.md)〈開發自動化〉第 3 條，本檔不複製。
 

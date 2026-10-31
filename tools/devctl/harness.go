@@ -16,7 +16,7 @@ const (
 	harnessAgentsDir    = ".claude/agents"
 	harnessWorkflowsDir = ".claude/workflows"
 
-	agentsDocMaxBytes = 16 * 1024
+	agentsDocMaxBytes = 10 * 1024
 )
 
 var harnessLocalReferences = []*regexp.Regexp{

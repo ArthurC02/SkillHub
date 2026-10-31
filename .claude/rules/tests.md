@@ -10,7 +10,7 @@ paths:
   - "**/providertest/**"
 ---
 
-寫、改或審查測試之前，先載入 `istqb-test-design` 技能（`.claude/skills/istqb-test-design/SKILL.md`）：從產品程式推出等價類、邊界（界上與剛過界）、決策表、狀態轉移與負面案例，每條新測試都要證明會紅（根 `AGENTS.md`〈開發自動化〉第 9 條）。
+寫、改或審查測試之前，先載入 `istqb-test-design` 技能（`.claude/skills/istqb-test-design/SKILL.md`）：從產品程式推出等價類、邊界（界上與剛過界）、決策表、狀態轉移與負面案例，每條新測試都要證明會紅（根 `AGENTS.md`〈開發自動化〉第 6 條）。
 
 這一區會擋你的檢查：
 

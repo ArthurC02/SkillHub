@@ -44,9 +44,11 @@ func requiredDocProblems(root string) []string {
 			"task doctor",
 			"共享工作樹、單一 Writer",
 			"generated files 禁止手改",
-			"Go 側只生成 models，沒有 generated router 可以 mount",
 			"docs/development/automation.md",
 			"comment-budget",
+		},
+		filepath.Join("apps", "platform", agentsMdFile): {
+			"Go 側只生成 models，沒有 generated router 可以 mount",
 		},
 		filepath.Join("docs", "development", "automation.md"): {
 			".devctl/**",

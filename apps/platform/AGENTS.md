@@ -12,6 +12,12 @@
 
 這是 Go 控制平面，包含 API、Worker、maintenance 與 reindex 進程；服務層入口由 `internal/entrypoint/api/apiserver.NewApp` 等 composition root 注入。Bounded Context、query ownership 與跨 context 協作只依 `internal/AGENTS.md`、各 `doc.go`、[Domain Memory](../../docs/domain-memory/) 的已審查 Context 與 dependency policy 與 [ADR 索引](../../docs/adr/README.md)；本卡不複製 DDD 細節。
 
+## 平台紅線
+
+1. **Go 側只生成 models，沒有 generated router 可以 mount**：contract 的 Go 產出是型別，server 與 client 都不生成。每一條 route 在 `router.go`（登入與 `/me` 在 `creator/workspace` 的 `Mount`）逐條掛上並逐條套 `RequireSession`／`RequireOperator`／`OptionalSession`，每加一條要加 route 測試。重新打開 server 生成會被 `TestTheGeneratedGoPackageCarriesModelsAndNoServer` 擋下。
+2. **Bounded Context 治理**：每個套件屬於且僅屬於一個 context，新套件先登記再建目錄（Bounded Context 進 [Registry](../../docs/domain-memory/registry/contexts/index.md)，技術套件進 `architecture-identity.yaml`；兩者都有機器對帳）。跨 context 的新 import 先在 Registry 立下 dependency policy，**同一個 commit** 改 depguard。領域 Service 只由 `entrypoint/api/apiserver.NewApp` 注入，禁止方法內現場建構。日常判斷見 [platform-ddd-practices.md](../../docs/development/platform-ddd-practices.md)。
+3. **Query ownership**：owner 宣告在 `db/query-owners.yaml`，跨 context 呼叫會 FAIL；新增或刪除 query 同一批改該檔；`allow:`／`read_allow:` 是存量漂移清單，**不是擴充點**。
+
 ## 安全限制
 
 - 平台是唯一控制平面；Run 狀態、授權、政策、重試與 outbox 規則留在 Go。

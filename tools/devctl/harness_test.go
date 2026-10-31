@@ -136,7 +136,7 @@ func TestHarnessRejectsARootAgentsDocOverTheCap(t *testing.T) {
 	t.Parallel()
 	root := writeHarnessFixture(t, cleanSkill, cleanAgent, strings.Repeat("x", agentsDocMaxBytes+1))
 	problems := harnessProblems(root)
-	if len(problems) != 1 || !strings.Contains(problems[0], "over the 16384-byte cap") {
+	if len(problems) != 1 || !strings.Contains(problems[0], "over the 10240-byte cap") {
 		t.Fatalf("an AGENTS.md over the Codex cap was accepted: %v", problems)
 	}
 }
@@ -245,5 +245,13 @@ func TestHarnessRejectsUnreadableSettings(t *testing.T) {
 	writeAt(t, root, harnessSettingsFile, `{"permissions":`)
 	if problems := harnessProblems(root); len(problems) != 1 || !strings.Contains(problems[0], harnessSettingsFile) {
 		t.Fatalf("settings that do not parse were accepted: %v", problems)
+	}
+}
+
+func TestHarnessAcceptsARootAgentsDocExactlyAtTheCap(t *testing.T) {
+	t.Parallel()
+	root := writeHarnessFixture(t, cleanSkill, cleanAgent, strings.Repeat("x", agentsDocMaxBytes))
+	if problems := harnessProblems(root); len(problems) != 0 {
+		t.Fatalf("an AGENTS.md exactly at the cap was refused: %v", problems)
 	}
 }
