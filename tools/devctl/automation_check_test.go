@@ -204,11 +204,14 @@ func TestAutomationCheckRunsEveryChecker(t *testing.T) {
 				t.Fatalf("%s reported nothing on a broken tree, so the wiring assertion below proves nothing",
 					checker.name)
 			}
+			label := checker.name + ": "
+			if strings.Contains(report, label+label) {
+				t.Fatalf("%s is named twice on a report line", checker.name)
+			}
 			for _, problem := range problems {
-				named := checker.name + ": " + problem
-				if !strings.Contains(report, named) {
-					t.Fatalf("%s is not wired into automationCheck under its own name: %q is missing from the report",
-						checker.name, named)
+				if !hasReportLine(report, statusFail+" "+label, problem) {
+					t.Fatalf("%s is not wired into automationCheck under its own name: no %q line ends with %q",
+						checker.name, statusFail+" "+label, problem)
 				}
 			}
 		})
@@ -239,4 +242,13 @@ tasks:
 	if description, ok := tasks["missing"]; !ok || description != "" {
 		t.Fatalf("missing task was not detected: %#v", tasks)
 	}
+}
+
+func hasReportLine(report, prefix, problem string) bool {
+	for _, line := range strings.Split(report, "\n") {
+		if strings.HasPrefix(line, prefix) && strings.HasSuffix(line, problem) {
+			return true
+		}
+	}
+	return false
 }

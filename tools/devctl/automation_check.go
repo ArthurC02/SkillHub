@@ -19,8 +19,12 @@ func automationCheck(root string, out io.Writer) error {
 	problems = append(problems, taskfileProblems(tasks)...)
 	problems = append(problems, generatedMarkerProblems(root)...)
 	for _, checker := range documentCheckers() {
+		label := checker.name + ": "
 		for _, problem := range checker.check(root) {
-			problems = append(problems, checker.name+": "+problem)
+			if !strings.HasPrefix(problem, label) {
+				problem = label + problem
+			}
+			problems = append(problems, problem)
 		}
 	}
 
