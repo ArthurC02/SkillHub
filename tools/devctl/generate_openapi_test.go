@@ -9,6 +9,7 @@ import (
 )
 
 func TestGenerateTypeScriptOpenAPIFailsFastWhenScratchIsUnusable(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	scratch := filepath.Join(root, "scratch-is-a-file")
 	if err := os.WriteFile(scratch, []byte("x"), 0o600); err != nil {
@@ -20,6 +21,7 @@ func TestGenerateTypeScriptOpenAPIFailsFastWhenScratchIsUnusable(t *testing.T) {
 }
 
 func TestContractLimitsIsSkippedWhenTypeScriptGenerationFails(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	scratch := filepath.Join(root, "scratch-is-a-file")
 	if err := os.WriteFile(scratch, []byte("x"), 0o600); err != nil {
@@ -40,6 +42,7 @@ func TestContractLimitsIsSkippedWhenTypeScriptGenerationFails(t *testing.T) {
 }
 
 func TestValidateGeneratedContentRejectsTheRepoAbsolutePath(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	repoRoot := filepath.Join(root, "repo")
 	generated := filepath.Join(root, "generated")
@@ -51,6 +54,7 @@ func TestValidateGeneratedContentRejectsTheRepoAbsolutePath(t *testing.T) {
 }
 
 func TestValidateGeneratedContentRejectsATimestampHeaderInTheFirst20Lines(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	repoRoot := filepath.Join(root, "repo")
 	generated := filepath.Join(root, "generated")
@@ -62,6 +66,7 @@ func TestValidateGeneratedContentRejectsATimestampHeaderInTheFirst20Lines(t *tes
 }
 
 func TestValidateGeneratedContentAcceptsATimestampMentionPastTheHeaderWindow(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	repoRoot := filepath.Join(root, "repo")
 	generated := filepath.Join(root, "generated")
@@ -77,6 +82,7 @@ func TestValidateGeneratedContentAcceptsATimestampMentionPastTheHeaderWindow(t *
 }
 
 func TestValidateGeneratedContentAcceptsACleanFile(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	repoRoot := filepath.Join(root, "repo")
 	generated := filepath.Join(root, "generated")

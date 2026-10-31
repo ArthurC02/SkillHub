@@ -7,6 +7,7 @@ import (
 )
 
 func TestDomainMemoryExecutablePicksTheCommittedBinaryForThePlatform(t *testing.T) {
+	t.Parallel()
 	engine := filepath.Join("repo", ".claude", "skills", "domain-memory", "engine")
 	cases := []struct {
 		name, goos, goarch, want string
@@ -29,6 +30,7 @@ func TestDomainMemoryExecutablePicksTheCommittedBinaryForThePlatform(t *testing.
 }
 
 func TestDomainMemoryOutput(t *testing.T) {
+	t.Parallel()
 	commandErr := errors.New("exit status 1")
 	cases := []struct {
 		name   string

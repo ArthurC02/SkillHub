@@ -35,6 +35,7 @@ func TestDeploymentFactsThatAgreeAreAccepted(t *testing.T) {
 }
 
 func TestEachDeploymentFactIsCaughtWhenOnlyOneSiteChanges(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name  string
 		sites map[string]string

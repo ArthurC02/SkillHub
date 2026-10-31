@@ -22,6 +22,7 @@ const events = `
 `
 
 func TestSummarizeCountsSkipsAndGroupsThemByReason(t *testing.T) {
+	t.Parallel()
 	s, err := summarize(strings.NewReader(strings.TrimSpace(events)), io_Discard{})
 	if err != nil {
 		t.Fatal(err)
@@ -44,6 +45,7 @@ func TestSummarizeCountsSkipsAndGroupsThemByReason(t *testing.T) {
 }
 
 func TestSummarizeEchoesOutputSoFailuresStayVisible(t *testing.T) {
+	t.Parallel()
 	var raw strings.Builder
 	if _, err := summarize(strings.NewReader(strings.TrimSpace(events)), &raw); err != nil {
 		t.Fatal(err)
@@ -54,6 +56,7 @@ func TestSummarizeEchoesOutputSoFailuresStayVisible(t *testing.T) {
 }
 
 func TestReportNamesTheSkipCountAndEveryReason(t *testing.T) {
+	t.Parallel()
 	s, err := summarize(strings.NewReader(strings.TrimSpace(events)), io_Discard{})
 	if err != nil {
 		t.Fatal(err)
@@ -74,6 +77,7 @@ func TestReportNamesTheSkipCountAndEveryReason(t *testing.T) {
 }
 
 func TestReportSaysNothingExtraWhenNothingSkipped(t *testing.T) {
+	t.Parallel()
 	s := testSummary{Passed: 5, Reasons: map[string]int{}}
 	var out strings.Builder
 	s.write(&out, "devctl")
@@ -87,6 +91,7 @@ type io_Discard struct{}
 func (io_Discard) Write(p []byte) (int, error) { return len(p), nil }
 
 func TestPackagePatternDefaultsSoTheModuleRootIsNotTested(t *testing.T) {
+	t.Parallel()
 
 	got := withPackagePattern([]string{"-count=1"})
 	if len(got) != 2 || got[1] != "./..." {
@@ -99,6 +104,7 @@ func TestPackagePatternDefaultsSoTheModuleRootIsNotTested(t *testing.T) {
 }
 
 func TestAReportNeverReplaysCachedResults(t *testing.T) {
+	t.Parallel()
 	if got := uncached([]string{"./..."}); len(got) != 2 || got[0] != "-count=1" {
 		t.Errorf("got %v, want -count=1 added", got)
 	}

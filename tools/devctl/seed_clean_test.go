@@ -250,6 +250,7 @@ func TestSeedCleanFailsWhenTheCatalogSearchFindsNothing(t *testing.T) {
 }
 
 func TestSeedCleanExcludesTheUnvalidatablePackageAndSaysWhy(t *testing.T) {
+	t.Parallel()
 	root, err := findRepoRoot()
 	if err != nil {
 		t.Fatal(err)
@@ -289,6 +290,7 @@ func TestSeedCleanExcludesTheUnvalidatablePackageAndSaysWhy(t *testing.T) {
 }
 
 func TestPartitionSeedEntriesRejectsAStaleExclusion(t *testing.T) {
+	t.Parallel()
 	_, _, err := partitionSeedEntries([]seedEntry{{name: "x", provenance: "tools/goldenset/corpus/moved.md"}})
 	if err == nil {
 		t.Fatal("expected an error for an exclusion that matched nothing, got nil")
@@ -559,6 +561,7 @@ func TestSeedCleanStopsAtTheFirstUnindexedPackage(t *testing.T) {
 }
 
 func TestFirstImportedSkillIDReadsTheOnlySkillAndNothingElse(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name string
 		body string
@@ -607,6 +610,7 @@ func TestSeedCleanStopsWhenTheImportReplyCarriesNoSkillID(t *testing.T) {
 }
 
 func TestTheIndexCheckSaysSoWhenTheDetailDoesNotAnswer(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name   string
 		status int

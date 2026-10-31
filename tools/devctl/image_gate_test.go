@@ -15,6 +15,7 @@ const gateDockerfile = "FROM " + pinnedBase + "\n" +
 	"COPY run.mjs /opt/skillhub/run.mjs\n"
 
 func TestTheRealRuntimeDockerfileIsPinnedAndItsInputsAreKnown(t *testing.T) {
+	t.Parallel()
 	root, err := findRepoRoot()
 	if err != nil {
 		t.Fatal(err)

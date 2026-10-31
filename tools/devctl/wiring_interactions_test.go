@@ -75,6 +75,7 @@ var (
 }
 
 func TestBehaviourInjectedIntoAnotherContextIsAnEdge(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name, body, at string
 	}{
@@ -96,6 +97,7 @@ func TestBehaviourInjectedIntoAnotherContextIsAnEdge(t *testing.T) {
 }
 
 func TestDataAndForeignSlotsAreNotCollaborations(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name, body string
 	}{
@@ -115,6 +117,7 @@ func TestDataAndForeignSlotsAreNotCollaborations(t *testing.T) {
 }
 
 func TestOnlyUnregisteredEdgesOutsideTheBaselineFail(t *testing.T) {
+	t.Parallel()
 	edges := map[contextEdge]string{
 		{"eval", "run"}:     "wiring/batches.go:25",
 		{"eval", "testlab"}: "wiring/trial.go:10",
@@ -138,6 +141,7 @@ func TestOnlyUnregisteredEdgesOutsideTheBaselineFail(t *testing.T) {
 }
 
 func TestAReviewedInteractionRegistersItsConsumerToProducerEdge(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeAt(t, root, interactionsFile+".json", `{"interactions": [
 		{"consumer_context": "run", "producer_context": "registry", "status": "reviewed"},
@@ -153,6 +157,7 @@ func TestAReviewedInteractionRegistersItsConsumerToProducerEdge(t *testing.T) {
 }
 
 func TestTheCompositionRootWiresOnlyRegisteredCollaborations(t *testing.T) {
+	t.Parallel()
 	for _, problem := range wiringInteractionProblems("../..") {
 		t.Error(problem)
 	}

@@ -27,6 +27,7 @@ const twoOpenItems = "" +
 	"| **丙-3** | a | b | 等封測流量 |\n"
 
 func TestBacklogTallyAcceptsALedgerThatMatchesItsRows(t *testing.T) {
+	t.Parallel()
 	root := writeBacklog(t,
 		"| 丙 | **2** | 逐列重數 <!-- open: 2,3 --> |",
 		twoOpenItems)
@@ -36,6 +37,7 @@ func TestBacklogTallyAcceptsALedgerThatMatchesItsRows(t *testing.T) {
 }
 
 func TestBacklogTallyRejectsTheThreeWaysTheNumberHasDrifted(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name   string
 		ledger string
@@ -76,6 +78,7 @@ func TestBacklogTallyRejectsTheThreeWaysTheNumberHasDrifted(t *testing.T) {
 }
 
 func TestBacklogTallySaysSoWhenItHasLostItsSubject(t *testing.T) {
+	t.Parallel()
 	t.Run("no item rows", func(t *testing.T) {
 		root := writeBacklog(t, "| 丙 | **2** | 逐列重數 <!-- open: 2,3 --> |", "")
 		if problems := backlogTallyProblems(root); len(problems) == 0 {
@@ -96,6 +99,7 @@ func TestBacklogTallySaysSoWhenItHasLostItsSubject(t *testing.T) {
 }
 
 func TestBacklogTallyAcceptsTheRealDocument(t *testing.T) {
+	t.Parallel()
 
 	if problems := backlogTallyProblems("../.."); len(problems) != 0 {
 		t.Fatalf("the real %s was rejected:\n%s", backlogDoc, strings.Join(problems, "\n"))
@@ -103,6 +107,7 @@ func TestBacklogTallyAcceptsTheRealDocument(t *testing.T) {
 }
 
 func TestBacklogTallyCatchesAClosedRowStillCountedAsOpen(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name string
 		row  string
@@ -135,6 +140,7 @@ func TestBacklogTallyCatchesAClosedRowStillCountedAsOpen(t *testing.T) {
 }
 
 func TestBacklogTallyDoesNotCloseARowForDiscussingAnotherRowsClosure(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name string
 		row  string

@@ -290,6 +290,7 @@ func TestDepAuditAcceptsOnlyTheFullFlag(t *testing.T) {
 }
 
 func TestEveryLockedProjectIsAudited(t *testing.T) {
+	t.Parallel()
 	root, err := findRepoRoot()
 	if err != nil {
 		t.Fatal(err)

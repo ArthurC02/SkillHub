@@ -32,6 +32,7 @@ func browserWorkflowJob(t *testing.T, name string) string {
 }
 
 func TestBrowserShardsRetainEverySupportedEnvironment(t *testing.T) {
+	t.Parallel()
 	job := browserWorkflowJob(t, "web-browser-shards")
 	for environment, total := range map[string]int{
 		"ubuntu-latest\n            browser: chromium":  2,
@@ -62,6 +63,7 @@ func TestBrowserShardsRetainEverySupportedEnvironment(t *testing.T) {
 }
 
 func TestWebInstallsLeaveAuditingToTheRequiredDependencyAudit(t *testing.T) {
+	t.Parallel()
 	for _, name := range []string{"web", "web-browser-shards"} {
 		job := browserWorkflowJob(t, name)
 		if strings.Count(job, "- run: npm ci --no-audit\n") != 2 || strings.Contains(job, "- run: npm ci\n") {
@@ -83,6 +85,7 @@ func TestWebInstallsLeaveAuditingToTheRequiredDependencyAudit(t *testing.T) {
 }
 
 func TestBrowserRequiredChecksFailUnlessEveryShardSucceeded(t *testing.T) {
+	t.Parallel()
 	job := browserWorkflowJob(t, "web-browser")
 	for _, required := range []string{
 		"needs: [changes, web-browser-shards]",
@@ -104,6 +107,7 @@ func TestBrowserRequiredChecksFailUnlessEveryShardSucceeded(t *testing.T) {
 }
 
 func TestImagePublicationWaitsForNativeBrowserChecks(t *testing.T) {
+	t.Parallel()
 	job := browserWorkflowJob(t, "images-push")
 	_, remaining, found := strings.Cut(job, "    needs: [")
 	if !found {
@@ -132,6 +136,7 @@ func TestImagePublicationWaitsForNativeBrowserChecks(t *testing.T) {
 }
 
 func TestBrowserPreviewPinsOneLoopbackAddress(t *testing.T) {
+	t.Parallel()
 	root, err := findRepoRoot()
 	if err != nil {
 		t.Fatal(err)

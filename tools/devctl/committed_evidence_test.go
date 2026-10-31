@@ -294,6 +294,7 @@ func TestAToolThatPassesWithOnlyCurrentResultsIsClean(t *testing.T) {
 }
 
 func TestARangeWhoseEndHasNoRegistryHasNoProblemsAndNoWarnings(t *testing.T) {
+	t.Parallel()
 	repo := newGitRepo(t)
 	repo.commit(t, map[string]string{"README.md": "a\n"})
 	base := repo.head(t)
@@ -335,6 +336,7 @@ func TestAWarningFromTheEvidenceToolIsPrintedByThePrePushHook(t *testing.T) {
 }
 
 func TestAnArchiveEntryThatLeavesTheSnapshotIsRefused(t *testing.T) {
+	t.Parallel()
 	target := t.TempDir()
 	err := writeArchived(target, "../x", strings.NewReader("y"))
 	if err == nil || err.Error() != "git archive entry escapes the snapshot: ../x" {
@@ -343,6 +345,7 @@ func TestAnArchiveEntryThatLeavesTheSnapshotIsRefused(t *testing.T) {
 }
 
 func TestAnArchiveEntryInASiblingDirectoryWithTheSamePrefixIsRefused(t *testing.T) {
+	t.Parallel()
 	target := t.TempDir()
 	name := "../" + filepath.Base(target) + "x/f"
 	if err := writeArchived(target, name, strings.NewReader("y")); err == nil {
@@ -351,6 +354,7 @@ func TestAnArchiveEntryInASiblingDirectoryWithTheSamePrefixIsRefused(t *testing.
 }
 
 func TestAnArchiveEntryInsideTheSnapshotIsWritten(t *testing.T) {
+	t.Parallel()
 	target := t.TempDir()
 	if err := writeArchived(target, "docs/a.txt", strings.NewReader("body")); err != nil {
 		t.Fatal(err)

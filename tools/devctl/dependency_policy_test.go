@@ -177,6 +177,7 @@ func TestDependencyPolicyComparesComposeWithTheWorkflows(t *testing.T) {
 }
 
 func TestTheRealTreeFollowsTheDependencyPolicy(t *testing.T) {
+	t.Parallel()
 	root, err := findRepoRoot()
 	if err != nil {
 		t.Fatal(err)

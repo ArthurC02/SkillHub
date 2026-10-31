@@ -30,6 +30,7 @@ func assertVocabularySourcesAndReadersAreLive(t *testing.T, root string, vocabul
 }
 
 func TestTheRealRepositoryHasNoDomainVocabularyDrift(t *testing.T) {
+	t.Parallel()
 	root, err := findRepoRoot()
 	if err != nil {
 		t.Fatal(err)
@@ -47,6 +48,7 @@ func TestTheRealRepositoryHasNoDomainVocabularyDrift(t *testing.T) {
 }
 
 func TestTheRealRunStatusEnumCoversTheRunLifecycle(t *testing.T) {
+	t.Parallel()
 	root, err := findRepoRoot()
 	if err != nil {
 		t.Fatal(err)
@@ -65,6 +67,7 @@ func TestTheRealRunStatusEnumCoversTheRunLifecycle(t *testing.T) {
 }
 
 func TestTheRealMigrationVocabulariesReflectLaterEdits(t *testing.T) {
+	t.Parallel()
 	root, err := findRepoRoot()
 	if err != nil {
 		t.Fatal(err)
@@ -82,6 +85,7 @@ func TestTheRealMigrationVocabulariesReflectLaterEdits(t *testing.T) {
 }
 
 func TestTheRealCreationStateVocabularyIsLarge(t *testing.T) {
+	t.Parallel()
 	root, err := findRepoRoot()
 	if err != nil {
 		t.Fatal(err)

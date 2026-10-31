@@ -30,6 +30,7 @@ const ledgerTrigger = "CREATE TRIGGER ledger_immutable\n" +
 	"    FOR EACH ROW EXECUTE FUNCTION enforce_immutable();\n"
 
 func TestImmutabilityProofAcceptsATriggerWithBothCases(t *testing.T) {
+	t.Parallel()
 	root := writeImmutabilityFixture(t, ledgerTrigger,
 		"SELECT must_fail($$UPDATE ledger SET amount = 1 WHERE id = 1$$);\n"+
 			"SELECT must_fail($$DELETE FROM ledger WHERE id = 1$$);\n")
@@ -39,6 +40,7 @@ func TestImmutabilityProofAcceptsATriggerWithBothCases(t *testing.T) {
 }
 
 func TestImmutabilityProofNamesTheGuardedOperationWithNoCase(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name string
 		test string
@@ -74,6 +76,7 @@ func TestImmutabilityProofNamesTheGuardedOperationWithNoCase(t *testing.T) {
 }
 
 func TestImmutabilityProofAsksOnlyForTheOperationsTheTriggerGuards(t *testing.T) {
+	t.Parallel()
 	root := writeImmutabilityFixture(t,
 		"CREATE TRIGGER creation_event_immutable BEFORE UPDATE ON creation_session_events\n"+
 			" FOR EACH ROW EXECUTE FUNCTION forbid_creation_event_update();\n",
@@ -84,6 +87,7 @@ func TestImmutabilityProofAsksOnlyForTheOperationsTheTriggerGuards(t *testing.T)
 }
 
 func TestImmutabilityProofForgetsATriggerThatWasDroppedForGood(t *testing.T) {
+	t.Parallel()
 	root := writeImmutabilityFixture(t,
 		ledgerTrigger+"\nDROP TRIGGER ledger_immutable ON ledger;\n",
 		"-- nothing left to prove\n")

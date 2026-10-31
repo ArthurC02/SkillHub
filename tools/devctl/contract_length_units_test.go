@@ -17,6 +17,7 @@ func lengthUnitFixture(t *testing.T, files map[string]string) []string {
 }
 
 func TestAByteCountAgainstACharacterLimitIsFound(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name  string
 		files map[string]string
@@ -42,6 +43,7 @@ func TestAByteCountAgainstACharacterLimitIsFound(t *testing.T) {
 }
 
 func TestCountsThatMatchTheLimitsUnitAreIgnored(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name, source string
 	}{

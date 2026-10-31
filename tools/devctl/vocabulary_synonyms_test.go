@@ -7,6 +7,7 @@ import (
 )
 
 func TestIdentifierWordsSplitEveryNamingStyle(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name string
 		want []string
@@ -26,6 +27,7 @@ func TestIdentifierWordsSplitEveryNamingStyle(t *testing.T) {
 }
 
 func TestASynonymMatchesOnlyWholeWordsInOrder(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name, synonym string
 		want          bool
@@ -45,6 +47,7 @@ func TestASynonymMatchesOnlyWholeWordsInOrder(t *testing.T) {
 }
 
 func TestASynonymUseOutsideTheBaselineFailsAndAStaleEntryMustGo(t *testing.T) {
+	t.Parallel()
 	terms := []vocabularyTerm{
 		{Name: "Skill withheld", Synonyms: []string{"baseline", "without skill"}},
 		{Name: "Reference batch", Synonyms: []string{"baseline"}},
@@ -71,6 +74,7 @@ func TestASynonymUseOutsideTheBaselineFailsAndAStaleEntryMustGo(t *testing.T) {
 }
 
 func TestOnlyReviewedTermsWithSynonymsAreEnforced(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeAt(t, root, vocabularyFile+".json", `{"terms": [
 		{"id": "a", "name": "A", "synonyms": ["x"], "status": "reviewed"},
@@ -87,6 +91,7 @@ func TestOnlyReviewedTermsWithSynonymsAreEnforced(t *testing.T) {
 }
 
 func TestDeclaredNamesCoverEveryKindOfDeclaration(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeAt(t, root, platformInternalDir+"/ctx/a/a.go", `package a
 
@@ -115,6 +120,7 @@ func (b Batch) RunWithoutSkill(baselineID int) {}
 }
 
 func TestAContractKeyIsNamedWithoutItsLineSoTheBaselineSurvivesEdits(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeAt(t, root, publicContractFile, "paths:\n  /a:\n    with_baseline: 1\nschemas:\n  B:\n    with_baseline: 2\n")
 	names, err := contractKeyNames(root + "/" + publicContractFile)
@@ -127,6 +133,7 @@ func TestAContractKeyIsNamedWithoutItsLineSoTheBaselineSurvivesEdits(t *testing.
 }
 
 func TestTheRepositoryAvoidsTheNamesItsVocabularyRetired(t *testing.T) {
+	t.Parallel()
 	for _, problem := range vocabularySynonymProblems("../..") {
 		t.Error(problem)
 	}

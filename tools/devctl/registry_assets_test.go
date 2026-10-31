@@ -36,6 +36,7 @@ func stubDomainMemoryTool(t *testing.T, tool func(string, ...string) (string, er
 }
 
 func TestTheRepositoryRegistryIsReadThroughTheDomainMemoryExport(t *testing.T) {
+	t.Parallel()
 	resetExportedRegistries(t)
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {

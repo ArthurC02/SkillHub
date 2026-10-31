@@ -39,6 +39,7 @@ func withComplexityFixture(t *testing.T, contents string) string {
 }
 
 func TestComplexityExemptionsAcceptsAModuleThatExemptsNoFunction(t *testing.T) {
+	t.Parallel()
 	root := withComplexityFixture(t, complexityFixtureLint(true, "20", 0))
 	if problems := complexityExemptionProblems(root); len(problems) != 0 {
 		t.Fatalf("a module with no per-function exemption at the ceiling was rejected: %v", problems)
@@ -46,6 +47,7 @@ func TestComplexityExemptionsAcceptsAModuleThatExemptsNoFunction(t *testing.T) {
 }
 
 func TestComplexityExemptionsRejectsASingleExemptedFunction(t *testing.T) {
+	t.Parallel()
 	root := withComplexityFixture(t, complexityFixtureLint(true, "20", 1))
 	problems := complexityExemptionProblems(root)
 	if len(problems) != 1 || !strings.Contains(problems[0], "exempts 1 functions by name; none are allowed") {
@@ -54,6 +56,7 @@ func TestComplexityExemptionsRejectsASingleExemptedFunction(t *testing.T) {
 }
 
 func TestComplexityExemptionsCountsEveryExemptedFunction(t *testing.T) {
+	t.Parallel()
 	root := withComplexityFixture(t, complexityFixtureLint(true, "20", 3))
 	problems := complexityExemptionProblems(root)
 	if len(problems) != 1 || !strings.Contains(problems[0], "exempts 3 functions by name") {
@@ -62,6 +65,7 @@ func TestComplexityExemptionsCountsEveryExemptedFunction(t *testing.T) {
 }
 
 func TestComplexityExemptionsRejectsGocognitNotEnabled(t *testing.T) {
+	t.Parallel()
 	root := withComplexityFixture(t, complexityFixtureLint(false, "20", 0))
 	problems := complexityExemptionProblems(root)
 	if len(problems) != 1 || !strings.Contains(problems[0], "does not enable gocognit") {
@@ -70,6 +74,7 @@ func TestComplexityExemptionsRejectsGocognitNotEnabled(t *testing.T) {
 }
 
 func TestComplexityExemptionsRejectsAMissingMinComplexity(t *testing.T) {
+	t.Parallel()
 	root := withComplexityFixture(t, complexityFixtureLint(true, "", 0))
 	problems := complexityExemptionProblems(root)
 	if len(problems) != 1 || !strings.Contains(problems[0], "sets no gocognit min-complexity") {
@@ -78,6 +83,7 @@ func TestComplexityExemptionsRejectsAMissingMinComplexity(t *testing.T) {
 }
 
 func TestComplexityExemptionsRejectsOneOverTheCeilingBoundary(t *testing.T) {
+	t.Parallel()
 	root := withComplexityFixture(t, complexityFixtureLint(true, "21", 0))
 	problems := complexityExemptionProblems(root)
 	if len(problems) != 1 || !strings.Contains(problems[0], "sets min-complexity 21, above the registered ceiling 20") {
@@ -86,6 +92,7 @@ func TestComplexityExemptionsRejectsOneOverTheCeilingBoundary(t *testing.T) {
 }
 
 func TestComplexityExemptionsReportsAMissingLintFile(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	original := complexityGateLintPaths
 	complexityGateLintPaths = []string{"does/not/exist.yml"}
@@ -98,6 +105,7 @@ func TestComplexityExemptionsReportsAMissingLintFile(t *testing.T) {
 }
 
 func TestComplexityExemptionsOnTheRealRepoConfigsHasNoProblems(t *testing.T) {
+	t.Parallel()
 	root, err := findRepoRoot()
 	if err != nil {
 		t.Fatal(err)

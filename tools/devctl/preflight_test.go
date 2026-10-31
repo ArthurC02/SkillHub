@@ -156,6 +156,7 @@ func TestPrePushRangesFollowGitsHookInput(t *testing.T) {
 }
 
 func TestTheRepoHookRunsPreflight(t *testing.T) {
+	t.Parallel()
 	root, err := findRepoRoot()
 	if err != nil {
 		t.Fatal(err)

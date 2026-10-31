@@ -43,6 +43,7 @@ type User struct{ ID int64 }
 }
 
 func TestSecondDataLayerProblemsFlagsThreeMatchingMethods(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeFakeGenPackage(t, root)
 
@@ -79,6 +80,7 @@ func (m *memQueries) DeleteUser(ctx context.Context, id int64) error {
 }
 
 func TestSecondDataLayerProblemsIgnoresTwoMatchingMethods(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeFakeGenPackage(t, root)
 
@@ -106,6 +108,7 @@ func (m *memQueries) GetUser(ctx context.Context, id int64) (gen.User, error) {
 }
 
 func TestSecondDataLayerProblemsRequiresSignatureNotJustName(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeFakeGenPackage(t, root)
 
@@ -134,6 +137,7 @@ func (s *Service) DeleteUser(ctx context.Context, ws workspace, id int64) error 
 }
 
 func TestSecondDataLayerProblemsReadsCodeNotComments(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeFakeGenPackage(t, root)
 	writeGoFile(t, root, "apps/platform/internal/fake/mem.go", `package fake
@@ -157,6 +161,7 @@ func TestSecondDataLayerProblemsReadsCodeNotComments(t *testing.T) {
 }
 
 func TestSecondDataLayerProblemsIgnoresGenItself(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeFakeGenPackage(t, root)
 
@@ -166,6 +171,7 @@ func TestSecondDataLayerProblemsIgnoresGenItself(t *testing.T) {
 }
 
 func TestTheRealRepositoryHasNoSecondDataLayer(t *testing.T) {
+	t.Parallel()
 	root, err := findRepoRoot()
 	if err != nil {
 		t.Skipf("not inside the repository: %v", err)

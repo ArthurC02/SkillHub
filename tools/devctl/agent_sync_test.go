@@ -11,6 +11,7 @@ import (
 const claudeAgentFixture = "---\nname: writer\ndescription: writes files\nmodel: sonnet\nskills: [false-green]\n---\n\nOnly write approved paths.\n"
 
 func TestAgentSyncGeneratesPortableArtifactsAndDetectsDrift(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeTestFile(t, root, ".claude/agents/writer.md", claudeAgentFixture)
 	writeTestFile(t, root, ".claude/skills/false-green/SKILL.md", "---\nname: false-green\n---\n\nWatch the exit code.\n")
@@ -39,6 +40,7 @@ func TestAgentSyncGeneratesPortableArtifactsAndDetectsDrift(t *testing.T) {
 }
 
 func TestAgentSyncLeavesAClaudeOnlyPluginOutOfThePortableSkills(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeTestFile(t, root, ".claude/agents/writer.md", claudeAgentFixture)
 	writeTestFile(t, root, ".claude/skills/guards/.claude-plugin/plugin.json", "{\"name\":\"guards\"}\n")
@@ -57,12 +59,14 @@ func TestAgentSyncLeavesAClaudeOnlyPluginOutOfThePortableSkills(t *testing.T) {
 }
 
 func TestParseClaudeAgentRejectsIncompleteFrontmatter(t *testing.T) {
+	t.Parallel()
 	if _, err := parseClaudeAgent("---\nname: x\n---\n\nBody.\n"); err == nil {
 		t.Fatal("incomplete frontmatter was accepted")
 	}
 }
 
 func TestCopyTreeRefusesASymlink(t *testing.T) {
+	t.Parallel()
 	source := t.TempDir()
 	target := filepath.Join(t.TempDir(), "out")
 	real := filepath.Join(source, "real.txt")

@@ -47,6 +47,7 @@ func writeBrowserInstallStub(t *testing.T, directory, name, body string) {
 }
 
 func TestBrowserDependencyRetriesRepairThePackageState(t *testing.T) {
+	t.Parallel()
 	if runtime.GOOS != "linux" {
 		t.Skip("the dependency installer runs on Linux; execute this integration test on its CI platform")
 	}

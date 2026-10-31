@@ -6,6 +6,7 @@ import (
 )
 
 func TestEveryRealMaintenanceJobIsScheduled(t *testing.T) {
+	t.Parallel()
 	root, err := findRepoRoot()
 	if err != nil {
 		t.Fatal(err)
@@ -16,6 +17,7 @@ func TestEveryRealMaintenanceJobIsScheduled(t *testing.T) {
 }
 
 func TestTheMaintenanceSwitchScanStillFindsTheJobs(t *testing.T) {
+	t.Parallel()
 	root, err := findRepoRoot()
 	if err != nil {
 		t.Fatal(err)

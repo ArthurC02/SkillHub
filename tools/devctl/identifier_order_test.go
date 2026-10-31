@@ -17,6 +17,7 @@ func writeIdentifierOrderSample(t *testing.T, root, body string) {
 }
 
 func TestIdentifierOrderWorkspaceFirstPasses(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeIdentifierOrderSample(t, root, `package sample
 
@@ -30,6 +31,7 @@ func WorkspaceSkill(workspaceID, skillID pgtype.UUID) {}
 }
 
 func TestIdentifierOrderWorkspaceAfterAnotherUUIDFails(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeIdentifierOrderSample(t, root, `package sample
 
@@ -44,6 +46,7 @@ func WorkspaceSkill(skillID, workspaceID pgtype.UUID) {}
 }
 
 func TestIdentifierOrderSingleUUIDPasses(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeIdentifierOrderSample(t, root, `package sample
 
@@ -57,6 +60,7 @@ func CatalogSkill(skillID pgtype.UUID) {}
 }
 
 func TestIdentifierOrderIdentityWorkspaceTypeIsNotCounted(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeIdentifierOrderSample(t, root, `package sample
 
@@ -73,6 +77,7 @@ func ListDatasets(ws identity.Workspace, testCaseID pgtype.UUID) {}
 }
 
 func TestIdentifierOrderMultiNameFieldFlattensInOrder(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeIdentifierOrderSample(t, root, `package sample
 
@@ -88,6 +93,7 @@ func Ledger(ctx context.Context, subject, workspaceID pgtype.UUID) {}
 }
 
 func TestIdentifierOrderStructFuncFieldTwoUnnamedUUIDsFails(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeIdentifierOrderSample(t, root, `package sample
 
@@ -108,6 +114,7 @@ type Service struct {
 }
 
 func TestIdentifierOrderStructFuncFieldSingleUnnamedUUIDPasses(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeIdentifierOrderSample(t, root, `package sample
 
@@ -127,6 +134,7 @@ type Service struct {
 }
 
 func TestIdentifierOrderNamedFuncTypeTwoUnnamedUUIDsFails(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeIdentifierOrderSample(t, root, `package sample
 
@@ -145,6 +153,7 @@ type Reader func(context.Context, pgtype.UUID, pgtype.UUID) (int, error)
 }
 
 func TestIdentifierOrderInterfaceMethodOrderViolationFails(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeIdentifierOrderSample(t, root, `package sample
 
@@ -165,6 +174,7 @@ type Reader interface {
 }
 
 func TestIdentifierOrderInterfaceMethodTwoUnnamedUUIDsFails(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeIdentifierOrderSample(t, root, `package sample
 
@@ -185,6 +195,7 @@ type Reader interface {
 }
 
 func TestIdentifierOrderFuncTypeInASignatureTwoUnnamedUUIDsFails(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeIdentifierOrderSample(t, root, `package sample
 
@@ -205,6 +216,7 @@ func readContentSource() func(context.Context, pgtype.UUID, pgtype.UUID) (int, e
 }
 
 func TestIdentifierOrderSkipsTestFiles(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, "apps", "platform", "cmd"), 0o755); err != nil {
 		t.Fatal(err)
@@ -221,6 +233,7 @@ func brokenHelper(skillID, workspaceID pgtype.UUID) {}
 }
 
 func TestIdentifierOrderSkipsGeneratedDirectory(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, "apps", "platform", "cmd"), 0o755); err != nil {
 		t.Fatal(err)
@@ -252,6 +265,7 @@ func writeIdentifierOrderFuncs(t *testing.T, root string, count int) {
 }
 
 func TestIdentifierOrderSelfCheckAtThresholdPasses(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeIdentifierOrderFuncs(t, root, identifierOrderMinDeclarations)
 	for _, problem := range identifierOrderProblems(root) {
@@ -262,6 +276,7 @@ func TestIdentifierOrderSelfCheckAtThresholdPasses(t *testing.T) {
 }
 
 func TestIdentifierOrderSelfCheckJustBelowThresholdFails(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeIdentifierOrderFuncs(t, root, identifierOrderMinDeclarations-1)
 	problems := identifierOrderProblems(root)
@@ -271,6 +286,7 @@ func TestIdentifierOrderSelfCheckJustBelowThresholdFails(t *testing.T) {
 }
 
 func TestTheRealRepositoryHasNoIdentifierOrderProblems(t *testing.T) {
+	t.Parallel()
 	root, err := findRepoRoot()
 	if err != nil {
 		t.Fatal(err)

@@ -46,6 +46,7 @@ func writeBaseline(t *testing.T, owner string, quoterBodies ...string) string {
 }
 
 func TestBaselineTallyAcceptsAMatchingBaseline(t *testing.T) {
+	t.Parallel()
 	root := writeBaseline(t, baselineValidOwnerBody)
 	if problems := baselineTallyProblems(root); len(problems) != 0 {
 		t.Fatalf("a correct baseline was rejected: %v", problems)
@@ -53,6 +54,7 @@ func TestBaselineTallyAcceptsAMatchingBaseline(t *testing.T) {
 }
 
 func TestBaselineTallyRejectsDrift(t *testing.T) {
+	t.Parallel()
 	for _, tc := range []struct {
 		name  string
 		owner string
@@ -85,6 +87,7 @@ func TestBaselineTallyRejectsDrift(t *testing.T) {
 }
 
 func TestBaselineTallyCatchesAStaleProseFigureWithinTheFuzzyWindow(t *testing.T) {
+	t.Parallel()
 	root := writeBaseline(t, baselineValidOwnerBody, "", "現行基線 5 項，仍待覆核。\n")
 	problems := strings.Join(baselineTallyProblems(root), "\n")
 	if !strings.Contains(problems, "names 5 baseline items") {

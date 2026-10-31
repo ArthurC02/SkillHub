@@ -28,6 +28,7 @@ func writeFakeDeclaredCapabilities(t *testing.T, root, capsJSON string) {
 }
 
 func TestCapabilityTableProblemsCatchesTheThreeWaysTheTableDrifts(t *testing.T) {
+	t.Parallel()
 	t.Run("an undeclared, unexcused var in .env.example", func(t *testing.T) {
 		root := t.TempDir()
 		writeFakeDeclaredCapabilities(t, root, `[{"id":"x","needs":["KNOWN_VAR"]}]`)

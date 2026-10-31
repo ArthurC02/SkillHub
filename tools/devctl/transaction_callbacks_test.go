@@ -14,6 +14,7 @@ func transactionFixture(t *testing.T, held, source string) []string {
 }
 
 func TestEveryExportedShapeThatHandsOutATransactionIsFound(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name, source, want string
 	}{
@@ -31,6 +32,7 @@ func TestEveryExportedShapeThatHandsOutATransactionIsFound(t *testing.T) {
 }
 
 func TestShapesThatDoNotHandATransactionAcrossAreIgnored(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name, source string
 	}{
@@ -48,6 +50,7 @@ func TestShapesThatDoNotHandATransactionAcrossAreIgnored(t *testing.T) {
 }
 
 func TestATransactionCallbackInTheBaselineIsHeldAndAStaleOneMustBeRemoved(t *testing.T) {
+	t.Parallel()
 	source := "func Do(fn func(pgx.Tx) error) {}\n"
 	if p := transactionFixture(t, `"ctx/a.Do"`, source); len(p) != 0 {
 		t.Errorf("a held callback: %v, want none", p)
@@ -59,6 +62,7 @@ func TestATransactionCallbackInTheBaselineIsHeldAndAStaleOneMustBeRemoved(t *tes
 }
 
 func TestAGenericPackageMayCallItsOwnerBackWithItsTransaction(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeAt(t, root, architectureBudgetFile, `{"packages": {}, "types": {}}`)
 	hook := "package a\n\nimport \"github.com/jackc/pgx/v5\"\n\ntype MarkFunc func(pgx.Tx) error\n"
@@ -71,6 +75,7 @@ func TestAGenericPackageMayCallItsOwnerBackWithItsTransaction(t *testing.T) {
 }
 
 func TestTestFilesMayHandOutTransactions(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeAt(t, root, architectureBudgetFile, `{"packages": {}, "types": {}}`)
 	writeAt(t, root, platformInternalDir+"/ctx/a/a_test.go", "package a\n\nimport \"github.com/jackc/pgx/v5\"\n\nfunc Do(fn func(pgx.Tx) error) {}\n")
@@ -80,6 +85,7 @@ func TestTestFilesMayHandOutTransactions(t *testing.T) {
 }
 
 func TestTheRepositoryHandsOutNoNewTransactions(t *testing.T) {
+	t.Parallel()
 	if p := transactionCallbackProblems("../.."); len(p) != 0 {
 		t.Errorf("transaction callbacks: %v", p)
 	}

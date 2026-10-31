@@ -12,6 +12,7 @@ import (
 )
 
 func TestGenerationJobsReportInJobOrderWhateverOrderTheyFinish(t *testing.T) {
+	t.Parallel()
 	secondDone := make(chan struct{})
 	jobs := []generationJob{
 		func(out io.Writer) ([]generationOutput, error) {
@@ -43,6 +44,7 @@ func TestGenerationJobsReportInJobOrderWhateverOrderTheyFinish(t *testing.T) {
 }
 
 func TestGenerationJobsReportEveryFailureAndTheirLogs(t *testing.T) {
+	t.Parallel()
 	jobs := []generationJob{
 		func(out io.Writer) ([]generationOutput, error) {
 			_, _ = io.WriteString(out, "sqlc said why\n")
@@ -65,6 +67,7 @@ func TestGenerationJobsReportEveryFailureAndTheirLogs(t *testing.T) {
 }
 
 func TestGenerationLockIsExclusive(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	release, err := acquireGenerationLock(root, time.Now())
 	if err != nil {
@@ -77,6 +80,7 @@ func TestGenerationLockIsExclusive(t *testing.T) {
 }
 
 func TestGenerationLockMetadataIsWorldReadable(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	release, err := acquireGenerationLock(root, time.Now())
 	if err != nil {
@@ -93,6 +97,7 @@ func TestGenerationLockMetadataIsWorldReadable(t *testing.T) {
 }
 
 func TestGenerationLockReclaimsExpiredFile(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	dir := filepath.Join(root, ".devctl")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -113,6 +118,7 @@ func TestGenerationLockReclaimsExpiredFile(t *testing.T) {
 }
 
 func TestCompareTreesReportsAddedChangedAndRemovedFiles(t *testing.T) {
+	t.Parallel()
 	generated := t.TempDir()
 	committed := t.TempDir()
 	writeTestFile(t, generated, "same.go", "same")
@@ -132,6 +138,7 @@ func TestCompareTreesReportsAddedChangedAndRemovedFiles(t *testing.T) {
 }
 
 func TestCompareTreesIgnoresPythonBytecode(t *testing.T) {
+	t.Parallel()
 	generated := t.TempDir()
 	committed := t.TempDir()
 	writeTestFile(t, generated, "models.py", "same")
@@ -147,6 +154,7 @@ func TestCompareTreesIgnoresPythonBytecode(t *testing.T) {
 }
 
 func TestAtomicReplaceDir(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	source := filepath.Join(root, "source")
 	target := filepath.Join(root, "target")
@@ -178,6 +186,7 @@ func readTestFile(t *testing.T, path string) string {
 }
 
 func TestSyncDriftedFilesWritesChangedAndAddedFilesAndRemovesDeletedOnes(t *testing.T) {
+	t.Parallel()
 	source, target := t.TempDir(), t.TempDir()
 	writeTestFile(t, source, "changed.go", "new")
 	writeTestFile(t, target, "changed.go", "old")
@@ -199,6 +208,7 @@ func TestSyncDriftedFilesWritesChangedAndAddedFilesAndRemovesDeletedOnes(t *test
 }
 
 func TestInstallingDriftedOutputsInstallsTheRestWhenOneFails(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	good := filepath.Join(root, "good")
 	writeTestFile(t, good, "a.go", "new")
@@ -216,6 +226,7 @@ func TestInstallingDriftedOutputsInstallsTheRestWhenOneFails(t *testing.T) {
 }
 
 func TestInstallingFallsBackToFileSyncWhenTheDirectoryCannotMove(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	parent := filepath.Join(root, "parent")
 	target := filepath.Join(parent, "generated")
@@ -245,6 +256,7 @@ func TestInstallingFallsBackToFileSyncWhenTheDirectoryCannotMove(t *testing.T) {
 }
 
 func TestPruningRemovesOnlyOldGenerationScratch(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	now := time.Now()
 	for _, name := range []string{"generate-old", "generate-new", "other-old"} {

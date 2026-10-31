@@ -42,6 +42,7 @@ func (f budgetFixture) problems() []string { return architectureBudgetProblems(f
 const emptyBudget = `{"packages": {}, "types": {}}`
 
 func TestAPackageAtTheFileLimitPassesAndOneMoreFileFails(t *testing.T) {
+	t.Parallel()
 	at := newBudgetFixture(t, emptyBudget)
 	at.files("ctx/a", maxPackageFiles)
 	if p := at.problems(); len(p) != 0 {
@@ -55,6 +56,7 @@ func TestAPackageAtTheFileLimitPassesAndOneMoreFileFails(t *testing.T) {
 }
 
 func TestTestFilesAndGeneratedPackagesAreNotCounted(t *testing.T) {
+	t.Parallel()
 	f := newBudgetFixture(t, emptyBudget)
 	f.files("ctx/a", maxPackageFiles)
 	writeAt(t, f.root, platformInternalDir+"/ctx/a/extra_test.go", "package p\n")
@@ -65,6 +67,7 @@ func TestTestFilesAndGeneratedPackagesAreNotCounted(t *testing.T) {
 }
 
 func TestTheBaselineOnlyLetsAPackageShrink(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name  string
 		files int
@@ -89,6 +92,7 @@ func TestTheBaselineOnlyLetsAPackageShrink(t *testing.T) {
 }
 
 func TestABaselineEntryForAPackageThatIsGoneMustBeRemoved(t *testing.T) {
+	t.Parallel()
 	f := newBudgetFixture(t, `{"packages": {"ctx/gone": 30}, "types": {}}`)
 	f.files("ctx/a", 1)
 	if p := f.problems(); len(p) != 1 || !strings.Contains(p[0], "ctx/gone no longer exists") {
@@ -97,6 +101,7 @@ func TestABaselineEntryForAPackageThatIsGoneMustBeRemoved(t *testing.T) {
 }
 
 func TestATypeAtTheMethodLimitPassesAndOneMoreMethodFails(t *testing.T) {
+	t.Parallel()
 	at := newBudgetFixture(t, emptyBudget)
 	at.typeWith("ctx/a", "Service", 1, maxTypeMethods)
 	if p := at.problems(); len(p) != 0 {
@@ -110,6 +115,7 @@ func TestATypeAtTheMethodLimitPassesAndOneMoreMethodFails(t *testing.T) {
 }
 
 func TestOnlyABehaviourBearingTypeIsHeldToTheFieldLimit(t *testing.T) {
+	t.Parallel()
 	cases := []struct {
 		name            string
 		fields, methods int
@@ -130,6 +136,7 @@ func TestOnlyABehaviourBearingTypeIsHeldToTheFieldLimit(t *testing.T) {
 }
 
 func TestTheRepositoryStaysWithinItsArchitectureBudget(t *testing.T) {
+	t.Parallel()
 	if p := architectureBudgetProblems("../.."); len(p) != 0 {
 		t.Errorf("architecture budget: %v", p)
 	}

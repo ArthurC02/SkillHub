@@ -43,6 +43,7 @@ func TestMain(m *testing.M) {
 }`
 
 func TestRequireDBGuardCatchesAPackageThatIgnoresTheSwitch(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writeTestMain(t, root, "good", guarded)
 	writeTestMain(t, root, "bad", unguarded)
@@ -73,6 +74,7 @@ func testPool(t *testing.T) string {
 }`
 
 func TestRequireDBGuardCatchesAHelperThatSkipsWithoutATestMain(t *testing.T) {
+	t.Parallel()
 	for name, pkg := range map[string]string{
 		"an internal package": filepath.Join("internal", "credit"),
 		"a command":           filepath.Join("cmd", "api"),
@@ -94,6 +96,7 @@ func TestRequireDBGuardCatchesAHelperThatSkipsWithoutATestMain(t *testing.T) {
 }
 
 func TestRequireDBGuardIgnoresTheVariableNameInsideTestData(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 	writePlatformTest(t, root, filepath.Join("internal", "evidence"), `package p
 var leaked = "SKILLHUB_TEST_DATABASE_URL=postgres://skillhub:hunter2@db:5432/skillhub_test"`)
@@ -103,6 +106,7 @@ var leaked = "SKILLHUB_TEST_DATABASE_URL=postgres://skillhub:hunter2@db:5432/ski
 }
 
 func TestRequireDBGuardIgnoresTestMainsWithNoDatabase(t *testing.T) {
+	t.Parallel()
 	root := t.TempDir()
 
 	writeTestMain(t, root, "nodb", `package p
@@ -113,6 +117,7 @@ func TestMain(m *testing.M) { os.Exit(m.Run()) }`)
 }
 
 func TestTheRealRepositoryPassesIsTheOnePeopleWillSee(t *testing.T) {
+	t.Parallel()
 	root, err := findRepoRoot()
 	if err != nil {
 		t.Skipf("not inside the repository: %v", err)

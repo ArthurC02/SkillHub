@@ -7,6 +7,7 @@ import (
 )
 
 func TestTheRealRepositoryHasNoRunStatusSQLDrift(t *testing.T) {
+	t.Parallel()
 	root, err := findRepoRoot()
 	if err != nil {
 		t.Fatal(err)

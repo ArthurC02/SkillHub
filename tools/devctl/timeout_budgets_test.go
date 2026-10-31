@@ -7,6 +7,7 @@ import (
 )
 
 func TestTheRealTimeoutBudgetsPair(t *testing.T) {
+	t.Parallel()
 	root, err := findRepoRoot()
 	if err != nil {
 		t.Fatal(err)
@@ -17,6 +18,7 @@ func TestTheRealTimeoutBudgetsPair(t *testing.T) {
 }
 
 func TestTheTimeoutMarkerScanStillFindsMarkers(t *testing.T) {
+	t.Parallel()
 	root, err := findRepoRoot()
 	if err != nil {
 		t.Fatal(err)

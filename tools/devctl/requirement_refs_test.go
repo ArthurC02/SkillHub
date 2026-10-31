@@ -9,6 +9,7 @@ import (
 )
 
 func TestTheRealSpecCitationsAllResolve(t *testing.T) {
+	t.Parallel()
 	root, err := findRepoRoot()
 	if err != nil {
 		t.Fatal(err)
@@ -20,6 +21,7 @@ func TestTheRealSpecCitationsAllResolve(t *testing.T) {
 }
 
 func TestTheRealSpecKeepsExactlyTheDocumentedRepeatedID(t *testing.T) {
+	t.Parallel()
 	root, err := findRepoRoot()
 	if err != nil {
 		t.Fatal(err)

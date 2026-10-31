@@ -52,6 +52,7 @@ func readRepoFile(t *testing.T, parts ...string) string {
 }
 
 func TestDevContainerConfigDeclaresTheWorkspaceBootstrap(t *testing.T) {
+	t.Parallel()
 	cfg := readDevContainerConfig(t)
 	if cfg.Build.Dockerfile != "../infra/images/devtools/Dockerfile" {
 		t.Fatalf("build.dockerfile = %q", cfg.Build.Dockerfile)
@@ -82,6 +83,7 @@ func TestDevContainerConfigDeclaresTheWorkspaceBootstrap(t *testing.T) {
 }
 
 func TestPostCreateScriptInitializesEnvironmentAndDependencies(t *testing.T) {
+	t.Parallel()
 	postCreate := readRepoFile(t, ".devcontainer", "post-create.sh")
 	if !strings.Contains(postCreate, "env-init") || !strings.Contains(postCreate, "bootstrap") {
 		t.Fatalf("post-create.sh no longer initializes .env and dependencies:\n%s", postCreate)
@@ -89,6 +91,7 @@ func TestPostCreateScriptInitializesEnvironmentAndDependencies(t *testing.T) {
 }
 
 func TestPostStartScriptStartsDockerAndProbesTheConfiguredSocket(t *testing.T) {
+	t.Parallel()
 	postStart := readRepoFile(t, ".devcontainer", "post-start.sh")
 	if !strings.Contains(postStart, "dockerd") || !strings.Contains(postStart, "docker info") {
 		t.Fatalf("post-start.sh no longer starts and verifies the nested Docker daemon:\n%s", postStart)
@@ -99,6 +102,7 @@ func TestPostStartScriptStartsDockerAndProbesTheConfiguredSocket(t *testing.T) {
 }
 
 func TestDevContainerEditorDefaultsCoverTheRepoToolchain(t *testing.T) {
+	t.Parallel()
 	cfg := readDevContainerConfig(t)
 	requiredExtensions := []string{
 		"golang.go",
@@ -137,6 +141,7 @@ func TestDevContainerEditorDefaultsCoverTheRepoToolchain(t *testing.T) {
 }
 
 func TestDevtoolsImageInstallsUvFromPinnedGitHubReleaseAssets(t *testing.T) {
+	t.Parallel()
 	root, err := findRepoRoot()
 	if err != nil {
 		t.Fatal(err)
