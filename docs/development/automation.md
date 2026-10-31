@@ -377,6 +377,8 @@ docker run --rm --network container:skillhub-postgres-1 \
 
 格式工具不在這台機器上時只印 `WARN`、不擋，CI 仍會查。**不要用 `--no-verify` 跳過**（`.claude/settings.json` 的 deny 已擋）；hook 誤擋就修 `tools/devctl/preflight.go`，不要繞過它。
 
+**commit-msg hook**：標題是 `fix(...)`／`fix:` 的 commit，訊息裡找不到「沒有這個修正時看過它紅」的字眼（mutant、reverted、變紅等）時，`devctl fix-proof` 把訊息送 Jev 判斷有沒有交代那次紅，機率低於 0.35 就印 `WARN`，**不擋 commit**。訊息已經定案（不准 `--amend`），所以看到它就當場做〈開發自動化〉第 6 條的突變：還原修正那一行、看測試變紅、改回來，把那次紅寫進下一個 commit；測試沒紅就先修測試。金鑰與送出規則同上；git 的 `#` 註解行與 scissors 線以下的 diff 不送出。
+
 **`task preflight`**：手動版，範圍是 `@{upstream}..HEAD`，另外多跑一次 `automation-check`。後者讀的是工作樹，所以別人未提交的檔可能讓它紅——看 `FAIL` 的檔名判斷是不是你的。
 
 **`task ci:status`**（`devctl ci-status [ref] [--wait]`）：列出該 commit 的**每一個** workflow run、失敗的 job 與 step、以及被 path filter 跳過而沒跑的 job。token 用 `git credential fill` 取得、只放在記憶體裡，所以不吃未驗證呼叫每小時 60 次的上限——幾個工作階段同時輪詢時，那個上限幾分鐘就會用完。結束碼：0 綠、1 紅（`cancelled` 也算，因為那個 commit 沒被驗到）、3 還在跑、4 還沒有 run。

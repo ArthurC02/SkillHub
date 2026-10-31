@@ -27,6 +27,7 @@ Usage:
   devctl seed-clean [--dry-run]  upload PORT-007's real, traceable demo skills into a clean-mode deployment
   devctl image-gate  runtime image source gates: digest-pinned base, upgrade record, image content matches its published version
   devctl preflight [--hook]  check unpushed commits for what CI would fail on (--hook reads git's pre-push input)
+  devctl fix-proof message-file  warn when a fix commit's message reports no test seen failing without the change (the commit-msg hook runs it)
   devctl ci-status [ref | --sha ref] [--wait]  every workflow run for a commit; exit 0 green, 1 red, 2 GitHub unreadable, 3 pending, 4 no runs
   devctl dep-audit [--full]  fail on fixable vulnerabilities, disallowed licenses and workflow findings (--full: vulnerabilities in every project, dev dependencies too)
 `
@@ -71,7 +72,7 @@ func runCommand(root, command string, args []string) (int, error) {
 		return runSetupCommand(root, command, args)
 	case cmdGen, "agent-sync", "automation-check", "comment-lint", cmdDomainMemoryRelease:
 		return runRepoCheckCommand(root, command, args)
-	case "test-report", "seed-clean", "image-gate", cmdPreflight, "ci-status", "dep-audit":
+	case "test-report", "seed-clean", "image-gate", cmdPreflight, "ci-status", "dep-audit", "fix-proof":
 		return runPipelineCommand(root, command, args)
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command %q\n\n%s", command, usage)
@@ -125,6 +126,8 @@ func runPipelineCommand(root, command string, args []string) (int, error) {
 		return 0, preflight(root, args, os.Stdin, os.Stdout)
 	case "ci-status":
 		return ciStatus(root, args, os.Stdout)
+	case "fix-proof":
+		return 0, fixProof(root, args, os.Stdout)
 	default:
 		return 0, depAudit(root, args, os.Stdout)
 	}
@@ -166,7 +169,7 @@ func bootstrap(root string, out io.Writer) error {
 		{name: "generated TypeScript client build", dir: dirAPIClientTS, cmd: ecosystemNPM, args: []string{cmdRun, cmdBuild}},
 		{name: "web packages", dir: dirAppsWeb, cmd: ecosystemNPM, args: []string{"ci"}},
 		{name: "LLM packages", dir: dirAppsLLM, cmd: "uv", args: []string{"sync", "--frozen"}, env: []string{"UV_LINK_MODE=copy"}},
-		{name: "git hooks (pre-push runs devctl preflight --hook)", dir: ".", cmd: "git", args: []string{"config", "core.hooksPath", ".githooks"}},
+		{name: "git hooks (pre-push runs devctl preflight --hook, commit-msg runs devctl fix-proof)", dir: ".", cmd: "git", args: []string{"config", "core.hooksPath", ".githooks"}},
 	}
 	for _, step := range steps {
 		fmt.Fprintln(out, "==>", step.name)

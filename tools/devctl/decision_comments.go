@@ -173,6 +173,18 @@ func (j decisionJudge) judgeBatch(batch []commentBlock) ([]float64, error) {
 			Criteria: decisionLogCriteria,
 		}
 	}
+	answers, err := j.ask(state, questions)
+	if err != nil {
+		return nil, err
+	}
+	probabilities := make([]float64, len(batch))
+	for i := range batch {
+		probabilities[i] = answers[fmt.Sprintf("c%d", i)]
+	}
+	return probabilities, nil
+}
+
+func (j decisionJudge) ask(state any, questions map[string]decisionQuestion) (map[string]float64, error) {
 	body, err := json.Marshal(map[string]any{"model": decisionJudgeModel, "state": state, "questions": questions})
 	if err != nil {
 		return nil, err
@@ -199,13 +211,13 @@ func (j decisionJudge) judgeBatch(batch []commentBlock) ([]float64, error) {
 	if err := json.NewDecoder(response.Body).Decode(&decoded); err != nil {
 		return nil, err
 	}
-	probabilities := make([]float64, len(batch))
-	for i := range batch {
-		answer, ok := decoded.Answers[fmt.Sprintf("c%d", i)]
+	probabilities := make(map[string]float64, len(questions))
+	for id := range questions {
+		answer, ok := decoded.Answers[id]
 		if !ok || answer.Noul == nil {
-			return nil, fmt.Errorf("judge left comment %d unanswered", i)
+			return nil, fmt.Errorf("judge left question %s unanswered", id)
 		}
-		probabilities[i] = *answer.Noul
+		probabilities[id] = *answer.Noul
 	}
 	return probabilities, nil
 }
