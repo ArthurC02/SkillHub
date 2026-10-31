@@ -33,7 +33,7 @@
 
 1. **`task ci:status`**（`devctl ci-status [ref] [--wait]`）。得到：哪些 workflow run、哪個 job、哪一個 step 失敗、哪些 job 被 path filter 跳過。**驗證**：它列出的 step 名稱要和你預期動到的區域對得上；對不上就先懷疑你的改動與這次失敗無關。
 2. **在可用存取範圍內讀那個 job 的 annotation。** 公開 repository 可先用匿名 REST；private repository 用可讀取它的憑證。得到：那一步自己送出來的文字。**驗證**：annotation 裡如果只有 `Process completed with exit code 1.`，**結論不是「查不到」，而是「那一步沒有發布可讀的診斷」**——跳到第 4 步。
-3. **本機以相同輸入重現。** 映像要自己建、環境變數照抄 workflow。**驗證**：跑得出同一個失敗才算重現；一次綠不代表不存在，間歇性失敗要多跑幾次。
+3. **本機以相同輸入重現。** 映像要自己建、環境變數照抄 workflow。本機不是 runner 的作業系統時，在同版本的容器裡跑同一條命令（例：`docker run --rm -v "$PWD:/repo" -w /repo/tools/devctl golang:<go.mod 的版本> go test -race -count=1 ./...`；Git Bash 上加 `MSYS_NO_PATHCONV=1`）——路徑分隔符、檔名大小寫與行尾只在那裡現形。**驗證**：跑得出同一個失敗才算重現；一次綠不代表不存在，間歇性失敗要多跑幾次。同一輸入時紅時綠，走 [`flaky-test`](../../.claude/skills/flaky-test/SKILL.md) 技能；在同作業系統、同版本下怎樣都重現不出來，先查 runner 環境（鏡像、快取、磁碟、網路）再懷疑程式。
 4. **把那一步改成會自己說話**，推上去，讓下一次失敗回答你。包 `report-failure.sh`、停止丟棄輸出、把判決印在傾印之後。這一步**不是繞路**：它一次修好所有後續的同類失敗，而猜根因只修這一次。
 5. **最後才是借權杖讀 log。**
 
