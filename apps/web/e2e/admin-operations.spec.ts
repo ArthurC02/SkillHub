@@ -812,8 +812,8 @@ test("a credit correction describes its deduction on a phone", async ({ page }) 
     }),
   );
   await page.goto("/admin/accounts");
-  await page.getByLabel("Email").fill("member@example.com");
-  await page.getByRole("button", { name: "查詢" }).click();
+  await page.getByLabel("Email", { exact: true }).fill("member@example.com");
+  await page.getByLabel("Email", { exact: true }).press("Enter");
   await page.locator("#admin-grant-amount").fill("-30");
   await page.locator("#admin-grant-note").fill("corrects an over-grant");
 
