@@ -76,6 +76,18 @@ var versionsThatMoveTogether = []versionGroup{
 		{toolchainYAML, toolchainPin("golangci_lint")},
 		{devtoolsDockerfile, regexp.MustCompile(`(?m)^ARG GOLANGCI_LINT_VERSION=(\S+)`)},
 	}},
+	{"docker", []versionSite{
+		{toolchainYAML, toolchainPin("docker_cli")},
+		{devtoolsDockerfile, regexp.MustCompile(`(?m)^ARG DOCKER_VERSION=(\S+)`)},
+	}},
+	{"docker-compose", []versionSite{
+		{toolchainYAML, toolchainPin("docker_compose")},
+		{devtoolsDockerfile, regexp.MustCompile(`(?m)^ARG COMPOSE_VERSION=(\S+)`)},
+	}},
+	{"openapi-generator", []versionSite{
+		{toolchainYAML, regexp.MustCompile(`(?m)^  openapi_generator: "(\d[^"]*)"`)},
+		{toolchainYAML, regexp.MustCompile(`openapi-generator-cli:v([^@\s]+)@`)},
+	}},
 	{"redocly", []versionSite{
 		{toolchainYAML, toolchainPin("redocly")},
 		{ciWorkflow, regexp.MustCompile(`@redocly/cli@(\S+)`)},

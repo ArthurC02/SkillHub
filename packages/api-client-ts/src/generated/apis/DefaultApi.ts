@@ -3106,13 +3106,13 @@ export interface DefaultApiInterface {
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
      */
-    downloadArtifactContentRaw(requestParameters: DownloadArtifactContentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Blob>>;
+    downloadArtifactContentRaw(requestParameters: DownloadArtifactContentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<runtime.HttpFile>>;
 
     /**
      * **The platform streams the bytes; it does not hand out a pre-signed URL** (packaging-design §7.1). Workspace scope is then the session middleware already in place rather than a second authorization scheme; the URL is not secret material, so it can appear in a log and in the audit event this download writes; and the status and restriction checks happen in this handler on every request instead of once at signing time, where a hold applied inside the TTL would not have stopped anything. Bytes crossing the API process is movement, not execution (iron rule 1).  One successful download writes two things in one transaction (iron rule 9): a download record (WS-004, what the user sees) and an audit event (CORE-008, what compliance keeps). Those two are not merged — their retention and their visibility differ, and one row would bind each to the stricter of the two. 
      * The package bytes themselves (PACK-001)
      */
-    downloadArtifactContent(requestParameters: DownloadArtifactContentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Blob>;
+    downloadArtifactContent(requestParameters: DownloadArtifactContentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.HttpFile>;
 
     /**
      * Creates request options for engagePlatformAgentBrake without sending the request
@@ -8043,7 +8043,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      * **The platform streams the bytes; it does not hand out a pre-signed URL** (packaging-design §7.1). Workspace scope is then the session middleware already in place rather than a second authorization scheme; the URL is not secret material, so it can appear in a log and in the audit event this download writes; and the status and restriction checks happen in this handler on every request instead of once at signing time, where a hold applied inside the TTL would not have stopped anything. Bytes crossing the API process is movement, not execution (iron rule 1).  One successful download writes two things in one transaction (iron rule 9): a download record (WS-004, what the user sees) and an audit event (CORE-008, what compliance keeps). Those two are not merged — their retention and their visibility differ, and one row would bind each to the stricter of the two. 
      * The package bytes themselves (PACK-001)
      */
-    async downloadArtifactContentRaw(requestParameters: DownloadArtifactContentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Blob>> {
+    async downloadArtifactContentRaw(requestParameters: DownloadArtifactContentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<runtime.HttpFile>> {
         const requestOptions = await this.downloadArtifactContentRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
@@ -8054,7 +8054,7 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      * **The platform streams the bytes; it does not hand out a pre-signed URL** (packaging-design §7.1). Workspace scope is then the session middleware already in place rather than a second authorization scheme; the URL is not secret material, so it can appear in a log and in the audit event this download writes; and the status and restriction checks happen in this handler on every request instead of once at signing time, where a hold applied inside the TTL would not have stopped anything. Bytes crossing the API process is movement, not execution (iron rule 1).  One successful download writes two things in one transaction (iron rule 9): a download record (WS-004, what the user sees) and an audit event (CORE-008, what compliance keeps). Those two are not merged — their retention and their visibility differ, and one row would bind each to the stricter of the two. 
      * The package bytes themselves (PACK-001)
      */
-    async downloadArtifactContent(requestParameters: DownloadArtifactContentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Blob> {
+    async downloadArtifactContent(requestParameters: DownloadArtifactContentRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.HttpFile> {
         const response = await this.downloadArtifactContentRaw(requestParameters, initOverrides);
         return await response.value();
     }

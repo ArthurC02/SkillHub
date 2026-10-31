@@ -54,7 +54,7 @@ export interface ForkSkill201Response {
      * detail view.
      * 
      */
-    accessRestriction?: string;
+    accessRestriction?: string | null;
     /**
      * 
      */
@@ -114,7 +114,7 @@ export function ForkSkill201ResponseFromJSONTyped(json: any, ignoreDiscriminator
         'name': json['name'],
         'summary': json['summary'],
         'redistribution': json['redistribution'],
-        'accessRestriction': json['access_restriction'] == null ? undefined : json['access_restriction'],
+        'accessRestriction': json['access_restriction'] === undefined ? undefined : json['access_restriction'] === null ? null : json['access_restriction'],
         'forkedFromSkillId': json['forked_from_skill_id'] == null ? undefined : json['forked_from_skill_id'],
         'forkedFromVersionId': json['forked_from_version_id'] == null ? undefined : json['forked_from_version_id'],
         'versionId': json['version_id'],

@@ -416,9 +416,10 @@ docker run --rm --network container:skillhub-postgres-1 \
 | Go | 每個 `go.mod` 的 `go` 行（CI 的 setup-go 讀它）、各 Dockerfile 的 golang 映像 |
 | Python | `apps/llm/.python-version`（CI 讀它）、三份 `pyproject.toml` 的 `requires-python`、llm 與 codegen 映像、devtools 映像的 `uv python install` |
 | ruff、redocly | ruff：`apps/llm/uv.lock`（Dependabot 改它）與 `ci.yml` 工具 job 的 `pip install ruff==`；redocly：toolchain.yaml 與 `ci.yml` 的 `@redocly/cli@` |
-| task、golangci-lint | toolchain.yaml 與 devtools 映像的 `ARG` |
+| task、golangci-lint、docker、docker compose | toolchain.yaml 與 devtools 映像的 `ARG` |
 | compose 與 CI 共用的映像（pgvector、seaweedfs） | Dependabot 只改 `infra/compose/docker-compose.yml`；同一個 PR 要把 `ci.yml` 與 `tools/ci/stack-smoke.sh` 裡的同一個映像改成一樣，否則 `dependency-policy` 會擋 |
 | datamodel-code-generator | `tools/codegen/python/pyproject.toml`、`uv.lock`、toolchain.yaml 的版本與 `python_codegen` 映像標籤，然後 `task gen:openapi` |
+| OpenAPI Generator | toolchain.yaml 的 `openapi_generator`（版本與映像各一行），然後 `task gen:openapi` |
 | ogen | `tools/codegen/go/go.mod`、toolchain.yaml 的 `ogen` 與 `go_codegen` 映像標籤，然後 `task gen:openapi` |
 | `@types/node` 的主版本 | 跟 `.node-version` 的 Node 主版本一致；Dependabot 只提 minor／patch |
 | pglite | `tools/pglite/package.json`、toolchain.yaml 的三個 `pglite*` |

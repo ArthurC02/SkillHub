@@ -3,13 +3,13 @@ schema_version: 1
 tools:
   task: "3.54.0"
   uv: "0.12.13"
-  docker_cli: "29.8.0"
-  docker_compose: "5.5.1"
+  docker_cli: "29.9.2"
+  docker_compose: "5.6.1"
   golangci_lint: "2.15.0"
   sqlc: "1.31.1"
   redocly: "2.71.0"
   ogen: "1.24.0"
-  openapi_generator: "7.25.0"
+  openapi_generator: "7.26.0"
   datamodel_code_generator: "0.81.0"
   govulncheck: "1.9.0"
   pip_audit: "2.10.1"
@@ -22,6 +22,6 @@ tools:
 
 images:
   sqlc: "sqlc/sqlc:1.31.1@sha256:70f53171d27b2424e9358869975455a6e955a5aa8e58a998a270a6e34e525537"
-  openapi_generator: "openapitools/openapi-generator-cli:v7.25.0@sha256:2ab0a9680222de65dc9d3baf861aa02b99e1b80c211d8221ebf3ae8f8a102524"
+  openapi_generator: "openapitools/openapi-generator-cli:v7.26.0@sha256:a304ddf1e2e5f24f68fa3153568d6174cea4959d09aa8e3db6d526fd0782326d"
   python_codegen: "skillhub/python-codegen:0.81.0"
   go_codegen: "skillhub/go-codegen:ogen-1.24.0"

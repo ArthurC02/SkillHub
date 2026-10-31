@@ -86,7 +86,7 @@ export interface OwnSkill {
      * detail view.
      * 
      */
-    accessRestriction?: string;
+    accessRestriction?: string | null;
     /**
      * 
      */
@@ -156,7 +156,7 @@ export function OwnSkillFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
         'name': json['name'],
         'summary': json['summary'],
         'redistribution': json['redistribution'],
-        'accessRestriction': json['access_restriction'] == null ? undefined : json['access_restriction'],
+        'accessRestriction': json['access_restriction'] === undefined ? undefined : json['access_restriction'] === null ? null : json['access_restriction'],
         'forkedFromSkillId': json['forked_from_skill_id'] == null ? undefined : json['forked_from_skill_id'],
         'forkedFromVersionId': json['forked_from_version_id'] == null ? undefined : json['forked_from_version_id'],
         'risk': SearchResultRiskFromJSON(json['risk']),
