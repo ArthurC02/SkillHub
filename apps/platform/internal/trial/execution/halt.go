@@ -212,8 +212,7 @@ func (h *Handler) decodeHaltRequest(w http.ResponseWriter, r *http.Request) (hal
 		return haltRequest{}, false
 	}
 	if body.Provider != halt.Pool && h.Svc.providers().Lookup(body.Provider) == nil {
-		httpx.WriteError(w, http.StatusBadRequest,
-			"unknown provider; omit it to halt the whole pool")
+		httpx.WriteError(w, http.StatusBadRequest, "找不到這個節點；要暫停整個池，節點名稱留空")
 		return haltRequest{}, false
 	}
 	return body, true

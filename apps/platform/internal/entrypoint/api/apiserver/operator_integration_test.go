@@ -488,7 +488,7 @@ func assertUnlicensedSkillCanBeBlockedButNotReleased(t *testing.T, pool *pgxpool
 		t.Errorf("release of a skill with no recorded licence: got %d, want 400 (%v)", code, body)
 	}
 
-	if msg, _ := body["error"].(string); !strings.Contains(msg, "records no licence") {
+	if msg, _ := body["error"].(string); !strings.Contains(msg, "沒有記錄任何授權") {
 		t.Errorf("refusal said %q; a skill with nothing recorded has to be told that, not that it "+
 			"mismatched — the second reads like something a better guess would fix", msg)
 	}

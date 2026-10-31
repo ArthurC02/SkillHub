@@ -128,6 +128,10 @@ func TestP1HaltStopsBothEntryPointsAndPreservesTheScene(t *testing.T) {
 			t.Errorf("PUT %s: got %d, want 400", body, code)
 		}
 	}
+	if _, body := operatorCall(t, operator, http.MethodPut, "/admin/dispatch/halt",
+		`{"note":"n","provider":"no_such_node"}`); body["error"] != "找不到這個節點；要暫停整個池，節點名稱留空" {
+		t.Errorf("an unknown node was refused with %q, not a sentence the operator page can show", body["error"])
+	}
 }
 
 func TestAnIncidentHaltOnOneProviderPreservesTheSceneItHolds(t *testing.T) {

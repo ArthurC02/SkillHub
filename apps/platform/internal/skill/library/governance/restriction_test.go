@@ -50,16 +50,16 @@ func TestRestrictionServiceRejectsInvalidInputBeforeDatabase(t *testing.T) {
 		{"provenance redistribution", func() error {
 			_, err := svc.SetRedistribution(context.Background(), zeroUUID, zeroUUID, RedistributionChange{Value: "self_supplied", Note: "reviewed", Claim: registry.LicenseClaim{}})
 			return err
-		}, "only the import path can establish that"},
+		}, "只有匯入流程能確立"},
 		{"unknown redistribution is named before the note", func() error {
 			_, err := svc.SetRedistribution(context.Background(), zeroUUID, zeroUUID, RedistributionChange{Value: "shared", Note: "  ", Claim: registry.LicenseClaim{}})
 			return err
-		}, "unknown redistribution value"},
+		}, "不認得的再散布判定"},
 		{"release without licence evidence", func() error {
 			_, err := svc.SetRedistribution(context.Background(), zeroUUID, zeroUUID, RedistributionChange{Value: "allowed", Note: "reviewed",
 				Claim: registry.LicenseClaim{Expression: "MIT"}})
 			return err
-		}, "requires the licence evidence"},
+		}, "要附上依據的授權證據"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -78,7 +78,7 @@ func TestALicenceMismatchNamesWhatTheNewestVersionRecords(t *testing.T) {
 	}, "allowed")
 
 	var inputErr restrictionInputError
-	if !errors.As(err, &inputErr) || !strings.Contains(err.Error(), "recorded: MIT from LICENSE") {
+	if !errors.As(err, &inputErr) || !strings.Contains(err.Error(), "記錄的是 MIT，出處 LICENSE") {
 		t.Fatalf("got %v, want an input error naming the recorded licence", err)
 	}
 }
