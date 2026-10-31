@@ -37,7 +37,7 @@ var anonymousRoutes = []anonCase{
 
 	{pattern: "GET /auth/github/login", want: http.StatusFound},
 
-	{pattern: "GET /auth/github/callback", want: http.StatusUnauthorized},
+	{pattern: "GET /auth/github/callback", want: http.StatusSeeOther},
 
 	{pattern: "POST /auth/logout", want: http.StatusNoContent},
 	{pattern: "GET /me", want: http.StatusUnauthorized},

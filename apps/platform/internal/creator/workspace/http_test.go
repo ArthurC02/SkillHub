@@ -110,15 +110,8 @@ func TestTheLoginRoutesRefuseCleanlyWhenNoProviderIsConfigured(t *testing.T) {
 			w := httptest.NewRecorder()
 			tc.serve(w, httptest.NewRequest(http.MethodGet, tc.target, nil))
 
-			if w.Code != http.StatusServiceUnavailable {
-				t.Fatalf("status = %d, want 503 when no identity provider is configured", w.Code)
-			}
-			if !strings.Contains(w.Body.String(), "沒有設定登入提供者") {
-				t.Errorf("body = %q, want it to say in Chinese that no identity provider is configured",
-					w.Body.String())
-			}
-			if strings.Contains(w.Body.String(), "not configured") {
-				t.Errorf("body = %q, still carries the English sentence meant for the log", w.Body.String())
+			if got := loginFailureOf(t, w); got != loginNoProvider {
+				t.Fatalf("sent the browser back with %q, want %q when no identity provider is configured", got, loginNoProvider)
 			}
 		})
 	}

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"slices"
 	"sort"
 	"strings"
@@ -98,12 +99,13 @@ func (h *Handler) devLogin(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) startLogin(w http.ResponseWriter, r *http.Request) {
 	if h.Service.OAuth == nil {
-		httpx.WriteError(w, http.StatusServiceUnavailable, "這個部署沒有設定登入提供者，現在無法登入，請聯絡管理者")
+		h.redirectLoginFailure(w, r, loginNoProvider)
 		return
 	}
 	raw := make([]byte, 16)
 	if _, err := rand.Read(raw); err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "state generation failed")
+		slog.Error("login state generation failed", "error", err)
+		h.redirectLoginFailure(w, r, loginFailed)
 		return
 	}
 	state := hex.EncodeToString(raw)
@@ -116,13 +118,13 @@ func (h *Handler) startLogin(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) finishLogin(w http.ResponseWriter, r *http.Request) {
 	if h.Service.OAuth == nil {
-		httpx.WriteError(w, http.StatusServiceUnavailable, "這個部署沒有設定登入提供者，現在無法登入，請聯絡管理者")
+		h.redirectLoginFailure(w, r, loginNoProvider)
 		return
 	}
 
 	sc, err := r.Cookie(stateCookie)
 	if err != nil || sc.Value == "" || r.URL.Query().Get("state") != sc.Value {
-		httpx.WriteError(w, http.StatusUnauthorized, "oauth state mismatch")
+		h.redirectLoginFailure(w, r, loginExpired)
 		return
 	}
 	http.SetCookie(w, &http.Cookie{
@@ -130,34 +132,54 @@ func (h *Handler) finishLogin(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true, Secure: h.Secure, SameSite: http.SameSiteLaxMode,
 	})
 
+	if denial := r.URL.Query().Get("error"); denial != "" {
+		slog.Info("github declined the authorization", "error", denial)
+		h.redirectLoginFailure(w, r, providerDenial(denial))
+		return
+	}
+
 	ctx := r.Context()
 	accessToken, err := h.Service.OAuth.Exchange(ctx, r.URL.Query().Get("code"))
 	if err != nil {
 		slog.Warn("github code exchange failed", "error", err)
-		writeGitHubFailure(w, err, "code exchange failed")
+		h.redirectLoginFailure(w, r, gitHubFailure(err))
 		return
 	}
 	external, err := h.Service.OAuth.Identify(ctx, accessToken)
 	if err != nil {
 		slog.Warn("github user fetch failed", "error", err)
-		writeGitHubFailure(w, err, "user fetch failed")
+		h.redirectLoginFailure(w, r, gitHubFailure(err))
 		return
 	}
 	token, err := h.Service.LoginOrSignup(ctx, external)
 	if err != nil {
-		if writeRefusedLogin(w, err) {
-			return
+		refusal, refused := refusedLogin(err)
+		if !refused {
+			slog.Error("login failed", "error", err)
 		}
-		slog.Error("login failed", "error", err)
-		httpx.WriteError(w, http.StatusInternalServerError, "login failed")
+		h.redirectLoginFailure(w, r, refusal)
 		return
 	}
 	h.setSessionCookie(w, token)
-	appURL := h.AppURL
-	if appURL == "" {
-		appURL = "/"
+	http.Redirect(w, r, h.appURL(), http.StatusFound)
+}
+
+func (h *Handler) appURL() string {
+	if h.AppURL == "" {
+		return "/"
 	}
-	http.Redirect(w, r, appURL, http.StatusFound)
+	return h.AppURL
+}
+
+func (h *Handler) redirectLoginFailure(w http.ResponseWriter, r *http.Request, failure loginFailure) {
+	target, err := url.Parse(h.appURL())
+	if err != nil {
+		target = &url.URL{Path: "/"}
+	}
+	query := target.Query()
+	query.Set(loginFailureParam, string(failure))
+	target.RawQuery = query.Encode()
+	http.Redirect(w, r, target.String(), http.StatusSeeOther)
 }
 
 func (h *Handler) setSessionCookie(w http.ResponseWriter, token string) {
@@ -640,12 +662,44 @@ func (h *Handler) cancelDeletion(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, accountDeletionCancellationResponse{})
 }
 
-func writeGitHubFailure(w http.ResponseWriter, err error, refusal string) {
-	if errors.Is(err, ErrGitHubUnavailable) {
-		httpx.WriteError(w, http.StatusServiceUnavailable, "GitHub 暫時沒有回應，請稍後再登入一次")
-		return
+type loginFailure string
+
+const (
+	loginFailureParam = "login_error"
+
+	loginNoProvider        loginFailure = "no_provider"
+	loginExpired           loginFailure = "expired"
+	loginCancelled         loginFailure = "cancelled"
+	loginGitHubUnavailable loginFailure = "github_unavailable"
+	loginGitHubRefused     loginFailure = "github_refused"
+	loginAccountPurging    loginFailure = "account_purging"
+	loginEmailTaken        loginFailure = "email_taken"
+	loginFailed            loginFailure = "failed"
+)
+
+func providerDenial(denial string) loginFailure {
+	if denial == "access_denied" {
+		return loginCancelled
 	}
-	httpx.WriteError(w, http.StatusUnauthorized, refusal)
+	return loginGitHubRefused
+}
+
+func gitHubFailure(err error) loginFailure {
+	if errors.Is(err, ErrGitHubUnavailable) {
+		return loginGitHubUnavailable
+	}
+	return loginGitHubRefused
+}
+
+func refusedLogin(err error) (loginFailure, bool) {
+	switch {
+	case errors.Is(err, ErrAccountPurging):
+		return loginAccountPurging, true
+	case errors.Is(err, ErrEmailTaken):
+		return loginEmailTaken, true
+	default:
+		return loginFailed, false
+	}
 }
 
 func writeRefusedLogin(w http.ResponseWriter, err error) bool {

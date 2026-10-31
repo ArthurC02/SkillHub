@@ -2,6 +2,7 @@ package identity
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -200,9 +201,9 @@ func TestCallbackRejectsStateMismatch(t *testing.T) {
 			}
 			w := httptest.NewRecorder()
 			h.finishLogin(w, r)
-			refused := w.Code == http.StatusUnauthorized && strings.Contains(w.Body.String(), "oauth state mismatch")
+			refused := loginFailureOf(t, w) == loginExpired
 			if refused != tc.refused {
-				t.Fatalf("got %d %q, want refused for state mismatch = %v", w.Code, w.Body.String(), tc.refused)
+				t.Fatalf("got %d to %q, want refused for state mismatch = %v", w.Code, w.Header().Get("Location"), tc.refused)
 			}
 		})
 	}
@@ -212,11 +213,11 @@ func TestCallbackTellsAGitHubOutageFromARefusedLogin(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
 		status int
-		want   int
+		want   loginFailure
 	}{
-		{"github is down", http.StatusBadGateway, http.StatusServiceUnavailable},
-		{"github is rate limiting", http.StatusTooManyRequests, http.StatusServiceUnavailable},
-		{"github refused the code", http.StatusUnauthorized, http.StatusUnauthorized},
+		{"github is down", http.StatusBadGateway, loginGitHubUnavailable},
+		{"github is rate limiting", http.StatusTooManyRequests, loginGitHubUnavailable},
+		{"github refused the code", http.StatusUnauthorized, loginGitHubRefused},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -230,8 +231,8 @@ func TestCallbackTellsAGitHubOutageFromARefusedLogin(t *testing.T) {
 
 			h.finishLogin(w, r)
 
-			if w.Code != tc.want {
-				t.Fatalf("callback = %d, want %d", w.Code, tc.want)
+			if got := loginFailureOf(t, w); got != tc.want {
+				t.Fatalf("callback sent the browser back with %q, want %q", got, tc.want)
 			}
 		})
 	}
@@ -311,5 +312,64 @@ func TestTheProviderHandsTheDomainANeutralIdentityRatherThanItsOwnUser(t *testin
 	}
 	if _, err := g.Identify(context.Background(), "wrong-token"); err == nil {
 		t.Error("a refused token still produced an identity")
+	}
+}
+
+func loginFailureOf(t *testing.T, w *httptest.ResponseRecorder) loginFailure {
+	t.Helper()
+	if w.Code != http.StatusSeeOther && w.Code != http.StatusFound {
+		return ""
+	}
+	location, err := url.Parse(w.Header().Get("Location"))
+	if err != nil {
+		t.Fatalf("Location %q is not a URL: %v", w.Header().Get("Location"), err)
+	}
+	return loginFailure(location.Query().Get(loginFailureParam))
+}
+
+func TestACallbackGitHubDeclinedSendsTheBrowserBackNamingWhy(t *testing.T) {
+	for _, tc := range []struct {
+		name, denial string
+		want         loginFailure
+	}{
+		{"the person cancelled on GitHub", "access_denied", loginCancelled},
+		{"github declined for another reason", "temporarily_unavailable", loginGitHubRefused},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := &Handler{Service: &Service{OAuth: stubGitHub(t, "x@x.dev")}, AppURL: "https://app.example/start?tab=1"}
+			r := httptest.NewRequest(http.MethodGet, "/auth/github/callback?error="+tc.denial+"&state=abc", nil)
+			r.AddCookie(&http.Cookie{Name: stateCookie, Value: "abc"})
+			w := httptest.NewRecorder()
+
+			h.finishLogin(w, r)
+
+			if got := loginFailureOf(t, w); got != tc.want {
+				t.Fatalf("sent the browser back with %q, want %q", got, tc.want)
+			}
+			location, _ := url.Parse(w.Header().Get("Location"))
+			if location.Host != "app.example" || location.Path != "/start" || location.Query().Get("tab") != "1" {
+				t.Errorf("Location = %q, want the configured app address with its own query kept", location)
+			}
+		})
+	}
+}
+
+func TestALoginRefusalNamesItsReasonAndAnUnknownFailureIsLogged(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		err     error
+		want    loginFailure
+		refused bool
+	}{
+		{"account being purged", ErrAccountPurging, loginAccountPurging, true},
+		{"email held by another account", ErrEmailTaken, loginEmailTaken, true},
+		{"anything else", errors.New("db down"), loginFailed, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, refused := refusedLogin(tc.err)
+			if got != tc.want || refused != tc.refused {
+				t.Fatalf("refusedLogin = (%q, %v), want (%q, %v)", got, refused, tc.want, tc.refused)
+			}
+		})
 	}
 }

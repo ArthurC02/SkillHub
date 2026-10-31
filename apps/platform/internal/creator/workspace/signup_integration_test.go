@@ -123,7 +123,7 @@ func TestASessionIsStoredOnlyAsTheHashOfItsToken(t *testing.T) {
 	}
 }
 
-func TestTheCallbackAnswersAnEmailTakenSignupWith409AndAPlainMessage(t *testing.T) {
+func TestTheCallbackSendsAnEmailTakenSignupBackToTheAppNamingWhy(t *testing.T) {
 	pool := signupPool(t)
 	taken := uuid.NewString() + "@example.test"
 	seedUser(t, pool, taken, false)
@@ -134,11 +134,8 @@ func TestTheCallbackAnswersAnEmailTakenSignupWith409AndAPlainMessage(t *testing.
 
 	h.finishLogin(w, r)
 
-	if w.Code != http.StatusConflict {
-		t.Fatalf("callback = %d (%s), want 409", w.Code, w.Body.String())
-	}
-	if !strings.Contains(w.Body.String(), "這個 email 已經被另一個帳號使用") {
-		t.Errorf("body = %q, want the plain Chinese explanation", w.Body.String())
+	if got := loginFailureOf(t, w); got != loginEmailTaken {
+		t.Fatalf("callback sent the browser back with %q, want %q", got, loginEmailTaken)
 	}
 	for _, c := range w.Result().Cookies() {
 		if c.Name == sessionCookie && c.Value != "" {

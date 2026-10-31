@@ -11,6 +11,7 @@ import { FeedbackLauncher } from "./shell/FeedbackLauncher";
 import { AuthControls } from "./shell/AuthControls";
 import { CleanModeNotice } from "./shell/CleanModeNotice";
 import { BetaInviteNotice } from "./shell/BetaInviteNotice";
+import { LoginFailureNotice } from "./shell/LoginFailureNotice";
 import { NavScrollCue } from "../shared/ui/NavScrollCue";
 import { useCreationEntryPoint, useGenerateEntryPoint } from "../features/creation";
 import { useMe, useSessionBoundary } from "../core/session/me.service";
@@ -140,6 +141,7 @@ export function RootLayout({ children }: { children: ReactNode }) {
           <div className="app-content">
             <main id="main-content" tabIndex={-1}>
               <CleanModeNotice admin={pathname === "/admin" || pathname.startsWith("/admin/")} />
+              <LoginFailureNotice />
               <BetaInviteNotice />
               {children}
             </main>
