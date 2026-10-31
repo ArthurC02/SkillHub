@@ -32,6 +32,7 @@ func toolchainPin(key string) *regexp.Regexp {
 const (
 	devtoolsDockerfile = "infra/images/devtools/Dockerfile"
 	toolchainYAML      = "tools/toolchain.yaml"
+	ciWorkflow         = ".github/workflows/ci.yml"
 )
 
 var versionsThatMoveTogether = []versionGroup{
@@ -71,6 +72,14 @@ var versionsThatMoveTogether = []versionGroup{
 	{"golangci-lint", []versionSite{
 		{toolchainYAML, toolchainPin("golangci_lint")},
 		{devtoolsDockerfile, regexp.MustCompile(`(?m)^ARG GOLANGCI_LINT_VERSION=(\S+)`)},
+	}},
+	{"redocly", []versionSite{
+		{toolchainYAML, toolchainPin("redocly")},
+		{ciWorkflow, regexp.MustCompile(`@redocly/cli@(\S+)`)},
+	}},
+	{"ruff", []versionSite{
+		{"apps/llm/uv.lock", regexp.MustCompile(`(?m)^name = "ruff"\nversion = "([^"]+)"`)},
+		{ciWorkflow, regexp.MustCompile(`pip install ruff==(\S+)`)},
 	}},
 	{"syft", []versionSite{
 		{".github/workflows/runtime-image.yml", scannerPin("SYFT", "syft")},
