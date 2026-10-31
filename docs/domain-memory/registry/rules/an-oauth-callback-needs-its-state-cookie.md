@@ -3,17 +3,17 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-24T10:35:00.265291Z"
+    at: "2026-10-31T06:34:02.458664Z"
 sources:
-  - resource: "apps/platform/internal/creator/workspace/http.go#L123-127"
-    excerpt_sha256: "sha256:6a570ea78e1c8c2a9058de2411a3e61f5b45c3ebb397084a1d0feda7a90b7ced"
-  - resource: "apps/platform/internal/creator/workspace/github_test.go#L183-209"
-    excerpt_sha256: "sha256:c30f42ad3b3446dbbf8bfedb0b1f66682d4f0719e3769bb1963ef655d79791d8"
+  - resource: "apps/platform/internal/creator/workspace/http.go#L125-129"
+    excerpt_sha256: "sha256:7dda39429e2b4b0e1bde6ed750395a335aee6bfd0df2b6d9764b1dc194585068"
+  - resource: "apps/platform/internal/creator/workspace/github_test.go#L184-210"
+    excerpt_sha256: "sha256:20ca5eb66b91bf610674bf81c2a434089b3b8563c6937f7bf84e7133dd6f0cb8"
 ---
-A GitHub login callback is refused with 401 before any code exchange unless its state matches the state cookie set when the login began.
+A GitHub login callback is refused before any code exchange, sending the browser back to the app with login_error=expired, unless its state matches the state cookie set when the login began.
 
 # Relations
 - Contexts: [identity](/contexts/identity)
 
 # Examples
-- A callback with state abc and a state cookie of other answers 401.
+- A callback with state abc and a state cookie of other is sent back with login_error=expired.

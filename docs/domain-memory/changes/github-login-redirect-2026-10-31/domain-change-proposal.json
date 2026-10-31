@@ -3,12 +3,12 @@
   "proposal_id": "github-login-redirect-2026-10-31",
   "proposer": "domain-memory-agent",
   "requirement_id": "github-login-redirect",
-  "status": "submitted",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-10-31T06:33:43.886043Z",
-  "verified_at": null,
-  "finalized_at": null,
-  "applied_at": null,
+  "verified_at": "2026-10-31T06:34:39.873701Z",
+  "finalized_at": "2026-10-31T06:34:40.932372Z",
+  "applied_at": "2026-10-31T06:34:46.068922Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "496aa706f9e7d64af817443ca608f4be116157d2",
@@ -136,9 +136,27 @@
   ],
   "risk_flags": [],
   "open_questions": [],
-  "approvals": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-10-31T06:34:02.458664Z",
+      "scope": "amend a-github-outage-is-503-not-a-refused-login and an-oauth-callback-needs-its-state-cookie: callback failures redirect with login_error codes instead of 503/401 bodies; outage vs refusal and state-before-exchange preserved",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "496aa706f9e7d64af817443ca608f4be116157d2",
+        "registry_digest": "sha256:3afaa114af60239be647f1fb491631524e2c75d6b4f1aa186cb1aff2eeade411",
+        "committed_digest": "sha256:3afaa114af60239be647f1fb491631524e2c75d6b4f1aa186cb1aff2eeade411"
+      }
+    }
+  ],
   "supersedes": [
     "identity-harvest-rules-2026-10-18",
     "shifted-recite-2026-10-24"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "592f0b28c172d04fe920e447ca4b23845e9e66a0",
+    "registry_digest": "sha256:5011331e95c701d6bf399bca21cdaedc644a7a08aefb1999d00e4ff263f172ef"
+  }
 }

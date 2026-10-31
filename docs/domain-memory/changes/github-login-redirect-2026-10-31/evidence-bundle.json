@@ -8,8 +8,33 @@
     "committed_digest": "sha256:3afaa114af60239be647f1fb491631524e2c75d6b4f1aa186cb1aff2eeade411"
   },
   "approvals": [],
-  "scm_attestation": null,
-  "counterfactual_check": null,
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "592f0b28c172d04fe920e447ca4b23845e9e66a0",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "496aa706f9e7d64af817443ca608f4be116157d2",
+      "registry_digest": "sha256:3afaa114af60239be647f1fb491631524e2c75d6b4f1aa186cb1aff2eeade411",
+      "committed_digest": "sha256:3afaa114af60239be647f1fb491631524e2c75d6b4f1aa186cb1aff2eeade411"
+    }
+  },
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "outage-is-not-a-refusal",
+      "mutated_protection": "apps/platform/internal/creator/workspace/http.go:689: return loginGitHubUnavailable -> return loginGitHubRefused",
+      "failure_evidence": "utageFromARefusedLogin/github_is_down\n2026/10/31 14:34:26 WARN github code exchange failed error=\"github is not answering right now: github /access_token: status 502: \"\n    github_test.go:235: callback sent the browser back with \"github_refused\", want \"github_unavailable\"\n=== RUN   TestCallbackTellsAGitHubOutageFromARefusedLogin/github_is_rate_limiting\n2026/10/31 14:34:26 WARN github code exchange failed error=\"github is not answering right now: github /access_token: status 429: \"\n    github_test.go:235: callback sent the browser back with \"github_refused\", want \"github_unavailable\"\n=== RUN   TestCallbackTellsAGitHubOutageFromARefusedLogin/github_refused_the_code\n2026/10/31 14:34:26 WARN github code exchange failed error=\"github /access_token: status 401: \"\n--- FAIL: TestCallbackTellsAGitHubOutageFromARefusedLogin (0.05s)\n    --- FAIL: TestCallbackTellsAGitHubOutageFromARefusedLogin/github_is_down (0.05s)\n    --- FAIL: TestCallbackTellsAGitHubOutageFromARefusedLogin/github_is_rate_limiting (0.00s)\n    --- PASS: TestCallbackTellsAGitHubOutageFromARefusedLogin/github_refused_the_code (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace\t0.202s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "state-mismatch-is-expired",
+      "mutated_protection": "apps/platform/internal/creator/workspace/http.go:126: if err != nil || sc.Value == \"\" || r.URL.Query().Get(\"state\") != sc.Value { -> if false && (err != nil || sc.Value == \"\" || r.URL.Query().Get(\"state\") != sc.Value) {",
+      "failure_evidence": "te mismatch = true\n=== RUN   TestCallbackRejectsStateMismatch/mismatched_state\n2026/10/31 14:34:30 WARN github code exchange failed error=\"github token exchange failed: bad_verification_code\"\n    github_test.go:206: got 303 to \"/?login_error=github_refused\", want refused for state mismatch = true\n=== RUN   TestCallbackRejectsStateMismatch/empty_cookie_and_empty_state\n2026/10/31 14:34:30 WARN github code exchange failed error=\"github token exchange failed: bad_verification_code\"\n    github_test.go:206: got 303 to \"/?login_error=github_refused\", want refused for state mismatch = true\n=== RUN   TestCallbackRejectsStateMismatch/matching_state\n2026/10/31 14:34:30 WARN github code exchange failed error=\"github token exchange failed: bad_verification_code\"\n--- FAIL: TestCallbackRejectsStateMismatch (0.06s)\n    --- FAIL: TestCallbackRejectsStateMismatch/missing_cookie (0.05s)\n    --- FAIL: TestCallbackRejectsStateMismatch/mismatched_state (0.00s)\n    --- FAIL: TestCallbackRejectsStateMismatch/empty_cookie_and_empty_state (0.00s)\n    --- PASS: TestCallbackRejectsStateMismatch/matching_state (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace\t0.209s\nFAIL\n",
+      "restored": true
+    }
+  ],
   "sources": [],
   "test_results": [
     {
