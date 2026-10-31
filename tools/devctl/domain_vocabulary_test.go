@@ -7,13 +7,13 @@ import (
 	"testing"
 )
 
-func assertVocabularySourcesAndReadersAreLive(t *testing.T, root string, vocabulary domainVocabulary) {
+func assertVocabularySourcesAndReadersAreLive(t *testing.T, repo vocabularyRepo, vocabulary domainVocabulary) {
 	t.Helper()
 	if len(vocabulary.sources) < 2 {
 		t.Errorf("%s is read from %d place; reconciliation needs at least two", vocabulary.name, len(vocabulary.sources))
 	}
 	for _, source := range vocabulary.sources {
-		values, err := source.read(root)
+		values, err := source.read(repo)
 		if err != nil {
 			t.Errorf("%s: %s: %v", vocabulary.name, source.label, err)
 			continue
@@ -23,7 +23,7 @@ func assertVocabularySourcesAndReadersAreLive(t *testing.T, root string, vocabul
 		}
 	}
 	for _, reader := range vocabulary.readers {
-		if values, err := reader.read(root); err != nil || len(values) == 0 {
+		if values, err := reader.read(repo); err != nil || len(values) == 0 {
 			t.Errorf("%s: reader %s yielded %v (%v), so it was checked against nothing", vocabulary.name, reader.label, values, err)
 		}
 	}
@@ -42,8 +42,9 @@ func TestTheRealRepositoryHasNoDomainVocabularyDrift(t *testing.T) {
 	if len(domainVocabularies) < 2 {
 		t.Fatalf("only %d vocabulary is reconciled; a table this short cannot be the reason the check passed", len(domainVocabularies))
 	}
+	repo := readVocabularyRepo(root)
 	for _, vocabulary := range domainVocabularies {
-		assertVocabularySourcesAndReadersAreLive(t, root, vocabulary)
+		assertVocabularySourcesAndReadersAreLive(t, repo, vocabulary)
 	}
 }
 
@@ -125,7 +126,7 @@ const (
 			goConstEnum("contract/gen.go", "RunStatus"),
 		},
 	}}
-	problems := reconcileVocabularies(root, only)
+	problems := reconcileVocabularies(readVocabularyRepo(root), only)
 	if len(problems) != 1 {
 		t.Fatalf("expected exactly the one value the contract omits, got %d:\n%s", len(problems), strings.Join(problems, "\n"))
 	}
@@ -158,7 +159,7 @@ const (
 			goConstEnum("contract/gen.go", "RunStatus"),
 		},
 	}}
-	if problems := reconcileVocabularies(root, only); len(problems) != 0 {
+	if problems := reconcileVocabularies(readVocabularyRepo(root), only); len(problems) != 0 {
 		t.Fatalf("a value mentioned in a comment is not a declaration:\n%s", strings.Join(problems, "\n"))
 	}
 }
@@ -181,7 +182,7 @@ type RunStatus string
 			goConstEnum("contract/gen.go", "RunStatus"),
 		},
 	}}
-	problems := reconcileVocabularies(root, only)
+	problems := reconcileVocabularies(readVocabularyRepo(root), only)
 	if len(problems) != 1 || !strings.Contains(problems[0], "declares no value") {
 		t.Fatalf("a source that reads as empty must be reported, not silently agreed with:\n%s", strings.Join(problems, "\n"))
 	}
@@ -363,7 +364,7 @@ func TestSQLColumnCheckNamesTheColumnItCannotFind(t *testing.T) {
 	root := t.TempDir()
 	writeAt(t, root, "db/migrations/0001_events.sql", `CREATE TABLE events (kind text CHECK (kind IN ('step')));
 `)
-	_, err := sqlColumnCheck("events", "origin").read(root)
+	_, err := sqlColumnCheck("events", "origin").read(readVocabularyRepo(root))
 	if err == nil || !strings.Contains(err.Error(), "events.origin") {
 		t.Fatalf("a missing column must be reported by name, got %v", err)
 	}
@@ -386,7 +387,7 @@ const (
 )
 `)
 	writeAt(t, root, "consumer/overall.go", "package consumer\n\ntype overall string\n\n"+readerConstants)
-	return reconcileVocabularies(root, []domainVocabulary{{
+	return reconcileVocabularies(readVocabularyRepo(root), []domainVocabulary{{
 		name:    "evaluation overall",
 		sources: []vocabularySource{sqlColumnCheck("evaluations", "overall"), goConstEnum("domain/overall.go", "Overall")},
 		readers: []vocabularySource{goConstEnum("consumer/overall.go", "overall")},
@@ -433,7 +434,7 @@ var eventKindReconciled = []domainVocabulary{{
 
 func TestAClosedVocabularyNothingReconcilesIsReported(t *testing.T) {
 	t.Parallel()
-	problems := coverageProblems(coverageFixture(t), nil, nil)
+	problems := coverageProblems(readVocabularyRepo(coverageFixture(t)), nil, nil)
 	if len(problems) != 1 || !strings.Contains(problems[0], "events.kind") || !strings.Contains(problems[0], "nothing reconciles") {
 		t.Fatalf("a CHECK vocabulary with no reconciliation and no stated reason must be reported by name:\n%s", strings.Join(problems, "\n"))
 	}
@@ -441,21 +442,21 @@ func TestAClosedVocabularyNothingReconcilesIsReported(t *testing.T) {
 
 func TestAClosedVocabularyWithAStatedReasonIsAccepted(t *testing.T) {
 	t.Parallel()
-	if problems := coverageProblems(coverageFixture(t), nil, map[string]string{"events.kind": "Go only writes it"}); len(problems) != 0 {
+	if problems := coverageProblems(readVocabularyRepo(coverageFixture(t)), nil, map[string]string{"events.kind": "Go only writes it"}); len(problems) != 0 {
 		t.Fatalf("a vocabulary whose exemption says why was refused:\n%s", strings.Join(problems, "\n"))
 	}
 }
 
 func TestAReconciledVocabularyNeedsNoReason(t *testing.T) {
 	t.Parallel()
-	if problems := coverageProblems(coverageFixture(t), eventKindReconciled, nil); len(problems) != 0 {
+	if problems := coverageProblems(readVocabularyRepo(coverageFixture(t)), eventKindReconciled, nil); len(problems) != 0 {
 		t.Fatalf("a reconciled vocabulary was reported as unreconciled:\n%s", strings.Join(problems, "\n"))
 	}
 }
 
 func TestAnExemptionForAReconciledVocabularyIsStale(t *testing.T) {
 	t.Parallel()
-	problems := coverageProblems(coverageFixture(t), eventKindReconciled, map[string]string{"events.kind": "Go only writes it"})
+	problems := coverageProblems(readVocabularyRepo(coverageFixture(t)), eventKindReconciled, map[string]string{"events.kind": "Go only writes it"})
 	if len(problems) != 1 || !strings.Contains(problems[0], "events.kind") || !strings.Contains(problems[0], "stale") {
 		t.Fatalf("an exemption that no longer exempts anything must be reported:\n%s", strings.Join(problems, "\n"))
 	}
@@ -463,7 +464,7 @@ func TestAnExemptionForAReconciledVocabularyIsStale(t *testing.T) {
 
 func TestAnExemptionForAColumnWithNoVocabularyIsStale(t *testing.T) {
 	t.Parallel()
-	problems := coverageProblems(coverageFixture(t), eventKindReconciled, map[string]string{"events.origin": "Go only writes it"})
+	problems := coverageProblems(readVocabularyRepo(coverageFixture(t)), eventKindReconciled, map[string]string{"events.origin": "Go only writes it"})
 	if len(problems) != 1 || !strings.Contains(problems[0], "events.origin") {
 		t.Fatalf("an exemption naming a column no migration constrains must be reported:\n%s", strings.Join(problems, "\n"))
 	}
@@ -494,7 +495,7 @@ func AllStates() []State {
 			goListedConstEnum("domain/state.go", "AllStates", "domain/state.go", "State"),
 		},
 	}}
-	problems := reconcileVocabularies(root, only)
+	problems := reconcileVocabularies(readVocabularyRepo(root), only)
 	if len(problems) != 1 || !strings.Contains(problems[0], `"done"`) {
 		t.Fatalf("a constant the list forgets must be reported:\n%s", strings.Join(problems, "\n"))
 	}

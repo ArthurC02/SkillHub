@@ -16,7 +16,34 @@ import (
 type vocabularySource struct {
 	label    string
 	checkKey string
-	read     func(root string) (map[string]bool, error)
+	read     func(repo vocabularyRepo) (map[string]bool, error)
+}
+
+type vocabularyRepo struct {
+	root          string
+	migrations    map[string]map[string]bool
+	migrationsErr error
+	goFiles       map[string]goParse
+}
+
+type goParse struct {
+	file *ast.File
+	err  error
+}
+
+func readVocabularyRepo(root string) vocabularyRepo {
+	migrations, err := migrationVocabularies(root)
+	return vocabularyRepo{root: root, migrations: migrations, migrationsErr: err, goFiles: map[string]goParse{}}
+}
+
+func (r vocabularyRepo) goFile(relative string) (string, *ast.File, error) {
+	path := filepath.Join(r.root, filepath.FromSlash(relative))
+	parsed, seen := r.goFiles[path]
+	if !seen {
+		parsed.file, parsed.err = parser.ParseFile(token.NewFileSet(), path, nil, 0)
+		r.goFiles[path] = parsed
+	}
+	return path, parsed.file, parsed.err
 }
 
 type domainVocabulary struct {
@@ -28,8 +55,8 @@ type domainVocabulary struct {
 func goConstEnum(path, typeName string) vocabularySource {
 	return vocabularySource{
 		label: fmt.Sprintf("%s (%s constants)", path, typeName),
-		read: func(root string) (map[string]bool, error) {
-			byName, err := goConstStrings(filepath.Join(root, filepath.FromSlash(path)), typeName)
+		read: func(repo vocabularyRepo) (map[string]bool, error) {
+			byName, err := repoConstStrings(repo, path, typeName)
 			if err != nil {
 				return nil, err
 			}
@@ -45,12 +72,16 @@ func goConstEnum(path, typeName string) vocabularySource {
 func goListedConstEnum(listPath, listName, constPath, constType string) vocabularySource {
 	return vocabularySource{
 		label: fmt.Sprintf("%s (%s)", listPath, listName),
-		read: func(root string) (map[string]bool, error) {
-			names, err := goListedIdentifiers(filepath.Join(root, filepath.FromSlash(listPath)), listName)
+		read: func(repo vocabularyRepo) (map[string]bool, error) {
+			listFile, list, err := repo.goFile(listPath)
 			if err != nil {
 				return nil, err
 			}
-			byName, err := goConstStrings(filepath.Join(root, filepath.FromSlash(constPath)), constType)
+			names, err := listedIdentifiersIn(listFile, list, listName)
+			if err != nil {
+				return nil, err
+			}
+			byName, err := repoConstStrings(repo, constPath, constType)
 			if err != nil {
 				return nil, err
 			}
@@ -72,12 +103,11 @@ func sqlColumnCheck(table, column string) vocabularySource {
 	return vocabularySource{
 		label:    fmt.Sprintf("db/migrations (CHECK on %s)", key),
 		checkKey: key,
-		read: func(root string) (map[string]bool, error) {
-			vocabularies, err := migrationVocabularies(root)
-			if err != nil {
-				return nil, err
+		read: func(repo vocabularyRepo) (map[string]bool, error) {
+			if repo.migrationsErr != nil {
+				return nil, repo.migrationsErr
 			}
-			values, declared := vocabularies[key]
+			values, declared := repo.migrations[key]
 			if !declared {
 				return nil, fmt.Errorf("no migration leaves a CHECK listing the values of %s; the constraint moved or the column was dropped", key)
 			}
@@ -91,8 +121,8 @@ const runStatusEnumType = "run_status"
 func runStatusEnum(path string) vocabularySource {
 	return vocabularySource{
 		label: fmt.Sprintf("%s (enum %s)", path, runStatusEnumType),
-		read: func(root string) (map[string]bool, error) {
-			return postgresEnumValues(filepath.Join(root, filepath.FromSlash(path)), runStatusEnumType)
+		read: func(repo vocabularyRepo) (map[string]bool, error) {
+			return postgresEnumValues(filepath.Join(repo.root, filepath.FromSlash(path)), runStatusEnumType)
 		},
 	}
 }
@@ -518,15 +548,16 @@ var unreconciledVocabularies = map[string]string{
 }
 
 func domainVocabularyProblems(root string) []string {
-	problems := reconcileVocabularies(root, domainVocabularies)
-	return append(problems, coverageProblems(root, domainVocabularies, unreconciledVocabularies)...)
+	repo := readVocabularyRepo(root)
+	problems := reconcileVocabularies(repo, domainVocabularies)
+	return append(problems, coverageProblems(repo, domainVocabularies, unreconciledVocabularies)...)
 }
 
-func coverageProblems(root string, reconciled []domainVocabulary, unreconciled map[string]string) []string {
-	vocabularies, err := migrationVocabularies(root)
-	if err != nil {
-		return []string{fmt.Sprintf("domain-vocabulary: %v", err)}
+func coverageProblems(repo vocabularyRepo, reconciled []domainVocabulary, unreconciled map[string]string) []string {
+	if repo.migrationsErr != nil {
+		return []string{fmt.Sprintf("domain-vocabulary: %v", repo.migrationsErr)}
 	}
+	vocabularies := repo.migrations
 	covered := map[string]bool{}
 	for _, vocabulary := range reconciled {
 		for _, source := range vocabulary.sources {
@@ -559,16 +590,16 @@ func coverageProblems(root string, reconciled []domainVocabulary, unreconciled m
 	return problems
 }
 
-func reconcileVocabularies(root string, vocabularies []domainVocabulary) []string {
+func reconcileVocabularies(repo vocabularyRepo, vocabularies []domainVocabulary) []string {
 	var problems []string
 	for _, vocabulary := range vocabularies {
-		reading, readProblems := readVocabularySources(root, vocabulary)
+		reading, readProblems := readVocabularySources(repo, vocabulary)
 		problems = append(problems, readProblems...)
 		if len(readProblems) > 0 || len(reading.byLabel) < 2 {
 			continue
 		}
 		problems = append(problems, reading.missingValueProblems(vocabulary.name)...)
-		problems = append(problems, readerProblems(root, vocabulary, reading.union)...)
+		problems = append(problems, readerProblems(repo, vocabulary, reading.union)...)
 	}
 	return problems
 }
@@ -578,11 +609,11 @@ type vocabularyReading struct {
 	union   map[string]bool
 }
 
-func readVocabularySources(root string, vocabulary domainVocabulary) (vocabularyReading, []string) {
+func readVocabularySources(repo vocabularyRepo, vocabulary domainVocabulary) (vocabularyReading, []string) {
 	reading := vocabularyReading{byLabel: map[string]map[string]bool{}, union: map[string]bool{}}
 	var problems []string
 	for _, source := range vocabulary.sources {
-		values, err := source.read(root)
+		values, err := source.read(repo)
 		if err != nil {
 			problems = append(problems, fmt.Sprintf("domain-vocabulary: %s: %v", vocabulary.name, err))
 			continue
@@ -616,10 +647,10 @@ func (r vocabularyReading) missingValueProblems(name string) []string {
 	return problems
 }
 
-func readerProblems(root string, vocabulary domainVocabulary, union map[string]bool) []string {
+func readerProblems(repo vocabularyRepo, vocabulary domainVocabulary, union map[string]bool) []string {
 	var problems []string
 	for _, reader := range vocabulary.readers {
-		values, err := reader.read(root)
+		values, err := reader.read(repo)
 		if err != nil {
 			problems = append(problems, fmt.Sprintf("domain-vocabulary: %s: %v", vocabulary.name, err))
 			continue
@@ -651,6 +682,18 @@ func goConstStrings(path, typeName string) (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	return constStringsIn(path, file, typeName)
+}
+
+func repoConstStrings(repo vocabularyRepo, relative, typeName string) (map[string]string, error) {
+	path, file, err := repo.goFile(relative)
+	if err != nil {
+		return nil, err
+	}
+	return constStringsIn(path, file, typeName)
+}
+
+func constStringsIn(path string, file *ast.File, typeName string) (map[string]string, error) {
 	values := map[string]string{}
 	for _, value := range constSpecs(file) {
 		declared, ok := value.Type.(*ast.Ident)
@@ -703,6 +746,10 @@ func goListedIdentifiers(path, listName string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	return listedIdentifiersIn(path, file, listName)
+}
+
+func listedIdentifiersIn(path string, file *ast.File, listName string) ([]string, error) {
 	for _, decl := range file.Decls {
 		if expression, ok := listedExpression(decl, listName); ok {
 			return compositeIdentifiers(path, listName, expression)
