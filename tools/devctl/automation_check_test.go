@@ -5,8 +5,11 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
+	"slices"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestDocumentCheckerRosterIsComplete(t *testing.T) {
@@ -215,6 +218,36 @@ func TestAutomationCheckRunsEveryChecker(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestRunCheckersReportsInRosterOrderWhateverOrderTheyFinish(t *testing.T) {
+	t.Parallel()
+	if runtime.NumCPU() < 2 {
+		t.Skip("needs two checkers running at once to make the second finish first")
+	}
+	secondDone := make(chan struct{})
+	checkers := []namedChecker{
+		{"first", func(string) []string {
+			select {
+			case <-secondDone:
+				return []string{"from first"}
+			case <-time.After(10 * time.Second):
+				return []string{"first never saw second finish: checkers ran one at a time"}
+			}
+		}},
+		{"second", func(string) []string { defer close(secondDone); return []string{"from second"} }},
+		{"third", func(string) []string { return nil }},
+	}
+	got := runCheckers("root", checkers)
+	want := [][]string{{"from first"}, {"from second"}, nil}
+	if len(got) != len(want) {
+		t.Fatalf("got %d results, want %d", len(got), len(want))
+	}
+	for i := range want {
+		if !slices.Equal(got[i], want[i]) {
+			t.Fatalf("result %d = %q, want %q", i, got[i], want[i])
+		}
 	}
 }
 

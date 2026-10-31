@@ -7,7 +7,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"sync"
 )
 
 func automationCheck(root string, out io.Writer) error {
@@ -18,9 +20,10 @@ func automationCheck(root string, out io.Writer) error {
 	}
 	problems = append(problems, taskfileProblems(tasks)...)
 	problems = append(problems, generatedMarkerProblems(root)...)
-	for _, checker := range documentCheckers() {
-		label := checker.name + ": "
-		for _, problem := range checker.check(root) {
+	checkers := documentCheckers()
+	for i, found := range runCheckers(root, checkers) {
+		label := checkers[i].name + ": "
+		for _, problem := range found {
 			if !strings.HasPrefix(problem, label) {
 				problem = label + problem
 			}
@@ -36,6 +39,23 @@ func automationCheck(root string, out io.Writer) error {
 	}
 	fmt.Fprintf(out, "automation contract: %d tasks documented; agent and generated ownership checks passed\n", len(tasks))
 	return nil
+}
+
+func runCheckers(root string, checkers []namedChecker) [][]string {
+	results := make([][]string, len(checkers))
+	slots := make(chan struct{}, runtime.NumCPU())
+	var wg sync.WaitGroup
+	for i, checker := range checkers {
+		wg.Add(1)
+		slots <- struct{}{}
+		go func() {
+			defer wg.Done()
+			defer func() { <-slots }()
+			results[i] = checker.check(root)
+		}()
+	}
+	wg.Wait()
+	return results
 }
 
 func requiredDocProblems(root string) []string {
