@@ -100,11 +100,11 @@ Skill Hub 是 Agent Skill 平台，核心是 Catalog、輕鬆創建，以及私�
 | `apps/platform/internal/` | [`apps/platform/internal/AGENTS.md`](apps/platform/internal/AGENTS.md) ＋ 目標套件的 `doc.go` |
 | `docs/` | [`docs/AGENTS.md`](docs/AGENTS.md)；調整指示或派工前加讀[分層與派工](docs/development/agent-instructions.md) |
 
-這張表是唯一保證送達的入口（目錄層 `AGENTS.md` 各工具送達方式不一）。Claude Code 另有 `.claude/rules/`（按路徑送指標）、`.claude/agents/`（按風險切的三個角色：writer／verify／mutation）、`.claude/skills/`（換一個 repo 還成立的程序）、`.claude/workflows/`（固定形狀的多代理程序）與 `permissions.deny`；**它們不取代文件，只是提早發現**，放置規則、新增區域配方與守它們的機器見 automation.md〈Harness〉。
+這張表是唯一保證送達的入口（目錄層 `AGENTS.md` 各工具送達方式不一）。Claude Code 另有 `.claude/rules/`（按路徑送指標）、`.claude/agents/`（按風險切的兩個角色：writer／verify）、`.claude/skills/`（換一個 repo 還成立的程序）、`.claude/workflows/`（固定形狀的多代理程序）、`skillhub-guards` 外掛（在 Bash 與 PowerShell 上當場擋紅線）與 `permissions.deny`；**它們不取代文件，只是提早發現**，放置規則、新增區域配方與守它們的機器見 automation.md〈Harness〉。
 
 ## 任務導航
 
-先判斷任務，再沿上表讀目標區域指示；工具不保證自動載入。直接問答或小任務由主代理查證後回答；小型明確修改可由主代理完成，協作修改才建立 brief、path allowlist 與單一 Writer。任務→流程：可見文案分類稽核→`ux-text-audit`；跨前後端失敗／缺席路徑→`error-path-audit`；已明確允收的批次修補→`parallel-page-edit` 契約（跨工具預設仍序列派工）。跨工具流程契約、輸入、證據與停止條件集中在 [`docs/development/agent-instructions.md`](docs/development/agent-instructions.md)。
+先判斷任務，再沿上表讀目標區域指示；工具不保證自動載入。直接問答或小任務由主代理查證後回答；小型明確修改可由主代理完成，協作修改才建立 brief、path allowlist 與單一 Writer。任務→流程：可見文案分類稽核→`ux-text-audit`；跨前後端失敗／缺席路徑→`error-path-audit`；已明確允收的批次修補→序列派工（單一 Writer → 唯讀 Verify → 突變證明）。跨工具流程契約、輸入、證據與停止條件集中在 [`docs/development/agent-instructions.md`](docs/development/agent-instructions.md)。
 
 ## 去哪看
 

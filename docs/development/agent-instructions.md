@@ -67,23 +67,8 @@
 
 反駁新增的 `missed` 不得直接當確認缺陷，必須由獨立唯讀複核重新查證後才可入帳。證據是完整讀取清單、findings、逐項 verdict、獨立複核與 critic；缺結果或與程式／契約矛盾即停止回報。此流程唯讀，不自動修補。
 
-### `parallel-page-edit`
+### 批次修補
 
-輸入是互斥 path allowlist 的寫入 briefs、共同 context、每項測試命令與 gate 成功行。預設流程是主代理序列派送：單一 Writer（包含任何突變操作）→ 唯讀 Verify → Mutation（還原修正、確認有 assertion 的紅、完整恢復 diff）→ 主代理檢查每項狀態。Mutation 僅適用於 bug fix 或其他有可失敗斷言的行為修正；純文案、純註解與本來沒有可判定斷言的文件整理免做，並在證據中記下理由。唯讀工作可平行，但同一目標的驗證須等寫入穩定；Writer、生成、formatter、package manager 與高衝突區一律序列化。
-
-原生 `parallel-page-edit.js` 的多 brief 扇出安全尚未跨工具驗證，不作預設，也不宣稱單 brief 已安全；只有先確認該工具的單 brief 呼叫契約與共享工作樹隔離後才能採用，否則用上述序列組裝，不新增 runner。即使確認可呼叫，原腳本 gate 只檢查 Verify 結果，不檢查 Mutation 是否變紅或已恢復；主代理仍須逐項驗收，不能以 gate 代替。若工具沒有獨立 Writer／Verify／Mutation 能力，回報限制，不能假裝具備獨立驗證。批次契約須等全部 briefs 完成 Writer／Verify／適用的 Mutation 後，由主線只跑一次適用整合 gate；缺失或未恢復不能當完成。完成判定須逐項核對 writer／verify／mutation、mutation 已恢復、out-of-scope 與缺失結果，再看 gate 的 exit code 和成功行；gate 綠不能單獨宣稱任務完成。
+輸入是互斥 path allowlist 的寫入 briefs、每項測試命令與 gate 成功行。主代理序列派送：單一 Writer → 唯讀 Verify → 突變證明（還原修正、確認有斷言的紅、恢復且 diff 為空；純文案、純註解與沒有可判定斷言的整理免做並記下理由）。全部完成後主線只跑一次整合 gate；gate 綠不能單獨宣稱完成，要逐項核對每份 brief 的結果。
 
 所有流程的模型依 `automation.md` 分級：從能完成工作的最低級開始，快速文件整理可用快速執行；需要安全判斷或對抗性複核才升級深度推論，禁止派旗艦級。流程不得依賴本機記憶；規則提升須核對 repo 現況，不搬入歷史、個人偏好或 commit／push 授權。
-
-## 無記憶情境驗收題
-
-每次換工具、換代理或重開工作都可重新出題；下列是題目與應留下的證據，**不預填通過／失敗**：
-
-| 情境題 | 預期證據 |
-| --- | --- |
-| 只有一個小型唯讀問題，代理應改檔嗎？ | 先判為直接問答，列出 root → 目標父目錄的讀取清單、結論、假設與限制；沒有 diff。 |
-| `ux-text-audit` 少了一組檔案或某段文字只能從 fixture 得知，能宣稱完成嗎？ | Read 結果、逐項 Refute 結果、Critic 的未讀／不可計數清單；缺任一項即停下回報。 |
-| `error-path-audit` 的 refuter 回報一個 `missed`，可直接寫入帳本嗎？ | 原 finding、refuter 結果、獨立唯讀複核的 file:line 與 verdict；沒有複核不得算確認缺陷。 |
-| 兩個 page briefs 同時要寫共享工作樹，能直接扇出嗎？ | 共享工作樹無論 allowlist 是否交集都只准單一 Writer；交集另須重分責任或處理依賴，再依序 Writer → Verify → Mutation，不宣稱 native workflow 安全。 |
-| 寫入後 gate 綠了，能宣稱全部完成嗎？ | 每項 writer／verify／mutation 狀態、mutation 已恢復且 diff 相符、缺失與 out-of-scope 結果，加上 gate exit code 與成功行；任一缺失即未完成。 |
-| brief 與程式碼或契約互相矛盾，應怎麼做？ | 指出衝突的檔案／行號與權威來源，停止該流程並回報；不得自行推進或以 CI 靜態檢查代替行為驗證。 |

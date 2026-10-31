@@ -6,7 +6,7 @@ import {
   type MutationInput, type ShipInput,
 } from './assist'
 
-const ROLES = ['skillhub-writer', 'skillhub-verify', 'skillhub-mutation']
+const ROLES = ['skillhub-writer', 'skillhub-verify']
 const FAMILIES = ['fable', 'opus', 'sonnet', 'haiku']
 const RUNTIME_IMAGE = 'infra/images/runtime-agent-sdk'
 const DOMAIN_MEMORY = 'docs/domain-memory'
@@ -42,6 +42,33 @@ const SUBAGENT_RULES: [RegExp, string][] = [
     'may not regenerate generated files; the dispatcher serialises it (AGENTS.md 開發自動化 5)'],
   [/\b(?:run\s+\.|devctl)\s+agent-sync\b/, 'may not run agent-sync; only the single writer does (AGENTS.md 開發自動化 3)'],
 ]
+
+const SAME_COMMAND = String.raw`(?:[^;&|\n]*\s)?`
+const red = (pattern: string) => new RegExp(GIT + pattern)
+const KEEPS_OTHERS_WORK = 'it can take or discard work this session did not make; stage named files and keep what is not yours (AGENTS.md 開發自動化 3)'
+const RED_LINES: [RegExp, string][] = [
+  [red(String.raw`stash\b`), KEEPS_OTHERS_WORK],
+  [red(String.raw`reset\s+${SAME_COMMAND}--hard\b`), KEEPS_OTHERS_WORK],
+  [red(String.raw`clean\s+-`), KEEPS_OTHERS_WORK],
+  [red(String.raw`checkout\s+${SAME_COMMAND}(?:--\s|\.(?:\s|$))`), KEEPS_OTHERS_WORK],
+  [red(String.raw`restore\b`), KEEPS_OTHERS_WORK],
+  [red(String.raw`add\s+${SAME_COMMAND}(?:-A\b|--all\b|\.(?:\s|$))`), KEEPS_OTHERS_WORK],
+  [red(String.raw`commit\s+${SAME_COMMAND}(?:-[A-Za-z]*a[A-Za-z]*\b|--all\b)`), KEEPS_OTHERS_WORK],
+  [red(String.raw`commit\s+${SAME_COMMAND}--amend\b`), 'history is never rewritten; make a new commit'],
+  [red(String.raw`push\s+${SAME_COMMAND}(?:--force\b|-f\b)`), 'history is never rewritten; merge and push'],
+  [new RegExp(String.raw`\s--no-verify\b`), 'hooks are never skipped; fix what the hook found'],
+]
+
+const HEREDOC_BODY = /<<-?\s*(['"]?)(\w+)\1([^\n]*)\n[\s\S]*?\n\2(?=\s|$)/g
+const QUOTED = /"(?:[^"\\]|\\.)*"|'[^']*'/g
+
+const withoutText = (command: string) =>
+  command.replace(HEREDOC_BODY, '<<$2$3').replace(QUOTED, '""')
+
+export const redLineProblem = (command: string): string | undefined => {
+  const words = withoutText(command)
+  return RED_LINES.find(([pattern]) => pattern.test(words))?.[1]
+}
 
 const GIT_PUSH = new RegExp(GIT + String.raw`push\b`)
 const GIT_COMMIT = new RegExp(GIT + String.raw`commit\b`)
@@ -287,7 +314,10 @@ export const register: Register = on => {
     return problem ? { deny: `skillhub-guards: ${problem}` } : next(e)
   })
 
-  on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
+  on('tool.call', { tool: ['Bash', 'PowerShell'] }, async ($, e, next) => {
+    if (e.tool !== 'Bash' && e.tool !== 'PowerShell') return next(e)
+    const redLine = redLineProblem(e.command)
+    if (redLine) return { deny: `skillhub-guards: refused: ${redLine}.` }
     const problem = e.agentId !== undefined ? subagentCommandProblem(e.command) : undefined
     if (problem) return { deny: `skillhub-guards: a subagent ${problem}.` }
     const root = await $.session.root()
@@ -316,7 +346,7 @@ export const register: Register = on => {
       }
     }
 
-    const rewritten = withTestDatabase(e.command, await testDsn($, root))
+    const rewritten = e.tool === 'Bash' ? withTestDatabase(e.command, await testDsn($, root)) : undefined
     if (rewritten !== undefined) {
       const result = await spendOnSuccess($, granted, await next({ ...e, command: rewritten }))
       const shell = result.result as { stdout?: unknown } | undefined

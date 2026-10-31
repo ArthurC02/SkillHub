@@ -1,7 +1,7 @@
 import type { On } from 'claude-code'
 import { expect, test } from 'claude-code/testing'
 import {
-  attributedToCommand, isAgentCache, isGeneratedHeader, needsSignature, pushDirectory, spawnProblem,
+  attributedToCommand, isAgentCache, isGeneratedHeader, needsSignature, pushDirectory, redLineProblem, spawnProblem,
   subagentCommandProblem, worktreePaths,
 } from '../hooks/register'
 
@@ -162,6 +162,19 @@ test('the Bash hook refuses a subagent\'s commit before it runs', async ($, on) 
   const fromASubagent = { tool: 'Bash' as const, command: 'git commit -m x', agentId: 'agent-1' }
   const result = await $.tool.call(fromASubagent)
   expect(result.deny).toMatch(/may not write to Git/)
+})
+
+test('the PowerShell tool is held to the same subagent rules as Bash', async ($, on) => {
+  world(on, () => '')
+  const fromASubagent = { tool: 'PowerShell' as const, command: 'cd c:/repo; git commit -m x', agentId: 'agent-1' }
+  const result = await $.tool.call(fromASubagent)
+  expect(result.deny).toMatch(/may not write to Git/)
+})
+
+test('a PowerShell push that changes the runtime image is refused like a Bash one', async ($, on) => {
+  world(on, argv => argv.includes('diff') ? 'infra/images/runtime-agent-sdk/Dockerfile' : '')
+  const result = await $.tool.call({ tool: 'PowerShell', command: 'git push origin HEAD:main' })
+  expect(result.deny).toMatch(/runtime image tag/)
 })
 
 test('the Bash hook refuses a heredoc that writes backslashes into a code file', async ($, on) => {
@@ -331,4 +344,65 @@ test('a file this session\'s own command changed in another worktree can then be
 test('a file another session had already changed is not attributed even if the command touched it again', () => {
   expect(attributedToCommand(' M apps/a.ts\0', ' M apps/a.ts\0')).toEqual([])
   expect(attributedToCommand(' M apps/a.ts\0', 'MM apps/a.ts\0')).toEqual([])
+})
+
+const crossesARedLine = [
+  'git stash',
+  'git stash list',
+  'git -C c:/tmp/wt stash push -u -m tag',
+  'git reset --hard origin/main',
+  'git reset -q --hard',
+  'git clean -fd',
+  'git checkout -- apps/web/src/a.ts',
+  'git checkout .',
+  'git restore apps/web/src/a.ts',
+  'git add -A',
+  'git add --all',
+  'git add .',
+  'git commit -a -m x',
+  'git commit -am x',
+  'git commit --all -m x',
+  'git commit --amend --no-edit',
+  'git push --force origin main',
+  'git push -f',
+  'git push --force-with-lease',
+  'git push --no-verify',
+  'cd c:/tmp/wt; git stash list',
+  'rtk git stash',
+]
+
+for (const command of crossesARedLine) {
+  test(`"${command}" is refused for every caller`, () => {
+    expect(redLineProblem(command)).toBeDefined()
+  })
+}
+
+const everydayGit = [
+  'git add apps/web/src/a.ts docs/domain-memory/changes/x',
+  'git commit -S -q -m "docs: apply the package"',
+  "git commit -q -F - <<'EOF'\nfix: add a guard\nEOF",
+  'git commit -m "a sentence with -a hyphen-attached words and --amendment"',
+  'git pull -q --no-rebase origin main && git push -q origin HEAD:main',
+  'git checkout main',
+  'git log --oneline -3',
+  'git status --short',
+  'git show HEAD:apps/web/src/a.ts > apps/web/src/a.ts',
+  'git diff --stat -- .claude',
+]
+
+for (const command of everydayGit) {
+  test(`"${command.split('\n')[0]}" is not a red line`, () => {
+    expect(redLineProblem(command)).toBeUndefined()
+  })
+}
+
+test('the main session is refused a red line through either shell', async ($, on) => {
+  world(on, () => '')
+  for (const tool of ['Bash', 'PowerShell'] as const) {
+    expect((await $.tool.call({ tool, command: 'git stash list' })).deny).toMatch(/refused/)
+  }
+})
+
+test('a heredoc commit message that mentions git stash is not a red line', () => {
+  expect(redLineProblem("git commit -q -F - <<'EOF'\nnever git stash; it takes others' work\nEOF")).toBeUndefined()
 })
