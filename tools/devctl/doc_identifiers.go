@@ -170,9 +170,19 @@ func docIdentifierProblems(root string) []string {
 
 func declaredCodeWords(root string) map[string]bool {
 	declared := map[string]bool{}
-	word := regexp.MustCompile(`[A-Za-z_][A-Za-z0-9_]{3,}`)
 	skip := map[string]bool{dirGit: true, dirNodeModules: true, dirVenv: true, dirDevctlCache: true, dirDist: true, dirPycache: true}
 	tracked := trackedFiles(root)
+	if tracked != nil {
+		for name := range tracked {
+			if inSkippedDir(name, skip) || !declaresDocIdentifiers(root, filepath.Join(root, filepath.FromSlash(name)), tracked) {
+				continue
+			}
+			if body, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(name))); err == nil {
+				addCodeWords(body, declared)
+			}
+		}
+		return declared
+	}
 
 	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
@@ -191,13 +201,50 @@ func declaredCodeWords(root string) map[string]bool {
 		if err != nil {
 			return continuePastUnreadableEntry()
 		}
-		for _, w := range word.FindAllString(string(body), -1) {
-			declared[w] = true
-		}
+		addCodeWords(body, declared)
 		return nil
 	})
 	return declared
 }
+
+func inSkippedDir(name string, skip map[string]bool) bool {
+	dirs := strings.Split(name, "/")
+	for _, dir := range dirs[:len(dirs)-1] {
+		if skip[dir] {
+			return true
+		}
+	}
+	return false
+}
+
+// addCodeWords records what [A-Za-z_][A-Za-z0-9_]{3,} would match: in each
+// run of word bytes, the part from its first letter or underscore to the
+// end of the run, when that part is at least four bytes long.
+func addCodeWords(body []byte, into map[string]bool) {
+	for i := 0; i < len(body); {
+		if !isWordByte(body[i]) {
+			i++
+			continue
+		}
+		start := -1
+		j := i
+		for ; j < len(body) && isWordByte(body[j]); j++ {
+			if start < 0 && !isDigitByte(body[j]) {
+				start = j
+			}
+		}
+		if start >= 0 && j-start >= 4 {
+			into[string(body[start:j])] = true
+		}
+		i = j
+	}
+}
+
+func isWordByte(b byte) bool {
+	return b == '_' || isDigitByte(b) || (b|0x20 >= 'a' && b|0x20 <= 'z')
+}
+
+func isDigitByte(b byte) bool { return b >= '0' && b <= '9' }
 
 func declaresDocIdentifiers(root, path string, tracked map[string]bool) bool {
 	if !codeExtensions[strings.ToLower(filepath.Ext(path))] {

@@ -182,6 +182,57 @@ func TestDocIdentifierCountsOnlyWhatTheRepositoryTracks(t *testing.T) {
 	}
 }
 
+func TestCodeWordsAreRunsOfFourOrMoreFromTheFirstLetter(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name, body string
+		want       []string
+	}{
+		{"exactly four", "abcd", []string{"abcd"}},
+		{"three is too short", "abc", nil},
+		{"leading digits are dropped", "123abcd", []string{"abcd"}},
+		{"leading digits leave three", "9abc", nil},
+		{"underscore starts a word", "_a1b", []string{"_a1b"}},
+		{"digits after the first letter stay", "x2y3", []string{"x2y3"}},
+		{"punctuation and multibyte text split runs", "Foo.BarBaz 名稱QuxQ\tlast_one", []string{"BarBaz", "QuxQ", "last_one"}},
+		{"only digits", "123456", nil},
+		{"a run at the very end", "  tail", []string{"tail"}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			got := map[string]bool{}
+			addCodeWords([]byte(c.body), got)
+			if len(got) != len(c.want) {
+				t.Fatalf("got %v, want %v", got, c.want)
+			}
+			for _, w := range c.want {
+				if !got[w] {
+					t.Fatalf("got %v, want %v", got, c.want)
+				}
+			}
+		})
+	}
+}
+
+func TestDocIdentifierIgnoresTrackedFilesInsideSkippedDirectories(t *testing.T) {
+	t.Parallel()
+	root := writeDocScope(t,
+		"見 `BuiltOnlyIntoDist`。\n",
+		map[string]string{"apps/web/dist/bundle.ts": "export const BuiltOnlyIntoDist = 1\n"})
+	if out, err := exec.Command("git", "-C", root, "init", "-q").CombinedOutput(); err != nil {
+		t.Skipf("no git available to build the fixture: %v %s", err, out)
+	}
+	if out, err := exec.Command("git", "-C", root, "add", "-f", "AGENTS.md", "apps/web/dist/bundle.ts").CombinedOutput(); err != nil {
+		t.Fatalf("git add: %v %s", err, out)
+	}
+
+	problems := docIdentifierProblems(root)
+	if len(problems) != 1 || !strings.Contains(problems[0], "BuiltOnlyIntoDist") {
+		t.Fatalf("a name declared only under dist was accepted as a declaration: %v", problems)
+	}
+}
+
 func TestDocIdentifierOutsideAGitRepositoryReadsEveryFile(t *testing.T) {
 	t.Parallel()
 	root := writeDocScope(t,
