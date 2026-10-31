@@ -179,11 +179,19 @@ jobs:
           - os: ubuntu-latest
             browser: firefox
             shard: 1
-            total: 2
+            total: 4
           - os: ubuntu-latest
             browser: firefox
             shard: 2
-            total: 2
+            total: 4
+          - os: ubuntu-latest
+            browser: firefox
+            shard: 3
+            total: 4
+          - os: ubuntu-latest
+            browser: firefox
+            shard: 4
+            total: 4
           - os: ubuntu-latest
             browser: webkit
             shard: 1
@@ -203,11 +211,15 @@ jobs:
           - os: windows-latest
             browser: chromium
             shard: 1
-            total: 2
+            total: 3
           - os: windows-latest
             browser: chromium
             shard: 2
-            total: 2
+            total: 3
+          - os: windows-latest
+            browser: chromium
+            shard: 3
+            total: 3
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     defaults:
