@@ -89,7 +89,14 @@ func committedProblems(root, rangeSpec string, out io.Writer) ([]string, error) 
 	if err != nil {
 		return nil, err
 	}
-	return append(append(append(format, comments...), evidence...), bump...), nil
+	guards, guardsWarnings, err := committedGuardsTestProblems(root, rangeSpec, guardsTestCommand)
+	if err != nil {
+		return nil, err
+	}
+	for _, warning := range guardsWarnings {
+		fmt.Fprintln(out, statusWarn, warning)
+	}
+	return append(append(append(append(format, comments...), evidence...), bump...), guards...), nil
 }
 
 func unpushedRange(root string) string {
