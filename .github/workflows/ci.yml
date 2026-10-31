@@ -662,7 +662,7 @@ jobs:
 
       - name: Tools scripts — complexity gate
         run: |
-          pip install ruff==0.16.7
+          pip install ruff==0.17.2
           ruff check tools --config tools/ruff.toml
 
       - name: Shell scripts
