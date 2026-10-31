@@ -25,7 +25,9 @@ description: 在要下結論說某次測試、lint 或檢查「過了」之前�
 
 ## 3. 本機綠不等於 CI 綠
 
-CI 的平台才是事實來源。差異最常出在：檔名大小寫（本機 case-insensitive、CI 不是）、路徑解析與行尾、工具版本、只在 CI 設的環境變數、formatter 的預設值。
+CI 的平台才是事實來源。差異最常出在：檔名大小寫（本機 case-insensitive、CI 不是）、路徑解析與行尾（「轉成正斜線」的函式通常只轉本機的分隔符，Windows 路徑字串到了 Linux 原封不動）、工具版本、只在 CI 設的環境變數、formatter 的預設值。
+
+本機是 Windows、CI 是 Linux 時，推之前在同版本的 Linux 容器裡跑一次同一條指令，最便宜。
 
 本機綠的意思只是「值得推上去看」，不是「過了」。
 
@@ -34,6 +36,8 @@ CI 的平台才是事實來源。差異最常出在：檔名大小寫（本機 c
     <command> > out.txt 2>&1; echo "exit=$?"
 
 然後讀 `out.txt`，並看那個 exit code。exit 0 但輸出是空的，跟 exit 0 且成功行在裡面，不是同一件事——前者通常代表指令根本沒執行到你以為的東西。
+
+反過來也一樣：非零 exit code 配上 `command not found`、`not recognized` 這類訊息，代表指令沒啟動，不是「它跑了而且失敗」。這時綠、紅都不知道。
 
 ## 5. 快取重播不是這一次跑的
 
