@@ -39,8 +39,8 @@ func TestServingEndsOnlyAfterTheRequestsInFlightAreAnswered(t *testing.T) {
 
 	signalled()
 	select {
-	case <-returned:
-		t.Fatal("serving returned while a request was still being handled; main would close the driver under it")
+	case err := <-returned:
+		t.Fatalf("serving returned (%v) while a request was still being handled; main would close the driver under it", err)
 	case <-time.After(300 * time.Millisecond):
 	}
 	close(release)

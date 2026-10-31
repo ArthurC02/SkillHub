@@ -644,9 +644,8 @@ func TestAnAccountPurgeWaitsForBytesThatAreStillBeingWritten(t *testing.T) {
 
 	if accountPurgeCanTakeTheWorkspace(t, pool, ws.ID) {
 		close(store.release)
-		<-done
-		t.Fatal("an account purge could take the workspace while bytes were still on their way to storage; " +
-			"it would enumerate and delete what is there, then this upload would land after it")
+		t.Fatalf("an account purge could take the workspace while bytes were still on their way to storage; "+
+			"it would enumerate and delete what is there, then this upload would land after it (upload returned %v)", <-done)
 	}
 
 	close(store.release)

@@ -475,13 +475,13 @@ digest 更新一併評估。
 docker build -t skillhub/runtime-agent-sdk:scan infra/images/runtime-agent-sdk
 
 docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/scan:/scan" \
-  anchore/syft:v1.51.0 skillhub/runtime-agent-sdk:scan -o spdx-json=/scan/sbom.spdx.json
+  anchore/syft:v1.55.0 skillhub/runtime-agent-sdk:scan -o spdx-json=/scan/sbom.spdx.json
 
 # 完整報告
-docker run --rm -v "$PWD/scan:/scan" anchore/grype:v0.117.0 sbom:/scan/sbom.spdx.json -o table
+docker run --rm -v "$PWD/scan:/scan" anchore/grype:v0.121.0 sbom:/scan/sbom.spdx.json -o table
 
 # CI 的閘門（exit != 0 即不得發佈）
-docker run --rm -v "$PWD/scan:/scan" anchore/grype:v0.117.0 sbom:/scan/sbom.spdx.json \
+docker run --rm -v "$PWD/scan:/scan" anchore/grype:v0.121.0 sbom:/scan/sbom.spdx.json \
   --only-fixed --fail-on high -o table
 ```
 

@@ -224,7 +224,8 @@ func TestAStartWhoseExecNeverAnswersReturnsWhenItsContextEnds(t *testing.T) {
 	started := make(chan error, 1)
 	go func() { started <- d.Start(ctx, id, testRequest("sleep 30")) }()
 	select {
-	case <-started:
+	case err := <-started:
+		t.Logf("Start returned %v once its context ended", err)
 	case <-time.After(30 * time.Second):
 		t.Fatal("Start never returned after its context ended: a silent exec holds the caller forever")
 	}

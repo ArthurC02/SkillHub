@@ -31,8 +31,8 @@ env:
   IMAGE: skillhub/runtime-agent-sdk:ci
   # GHCR rejects mixed-case registry paths.
   REGISTRY_IMAGE: ghcr.io/arthurc02/skillhub-runtime-agent-sdk
-  SYFT: docker.io/anchore/syft:v1.51.0@sha256:678bfa565b60f747aac0f8e964fe5588a24445b8d0a480e91f6efd70020dfbb0
-  GRYPE: docker.io/anchore/grype:v0.117.0@sha256:ddf9e9f204049f3a4a0955ef70873cabab6a31432125ad4f20a490b54950a253
+  SYFT: docker.io/anchore/syft:v1.55.0@sha256:4cc92b64ca74ffca4c94d4c8fcc01f217731375300be14d0b6eeb2e82eaa110a
+  GRYPE: docker.io/anchore/grype:v0.121.0@sha256:621d56d1d68106b787022c81546f7e0a36202a25d1239f0c20195fab8c16f7ea
 
 jobs:
   image:

@@ -168,7 +168,7 @@ docker run --rm -v "$PWD:/src" -v /var/run/docker.sock:/var/run/docker.sock \
 
 # lint（與 apps/platform 同一版本與設定）
 docker run --rm -v "$PWD:/src" -w /src/apps/sandbox \
-  golangci/golangci-lint:v2.14.0 sh -c "golangci-lint fmt --diff && golangci-lint run ./..."
+  golangci/golangci-lint:v2.15.0 sh -c "golangci-lint fmt --diff && golangci-lint run ./..."
 
 # Runtime Image
 docker build -t "skillhub/runtime-agent-sdk:$(sed -n 's/^ARG IMAGE_VERSION=//p' infra/images/runtime-agent-sdk/Dockerfile)" infra/images/runtime-agent-sdk

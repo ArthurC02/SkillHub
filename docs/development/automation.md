@@ -459,10 +459,10 @@ Go 全掃仍保留模組層級 advisory。有修補版仍是 `FAIL`；沒有修�
 **怎麼裝 `golangci-lint`，以及為什麼不能照著它官網那一行裝**：
 
 ```bash
-GOTOOLCHAIN=go1.27.3 go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0
+GOTOOLCHAIN=go1.27.3 go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.15.0
 ```
 
-版本 `v2.14.0` 來自 [`tools/toolchain.yaml`](../../tools/toolchain.yaml) 的 `golangci_lint`，CI 的 [`.github/actions/golangci-lint`](../../.github/actions/golangci-lint/action.yml) 讀同一個欄位、跑同一個 `go install`；模組代理與 sumdb 會驗 checksum。**`GOTOOLCHAIN=go1.27.3` 前綴是必要的**，因為 lint 設定的目標 Go 版本必須不高於建置 lint 的 Go 版本；本機工具鏈則由 `GOTOOLCHAIN=auto` 取得相容版本。
+版本 `v2.15.0` 來自 [`tools/toolchain.yaml`](../../tools/toolchain.yaml) 的 `golangci_lint`，CI 的 [`.github/actions/golangci-lint`](../../.github/actions/golangci-lint/action.yml) 讀同一個欄位、跑同一個 `go install`；模組代理與 sumdb 會驗 checksum。**`GOTOOLCHAIN=go1.27.3` 前綴是必要的**，因為 lint 設定的目標 Go 版本必須不高於建置 lint 的 Go 版本；本機工具鏈則由 `GOTOOLCHAIN=auto` 取得相容版本。
 
 裝完之後 `go env GOPATH`／`bin` 要在 `PATH` 上，`devctl doctor` 的 `golangci-lint` 那一列才會 PASS。**那一列從一開始就在 doctor 裡**——[開工守則第 1 條](../../AGENTS.md)「先診斷再修改」指的就是這件事：格式紅燈的成因通常不是缺工具，是沒有人先跑 doctor。
 

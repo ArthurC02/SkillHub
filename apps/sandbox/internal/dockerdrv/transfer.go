@@ -163,8 +163,8 @@ func (d *Driver) stopsWithin(ctx context.Context, id string, wait time.Duration)
 	select {
 	case <-stopped.Result:
 		return true
-	case <-stopped.Error:
-		return false
+	case waitErr := <-stopped.Error:
+		return waitErr == nil
 	}
 }
 
