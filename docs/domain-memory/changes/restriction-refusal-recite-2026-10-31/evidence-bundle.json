@@ -1,0 +1,29 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "restriction-refusal-recite",
+  "proposal_id": "restriction-refusal-recite-2026-10-31",
+  "registry_revision": {
+    "observed_commit": "136147a117eda68ab6de8638d55ec11e4011c313",
+    "registry_digest": "sha256:b48cbe0c65535b95da44c9128a3ab14db0f724c178720e9783c33700f3940c56",
+    "committed_digest": "sha256:b48cbe0c65535b95da44c9128a3ab14db0f724c178720e9783c33700f3940c56"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": ".claude/skills/domain-memory/engine/bin/windows-x86_64/domain-memory.exe verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/restriction-refusal-recite-2026-10-31 --path apps/platform/internal/skill/library/governance/restriction.go --path apps/platform/internal/skill/library/governance/restriction_test.go",
+      "command_profile": "architecture",
+      "exit_code": 0,
+      "output_sha256": "sha256:463421ab1cf1582154a74abe929a52bed87048a5a8a7e3b5ca87afc945ee8bb8",
+      "finished_at": "2026-10-31T05:30:55.686336Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

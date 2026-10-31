@@ -1,0 +1,80 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "restriction-refusal-recite-2026-10-31",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "restriction-refusal-recite",
+  "status": "submitted",
+  "change_classification": "routine",
+  "submitted_at": "2026-10-31T05:30:55.500644Z",
+  "verified_at": null,
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "136147a117eda68ab6de8638d55ec11e4011c313",
+    "registry_digest": "sha256:b48cbe0c65535b95da44c9128a3ab14db0f724c178720e9783c33700f3940c56",
+    "committed_digest": "sha256:b48cbe0c65535b95da44c9128a3ab14db0f724c178720e9783c33700f3940c56"
+  },
+  "affected_contexts": [
+    "registry"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "<context-id>",
+    "invariant": "<falsifiable-rule>",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "<existing-or-proposed-collaboration>",
+    "consistency": "<synchronous-or-eventual>",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": null,
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-restriction-reason-must-be-known",
+        "statement": "Restricting a skill with a reason code outside the known set is refused, listing the known codes.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "The reason 'invented' is refused as an unknown reason code."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/governance/restriction.go",
+            "lines": {
+              "start": 117,
+              "end": 131
+            },
+            "excerpt_sha256": "sha256:dc58dec1c0bba20d343f1f8780efeece4343313640b9915b10c821b0048a41a4"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/governance/restriction_test.go",
+            "lines": {
+              "start": 14,
+              "end": 72
+            },
+            "content_sha256": "sha256:a7361763d9c4ea191483f3f227d295f25fa8732888846c06f447d0103e44ba27",
+            "excerpt_sha256": "sha256:09350d3722923789cb55949300e57a0763c3dfee8f3b88d8f848c09a20429776",
+            "source_kind": "tests"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [],
+  "supersedes": [
+    "shifted-recite-2026-10-24"
+  ]
+}
