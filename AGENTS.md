@@ -10,7 +10,7 @@ Skill Hub 是 Agent Skill 平台，核心是 Catalog、輕鬆創建，以及私�
 
 1. **`apps/web`**（React SPA）只對 `apps/platform` 的 API 說話；契約在 `contracts/openapi/public.yaml`（OpenAPI-first，Go 是下游）。
 2. **`apps/platform`**（Go）是唯一的控制平面：API 行程做 AuthZ 與領域規則；Run 狀態機、River 佇列、FTS＋pgvector、Trace 分割表全在同一個 PostgreSQL；物件儲存講 S3 協定（本機 SeaweedFS）。
-3. **Go Worker** 是唯一的佇列消費者，以內部 HTTP 呼叫兩個能力提供者：**`apps/llm`**（Python FastAPI，所有模型呼叫經 LiteLLM 閘道）與 **`apps/sandbox`**（gVisor 隔離的 VM 池，跑釘選 digest 的 runtime image；契約 `contracts/openapi/sandbox-provider.yaml`）。
+3. **Go Worker** 是唯一的佇列消費者，以內部 HTTP 呼叫兩個能力提供者：**`apps/llm`**（Python FastAPI，所有模型呼叫經 LiteLLM 閘道）與 **`apps/sandbox`**（以容器跑釘選 digest 的 runtime image，生產以 gVisor 的 `runsc` 隔離；契約 `contracts/openapi/sandbox-provider.yaml`）。
 4. 結果以結構化回應回到 Go；領域狀態變更與對外事件同一交易（outbox）。**執行平面永遠碰不到核心資料庫。**
 
 `apps/platform/internal/` 的 Bounded Context 以經審查的 [Domain Memory Registry](docs/domain-memory/registry/contexts/index.md) 為準；技術套件的 identity 在 `apps/platform/architecture-identity.yaml`。兩者都有機器對帳。架構總圖見 [docs/adr/README.md](docs/adr/README.md)。
@@ -28,7 +28,7 @@ Skill Hub 是 Agent Skill 平台，核心是 Catalog、輕鬆創建，以及私�
 | `contracts/` | 跨程序／跨語言介面的唯一來源 |
 | `db/` | Migration、query、sqlc 設定與 `query-owners.yaml` |
 | `infra/` | 部署、runtime image、網路、節點與 observability |
-| `tools/` | 開發、CI、資料維護、維運命令；`tools/devctl` 是所有機器檢查的家 |
+| `tools/` | 開發、CI、資料維護、維運命令；`tools/devctl` 是 repo 級機器檢查的家 |
 | `docs/plans/` | 產品基準：`01` 目標與里程碑、`02` 規格允收（需求 ID）、`03` 工作清單、`04` 殘項與移交、`05` 待裁定；`mvp/mX/` 為里程碑當時的紀錄 |
 | `docs/adr/` | 架構決策，一個主題一份、內容永遠是現行版本；見 [索引](docs/adr/README.md) |
 | `docs/design/` | 前端兩把尺：[system.md](docs/design/system.md) 管一頁之內、[information-architecture.md](docs/design/information-architecture.md) 管頁與頁之間；**兩份都有機器測試直接解析** |
@@ -66,19 +66,19 @@ Skill Hub 是 Agent Skill 平台，核心是 Catalog、輕鬆創建，以及私�
 - **程式碼註解預設不寫**：意圖用命名說（Clean Code；領域詞彙照 DDD 的通用語言）——看不懂就抽出有名字的函式、型別或常數。唯一例外是艱難、特殊的演算法或程式碼區塊：說明它怎麼運作，一個區塊最多 3 行。**施工日誌與決策說明一律不准**——來龍去脈、為什麼這樣決定、需求／裁定編號、日期、實測數字都寫進 commit message 或 ADR。也不寫其他公司或產品的商標、名稱。適用所有手寫程式與設定檔（含 `doc.go`、YAML、SQL、Dockerfile、shell）。機器：`automation-check` 的 `comment-budget`；寫完跑 `go -C tools/devctl run . comment-lint <你改的路徑>`。
 - **測試程式碼以 ISTQB 為準**（它之於測試，如同 SOLID 之於產品程式）：寫、改或審查測試前載入 `istqb-test-design` 技能（`.claude/skills/istqb-test-design/SKILL.md`，`agent-sync` 同步給其他工具）——從產品程式推出等價類、邊界（界上與剛過界）、決策表、狀態轉移與負面案例，斷言具體結果、測試彼此獨立，每條新測試都要證明會紅（開發自動化第 9 條）。
 - **每次回覆的最後一段，是給沒讀過程式碼的人看的白話摘要**：一段連貫敘述講「做了什麼、發現了什麼、還缺什麼」，不條列、不堆檔名。理由：看不懂的綠燈與看不懂的紅燈一樣沒有用。
-- 需求 ID 前綴：DISC／SKILL／WS／TEST／RUN／SBX／TRACE／EVAL／PACK／GEN／PORT／NFR／PDM／SEC／CRED／OPS，見 `02`、`03`（各自編號）。
+- 需求 ID（如 `SEC-009`）以 `02` 的標題為準，工作項目 ID 以 `03` 為準，兩者各自編號。
 
 ## 開發自動化（Agent 開工先讀）
 
 完整操作、成本分級、生成來源表與每條紅線的來歷以 [docs/development/automation.md](docs/development/automation.md) 為準；本節只放紅線。不要把只在某一台電腦成立的 native command 當成 repo 的標準流程。
 
 1. **先診斷再修改**：`task --list`，再 `task doctor`（未裝 Task 時 `go -C tools/devctl run . doctor`）。版本來源是各語言原生檔與 `tools/toolchain.yaml`；doctor 的版本不符是診斷結果，不得靠跳過檢查偽裝成通過。
-2. **預設不花錢**：`task dev` 只起 Postgres 與 SeaweedFS。`task dev:model` 會產生費用，**不得由唯讀 SubAgent 自行啟動**。
+2. **預設不花錢**：`task dev` 只起 Postgres 與 SeaweedFS。`task dev:model` 會產生費用，**SubAgent 一律不得自行啟動**。
 3. **共享工作樹、單一 Writer**：SubAgent 預設唯讀，同一時間只能有一個 Writer；寫入 SubAgent 必須有精確 path allowlist，不得自行執行 repo-wide formatter、package install、Compose down、Git 寫入或 lockfile 更新。**禁止 `git stash`**（會連他人未提交與未追蹤的工作一起收走）；對未知修改同樣禁止 `git reset`、`git clean`、`git checkout -- <path>`、`git rm -f` 與強制切換分支——看到不屬於自己的 delta 就保留並回報。不 `--amend`、不 `push --force`、不以 `--no-verify` 跳過 hook。只以明確 pathspec stage 自己的檔案、push 前 `git pull --rebase`；暫存產物放 scratchpad。**子代理的模型**：每次派工明確指定，**禁用旗艦級（主線自己用的那一級）**；按這件事需要多少推論選——機械執行、快速執行、深度推論——從能做完的最低一級起，升級要有理由。四個等級的特性、派什麼事、現行名稱對應在 automation.md〈共享工作樹與 SubAgent〉。
    **Agent artifacts**：可攜角色與 skills 的唯一可修改來源是 `.claude/agents/`、`.claude/skills/`；`.agents/`、`.codex/` 是本機生成快取，永不手改、永不提交。主 Agent 在啟動或重新派送會用到它們的 Agent 前執行 `go -C tools/devctl run . agent-sync`；共享工作樹中只有單一 Writer 可執行它。來源變更後，已啟動的 Agent 不會自動重載，必須先同步再重新派送。
-4. **高衝突區由主 Agent 序列化**：`contracts/`、`db/migrations/`、`db/queries/`、generated 目錄、`go.sum`／`package-lock.json`／`uv.lock`、`Taskfile.yml` 與 `.github/workflows/`。
+4. **高衝突區由主 Agent 序列化**：`contracts/`、`db/migrations/`、`db/queries/`、`db/query-owners.yaml`、generated 目錄、`go.sum`／`package-lock.json`／`uv.lock`、`Taskfile.yml` 與 `.github/workflows/`。
 5. **generated files 禁止手改**：`task gen:sql`／`task gen:openapi` 由主 Agent 序列化執行；提交前一律 `task gen:check`；generated 目錄的衝突在來源解決後重生。
-6. **Go 側只生成 models，沒有 generated router 可以 mount**：contract 的 Go 產出是型別，server 與 client 都不生成；每一條 route 在 `router.go` 逐條掛上並逐條套 `RequireSession`／`RequireOperator`／`OptionalSession`，每移一條要加 route 測試。重新打開 server 生成會被 `TestTheGeneratedGoPackageCarriesModelsAndNoServer` 擋下。
+6. **Go 側只生成 models，沒有 generated router 可以 mount**：contract 的 Go 產出是型別，server 與 client 都不生成；每一條 route 在 `router.go`（登入與 `/me` 在 `creator/workspace` 的 `Mount`）逐條掛上並逐條套 `RequireSession`／`RequireOperator`／`OptionalSession`，每移一條要加 route 測試。重新打開 server 生成會被 `TestTheGeneratedGoPackageCarriesModelsAndNoServer` 擋下。
 7. **Bounded Context 治理**：每個套件屬於且僅屬於一個 context，新套件先登記再建目錄（Bounded Context 進 Registry，技術套件進 identity 檔）；跨 context 的新 import 先在 Registry 立下 dependency policy，**同一個 commit** 改 depguard；領域 Service 只由 `entrypoint/api/apiserver.NewApp` 注入，禁止方法內現場建構。日常判斷見 [platform-ddd-practices.md](docs/development/platform-ddd-practices.md)。
 8. **Query ownership**：owner 宣告在 `db/query-owners.yaml`，跨 context 呼叫會 FAIL；新增或刪除 query 同一批改該檔；`allow:`／`read_allow:` 是存量漂移清單，**不是擴充點**。
 9. **修好一個東西之後，把修法弄壞一次**：綠燈只證明測試存在。把修正那一行還原、跑對應測試、確認變紅、再改回來（突變的額外差異為空，原有修改保留）。不適用純文案與純註解；適用任何你在 commit 訊息裡寫「修好了 X」的東西——那句話的證據就是那次紅。操作方式見 automation.md。
@@ -110,13 +110,13 @@ Skill Hub 是 Agent Skill 平台，核心是 Catalog、輕鬆創建，以及私�
 | 我現在要簽什麼 | [`05`](docs/plans/05-pending-rulings.md) |
 | 某功能的允收準則 | [`02`](docs/plans/02-specifications-and-acceptance-criteria.md)（按需求 ID） |
 | 下一個工作項目 | [`03`](docs/plans/03-work-items.md) |
-| 系統邊界與平面／資料模型／Run 生命週期／安全 | [ADR 索引](docs/adr/README.md)的同名主題 |
+| 系統邊界與平面／資料模型／Run 生命週期／安全 | [ADR 索引](docs/adr/README.md)的「系統情境、平面與部署路徑」「資料所有權與核心基礎設施」「Run 編排與非同步工作流程」「Sandbox 隔離與執行安全」 |
 | Query 屬於誰、跨 context 怎麼拿事實 | [Query 與寫入所有權](docs/adr/README.md#query-與寫入所有權) ＋ [platform-ddd-practices.md](docs/development/platform-ddd-practices.md)；動手前讀目標套件的 `doc.go` |
 | 已審查的領域事實或已知空白 | [Domain Memory](docs/domain-memory/)；只把 reviewed records 當事實，`reviewed-empty` 代表尚無可依賴的模型，必須回到 ADR、契約、程式與測試查證 |
 | 派送被停了怎麼判斷與解除 | [p1-dispatch-halt.md](docs/runbooks/p1-dispatch-halt.md) |
 | 畫面該長什麼樣、新畫面放哪個網址 | [system.md](docs/design/system.md) §3、[information-architecture.md](docs/design/information-architecture.md) §0（先過這關再寫） |
 | 封測上線前要做什麼 | [release-checklist](docs/plans/mvp/m4/release-checklist.md) |
 | 同意書與資料保存 | [consent-and-data-policy.md](docs/plans/mvp/gate-test/consent-and-data-policy.md) |
-| 評估判定與 Judge／打包簽章／封測准入／漏斗量測 | [ADR 索引](docs/adr/README.md)的同名主題 |
+| 評估判定與 Judge／打包簽章／封測准入／漏斗量測 | [ADR 索引](docs/adr/README.md)的「評估判定與 Judge 信任邊界」「打包、授權溯源與散布」「身分、Workspace、准入與額度」「產品分析與稽核邊界」 |
 | 新增、升級或移除一個依賴 | automation.md〈依賴的准入、更新與閘門〉 |
-| 所有未決議題 | 各 ADR 的「待決策」＋ `03` 第 1 節 |
+| 所有未決議題 | [`05`](docs/plans/05-pending-rulings.md)＋各 ADR 的「待決策」＋ `03` 第 1 節 |
