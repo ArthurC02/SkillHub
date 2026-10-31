@@ -205,9 +205,10 @@ func TestAutomationCheckRunsEveryChecker(t *testing.T) {
 					checker.name)
 			}
 			for _, problem := range problems {
-				if !strings.Contains(report, problem) {
-					t.Fatalf("%s is not wired into automationCheck: %q is missing from the report",
-						checker.name, problem)
+				named := checker.name + ": " + problem
+				if !strings.Contains(report, named) {
+					t.Fatalf("%s is not wired into automationCheck under its own name: %q is missing from the report",
+						checker.name, named)
 				}
 			}
 		})

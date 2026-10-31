@@ -136,50 +136,11 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 
 另一半是一個檔案而不是旗標：[`apps/web/.env.development`](../../apps/web/.env.development) 只在 `npm run dev` 時把 client 指向 `http://localhost:8080`。`vite build` 跑在 production 模式、不讀它，所以建置出來的 bundle 打的是同源路徑——正式部署與淨測試模式供應的都是那個形狀。**預設之所以是這一邊**：`API_BASE_URL` 在**建置期**解析，沒有人設值時它取到的那個值，會被每一份產物帶著走。`npm run build` 會拒絕一個對外指向絕對來源的 bundle（[`scripts/check-bundle-origins.mjs`](../../apps/web/scripts/check-bundle-origins.mjs)）；刪掉 `.env.development` 只會弄壞 `npm run dev`，其他什麼都不影響。
 
-## `automation-check` 跑了哪些檢查（名冊）
+## `automation-check` 跑了哪些檢查
 
-`go -C tools/devctl run . automation-check` 除了固定的文件字句、`Taskfile.yml` 的 `desc` 與 generated ownership marker 之外，還會跑一份**檢查名冊**：`tools/devctl/automation_check.go` 的 `documentCheckers()`。**那個函式就是名冊本身**（`TestAutomationCheckRunsEveryChecker` 逐項走過它），下表逐條對應那個函式回傳的檢查。**條數會變**——以 `documentCheckers()` 的實際回傳為準，不以本節的敘述為準。
+`go -C tools/devctl run . automation-check` 除了固定的文件字句、`Taskfile.yml` 的 `desc` 與 generated ownership marker 之外，還會跑 `tools/devctl/automation_check.go` 的 `documentCheckers()`：**那個函式就是名冊**，這裡不另抄一份。
 
-**撞到紅燈時的用法**：`FAIL` 訊息開頭的名字對到下表，再去「規則寫在哪」那一欄讀該檔；它為什麼存在、抓到過什麼，看那個檔的 `git log`（程式裡不寫施工日誌，見根 `AGENTS.md`〈慣例〉）。**本節只給名字與落點；下面的散文只保留有故事的那六條**（`one-number`、`milestone-tally`、`backlog-tally`、`baseline-tally`、`doc-identifier`、`doc-prose`），其餘不在此重述。
-
-| 名字 | 它比對什麼 | 規則寫在哪 |
-| --- | --- | --- |
-| `depguard-deny` | depguard deny 清單的**內容**與 Registry 的[已審查 dependency policy](../domain-memory/registry/dependency-policies/index.md)相符——刪兩行就等於默默開一條跨 context 權限 | `tools/devctl/depguard_deny.go` |
-| `service-construction` | 非 composition root 不得現場建構其他 Bounded Context 的 `Service`（見[Platform Bounded Context 與 Context Map](../adr/README.md#platform-bounded-context-與-context-map)） | `tools/devctl/service_construction.go` |
-| `one-number` | 帶 `one-number:` 標記的各站點數值相同，且標記要在 `sharedNumberRoster` 名冊上（雙向） | `tools/devctl/shared_number.go` |
-| `query-owner` | 每條 sqlc query 的呼叫方是 `db/query-owners.yaml` 宣告的 owner context（見[Query 與寫入所有權](../adr/README.md#query-與寫入所有權)） | `tools/devctl/query_owners.go` |
-| `sql-logic` | sqlc query 不得在 SQL 裡做商業判斷：依資料分支的 `CASE`、字面值 `IN ('…')` 清單、`interval` 字面值一律擋下，判斷在 Go 做完再以參數傳進 SQL。機制不算判斷：補零與只寫一次的 `COALESCE`、只套用 Go 傳入參數的 `CASE WHEN @flag THEN`、`FILTER`、`NULLIF` 都放行 | `tools/devctl/sql_logic.go` |
-| `context-map` | [已審查 Context](../domain-memory/registry/contexts/index.md)、[architecture identity](../../apps/platform/architecture-identity.yaml) 與 `.golangci.yml` 的 `files:` 清單逐套件對帳 | `tools/devctl/context_map.go` |
-| `doc-identifier` | 活文件散文裡的識別字必須真的存在於程式樹 | `tools/devctl/doc_identifiers.go` |
-| `milestone-tally` | M5 的勾選數只有 `03` §19 的 checkbox 能說，其餘四份文件不得出現這個數 | `tools/devctl/milestone_tally.go` |
-| `backlog-tally` | `04` 每個帳目格的數字＝`<!-- open: … -->` 清單長度；清單上每個 id 都是真的列；沒有一列自稱已結案 | `tools/devctl/backlog_tally.go` |
-| `baseline-tally` | SEC-002 基線在六處自述的規模等於逐列重數（含分區表的合計列） | `tools/devctl/baseline_tally.go` |
-| `immutability-proof` | 每個現行 `*_immutable` trigger 守的每個 operation，在 `db/tests/immutability_test.sql` 都有一條 `must_*` 反證案例 | `tools/devctl/immutability_proof.go` |
-| `requirement-test-matrix` | `02` 裡每個 MVP 必要需求 ID 在 `docs/plans/requirement-test-matrix.md` 恰好一列、狀態是五個詞之一、指名的測試真的存在 | `tools/devctl/requirement_test_matrix.go` |
-| `retention-floor` | `02:NFR-002a` 的三條保存期**下界**，逐條檢查而不是取平均 | `tools/devctl/retention_floor.go` |
-| `sdk-version` | Agent SDK 版本字串在 Dockerfile `ARG`、`sandboxd/main.go` fallback、`apps/sandbox/README.md` 三處一致 | `tools/devctl/sdk_version.go` |
-| `single-data-layer` | `db/gen` 之外不得長出第二個資料層（`02:PORT-008`） | `tools/devctl/second_data_layer.go` |
-| `require-db-guard` | 會因缺 DB URL 自我停用的測試套件，都必須認 `SKILLHUB_REQUIRE_DB`（`02:PORT-004`） | `tools/devctl/require_db_guard.go` |
-| `require-objstore-guard` | SBX-008 短效授權的那支測試還在，且認 `SKILLHUB_REQUIRE_OBJSTORE`（`02:PORT-009`） | `tools/devctl/require_objstore_guard.go` |
-| `isolation-level` | 派送閘門接受的每個隔離強度都要寫在 `contracts/openapi/sandbox-provider.yaml` 與 `contracts/openapi/public.yaml` 的 enum 裡（單向） | `tools/devctl/isolation_levels.go` |
-| `route-table` | `router.go` 掛上的 route 與 `contracts/openapi/public.yaml` 的 `paths:` **雙向**對帳（codegen 看不到 route） | `tools/devctl/route_table.go` |
-| `requirement-refs` | `03`／`04`／`05` 引用的 `02:<ID>` 在 `02` 有且只有一個同名標題 | `tools/devctl/requirement_refs.go` |
-| `purge-schedule` | `cmd/maintenance` 的每個子命令（清理、收物件、查來源、輪替分割），在 `infra/deploy/control-plane/maintenance-schedule` 恰好排一次，且週期有對應的 systemd timer | `tools/devctl/purge_schedule.go` |
-| `timeout-budget` | 成對的 `budget-over:`／`budget-ceiling:` 標記，Go 的 deadline 必須大於 Python 的 | `tools/devctl/timeout_budgets.go` |
-| `image-version` | Dockerfile 的 `ARG IMAGE_VERSION` 每個版本，`UPGRADES.md` 都要有同名章節（見[Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全)；**只查章節在不在，查不出四項有沒有真的跑**） | `tools/devctl/image_version.go` |
-| `embedding-dims` | `0007_search.sql` 的 `vector(1536)` 與 `apps/llm` 驗證的寬度一致（migration 為準） | `tools/devctl/embedding_dims.go` |
-| `goldenset-mirror` | `tools/goldenset/evaluate.py` 的 `enriched_index_text` 與 Go 的 `embeddingText` 以 digest 綁在一起 | `tools/devctl/goldenset_mirror.go` |
-| `model-wire-boundary` | 模型服務的線路型別只出現在 `*_adapter.go` 與組裝根，領域套件用自己的話描述 | `tools/devctl/model_wire_boundary.go` |
-| `capability-table` | `.env.example` 的每個變數都要說出它擋著什麼（`05` R-36），見下節 | `tools/devctl/capability_table.go` |
-| `env-declared` | 反方向：`cmd/api`、`cmd/worker`、`cmd/maintenance`、`cmd/reindex`、`sandboxd` 與 `apps/llm` 讀的每個環境變數，`.env.example` 都要列出（Go 以 AST 追到包裝函式與常數，Python 以 `os.getenv`／`os.environ` 比對）。空值必須等於預設值 | `tools/devctl/env_declared.go` |
-| `doc-links` | 每一條相對路徑的 markdown 連結都要指得到真實檔案（只驗路徑，不驗 `#` 錨點、不連外） | `tools/devctl/doc_links.go` |
-| `doc-prose` | 活文件的句子不得留著移除指標後的洞：控制字元、CJK 之間的連續兩個空白、收尾標點前的空白、連續的標點、開括號後面直接接標點 | `tools/devctl/doc_prose.go` |
-| `adr-citations` | 只有 `docs/adr/` 裡的 ADR 與索引 `docs/adr/README.md` 可以寫 ADR 編號或檔名；其他檔案寫規則本身，需要理由時連索引的主題標題。`docs/adr/` 只放 `ADR-NNN-<slug>.md` 與 `README.md`；每份 ADR 都要列在索引、且所在標題逐字等於該 ADR 的標題（標題就是別人連的錨點）；連到索引的 `README.md#錨點` 必須對得上某個標題。里程碑的機器輸出、量測結果與第三方語料照原樣保存，不受此限（豁免清單連同理由寫在檢查器裡） | `tools/devctl/adr_citations.go` |
-| `dependency-policy` | Dockerfile 的 FROM、compose 與 workflow 的 `image:` 都釘 digest；`uses:` 釘 40 碼 SHA 並寫 `# vX`；每個 npm 專案有 `.npmrc` 的 `ignore-scripts=true`；每個 uv 專案有 `exclude-newer`；每個有 lockfile、Dockerfile、compose 或 composite action 的目錄都列在 `.github/dependabot.yml`；compose 與 workflow、`tools/ci/*.sh` 用到同一個映像時引用完全相同；node、go、python、uv、task、golangci-lint 在每個位置版本一致（見〈依賴的准入、更新與閘門〉） | `tools/devctl/dependency_policy.go` |
-| `harness` | `.claude/skills/` 不得引用 ADR 編號或需求 ID；`.claude/agents/` 每個角色必須指定 `model`（不得 fable／sol／inherit；預設是各角色 frontmatter 的低階模型，簡報依任務難度升級）與 `effort`（low／medium／high／xhigh／max）；根 `AGENTS.md` 不得超過 16 KiB（Codex 讀到 32 KiB 就靜默截斷；上限是棘輪，貼著現況而不是貼著懸崖）；`.claude/workflows/*.js` 以 `export const meta = { name }` 開頭、`name` 等於檔名，且每個 `agent(` 呼叫同一行要有 `model:`、字面值不得 fable／sol／inherit（裸 `agent()` 會繼承派工者的旗艦級）。**技能的 frontmatter 是否合 Agent Skills 規格，由產品自己的驗證器管**：`apps/platform/internal/shared/skillpkg/repo_skills_test.go` 把 `skillpkg.Validate` 跑在 `.claude/skills/` 上 | `tools/devctl/harness.go` |
-| `comment-budget` | 手寫程式與設定檔（Go／TS／JS／Python／SQL／YAML／TOML／shell／Dockerfile／`.env.example`，含 `doc.go`；不含 generated 檔與 `go:`／`one-number:`／`-- name:` 等機器標記）的兩種註解：超過 3 行的區塊，以及帶需求／裁定編號、日期或 `§` 的施工日誌。`comment-lint <路徑>` 逐行列出。零容忍、沒有存量清單（全 repo 清理後歸零）。規則本體是根 `AGENTS.md`〈慣例〉 | `tools/devctl/comment_budget.go` |
-| `domain-memory-release` | Domain Memory 外掛的可散布內容（不含 `engine/tests/`、`engine/parity/`）變更時，先升 `plugin.json` 的版本，再依[外掛手冊](../../.claude/skills/domain-memory/engine/README.md#committed-binaries)重建並檢查三個平台的執行檔與其 manifest；**所有產物完成後**，才以 `go -C tools/devctl run . domain-memory-release` 更新 `tools/devctl/domain-memory-release.json` 的版本與內容摘要（行尾正規化後計算）。摘要產生後若又重建執行檔，紀錄就不再對應最後交付的內容。版本沒升而內容改變時，那支指令拒絕寫入。已安裝的複本只在版本變動時更新 | `tools/devctl/domain_memory_release.go` |
-| `complexity-exemptions` | 三個 Go module（`apps/platform`、`apps/sandbox`、`tools/devctl`）的 `.golangci.yml` 都啟用 gocognit 且 `min-complexity` 不超過登記的門檻；任何逐函式的 gocognit 豁免都不允許——函式太複雜就拆，不以名字放行 | `tools/devctl/complexity_exemptions.go` |
+**撞到紅燈時的用法**：每一行是 `FAIL <名字>: <問題>`。在 `documentCheckers()` 找到那個名字對應的函式，讀它的實作與測試；它為什麼存在、抓到過什麼，看那個檔的 `git log`。下面的散文只保留有故事的幾條（`capability-table`、`one-number`、`milestone-tally`、`backlog-tally`、`baseline-tally`、`doc-identifier`、`doc-prose`）。
 
 ### 新增一個 `.env.example` 變數，要同批說出它擋什麼
 
