@@ -1,0 +1,23 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "github-login-redirect",
+  "status": "draft",
+  "intent": "A GitHub sign-in that fails returns the person to the app with a stated reason instead of a raw API page.",
+  "actor": "A person signing in with GitHub",
+  "observable_outcome": "Every callback failure redirects to the app address with a login_error code the app turns into a sentence; an outage and a refused credential stay distinguishable.",
+  "acceptance_criteria": [
+    {
+      "id": "outage-is-not-a-refusal",
+      "statement": "GitHub rate limiting, server errors and transport failures redirect with login_error=github_unavailable; other GitHub refusals redirect with github_refused."
+    },
+    {
+      "id": "state-mismatch-is-expired",
+      "statement": "A callback whose state does not match the state cookie redirects with login_error=expired before any code exchange."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": []
+}

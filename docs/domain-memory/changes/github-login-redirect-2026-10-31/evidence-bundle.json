@@ -1,0 +1,60 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "github-login-redirect",
+  "proposal_id": "github-login-redirect-2026-10-31",
+  "registry_revision": {
+    "observed_commit": "496aa706f9e7d64af817443ca608f4be116157d2",
+    "registry_digest": "sha256:3afaa114af60239be647f1fb491631524e2c75d6b4f1aa186cb1aff2eeade411",
+    "committed_digest": "sha256:3afaa114af60239be647f1fb491631524e2c75d6b4f1aa186cb1aff2eeade411"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "outage-is-not-a-refusal",
+      "status": "passed",
+      "evidence": "go test -count=1 -v ./internal/creator/workspace/ -run '^TestCallbackTellsAGitHubOutageFromARefusedLogin$'",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:86eeea6031ed974d8da7a75085b313969f98e718ee382486eb4a1558a3e102ef",
+      "finished_at": "2026-10-31T06:33:46.101489Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "state-mismatch-is-expired",
+      "status": "passed",
+      "evidence": "go test -count=1 -v ./internal/creator/workspace/ -run '^TestCallbackRejectsStateMismatch$'",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:111afc2e0e3855d3e395fcf690b75fc7cc004881536f0a69d51f4c26faa7db4f",
+      "finished_at": "2026-10-31T06:33:47.788162Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "outage-is-not-a-refusal-rule",
+      "status": "passed",
+      "evidence": "go test -count=1 -v ./internal/creator/workspace/ -run '^TestCallbackTellsAGitHubOutageFromARefusedLogin$'",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:e6c4a1030a7b6a7a51c72e3e7849968dda4051a2f07a3e0c8487d677ebaa39a8",
+      "finished_at": "2026-10-31T06:33:49.446302Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "state-mismatch-is-expired-rule",
+      "status": "passed",
+      "evidence": "go test -count=1 -v ./internal/creator/workspace/ -run '^TestCallbackRejectsStateMismatch$'",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:12e8038794d1f3d0c1f5e65636dc69196451a961cb76d3f7d4d7127a431ec341",
+      "finished_at": "2026-10-31T06:33:51.085028Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

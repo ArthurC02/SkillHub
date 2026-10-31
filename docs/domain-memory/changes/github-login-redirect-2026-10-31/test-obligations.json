@@ -1,0 +1,43 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "github-login-redirect",
+  "proposal_id": "github-login-redirect-2026-10-31",
+  "obligations": [
+    {
+      "id": "outage-is-not-a-refusal",
+      "source_type": "acceptance-criterion",
+      "source_id": "outage-is-not-a-refusal",
+      "expected_outcome": "429 and 502 from GitHub redirect with github_unavailable; 401 redirects with github_refused.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v ./internal/creator/workspace/ -run '^TestCallbackTellsAGitHubOutageFromARefusedLogin$'"
+    },
+    {
+      "id": "state-mismatch-is-expired",
+      "source_type": "acceptance-criterion",
+      "source_id": "state-mismatch-is-expired",
+      "expected_outcome": "A missing, empty or mismatched state cookie redirects with expired; a matching one does not.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v ./internal/creator/workspace/ -run '^TestCallbackRejectsStateMismatch$'"
+    },
+    {
+      "id": "outage-is-not-a-refusal-rule",
+      "source_type": "rule",
+      "source_id": "a-github-outage-is-503-not-a-refused-login",
+      "expected_outcome": "429 and 502 from GitHub redirect with github_unavailable; 401 redirects with github_refused.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v ./internal/creator/workspace/ -run '^TestCallbackTellsAGitHubOutageFromARefusedLogin$'"
+    },
+    {
+      "id": "state-mismatch-is-expired-rule",
+      "source_type": "rule",
+      "source_id": "an-oauth-callback-needs-its-state-cookie",
+      "expected_outcome": "A missing, empty or mismatched state cookie redirects with expired; a matching one does not.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v ./internal/creator/workspace/ -run '^TestCallbackRejectsStateMismatch$'"
+    }
+  ]
+}

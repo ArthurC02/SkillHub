@@ -1,0 +1,144 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "github-login-redirect-2026-10-31",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "github-login-redirect",
+  "status": "submitted",
+  "change_classification": "material",
+  "submitted_at": "2026-10-31T06:33:43.886043Z",
+  "verified_at": null,
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "496aa706f9e7d64af817443ca608f4be116157d2",
+    "registry_digest": "sha256:3afaa114af60239be647f1fb491631524e2c75d6b4f1aa186cb1aff2eeade411",
+    "committed_digest": "sha256:3afaa114af60239be647f1fb491631524e2c75d6b4f1aa186cb1aff2eeade411"
+  },
+  "affected_contexts": [
+    "identity"
+  ],
+  "rule_ids": [
+    "a-github-outage-is-503-not-a-refused-login",
+    "an-oauth-callback-needs-its-state-cookie"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "identity",
+    "invariant": "The identity callback decides why a sign-in failed and reports it only as one of a closed set of login_error codes.",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "Browser navigation from GitHub to the identity callback, then to the app address",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "The callback is a top-level browser navigation, so a JSON body strands the person on an API address.",
+      "An outage must not read as a bad credential."
+    ],
+    "decision": "Redirect (303) every callback failure to the configured app address with a login_error code; keep internal detail in the log.",
+    "invariants_preserved": [
+      "The state check still runs before any code exchange.",
+      "An outage and a refusal still map to different outcomes."
+    ],
+    "rejected_alternatives": [
+      "An HTML error page served by the API: still leaves the app and duplicates its copy.",
+      "Putting the sentence in the query string: reflects server text into the page and cannot be localised by the app."
+    ],
+    "proof_obligations": [
+      "outage-is-not-a-refusal",
+      "state-mismatch-is-expired"
+    ],
+    "counterfactual_check": "Mapping ErrGitHubUnavailable to github_refused, or dropping the state comparison, turns the named tests red."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-github-outage-is-503-not-a-refused-login",
+        "statement": "GitHub rate limiting, server errors and transport failures send the browser back to the app with login_error=github_unavailable, while other GitHub refusals send github_refused, so an outage never reads as a bad credential.",
+        "contexts": [
+          "identity"
+        ],
+        "examples": [
+          "GitHub answering 429 on the token exchange sends the browser back with login_error=github_unavailable."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/workspace/github.go",
+            "lines": {
+              "start": 161,
+              "end": 175
+            },
+            "excerpt_sha256": "sha256:19db2141c1569a717bf1fc95f3db30eed8ceb2e828ab1b63c7aa45b59ed9dd46"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/github_test.go",
+            "lines": {
+              "start": 212,
+              "end": 239
+            },
+            "content_sha256": "sha256:8f94b01cac166fb7674392d00d5e50ab9af4b2cb29608296eec96a0d54653318",
+            "excerpt_sha256": "sha256:ce9f79d0ec6c7be9792f74719c7a6e63f74c1a562b2b7992e2e1609db581de5f"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/http.go",
+            "lines": {
+              "start": 687,
+              "end": 692
+            },
+            "content_sha256": "sha256:c5023fab1cb7a722d7bb7d8bf18c7b6b87881569b12023204838945e163d39c6",
+            "excerpt_sha256": "sha256:434c1e0125fb07d5a3c548e52d4b2a883da26f436037c0ec8c4548d0026c8983"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-oauth-callback-needs-its-state-cookie",
+        "statement": "A GitHub login callback is refused before any code exchange, sending the browser back to the app with login_error=expired, unless its state matches the state cookie set when the login began.",
+        "contexts": [
+          "identity"
+        ],
+        "examples": [
+          "A callback with state abc and a state cookie of other is sent back with login_error=expired."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/workspace/http.go",
+            "lines": {
+              "start": 125,
+              "end": 129
+            },
+            "content_sha256": "sha256:c5023fab1cb7a722d7bb7d8bf18c7b6b87881569b12023204838945e163d39c6",
+            "excerpt_sha256": "sha256:7dda39429e2b4b0e1bde6ed750395a335aee6bfd0df2b6d9764b1dc194585068"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/github_test.go",
+            "lines": {
+              "start": 184,
+              "end": 210
+            },
+            "content_sha256": "sha256:8f94b01cac166fb7674392d00d5e50ab9af4b2cb29608296eec96a0d54653318",
+            "excerpt_sha256": "sha256:20ca5eb66b91bf610674bf81c2a434089b3b8563c6937f7bf84e7133dd6f0cb8"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [],
+  "supersedes": [
+    "identity-harvest-rules-2026-10-18",
+    "shifted-recite-2026-10-24"
+  ]
+}
