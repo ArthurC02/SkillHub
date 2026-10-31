@@ -185,7 +185,7 @@ function CandidateRow({
         <button
           type="button"
           ref={focusRef}
-          aria-label={`以 ${accessibleVersion}、建立於 ${formatAt(run.created_at, "second")} 的試跑比較，試跑紀錄 ID ${run.run_id}`}
+          aria-label={`與這一次比較（建立於 ${formatAt(run.created_at, "second")}）：${accessibleVersion}，試跑紀錄 ID ${run.run_id}`}
           onClick={() => onPick(run.run_id)}
         >
           與這一次比較（建立於 <Timestamp at={run.created_at} precision="second" />）

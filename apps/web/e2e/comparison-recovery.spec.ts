@@ -159,7 +159,9 @@ for (const dependency of ["self", "candidates", "versions"] as const) {
     await page.getByRole("button", { name: "再試一次" }).focus();
     await page.keyboard.press("Enter");
     await expect(page.getByRole("alert")).toHaveCount(0);
-    await expect(page.getByRole("button", { name: /^以 v2、/ })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /^與這一次比較（建立於 .+）：v2，/ }),
+    ).toBeVisible();
     await expect(field).toHaveValue("尚未送出的 ID");
     await expect(page.locator("#run-comparison-heading")).toBeFocused();
     expect((await new AxeBuilder({ page }).include("main").analyze()).violations).toEqual([]);

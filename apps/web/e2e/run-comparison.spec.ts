@@ -121,7 +121,7 @@ test("candidate runs expose their immutable Versions before comparison on a phon
     `/skills/${SKILL}/versions/${VERSION}`,
   );
   const olderRun = page.getByRole("button", {
-    name: new RegExp(`^以 v1、.+試跑紀錄 ID ${OTHER_RUN}$`),
+    name: new RegExp(`^與這一次比較（建立於 .+）：v1，試跑紀錄 ID ${OTHER_RUN}$`),
   });
   await olderRun.focus();
   await expect(olderRun).toBeFocused();

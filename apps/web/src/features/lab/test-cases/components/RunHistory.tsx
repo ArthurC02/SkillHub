@@ -103,7 +103,7 @@ export function RunHistory({
                   <Link
                     to="/runs/$runId/compare"
                     params={{ runId: run.run_id }}
-                    aria-label={`以建立於 ${formatAt(run.created_at)} 的試跑紀錄開始比較`}
+                    aria-label={`以這次試跑開始比較：建立於 ${formatAt(run.created_at)} 的試跑紀錄`}
                   >
                     以這次試跑開始比較
                   </Link>

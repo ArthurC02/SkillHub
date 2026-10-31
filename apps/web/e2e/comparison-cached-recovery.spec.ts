@@ -71,7 +71,9 @@ for (const dependency of ["self", "candidates", "versions"] as const) {
         try {
           await page.goto(`/runs/${RUN}/compare`);
           await expect(page.locator(".auth-name")).toHaveText("tester");
-          await expect(page.getByRole("button", { name: /^以 v2、/ })).toBeVisible();
+          await expect(
+            page.getByRole("button", { name: /^與這一次比較（建立於 .+）：v2，/ }),
+          ).toBeVisible();
           await nav.getByRole("link", { name: "總覽", exact: true }).click();
           await expect(page.getByRole("heading", { level: 1 })).not.toHaveText("試跑比較");
           await expect(
@@ -113,7 +115,9 @@ for (const dependency of ["self", "candidates", "versions"] as const) {
           await expect(retry).toHaveCount(0);
           expect(control.reads.filter((phase) => phase === "held")).toHaveLength(1);
           release();
-          await expect(page.getByRole("button", { name: /^以 v2、/ })).toBeVisible();
+          await expect(
+            page.getByRole("button", { name: /^與這一次比較（建立於 .+）：v2，/ }),
+          ).toBeVisible();
           await expect(page.locator("[data-loading]")).toHaveCount(0);
           await expect(page.getByRole("alert")).toHaveCount(0);
           await expect(field).toHaveValue(moved ? "繼續輸入的比較 ID" : "尚未送出的比較 ID");

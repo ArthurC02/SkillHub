@@ -76,7 +76,7 @@ for (const dependency of ["self", "candidates", "versions"] as const) {
         const field = page.getByLabel("要比較的另一個試跑紀錄 ID");
         const manual = page.getByText("直接輸入試跑紀錄 ID", { exact: true });
         const nav = page.getByRole("navigation", { name: "這個小工具的工作台", exact: true });
-        const rows = page.getByRole("button", { name: /^以 v2、/ });
+        const rows = page.getByRole("button", { name: /^與這一次比較（建立於 .+）：v2，/ });
         try {
           await page.goto(`/runs/${RUN}/compare`);
           await expect(rows).toHaveCount(12);

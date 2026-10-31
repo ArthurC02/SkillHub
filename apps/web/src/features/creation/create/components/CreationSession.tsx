@@ -337,8 +337,8 @@ function FailureToast({
           重試
         </button>
       )}
-      <button type="button" className="toast-close" aria-label="關閉" onClick={onClose}>
-        ×
+      <button type="button" className="toast-close" onClick={onClose}>
+        關閉
       </button>
     </div>
   );

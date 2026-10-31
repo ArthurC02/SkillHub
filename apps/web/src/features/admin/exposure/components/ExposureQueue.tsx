@@ -21,7 +21,7 @@ export function ExposureQueue({ entries }: { entries: ExposureQueueEntry[] }) {
             <Link
               to="/admin/exposure"
               search={{ publication: `${entry.publisher}/${entry.name}` }}
-              aria-label={`審核 ${entry.publisher}/${entry.name}`}
+              aria-label={`審這一筆：${entry.publisher}/${entry.name}`}
             >
               審這一筆
             </Link>

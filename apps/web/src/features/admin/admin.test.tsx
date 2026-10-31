@@ -3807,9 +3807,9 @@ test("DISC-007: the queue lists a waiting release, and reviewing it shows the ex
   expect(has("曾核准，之後內容有變，需要重新審核。")()).toBe(true);
   expect(has("待審：共 1 筆。")()).toBe(true);
   expect(has("這份待審清單上次取得於")()).toBe(true);
-  expect(field<HTMLAnchorElement>(`a[aria-label="審核 ${EXPOSURE_PUBLICATION}"]`).textContent).toBe(
-    "審這一筆",
-  );
+  expect(
+    field<HTMLAnchorElement>(`a[aria-label="審這一筆：${EXPOSURE_PUBLICATION}"]`).textContent,
+  ).toBe("審這一筆");
 
   await click(
     Array.from(container.querySelectorAll("a")).find((a) => a.textContent === "審這一筆")!,

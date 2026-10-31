@@ -1112,9 +1112,7 @@ test("the pill steps aside while an error is showing above the composer", async 
   await click("送出");
   await waitFor(() => !!box.querySelector('[role="alert"]'));
   expect(box.querySelector(".to-latest"), "回到最新的按鈕疊在錯誤通知上").toBe(null);
-  await act(async () =>
-    box.querySelector<HTMLButtonElement>('.toast [aria-label="關閉"]')!.click(),
-  );
+  await act(async () => box.querySelector<HTMLButtonElement>(".toast .toast-close")!.click());
   expect(box.querySelector(".to-latest")).not.toBe(null);
 });
 test("the counter counts what the server counts, and nothing truncates silently", async () => {
@@ -1960,9 +1958,7 @@ test("sending nothing is answered beside the composer, with nothing to retry and
     ),
   ).toEqual(["關閉"]);
   expect(posts).toHaveLength(0);
-  await act(async () =>
-    box.querySelector<HTMLButtonElement>('.toast [aria-label="關閉"]')!.click(),
-  );
+  await act(async () => box.querySelector<HTMLButtonElement>(".toast .toast-close")!.click());
   expect(box.querySelector(".toast")).toBe(null);
 });
 test("an open session shows its deadline and retention", async () => {

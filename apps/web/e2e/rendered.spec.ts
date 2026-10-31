@@ -297,7 +297,7 @@ async function verifyVersionLinksOnPhone(page: Page, testInfo: TestInfo) {
     `/skills/${SKILL}/versions/${VERSION}`,
   );
   const compareLinks = page.locator('[data-role="evidence"]').getByRole("link", {
-    name: /試跑紀錄開始比較/,
+    name: /^以這次試跑開始比較：建立於 .+ 的試跑紀錄$/,
   });
   await expect(compareLinks).toHaveCount(2);
   await expect(compareLinks.first()).toHaveAttribute("href", `/runs/${RUN}/compare`);
@@ -817,7 +817,7 @@ test("exposure review moves keyboard focus between the queue and case", async ({
   const pageHeading = page.getByRole("heading", { level: 1, name: "曝光審核" });
   const queueHeading = page.getByRole("heading", { level: 2, name: "待審清單" });
   await expect(pageHeading).toBeFocused();
-  const review = page.getByRole("link", { name: `審核 ${PUBLISHER}/${PUBLICATION}` });
+  const review = page.getByRole("link", { name: `審這一筆：${PUBLISHER}/${PUBLICATION}` });
   await review.focus();
   await review.press("Enter");
 
@@ -849,7 +849,7 @@ test("admin exposure queue can recover from a failed refresh on a phone", async 
   await page.goto("/admin/exposure");
   await expect(page.getByText("待審：共 1 筆。")).toBeVisible();
   await expect(page.getByText("這份待審清單上次取得於", { exact: false })).toBeVisible();
-  const review = page.getByRole("link", { name: `審核 ${PUBLISHER}/${PUBLICATION}` });
+  const review = page.getByRole("link", { name: `審這一筆：${PUBLISHER}/${PUBLICATION}` });
   await expect(review).toBeVisible();
   await page.screenshot({
     path: testInfo.outputPath("admin-exposure-queue-phone.png"),

@@ -74,7 +74,9 @@ for (const dependency of ["self", "candidates", "versions"] as const) {
         expect(pausedAccessibility.incomplete).toEqual([]);
         await page.screenshot({ path: testInfo.outputPath("dependency-paused.png") });
         await setOffline(page, false);
-        await expect(main.getByRole("button", { name: /^以 v2、/ })).toBeVisible();
+        await expect(
+          main.getByRole("button", { name: /^與這一次比較（建立於 .+）：v2，/ }),
+        ).toBeVisible();
         await expect(main.getByRole("status").filter({ hasText: "等待連線以讀取" })).toHaveCount(0);
         await expect(main.getByRole("alert")).toHaveCount(0);
         await expect(field).toHaveValue("尚未送出的比較 ID");
