@@ -147,15 +147,9 @@ func collectCitedPaths(value any, paths map[string]bool) {
 }
 
 func extractCommitted(root, commit, target string, paths []string) error {
-	present := []string{}
-	for _, path := range paths {
-		exists, err := committedPathExists(root, commit, path)
-		if err != nil {
-			return err
-		}
-		if exists {
-			present = append(present, path)
-		}
+	present, err := committedPathsPresent(root, commit, paths)
+	if err != nil {
+		return err
 	}
 	command := exec.Command("git", append([]string{"-C", root, "-c", "core.autocrlf=false", "archive", "--format=tar", commit, "--"}, present...)...)
 	var archive, stderr bytes.Buffer
@@ -179,6 +173,30 @@ func extractCommitted(root, commit, target string, paths []string) error {
 			return err
 		}
 	}
+}
+
+func committedPathsPresent(root, commit string, paths []string) ([]string, error) {
+	var query strings.Builder
+	for _, path := range paths {
+		fmt.Fprintf(&query, "%s:%s\n", commit, path)
+	}
+	command := exec.Command("git", "-C", root, "cat-file", "--batch-check=%(objecttype)")
+	command.Stdin = strings.NewReader(query.String())
+	answers, err := command.Output()
+	if err != nil {
+		return nil, fmt.Errorf("git cat-file --batch-check: %w", err)
+	}
+	replies := lines(string(answers))
+	if len(replies) != len(paths) {
+		return nil, fmt.Errorf("git cat-file --batch-check answered %d of %d paths", len(replies), len(paths))
+	}
+	present := []string{}
+	for i, path := range paths {
+		if !strings.HasSuffix(replies[i], " missing") {
+			present = append(present, path)
+		}
+	}
+	return present, nil
 }
 
 func writeArchived(target, name string, body io.Reader) error {
