@@ -8,15 +8,10 @@ export const meta = {
   ],
 }
 
-// Every subagent gets an explicit model. Bare agent() would inherit the
-// dispatcher's flagship model, which 根 AGENTS.md〈開發自動化〉第 3 條 forbids.
-// The harness checker counts the `agent(` calls in this file and expects each
-// on a line that also names `model:`.
 const run = (prompt, opts = {}) => agent(prompt, { ...opts, model: opts.model ?? 'sonnet', effort: opts.effort ?? 'medium' })
 
-// Page groups: one reader each. src/features/creation/generate/ is deliberately absent — the
-// M5 entry is behind a flag closed-beta users must not see (01 §10 ⛔ 1), and an
-// audit that lists its text invites someone to "improve" it.
+// One reader per group. src/features/creation/generate/ stays out: its entry must stay hidden
+// from closed-beta users, and listing its text invites someone to "improve" it.
 const DEFAULT_GROUPS = [
   { key: 'home', files: ['src/features/catalog/home/'] },
   { key: 'detail', files: ['src/features/skill/detail/','src/shared/ui/LabelledBadge.tsx', 'src/shared/ui/LicenseBadge.tsx', 'src/shared/ui/RiskIndicator.tsx'] },

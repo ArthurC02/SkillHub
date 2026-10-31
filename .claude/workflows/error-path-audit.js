@@ -8,13 +8,9 @@ export const meta = {
   ],
 }
 
-// Every subagent gets an explicit model. Bare agent() would inherit the
-// dispatcher's flagship model, which 根 AGENTS.md〈開發自動化〉第 3 條 forbids.
 const run = (prompt, opts = {}) => agent(prompt, { ...opts, model: opts.model ?? 'sonnet', effort: opts.effort ?? 'medium' })
 
-// Feature lines. src/features/creation/generate/ is absent on purpose (01 §10 ⛔ 1). The run
-// line (RunPreflight/RunTrace/RunEvaluation/RunCompare) was walked by hand on
-// 2026-09-04 and its six gaps are 04 丙-143～148; pass it in args.lines to redo it.
+// src/features/creation/generate/ stays out: its entry must stay hidden from closed-beta users.
 const WEB = 'apps/web/'
 const GO = 'apps/platform/internal/'
 const DEFAULT_LINES = [
@@ -27,8 +23,7 @@ const DEFAULT_LINES = [
 ]
 const lines = (args && args.lines) || DEFAULT_LINES
 
-// The seven shapes the run line taught (04 丙-143～148). A reader hunts these;
-// anything else it finds goes under `other` with the rule it breaks.
+// A reader hunts these shapes; anything else goes under `other` with the rule it breaks.
 const SHAPES = [
   '1 english-to-screen: a role=alert/status (or any visible text) that prints err.message, a Go hand-written English note, or a contract constant raw. Includes mutation onError → setMessage(err.message).',
   '2 fixture-lies: a test fixture or stub whose string is not what the Go handler actually sends (typically Chinese in the fixture, English in Go), so the suite is green while production shows the other.',

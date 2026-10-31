@@ -160,3 +160,26 @@ func TestCommentLintCountsOnlyTheFilesUnderThePrefix(t *testing.T) {
 		t.Fatalf("comment-lint counted files outside the prefix: %v", err)
 	}
 }
+
+func TestTheHarnessOwnCodeIsHeldToTheCommentRule(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	const fourLines = "// one\n// two\n// three\n// four\nexport const a = 1\n"
+	writeTree(t, root, map[string]string{
+		".claude/workflows/audit.js":                    fourLines,
+		".claude/skills/skillhub-guards/hooks/guard.ts": fourLines,
+		".claude/skills/domain-memory/scripts/run.mjs":  fourLines,
+		".claude/skills/some-skill/scripts/helper.ts":   fourLines,
+	})
+	got := strings.Join(commentBudgetProblems(root), "\n")
+	for _, want := range []string{".claude/workflows/audit.js has 1", ".claude/skills/skillhub-guards/hooks/guard.ts has 1"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("harness code escaped the comment rule: missing %q in:\n%s", want, got)
+		}
+	}
+	for _, unowned := range []string{"domain-memory", "some-skill"} {
+		if strings.Contains(got, unowned) {
+			t.Fatalf("a skill this repo does not hand-write was scanned: %s", got)
+		}
+	}
+}

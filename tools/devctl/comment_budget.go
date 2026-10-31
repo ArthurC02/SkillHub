@@ -20,7 +20,7 @@ const (
 )
 
 var (
-	commentSourceRoots = []string{rootApps, rootPackages, rootTools, "infra", rootContracts, "db", ".github/workflows"}
+	commentSourceRoots = []string{rootApps, rootPackages, rootTools, "infra", rootContracts, "db", ".github/workflows", ".claude/workflows", ".claude/skills/skillhub-guards"}
 	commentSkippedDirs = map[string]bool{
 		dirNodeModules: true, dirDist: true, dirBuildOutput: true, "generated": true, dirGen: true, "testdata": true,
 	}
