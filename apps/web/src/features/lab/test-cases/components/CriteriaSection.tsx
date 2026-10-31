@@ -77,7 +77,8 @@ function addBlocker(text: string, checkReady: boolean, sizeProblem: string | nul
 
 function suggestFailureSentence(error: unknown) {
   const status = error instanceof ApiError ? error.status : 0;
-  if (status === 503) return "目前無法自動建議，驗收條件可以自己手動輸入。";
+  if (status === 503)
+    return userFacingReason(error) ?? "目前無法自動建議，驗收條件可以自己手動輸入。";
   if (status === 403) return "自動建議只開放給封測受邀帳號，驗收條件可以自己手動輸入。";
   if (status === 413) return `${FULL_SENTENCE}這次沒有呼叫模型、也沒有扣點。`;
   if (status === 422)

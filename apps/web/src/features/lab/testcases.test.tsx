@@ -1135,14 +1135,24 @@ test("TEST-002 a 429 on suggestions shows the server's wait time", async () => {
   expect(container.textContent).not.toContain("無法取得建議，可以再試一次。");
 });
 
-test("TEST-002 a 503 is worded as unavailable and names the manual path, without the server's own words", async () => {
-  stubPlatform({ suggest: { status: 503, error: "目前無法自動建議驗收條件，請自己手動輸入" } });
+test.each([
+  [
+    "the reason the server wrote for people",
+    "平台的模型總額度暫時用完，這次沒有扣點。驗收條件可以自己手動輸入，或在台北時間每天上午 8 點額度恢復後再試。",
+    "平台的模型總額度暫時用完，這次沒有扣點。驗收條件可以自己手動輸入，或在台北時間每天上午 8 點額度恢復後再試。",
+  ],
+  [
+    "the manual path when the reason is not written for people",
+    "upstream gateway timeout",
+    "目前無法自動建議，驗收條件可以自己手動輸入。",
+  ],
+])("a 503 from suggesting criteria shows %s", async (_case, serverWords, shown) => {
+  stubPlatform({ suggest: { status: 503, error: serverWords } });
   await render();
 
   await act(async () => button("請系統建議（選用）").click());
-  await waitFor(() => (container.textContent ?? "").includes("目前無法自動建議"));
-  expect(container.textContent).toContain("驗收條件可以自己手動輸入");
-  expect(container.textContent).not.toContain("目前無法自動建議驗收條件，請自己手動輸入");
+  await waitFor(() => (container.textContent ?? "").includes(shown));
+  expect(container.textContent).not.toContain("upstream gateway timeout");
 });
 
 test.each([
