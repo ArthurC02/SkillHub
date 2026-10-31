@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -38,6 +39,7 @@ func harnessProblems(root string) []string {
 	problems = append(problems, harnessAgentProblems(root)...)
 	problems = append(problems, harnessAgentsDocProblems(root)...)
 	problems = append(problems, harnessWorkflowProblems(root)...)
+	problems = append(problems, harnessDenyShellPairProblems(root)...)
 	return problems
 }
 
@@ -251,5 +253,45 @@ func workflowAgentCallProblems(relative, text string) []string {
 			}
 		}
 	}
+	return problems
+}
+
+const harnessSettingsFile = ".claude/settings.json"
+
+var denyShellRule = regexp.MustCompile(`^(Bash|PowerShell)\((.*)\)$`)
+
+func harnessDenyShellPairProblems(root string) []string {
+	data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(harnessSettingsFile)))
+	if err != nil {
+		return nil
+	}
+	var settings struct {
+		Permissions struct {
+			Deny []string `json:"deny"`
+		} `json:"permissions"`
+	}
+	if err := json.Unmarshal(data, &settings); err != nil {
+		return []string{fmt.Sprintf("harness: %s: %v", harnessSettingsFile, err)}
+	}
+	shellsByPattern := map[string]map[string]bool{}
+	for _, rule := range settings.Permissions.Deny {
+		if m := denyShellRule.FindStringSubmatch(rule); m != nil {
+			if shellsByPattern[m[2]] == nil {
+				shellsByPattern[m[2]] = map[string]bool{}
+			}
+			shellsByPattern[m[2]][m[1]] = true
+		}
+	}
+	var problems []string
+	for pattern, shells := range shellsByPattern {
+		for _, shell := range []string{"Bash", "PowerShell"} {
+			if !shells[shell] {
+				problems = append(problems, fmt.Sprintf(
+					"harness: %s denies %q in one shell only; add %s(%s) so the other shell cannot walk around it",
+					harnessSettingsFile, pattern, shell, pattern))
+			}
+		}
+	}
+	sort.Strings(problems)
 	return problems
 }

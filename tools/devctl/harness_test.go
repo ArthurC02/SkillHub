@@ -209,3 +209,41 @@ func TestHarnessRejectsARoleThatPreloadsAMissingSkill(t *testing.T) {
 		})
 	}
 }
+
+func TestHarnessAcceptsADenyRulePairedAcrossBothShells(t *testing.T) {
+	t.Parallel()
+	root := writeHarnessFixture(t, cleanSkill, cleanAgent, "# 導覽\n")
+	writeAt(t, root, harnessSettingsFile,
+		`{"permissions":{"deny":["Bash(*git stash*)","PowerShell(*git stash*)","Edit(secrets/**)"]}}`)
+	if problems := harnessProblems(root); len(problems) != 0 {
+		t.Fatalf("a deny rule present in both shells was rejected: %v", problems)
+	}
+}
+
+func TestHarnessRejectsADenyRuleMissingFromOneShell(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct{ present, missing string }{
+		{"Bash", "PowerShell"},
+		{"PowerShell", "Bash"},
+	} {
+		t.Run("only "+tc.present, func(t *testing.T) {
+			t.Parallel()
+			root := writeHarnessFixture(t, cleanSkill, cleanAgent, "# 導覽\n")
+			writeAt(t, root, harnessSettingsFile,
+				`{"permissions":{"deny":["Bash(*git stash*)","PowerShell(*git stash*)","`+tc.present+`(*git clean -*)"]}}`)
+			problems := harnessProblems(root)
+			if len(problems) != 1 || !strings.Contains(problems[0], tc.missing+"(*git clean -*)") {
+				t.Fatalf("a deny rule only %s carries was accepted: %v", tc.present, problems)
+			}
+		})
+	}
+}
+
+func TestHarnessRejectsUnreadableSettings(t *testing.T) {
+	t.Parallel()
+	root := writeHarnessFixture(t, cleanSkill, cleanAgent, "# 導覽\n")
+	writeAt(t, root, harnessSettingsFile, `{"permissions":`)
+	if problems := harnessProblems(root); len(problems) != 1 || !strings.Contains(problems[0], harnessSettingsFile) {
+		t.Fatalf("settings that do not parse were accepted: %v", problems)
+	}
+}
