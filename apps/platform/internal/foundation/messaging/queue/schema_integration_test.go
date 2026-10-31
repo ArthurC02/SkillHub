@@ -3,8 +3,10 @@ package queue
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -79,5 +81,37 @@ func TestProcessesStartingTogetherOnASmallPoolAllFindTheQueueSchemaReady(t *test
 		"SELECT count(*) FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = 'river_job'",
 	).Scan(&tables); err != nil || tables != 1 {
 		t.Fatalf("river_job tables in the schema: %d (%v), want 1", tables, err)
+	}
+}
+
+func TestTheSoleProcessPreparesTheQueueSchemaOnItsOnlyPoolConnection(t *testing.T) {
+	cfg := poolInFreshSchema(t).Config()
+	cfg.MaxConns = 1
+	var dials atomic.Int32
+	dial := cfg.ConnConfig.DialFunc
+	cfg.ConnConfig.DialFunc = func(ctx context.Context, network, addr string) (net.Conn, error) {
+		dials.Add(1)
+		return dial(ctx, network, addr)
+	}
+	pool, err := pgxpool.NewWithConfig(context.Background(), cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if err := EnsureSchemaAsSoleProcess(ctx, pool); err != nil {
+		t.Fatalf("the queue schema could not be prepared on a one-connection pool: %v", err)
+	}
+
+	var tables int
+	if err := pool.QueryRow(ctx,
+		"SELECT count(*) FROM information_schema.tables WHERE table_schema = current_schema() AND table_name = 'river_job'",
+	).Scan(&tables); err != nil || tables != 1 {
+		t.Fatalf("river_job tables in the schema: %d (%v), want 1", tables, err)
+	}
+	if got := dials.Load(); got != 1 {
+		t.Fatalf("connections opened: %d, want 1 — a database that accepts one connection refuses the rest", got)
 	}
 }
