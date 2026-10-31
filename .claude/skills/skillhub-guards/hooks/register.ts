@@ -52,10 +52,11 @@ const RED_LINES: [RegExp, string][] = [
   [red(String.raw`clean\s+-`), KEEPS_OTHERS_WORK],
   [red(String.raw`checkout\s+${SAME_COMMAND}(?:--\s|\.(?:\s|$))`), KEEPS_OTHERS_WORK],
   [red(String.raw`restore\b`), KEEPS_OTHERS_WORK],
+  [red(String.raw`(?:checkout|switch)\s+${SAME_COMMAND}(?:-f\b|--force\b|--discard-changes\b)`), KEEPS_OTHERS_WORK],
   [red(String.raw`add\s+${SAME_COMMAND}(?:-A\b|--all\b|\.(?:\s|$))`), KEEPS_OTHERS_WORK],
   [red(String.raw`commit\s+${SAME_COMMAND}(?:-[A-Za-z]*a[A-Za-z]*\b|--all\b)`), KEEPS_OTHERS_WORK],
   [red(String.raw`commit\s+${SAME_COMMAND}--amend\b`), 'history is never rewritten; make a new commit'],
-  [red(String.raw`push\s+${SAME_COMMAND}(?:--force\b|-f\b)`), 'history is never rewritten; merge and push'],
+  [red(String.raw`push\s+${SAME_COMMAND}(?:--force\b|-f\b|\+\S)`), 'history is never rewritten; merge and push'],
   [new RegExp(String.raw`\s--no-verify\b`), 'hooks are never skipped; fix what the hook found'],
 ]
 
