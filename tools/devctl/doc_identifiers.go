@@ -173,14 +173,7 @@ func declaredCodeWords(root string) map[string]bool {
 	skip := map[string]bool{dirGit: true, dirNodeModules: true, dirVenv: true, dirDevctlCache: true, dirDist: true, dirPycache: true}
 	tracked := trackedFiles(root)
 	if tracked != nil {
-		for name := range tracked {
-			if inSkippedDir(name, skip) || !declaresDocIdentifiers(root, filepath.Join(root, filepath.FromSlash(name)), tracked) {
-				continue
-			}
-			if body, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(name))); err == nil {
-				addCodeWords(body, declared)
-			}
-		}
+		addTrackedCodeWords(root, tracked, skip, declared)
 		return declared
 	}
 
@@ -205,6 +198,18 @@ func declaredCodeWords(root string) map[string]bool {
 		return nil
 	})
 	return declared
+}
+
+func addTrackedCodeWords(root string, tracked, skip, into map[string]bool) {
+	for name := range tracked {
+		path := filepath.Join(root, filepath.FromSlash(name))
+		if inSkippedDir(name, skip) || !declaresDocIdentifiers(root, path, tracked) {
+			continue
+		}
+		if body, err := os.ReadFile(path); err == nil {
+			addCodeWords(body, into)
+		}
+	}
 }
 
 func inSkippedDir(name string, skip map[string]bool) bool {
