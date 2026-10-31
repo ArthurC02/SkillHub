@@ -21,7 +21,8 @@ func TestUnobservedCapacityMeasurementsAreAbsent(t *testing.T) {
 
 func TestUnobservedOperationalMeasurementsAreAbsent(t *testing.T) {
 	for _, name := range []string{
-		"skillhub_run_cleanup_backlog", "skillhub_outbox_dead_lettered",
+		"skillhub_run_cleanup_backlog", "skillhub_runs_queued", "skillhub_run_queue_oldest_seconds",
+		"skillhub_outbox_dead_lettered",
 		"skillhub_orphan_observation_success", "skillhub_dispatch_halt_observation_success",
 	} {
 		t.Run(name, func(t *testing.T) {

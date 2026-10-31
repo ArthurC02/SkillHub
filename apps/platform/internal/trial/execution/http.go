@@ -638,6 +638,7 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 
 	resp := toRunResponse(run)
 	resp.StatusReason = h.Svc.DispatchGate().ExplainQueued(r.Context(), resp.Status, resp.StatusReason)
+	resp.StatusReason = explainQueuePosition(r.Context(), h.Svc.queries(), run.ID, resp.Status, resp.StatusReason)
 	if !h.fillLinkage(w, r, ws.ID, runID, &resp) {
 		return
 	}

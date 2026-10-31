@@ -4,9 +4,14 @@ import (
 	"bytes"
 	"cmp"
 	"context"
+	"fmt"
+	"log/slog"
 	"slices"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 )
 
 const turnWindow = 500
@@ -55,6 +60,41 @@ func (l runLine) ahead(of gen.Run) []gen.Run {
 		}
 	}
 	return ahead
+}
+
+const messageQueuedBehind = "前面還有 %d 個試跑在排隊；輪到時會自動開始，不必重新送出。"
+
+func explainQueuePosition(ctx context.Context, q *gen.Queries, runID pgtype.UUID, status, reason string) string {
+	if status != string(gen.RunStatusQueued) || reason != "" {
+		return reason
+	}
+	ahead, counted := runsAhead(ctx, q, runID)
+	if !counted || ahead == 0 {
+		return reason
+	}
+	return fmt.Sprintf(messageQueuedBehind, ahead)
+}
+
+func runsAhead(ctx context.Context, q *gen.Queries, runID pgtype.UUID) (int, bool) {
+	unfinished, err := q.ListUnfinishedRuns(ctx, turnWindow)
+	if err != nil {
+		slog.Warn("could not read the queue; the run page says nothing about its place in it",
+			"run_id", pgconv.UUIDString(runID), "error", err)
+		return 0, false
+	}
+	return queuePosition(unfinished, runID)
+}
+
+func queuePosition(unfinished []gen.Run, runID pgtype.UUID) (int, bool) {
+	if len(unfinished) >= turnWindow {
+		return 0, false
+	}
+	line := lineOf(unfinished)
+	i := slices.IndexFunc(line.waiting, func(r gen.Run) bool { return r.ID == runID })
+	if i < 0 {
+		return 0, false
+	}
+	return len(line.ahead(line.waiting[i])), true
 }
 
 func (s *Service) turnBelongsToAnother(ctx context.Context, current gen.Run, placements []Placement, setAside map[string]SetAsideProvider) (bool, error) {

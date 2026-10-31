@@ -1338,3 +1338,78 @@ tests:
             exp_annotations:
               summary: "超過 30 分鐘讀不到模型閘道的平台總預算"
               description: "讀不到時「八成預算」的提早告警不會響。查 platform-worker 的 observe_model_budget 工作錯誤， 以及閘道管理端點與管理金鑰是否可用。"
+
+  - name: a queue whose oldest run waited exactly ten minutes does not warn
+    interval: 1m
+    input_series:
+      - series: 'skillhub_run_queue_oldest_seconds{process="worker"}'
+        values: "600x30"
+      - series: 'skillhub_runs_queued{process="worker"}'
+        values: "20x30"
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: RunQueueStalled
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: RunQueueDeep
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: RunQueueNotObserved
+        exp_alerts: []
+
+  - name: a run still waiting past ten minutes warns before it leaves the queue
+    interval: 1m
+    input_series:
+      - series: 'skillhub_run_queue_oldest_seconds{process="worker"}'
+        values: "601x30"
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: RunQueueStalled
+        exp_alerts: []
+      - eval_time: 5m
+        alertname: RunQueueStalled
+        exp_alerts:
+          - exp_labels:
+              process: worker
+              severity: warning
+            exp_annotations:
+              summary: "最舊的排隊 Run 已經等了 10m 1s"
+              description: "Run 還在排隊時就會響，不必等它離開佇列；排隊超過 30 分鐘的 Run 會被平台結束。 先看 skillhub_runs_queued 與 provider 的 concurrent_run_slots：佇列長而槽滿是容量不足， 佇列短卻不動是派送暫停（DispatchHalted）或 worker 沒在消化。"
+
+  - name: more than twenty queued runs for fifteen minutes warns
+    interval: 1m
+    input_series:
+      - series: 'skillhub_runs_queued{process="worker"}'
+        values: "21x30"
+    alert_rule_test:
+      - eval_time: 14m
+        alertname: RunQueueDeep
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: RunQueueDeep
+        exp_alerts:
+          - exp_labels:
+              process: worker
+              severity: warning
+            exp_annotations:
+              summary: "有 21 個 Run 在排隊等沙箱"
+              description: "超過一整輪執行槽的 Run 在等，持續 15 分鐘。後面的人在畫面上會看到前面還有幾個； 等待時間由 RunQueueStalled 看。要消化就加沙箱節點或提高 concurrent_run_slots。"
+
+  - name: an unobserved queue cannot be masked by the api's reading
+    interval: 1m
+    input_series:
+      - series: 'skillhub_runs_queued{process="api"}'
+        values: "0x70"
+    alert_rule_test:
+      - eval_time: 59m
+        alertname: RunQueueNotObserved
+        exp_alerts: []
+      - eval_time: 1h
+        alertname: RunQueueNotObserved
+        exp_alerts:
+          - exp_labels:
+              process: worker
+              severity: warning
+            exp_annotations:
+              summary: "Run 佇列沒有可用觀測"
+              description: "worker 讀不到佇列時會撤下舊值；沒有觀測不代表沒有人在排隊，上面兩條佇列告警因此都不會響。先查 worker 的讀取錯誤與資料庫連線。"

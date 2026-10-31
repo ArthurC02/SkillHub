@@ -123,6 +123,7 @@ queries:
 
   GetRunForTraceIngest: run
   CountRunsNeedingCleanup: run
+  SummarizeQueuedRuns: run
 
   LockAccountLifecycle: identity
   SaveAccountDeletionRequest: identity

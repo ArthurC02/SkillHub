@@ -168,7 +168,7 @@ func (s *Service) superviseRun(ctx context.Context, run gen.Run, policy []byte) 
 }
 
 func (s *Service) PublishGauges(ctx context.Context) error {
-	errs := []error{s.publishCleanupBacklog(ctx)}
+	errs := []error{s.publishCleanupBacklog(ctx), publishRunQueue(ctx, s.queries(), s.now())}
 	for _, provider := range s.providers().Providers {
 		errs = append(errs, s.publishPersistentOrphans(ctx, provider.Name()))
 	}
@@ -183,5 +183,21 @@ func (s *Service) publishCleanupBacklog(ctx context.Context) error {
 		return err
 	}
 	metrics.CleanupBacklog.WithLabelValues().Set(float64(backlog))
+	return nil
+}
+
+func publishRunQueue(ctx context.Context, q *gen.Queries, now time.Time) error {
+	queue, err := q.SummarizeQueuedRuns(ctx)
+	if err != nil {
+		metrics.RunsQueued.Reset()
+		metrics.RunQueueOldestSeconds.Reset()
+		return err
+	}
+	waited := 0.0
+	if queue.OldestCreatedAt.Valid {
+		waited = max(0, now.Sub(queue.OldestCreatedAt.Time).Seconds())
+	}
+	metrics.RunsQueued.WithLabelValues().Set(float64(queue.Queued))
+	metrics.RunQueueOldestSeconds.WithLabelValues().Set(waited)
 	return nil
 }

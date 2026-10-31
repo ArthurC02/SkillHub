@@ -33,6 +33,38 @@ groups:
             skillhub_run_queue_duration_seconds_count 沒動 = worker 沒在消化），
             再看 provider 的 concurrent_run_slots。
 
+      - alert: RunQueueStalled
+        expr: skillhub_run_queue_oldest_seconds{process="worker"} > 600
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "最舊的排隊 Run 已經等了 {{ $value | humanizeDuration }}"
+          description: >-
+            Run 還在排隊時就會響，不必等它離開佇列；排隊超過 30 分鐘的 Run 會被平台結束。
+            先看 skillhub_runs_queued 與 provider 的 concurrent_run_slots：佇列長而槽滿是容量不足，
+            佇列短卻不動是派送暫停（DispatchHalted）或 worker 沒在消化。
+
+      - alert: RunQueueDeep
+        expr: skillhub_runs_queued{process="worker"} > 20
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "有 {{ $value }} 個 Run 在排隊等沙箱"
+          description: >-
+            超過一整輪執行槽的 Run 在等，持續 15 分鐘。後面的人在畫面上會看到前面還有幾個；
+            等待時間由 RunQueueStalled 看。要消化就加沙箱節點或提高 concurrent_run_slots。
+
+      - alert: RunQueueNotObserved
+        expr: absent(skillhub_runs_queued{process="worker"})
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Run 佇列沒有可用觀測"
+          description: "worker 讀不到佇列時會撤下舊值；沒有觀測不代表沒有人在排隊，上面兩條佇列告警因此都不會響。先查 worker 的讀取錯誤與資料庫連線。"
+
       - alert: RunFailureRateHigh
         expr: |
           sum(rate(skillhub_run_terminal_total{failure_class=~"provider_error|platform_error|capability_mismatch"}[30m]))

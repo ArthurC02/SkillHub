@@ -95,3 +95,82 @@ func TestARunWhoseCancellationWasRequestedDoesNotHoldAPlaceInLine(t *testing.T) 
 		t.Errorf("ahead of the waiting run = %v, want none: the cancelled run gave up its place", got)
 	}
 }
+
+func TestTheQueuePositionCountsTheRunsWhoseTurnComesFirst(t *testing.T) {
+	holding := lineRun(1, 0xA, gen.RunStatusRunning, 0)
+	earlyFromBusy := lineRun(2, 0xA, gen.RunStatusQueued, time.Minute)
+	lateFromIdle := lineRun(3, 0xB, gen.RunStatusQueued, 2*time.Minute)
+	latest := lineRun(4, 0xC, gen.RunStatusQueued, 3*time.Minute)
+	unfinished := []gen.Run{holding, earlyFromBusy, lateFromIdle, latest}
+
+	for _, tc := range []struct {
+		name string
+		run  gen.Run
+		want int
+	}{
+		{"first in line", lateFromIdle, 0},
+		{"behind the idle workspace", latest, 1},
+		{"its workspace already holds a sandbox", earlyFromBusy, 2},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, counted := queuePosition(unfinished, tc.run.ID)
+			if !counted || got != tc.want {
+				t.Errorf("queuePosition = %d, %v; want %d, true", got, counted, tc.want)
+			}
+		})
+	}
+}
+
+func TestTheQueuePositionIsNotCountedForARunThatDoesNotStandInLine(t *testing.T) {
+	running := lineRun(1, 0xA, gen.RunStatusRunning, 0)
+	cancelled := lineRun(2, 0xB, gen.RunStatusQueued, 0)
+	cancelled.CancelRequestedAt = pgtype.Timestamptz{Time: turnEpoch, Valid: true}
+	waiting := lineRun(3, 0xC, gen.RunStatusQueued, time.Minute)
+	unfinished := []gen.Run{running, cancelled, waiting}
+
+	for _, tc := range []struct {
+		name string
+		id   pgtype.UUID
+	}{
+		{"dispatched", running.ID},
+		{"cancellation requested", cancelled.ID},
+		{"outside the unfinished runs read", lineRun(9, 0xD, gen.RunStatusQueued, 0).ID},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got, counted := queuePosition(unfinished, tc.id); counted {
+				t.Errorf("queuePosition = %d, counted; want not counted", got)
+			}
+		})
+	}
+}
+
+func TestTheQueuePositionIsNotCountedOnceTheReadFillsItsWindow(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		size    int
+		counted bool
+	}{
+		{"one short of the window", turnWindow - 1, true},
+		{"the window is full", turnWindow, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			unfinished := make([]gen.Run, tc.size)
+			for i := range unfinished {
+				unfinished[i] = gen.Run{
+					ID:          pgtype.UUID{Bytes: [16]byte{0: byte(i >> 8), 1: byte(i)}, Valid: true},
+					WorkspaceID: pgtype.UUID{Bytes: [16]byte{0: byte(i >> 8), 1: byte(i)}, Valid: true},
+					Status:      gen.RunStatusQueued,
+					CreatedAt:   pgtype.Timestamptz{Time: turnEpoch.Add(time.Duration(i) * time.Second), Valid: true},
+				}
+			}
+			last := unfinished[tc.size-1]
+			got, counted := queuePosition(unfinished, last.ID)
+			if counted != tc.counted {
+				t.Fatalf("queuePosition = %d, %v; want counted %v", got, counted, tc.counted)
+			}
+			if counted && got != tc.size-1 {
+				t.Errorf("queuePosition = %d, want %d", got, tc.size-1)
+			}
+		})
+	}
+}

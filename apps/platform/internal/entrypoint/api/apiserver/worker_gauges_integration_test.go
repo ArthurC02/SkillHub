@@ -46,6 +46,8 @@ func TestEveryWorkerReplicaRefreshesItsGaugesFromTheDatabase(t *testing.T) {
 
 	const staleValue = "987654"
 	metrics.CleanupBacklog.WithLabelValues().Set(987654)
+	metrics.RunsQueued.WithLabelValues().Set(987654)
+	metrics.RunQueueOldestSeconds.WithLabelValues().Set(987654)
 	metrics.OutboxDeadLetteredCurrent.WithLabelValues().Set(987654)
 	metrics.OrphanPersistent.WithLabelValues("fake_gauge_sandbox").Set(987654)
 	metrics.ObjectsMissing.WithLabelValues("dataset").Set(987654)
@@ -57,6 +59,8 @@ func TestEveryWorkerReplicaRefreshesItsGaugesFromTheDatabase(t *testing.T) {
 	scraped := scrapedSeries(t)
 	for _, series := range []string{
 		`skillhub_run_cleanup_backlog`,
+		`skillhub_runs_queued`,
+		`skillhub_run_queue_oldest_seconds`,
 		`skillhub_outbox_dead_lettered`,
 		`skillhub_orphan_sandbox_persistent{provider="fake_gauge_sandbox"}`,
 		`skillhub_storage_objects_missing{resource_kind="dataset"}`,
@@ -94,6 +98,8 @@ func TestWorkerBacklogObservationsDisappearAfterDatabaseFailureAndRecover(t *tes
 		`skillhub_backlog_oldest_seconds{backlog="orphan_objects"}`,
 		`skillhub_backlog_oldest_seconds{backlog="source_checks"}`,
 		`skillhub_backlog_oldest_seconds{backlog="enrichment"}`,
+		`skillhub_runs_queued`,
+		`skillhub_run_queue_oldest_seconds`,
 	}
 	initial := scrapedSeries(t)
 	for _, name := range series {

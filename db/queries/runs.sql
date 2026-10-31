@@ -269,6 +269,13 @@ RETURNING provider_unreachable_since;
 UPDATE run_attempts SET provider_unreachable_since = NULL
 WHERE id = @id AND workspace_id = @workspace_id AND provider_unreachable_since IS NOT NULL;
 
+-- name: SummarizeQueuedRuns :one
+SELECT count(*)::bigint AS queued, min(created_at)::timestamptz AS oldest_created_at
+FROM runs
+WHERE finished_at IS NULL
+  AND status = 'queued'
+  AND cancel_requested_at IS NULL;
+
 -- name: ListUnfinishedRuns :many
 SELECT * FROM runs
 WHERE finished_at IS NULL

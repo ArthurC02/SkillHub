@@ -2078,6 +2078,26 @@ func (q *Queries) SoftDeleteRunArtifact(ctx context.Context, arg SoftDeleteRunAr
 	return i, err
 }
 
+const summarizeQueuedRuns = `-- name: SummarizeQueuedRuns :one
+SELECT count(*)::bigint AS queued, min(created_at)::timestamptz AS oldest_created_at
+FROM runs
+WHERE finished_at IS NULL
+  AND status = 'queued'
+  AND cancel_requested_at IS NULL
+`
+
+type SummarizeQueuedRunsRow struct {
+	Queued          int64
+	OldestCreatedAt pgtype.Timestamptz
+}
+
+func (q *Queries) SummarizeQueuedRuns(ctx context.Context) (SummarizeQueuedRunsRow, error) {
+	row := q.db.QueryRow(ctx, summarizeQueuedRuns)
+	var i SummarizeQueuedRunsRow
+	err := row.Scan(&i.Queued, &i.OldestCreatedAt)
+	return i, err
+}
+
 const transitionRun = `-- name: TransitionRun :one
 UPDATE runs SET
     status = $1,

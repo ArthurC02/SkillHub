@@ -75,6 +75,15 @@ var (
 		Help: "Terminal runs whose cleanup has not completed (O11Y-003).",
 	}, nil)
 
+	RunsQueued = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "skillhub_runs_queued",
+		Help: "Runs waiting in the queue for a sandbox, cancelled ones excluded.",
+	}, nil)
+	RunQueueOldestSeconds = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "skillhub_run_queue_oldest_seconds",
+		Help: "How long the oldest run still waiting in the queue has waited, 0 when none waits.",
+	}, nil)
+
 	GatewayRevokeFailed = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "skillhub_gateway_revoke_failed_total",
 		Help: "Virtual Key revocations that failed during cleanup (SBX-012).",
