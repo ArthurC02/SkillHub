@@ -21,7 +21,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     && go mod tidy \
     && CGO_ENABLED=0 go build -trimpath -buildvcs=false -ldflags="-s -w" -o /out/gosu .
 
-FROM pgvector/pgvector:pg18@sha256:2ba9ca5f2e7daa0f0e7723cba1ee9167bab54efd3640516a44ac1a928dd67e7a
+FROM pgvector/pgvector:pg18@sha256:2358fcba361ed2233a5ed81b5fe4ca779ccb304120ce531a3bf51c0ed7e2bc11
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends --only-upgrade libpcre2-8-0 openssl libssl3 \

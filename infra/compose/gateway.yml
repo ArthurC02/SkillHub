@@ -2,7 +2,7 @@ name: skillhub
 
 services:
   litellm:
-    image: ghcr.io/berriai/litellm:main-stable@sha256:d295634e09c648dcdb72c4cc2dd226f5fb87823a73e88cbbed6f205e4deb044b
+    image: ghcr.io/berriai/litellm:main-stable@sha256:c169fb3adc514fcf210377c203f3de406d54f10bfdacf13948a4a839db9af7de
     restart: unless-stopped
     cpus: ${SKILLHUB_GATEWAY_CPUS:-2}
     mem_limit: ${SKILLHUB_GATEWAY_MEMORY:-2g}

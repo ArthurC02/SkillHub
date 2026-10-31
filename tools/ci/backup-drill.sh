@@ -2,7 +2,7 @@
 set -euo pipefail
 
 POSTGRES_IMAGE="${POSTGRES_IMAGE:?set POSTGRES_IMAGE to the skillhub-postgres image under test}"
-SEAWEEDFS_IMAGE="chrislusf/seaweedfs:4.47@sha256:ce9e796f1fe6f06968f4c04bdaf8f678dad9c8acdfef3d244133d71bfa6bf882"
+SEAWEEDFS_IMAGE="chrislusf/seaweedfs:4.48@sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d"
 ROOT="$(cd "$(dirname "$0")/../.." && (pwd -W 2>/dev/null || pwd))"
 NET="backup-drill-$$"
 S3="backup-drill-s3-$$"

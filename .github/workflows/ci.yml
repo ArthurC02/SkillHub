@@ -309,7 +309,7 @@ jobs:
         working-directory: apps/platform
     services:
       postgres:
-        image: docker.io/pgvector/pgvector:pg18@sha256:2ba9ca5f2e7daa0f0e7723cba1ee9167bab54efd3640516a44ac1a928dd67e7a
+        image: docker.io/pgvector/pgvector:pg18@sha256:2358fcba361ed2233a5ed81b5fe4ca779ccb304120ce531a3bf51c0ed7e2bc11
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: skillhub_test
@@ -335,7 +335,7 @@ jobs:
         run: |
           docker run -d --name seaweedfs --network host \
             -v "$GITHUB_WORKSPACE/infra/compose/seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro" \
-            docker.io/chrislusf/seaweedfs:4.47@sha256:ce9e796f1fe6f06968f4c04bdaf8f678dad9c8acdfef3d244133d71bfa6bf882 \
+            docker.io/chrislusf/seaweedfs:4.48@sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d \
             server -s3 -s3.config=/etc/seaweedfs/s3.json -dir=/data
           for _ in $(seq 60); do
             if curl -fs -o /dev/null http://127.0.0.1:8333/status; then exit 0; fi
@@ -370,11 +370,11 @@ jobs:
         run: |
           go test -count=1 ./internal/entrypoint/api/apiserver -run '^$'
           docker run --rm --network host -v "$GITHUB_WORKSPACE:/workspace:ro" \
-            docker.io/pgvector/pgvector:pg18@sha256:2ba9ca5f2e7daa0f0e7723cba1ee9167bab54efd3640516a44ac1a928dd67e7a psql "$SKILLHUB_TEST_DATABASE_URL" \
+            docker.io/pgvector/pgvector:pg18@sha256:2358fcba361ed2233a5ed81b5fe4ca779ccb304120ce531a3bf51c0ed7e2bc11 psql "$SKILLHUB_TEST_DATABASE_URL" \
             -v ON_ERROR_STOP=1 --single-transaction -f /workspace/db/tests/immutability_test.sql
       - name: Apply new migrations to a database that already holds data
         env:
-          PSQL: docker run --rm -i --network host docker.io/pgvector/pgvector:pg18@sha256:2ba9ca5f2e7daa0f0e7723cba1ee9167bab54efd3640516a44ac1a928dd67e7a psql
+          PSQL: docker run --rm -i --network host docker.io/pgvector/pgvector:pg18@sha256:2358fcba361ed2233a5ed81b5fe4ca779ccb304120ce531a3bf51c0ed7e2bc11 psql
         run: |
           $PSQL postgres://postgres:postgres@localhost:5432/postgres -c 'CREATE DATABASE skillhub_upgrade'
           bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Upgrade with data' \
