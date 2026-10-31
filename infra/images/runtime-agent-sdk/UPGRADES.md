@@ -1154,3 +1154,30 @@ CI 的 Runtime Image 工作流程自 2026-10-26 的排程掃描起就紅；以 C
 ### 預設映像從 `-23` 移到 `-24`
 
 四項在 `-24` 的 digest 上跑過之後移動：`apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`（與它 `docker tag` 成的本地 tag）、`p02_docker_test.go` 的常數，以及 `automation.md` 的實跑範例。
+
+## `2026.08-24` → `2026.08-25`（2026-10-31）— **安全性修補：基底映像的 Node、`pypdf` 與 `@hono/node-server`；四項實測尚未跑，預設映像仍留在 `-24`**
+
+`devctl dep-audit --full` 對 lockfile 列出 `@hono/node-server` 的 moderate；修完它後以 CI 釘住的掃描器重掃本機建置，`--only-fixed --fail-on high`（I-06）又列出 `pypdf` 6.21.2 的五則 High 與基底映像 Node 22.23.2 的一則 Critical、兩則 High，三者一起收。
+
+| 套件 | 原版本 | 修正版本 | 公告 |
+| --- | --- | --- | --- |
+| Node（基底 `node:22-bookworm-slim`） | `22.23.2` | `22.23.4` | CVE-2026-111497（Critical，CISA KEV、EPSS 99 百分位）、CVE-2026-105482、CVE-2026-106069（High），另有三則 Medium／Low 一併消失 |
+| `pypdf`（Python） | `6.21.2` | `6.21.4` | GHSA-42gh-23hr-vphw、GHSA-4vqv-7265-gm2w、GHSA-5849-834g-hvw5、GHSA-62m5-6wh8-28x7、GHSA-cggf-277g-3q54（High，2026-10-30 公告）：讀頁碼標籤、strict 模式的例外、標準 xref 表的 trailer 搜尋撞到 EOF、加密檔、頁面樹，五處都會讓解析跑極久或吃掉大量記憶體 |
+| `@hono/node-server`（npm，Agent SDK → MCP SDK 的傳遞依賴） | `2.1.1` | `2.1.5` | GHSA-rmxm-3fg6-px4f（Moderate）：`serveStatic` 把請求路徑多解碼一次，靜態路徑可繞過中介層 |
+
+**暴露面**：Node 是 `run.mjs` 與 Agent SDK 本身的執行環境，每一次 Run 都在它上面跑 Skill 帶來的內容。`pypdf` 與 `-24` 那批相同：Skill 讀使用者上傳的 PDF 時會走到，後果是那一次 Run 的沙箱耗盡時間或記憶體上限，影響不出那個沙箱。`@hono/node-server` 實際上走不到：MCP SDK 只在 HTTP 伺服器傳輸用到 `getRequestListener`（`serve` 只出現在它的範例），沒有任何地方用 `serveStatic`，`run.mjs` 也不監聽埠；照樣收，是因為它在 lockfile 裡，`dep-audit` 的閘門看的是 lockfile。
+
+**冷卻期**：Node `22.23.4` 於 2026-10-20 發佈、`@hono/node-server` `2.1.5` 於 2026-10-13 發佈，都已過 7 天。`pypdf` `6.21.4` 於 2026-10-28 發佈，**未滿 7 天**：Dependabot 的 cooldown 只套用版本更新、不套用安全更新，與 `-23` 收 `body-parser`、`fast-uri` 的依據相同；它修的五則 High 在 `6.21.2` 上沒有其他修法（`6.21.3` 只修了其中三則）。
+
+| 欄位 | 值 |
+| --- | --- |
+| 變更 | `FROM` 的 digest（`sha256:83f487e0…` → `sha256:4b150b48…`，即 `node:22.23.4-bookworm-slim` 的 index digest）；`constraints.txt` 與 Dockerfile 的 `pypdf`；`package-lock.json` 的 `@hono/node-server`；`ARG IMAGE_VERSION` |
+| 新增的依賴 | 無（`@hono/node-server` 的 peer 範圍放寬為 `hono ^4 \|\| ^5.0.0-0`，lockfile 的 `hono` 仍是 `4.13.13`） |
+| SDK 版本 | `0.3.233`（**未變**） |
+| 基底 digest | **變更**，見上 |
+| `run.mjs` | **未變** |
+| 預設映像 | 仍是 `-24`；四項在 CI 發佈的 digest 上跑過之後才移動 |
+
+### 本機驗證（2026-10-31，沒有任何模型呼叫）
+
+以 CI 釘住的 `anchore/syft:v1.51.0@sha256:678bfa56…` 與 `anchore/grype:v0.117.0@sha256:ddf9e9f2…` 掃描本機建置，`--only-fixed --fail-on high`：No vulnerabilities found，exit 0；只換 `@hono/node-server` 時同一個掃描列出上表 `pypdf` 五則 High，再換 `pypdf` 後列出 Node 那三則。同一個映像、無網路：`node --version` → `v22.23.4`，`pypdf.__version__` → `6.21.4`，`@hono/node-server` → `2.1.5`，`python3 --version` → `3.11.2`；`pypdf` 寫出一頁 200×100 的 PDF 再讀回，頁數 1、寬 200.0，`pdfplumber` 讀同一份頁數 1；`id -u` → `65532`；`command -v npm` → 無；`.Size` → 1,352,757,673 bytes；version label → `2026.08-25`。
