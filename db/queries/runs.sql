@@ -124,6 +124,7 @@ WITH candidates AS (
     SELECT id FROM runs
     WHERE cleanup_status = 'cleaned' AND cost_settled_at IS NULL
       AND finished_at > now() - @spend_window::interval
+      AND finished_at < now() - @spend_lands_within::interval
       AND (spend_rechecked_at IS NULL OR spend_rechecked_at < now() - @recheck_after::interval)
     ORDER BY spend_rechecked_at NULLS FIRST, finished_at, id
     LIMIT @batch_size FOR UPDATE SKIP LOCKED

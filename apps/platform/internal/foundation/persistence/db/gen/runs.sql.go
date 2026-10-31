@@ -1340,9 +1340,10 @@ WITH candidates AS (
     SELECT id FROM runs
     WHERE cleanup_status = 'cleaned' AND cost_settled_at IS NULL
       AND finished_at > now() - $1::interval
-      AND (spend_rechecked_at IS NULL OR spend_rechecked_at < now() - $2::interval)
+      AND finished_at < now() - $2::interval
+      AND (spend_rechecked_at IS NULL OR spend_rechecked_at < now() - $3::interval)
     ORDER BY spend_rechecked_at NULLS FIRST, finished_at, id
-    LIMIT $3 FOR UPDATE SKIP LOCKED
+    LIMIT $4 FOR UPDATE SKIP LOCKED
 )
 UPDATE runs r SET spend_rechecked_at = now()
 FROM candidates c WHERE r.id = c.id
@@ -1350,9 +1351,10 @@ RETURNING r.id, r.workspace_id
 `
 
 type ListRunsAwaitingSpendParams struct {
-	SpendWindow  pgtype.Interval
-	RecheckAfter pgtype.Interval
-	BatchSize    int32
+	SpendWindow      pgtype.Interval
+	SpendLandsWithin pgtype.Interval
+	RecheckAfter     pgtype.Interval
+	BatchSize        int32
 }
 
 type ListRunsAwaitingSpendRow struct {
@@ -1361,7 +1363,12 @@ type ListRunsAwaitingSpendRow struct {
 }
 
 func (q *Queries) ListRunsAwaitingSpend(ctx context.Context, arg ListRunsAwaitingSpendParams) ([]ListRunsAwaitingSpendRow, error) {
-	rows, err := q.db.Query(ctx, listRunsAwaitingSpend, arg.SpendWindow, arg.RecheckAfter, arg.BatchSize)
+	rows, err := q.db.Query(ctx, listRunsAwaitingSpend,
+		arg.SpendWindow,
+		arg.SpendLandsWithin,
+		arg.RecheckAfter,
+		arg.BatchSize,
+	)
 	if err != nil {
 		return nil, err
 	}

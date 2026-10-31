@@ -91,7 +91,7 @@ func (r SpendRechecks) Enqueue(ctx context.Context) error {
 		return nil
 	}
 	awaiting, err := r.Queries.ListRunsAwaitingSpend(ctx, gen.ListRunsAwaitingSpendParams{
-		SpendWindow: pgconv.Interval(SpendRecheckWindow), RecheckAfter: pgconv.Interval(SpendRecheckEvery), BatchSize: superviseBatch,
+		SpendWindow: pgconv.Interval(SpendRecheckWindow), SpendLandsWithin: pgconv.Interval(GatewaySpendLandsWithin), RecheckAfter: pgconv.Interval(SpendRecheckEvery), BatchSize: superviseBatch,
 	})
 	if err != nil {
 		return err

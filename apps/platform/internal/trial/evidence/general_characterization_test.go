@@ -1,6 +1,12 @@
 package trace
 
-import "testing"
+import (
+	"context"
+	"errors"
+	"testing"
+
+	"github.com/jackc/pgx/v5/pgtype"
+)
 
 func TestAGeneralSummaryIsIncompleteOnlyWhenSomeStreamMissesAnEvent(t *testing.T) {
 	for _, tc := range []struct {
@@ -36,5 +42,22 @@ func TestAProgressStepCarriesTheTransitionReasonOnlyWhenThereIsOne(t *testing.T)
 				t.Errorf("progressStepOf = %+v, want %+v", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestASettledCostReadFailureKeepsTheSandboxsReading(t *testing.T) {
+	sandbox := 0.5
+	usage := &UsageSummary{CostUSD: &sandbox, CostSource: "gateway"}
+	s := &Service{SettledCostUSD: func(context.Context, pgtype.UUID) (float64, bool, error) {
+		return 0.6, true, errors.New("ledger unavailable")
+	}}
+
+	s.preferSettledCost(context.Background(), pgtype.UUID{}, usage)
+
+	if usage.CostUSD == nil || *usage.CostUSD != 0.5 {
+		t.Errorf("cost = %v, want the sandbox's 0.5 kept when the ledger cannot be read", usage.CostUSD)
+	}
+	if usage.CostSource != "gateway" {
+		t.Errorf("cost_source = %q, want gateway", usage.CostSource)
 	}
 }

@@ -35,6 +35,9 @@ func (s *Service) settleCredit(ctx context.Context, run gen.Run, attempts []gen.
 	if s.Ledger == nil || len(attempts) == 0 {
 		return markCostSettled(ctx, s.queries(), run)
 	}
+	if s.Deployment.spendMayStillLand(run.FinishedAt, s.now()) {
+		return nil
+	}
 	costUSD := s.reportedSpend(ctx, run, attempts)
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
@@ -54,6 +57,12 @@ func (s *Service) settleCredit(ctx context.Context, run gen.Run, attempts []gen.
 		return fmt.Errorf("commit settlement: %w", err)
 	}
 	return nil
+}
+
+const GatewaySpendLandsWithin = 30 * time.Second
+
+func (d Deployment) spendMayStillLand(finished pgtype.Timestamptz, now time.Time) bool {
+	return !d.SettlesWithoutSpendWait && finished.Valid && now.Sub(finished.Time) < GatewaySpendLandsWithin
 }
 
 func markCostSettled(ctx context.Context, q *gen.Queries, run gen.Run) error {

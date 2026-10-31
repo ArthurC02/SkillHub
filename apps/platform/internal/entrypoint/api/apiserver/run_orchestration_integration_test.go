@@ -1880,6 +1880,7 @@ func TestARunWhoseCostCouldNotBeChargedIsNotReportedAsCleanedUp(t *testing.T) {
 	svc.Providers = run.NewRegistry(fake.Provider())
 	svc.Store = a.packages
 	svc.PollInterval = 20 * time.Millisecond
+	svc.Deployment.SettlesWithoutSpendWait = true
 	settled := 0
 	svc.Ledger = runCreditLedger{settle: func(context.Context, pgx.Tx, run.RunSettlement) error {
 		settled++

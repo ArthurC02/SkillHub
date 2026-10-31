@@ -78,6 +78,8 @@ type Deployment struct {
 	MinimumIsolation  IsolationStrength
 	CleanMode         bool
 	CleanModeReleases string
+
+	SettlesWithoutSpendWait bool
 }
 
 func (d Deployment) Budget() float64 {

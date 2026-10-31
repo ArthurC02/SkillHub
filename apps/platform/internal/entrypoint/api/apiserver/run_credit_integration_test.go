@@ -50,6 +50,7 @@ func TestARunIsChargedWhatItSpentAndOnlyOnce(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	_, svc := haltHarness(t, a, pool)
+	svc.Deployment.SettlesWithoutSpendWait = true
 	f := newFixture(t, a, pool, "alice-run-settle")
 	ctx := context.Background()
 
@@ -96,6 +97,7 @@ func TestARunWhoseSpendIsUnreadableIsRecordedButNotCharged(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	_, svc := haltHarness(t, a, pool)
+	svc.Deployment.SettlesWithoutSpendWait = true
 	f := newFixture(t, a, pool, "alice-run-unreported")
 	ctx := context.Background()
 
@@ -127,6 +129,7 @@ func TestARunWhoseSpendIsReadOnALaterCleanupReachesTheLedgerAtItsRealCost(t *tes
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	_, svc := haltHarness(t, a, pool)
+	svc.Deployment.SettlesWithoutSpendWait = true
 	f := newFixture(t, a, pool, "alice-run-read-later")
 	ctx := context.Background()
 
@@ -266,6 +269,58 @@ func TestSupervisionReReadsAnUnreadableRunSpendForADayUntilItIsCharged(t *testin
 	}
 }
 
+func TestARunThatJustFinishedIsChargedOnlyOnceTheGatewayHasWrittenItsSpend(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	_, svc := haltHarness(t, a, pool)
+	f := newFixture(t, a, pool, "alice-run-spend-lands")
+	ctx := context.Background()
+	finished := f.start(t)
+	runID := mustUUID(t, finished.RunID)
+	if err := driveThroughPolls(ctx, svc.Drive, mustUUID(t, f.workspaceID), runID); err != nil {
+		t.Fatalf("driving the run: %v", err)
+	}
+	svc.Gateway = spendingGateway(t, 0.0382)
+
+	if err := svc.CleanRun(ctx, mustUUID(t, f.workspaceID), runID); err != nil {
+		t.Fatalf("cleanup: %v", err)
+	}
+	if got := balanceOf(t, pool, f.userID); got != betaGrantCredits {
+		t.Errorf("balance = %d, want %d: a run that just finished was charged before its last calls could land",
+			got, betaGrantCredits)
+	}
+	if costSettled(t, pool, runID) {
+		t.Fatal("a run settled inside the gateway's write window is marked settled, so its late calls are never read")
+	}
+
+	queue := &recordingQueue{}
+	rechecks := run.SpendRechecks{Queries: gen.New(pool), Queue: queue}
+	enqueued := func() bool {
+		t.Helper()
+		if err := rechecks.Enqueue(ctx); err != nil {
+			t.Fatal(err)
+		}
+		return queue.took(finished.RunID)
+	}
+	ageFinishedRun(t, pool, runID, "25 seconds")
+	if enqueued() {
+		t.Error("a run 25 seconds past its end was queued for its spend read while the gateway may still be writing")
+	}
+	ageFinishedRun(t, pool, runID, "35 seconds")
+	if !enqueued() {
+		t.Fatal("a run 35 seconds past its end was not queued for its spend read")
+	}
+	if err := svc.CleanRun(ctx, mustUUID(t, f.workspaceID), runID); err != nil {
+		t.Fatalf("the queued cleanup: %v", err)
+	}
+	if got := balanceOf(t, pool, f.userID); got != betaGrantCredits-50 {
+		t.Errorf("balance = %d, want %d once the gateway's window has passed", got, betaGrantCredits-50)
+	}
+	if !costSettled(t, pool, runID) {
+		t.Error("the run charged after the window is not marked settled")
+	}
+}
+
 func spendingGateway(t *testing.T, spendUSD float64) *run.Gateway {
 	t.Helper()
 	mux := http.NewServeMux()
@@ -301,6 +356,7 @@ func TestCleanupRevokesTheAttemptKeyBeforeReadingWhatTheRunSpent(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
 	_, svc := haltHarness(t, a, pool)
+	svc.Deployment.SettlesWithoutSpendWait = true
 	f := newFixture(t, a, pool, "alice-run-revoke-first")
 	ctx := context.Background()
 	finished := f.start(t)
