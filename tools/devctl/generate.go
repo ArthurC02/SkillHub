@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -12,6 +13,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -110,28 +112,56 @@ func parseGenerateArgs(args []string) (check bool, scope string, err error) {
 }
 
 func generateScope(root, scratch, scope string, toolchain map[string]string, out io.Writer) ([]generationOutput, error) {
-	var outputs []generationOutput
 	images, err := parseManifestSection(filepath.Join(root, "tools", "toolchain.yaml"), "images")
 	if err != nil {
 		return nil, err
 	}
+	var jobs []generationJob
 	if scope == generateScopeAll || scope == "sql" {
-		sqlOut, err := generateSQL(root, scratch, images["sqlc"], out)
-		if err != nil {
-			return nil, err
-		}
-		outputs = append(outputs, generationOutput{
-			label:  "sqlc",
-			source: sqlOut,
-			target: filepath.Join(root, "apps", "platform", "internal", "foundation", "persistence", "db", dirGen),
+		jobs = append(jobs, func(out io.Writer) ([]generationOutput, error) {
+			sqlOut, err := generateSQL(root, scratch, images["sqlc"], out)
+			if err != nil {
+				return nil, err
+			}
+			return []generationOutput{{
+				label:  "sqlc",
+				source: sqlOut,
+				target: filepath.Join(root, "apps", "platform", "internal", "foundation", "persistence", "db", dirGen),
+			}}, nil
 		})
 	}
 	if scope == generateScopeAll || scope == "openapi" {
-		openAPIOutputs, err := generateOpenAPI(root, scratch, toolchain, images, out)
+		openAPIJobs, err := openAPIGenerationJobs(root, scratch, toolchain, images)
 		if err != nil {
 			return nil, err
 		}
-		outputs = append(outputs, openAPIOutputs...)
+		jobs = append(jobs, openAPIJobs...)
+	}
+	return runGenerationJobs(jobs, out)
+}
+
+type generationJob func(out io.Writer) ([]generationOutput, error)
+
+func runGenerationJobs(jobs []generationJob, out io.Writer) ([]generationOutput, error) {
+	logs := make([]bytes.Buffer, len(jobs))
+	results := make([][]generationOutput, len(jobs))
+	errs := make([]error, len(jobs))
+	var wg sync.WaitGroup
+	for i, job := range jobs {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			results[i], errs[i] = job(&logs[i])
+		}()
+	}
+	wg.Wait()
+	var outputs []generationOutput
+	for i := range jobs {
+		_, _ = out.Write(logs[i].Bytes())
+		outputs = append(outputs, results[i]...)
+	}
+	if err := errors.Join(errs...); err != nil {
+		return nil, err
 	}
 	return outputs, nil
 }

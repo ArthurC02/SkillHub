@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -9,6 +10,59 @@ import (
 	"testing"
 	"time"
 )
+
+func TestGenerationJobsReportInJobOrderWhateverOrderTheyFinish(t *testing.T) {
+	secondDone := make(chan struct{})
+	jobs := []generationJob{
+		func(out io.Writer) ([]generationOutput, error) {
+			select {
+			case <-secondDone:
+			case <-time.After(10 * time.Second):
+				return nil, errors.New("the first job never saw the second finish: jobs ran one at a time")
+			}
+			_, _ = io.WriteString(out, "first log\n")
+			return []generationOutput{{label: "first"}}, nil
+		},
+		func(out io.Writer) ([]generationOutput, error) {
+			defer close(secondDone)
+			_, _ = io.WriteString(out, "second log\n")
+			return []generationOutput{{label: "second"}}, nil
+		},
+	}
+	var log strings.Builder
+	outputs, err := runGenerationJobs(jobs, &log)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if log.String() != "first log\nsecond log\n" {
+		t.Fatalf("log = %q, want the first job's lines before the second's", log.String())
+	}
+	if len(outputs) != 2 || outputs[0].label != "first" || outputs[1].label != "second" {
+		t.Fatalf("outputs = %+v, want first then second", outputs)
+	}
+}
+
+func TestGenerationJobsReportEveryFailureAndTheirLogs(t *testing.T) {
+	jobs := []generationJob{
+		func(out io.Writer) ([]generationOutput, error) {
+			_, _ = io.WriteString(out, "sqlc said why\n")
+			return nil, errors.New("sqlc generation failed")
+		},
+		func(io.Writer) ([]generationOutput, error) { return []generationOutput{{label: "fine"}}, nil },
+		func(io.Writer) ([]generationOutput, error) { return nil, errors.New("go generation failed") },
+	}
+	var log strings.Builder
+	outputs, err := runGenerationJobs(jobs, &log)
+	if outputs != nil {
+		t.Fatalf("outputs = %+v, want none when a job failed", outputs)
+	}
+	if err == nil || !strings.Contains(err.Error(), "sqlc generation failed") || !strings.Contains(err.Error(), "go generation failed") {
+		t.Fatalf("err = %v, want both failures named", err)
+	}
+	if log.String() != "sqlc said why\n" {
+		t.Fatalf("log = %q, want the failing job's own output kept", log.String())
+	}
+}
 
 func TestGenerationLockIsExclusive(t *testing.T) {
 	root := t.TempDir()

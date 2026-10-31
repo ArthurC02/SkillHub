@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-func generateOpenAPI(root, scratch string, toolchain, images map[string]string, out io.Writer) ([]generationOutput, error) {
+func openAPIGenerationJobs(root, scratch string, toolchain, images map[string]string) ([]generationJob, error) {
 	tsImage := images["openapi_generator"]
 	pyImage := images["python_codegen"]
 	goImage := images["go_codegen"]
@@ -21,23 +21,38 @@ func generateOpenAPI(root, scratch string, toolchain, images map[string]string, 
 		return nil, errors.New("datamodel-code-generator version is missing from tools/toolchain.yaml")
 	}
 
-	ts, err := generateTypeScriptOpenAPI(root, scratch, tsImage, out)
-	if err != nil {
-		return nil, err
+	tsDone := make(chan struct{})
+	var ts generationOutput
+	var tsErr error
+	single := func(generate func(io.Writer) (generationOutput, error)) generationJob {
+		return func(out io.Writer) ([]generationOutput, error) {
+			output, err := generate(out)
+			if err != nil {
+				return nil, err
+			}
+			return []generationOutput{output}, nil
+		}
 	}
-	py, err := generatePythonOpenAPI(root, scratch, pyImage, out)
-	if err != nil {
-		return nil, err
-	}
-	goOutput, err := generateGoOpenAPI(root, scratch, goImage, out)
-	if err != nil {
-		return nil, err
-	}
-	limits, err := generateContractLimits(root, scratch, ts.source, out)
-	if err != nil {
-		return nil, err
-	}
-	return []generationOutput{ts, py, goOutput, limits}, nil
+	return []generationJob{
+		single(func(out io.Writer) (generationOutput, error) {
+			defer close(tsDone)
+			ts, tsErr = generateTypeScriptOpenAPI(root, scratch, tsImage, out)
+			return ts, tsErr
+		}),
+		single(func(out io.Writer) (generationOutput, error) {
+			return generatePythonOpenAPI(root, scratch, pyImage, out)
+		}),
+		single(func(out io.Writer) (generationOutput, error) {
+			return generateGoOpenAPI(root, scratch, goImage, out)
+		}),
+		single(func(out io.Writer) (generationOutput, error) {
+			<-tsDone
+			if tsErr != nil {
+				return generationOutput{}, errors.New("contract limits generation: skipped because TypeScript OpenAPI generation failed")
+			}
+			return generateContractLimits(root, scratch, ts.source, out)
+		}),
+	}, nil
 }
 
 func generateContractLimits(root, scratch, tsSource string, out io.Writer) (generationOutput, error) {

@@ -19,6 +19,26 @@ func TestGenerateTypeScriptOpenAPIFailsFastWhenScratchIsUnusable(t *testing.T) {
 	}
 }
 
+func TestContractLimitsIsSkippedWhenTypeScriptGenerationFails(t *testing.T) {
+	root := t.TempDir()
+	scratch := filepath.Join(root, "scratch-is-a-file")
+	if err := os.WriteFile(scratch, []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	images := map[string]string{"openapi_generator": "ts", "python_codegen": "py", "go_codegen": "go"}
+	jobs, err := openAPIGenerationJobs(root, scratch, map[string]string{"datamodel_code_generator": "1"}, images)
+	if err != nil || len(jobs) != 4 {
+		t.Fatalf("openAPIGenerationJobs() = %d jobs, %v; want 4 jobs", len(jobs), err)
+	}
+	if _, err := jobs[0](io.Discard); err == nil {
+		t.Fatal("the TypeScript job succeeded on an unusable scratch directory")
+	}
+	_, err = jobs[3](io.Discard)
+	if err == nil || !strings.Contains(err.Error(), "skipped because TypeScript OpenAPI generation failed") {
+		t.Fatalf("contract limits job = %v, want it skipped after the TypeScript failure", err)
+	}
+}
+
 func TestValidateGeneratedContentRejectsTheRepoAbsolutePath(t *testing.T) {
 	root := t.TempDir()
 	repoRoot := filepath.Join(root, "repo")
