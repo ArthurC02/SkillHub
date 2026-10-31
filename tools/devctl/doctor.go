@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"sort"
 	"strings"
 )
 
@@ -62,6 +63,7 @@ func doctor(root string, out io.Writer) error {
 	results = append(results, checkDockerDaemon())
 	results = append(results, checkPython(pythonVersion))
 	results = append(results, checkEnv(root))
+	results = append(results, checkClaudeWorkspaceTrust(root, claudeConfigPath()))
 	results = append(results, checkPgliteInstall(root, toolchain)...)
 
 	failed := false
@@ -167,6 +169,56 @@ func checkPython(want string) checkResult {
 		return checkResult{name: ecosystemPython, status: statusFail, detail: fmt.Sprintf("got %q; want Python %s", firstLine(got), want), required: true}
 	}
 	return checkResult{name: ecosystemPython, status: statusPass, detail: firstLine(got), required: true}
+}
+
+func claudeConfigPath() string {
+	if dir := os.Getenv("CLAUDE_CONFIG_DIR"); dir != "" {
+		return filepath.Join(dir, ".claude.json")
+	}
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, ".claude.json")
+}
+
+func checkClaudeWorkspaceTrust(root, configPath string) checkResult {
+	const name = "claude trust"
+	data, err := os.ReadFile(configPath)
+	if errors.Is(err, os.ErrNotExist) {
+		return checkResult{name: name, status: statusPass, detail: "no Claude Code config; nothing to check"}
+	}
+	var config struct {
+		Projects map[string]struct {
+			HasTrustDialogAccepted bool `json:"hasTrustDialogAccepted"`
+		} `json:"projects"`
+	}
+	if err == nil {
+		err = json.Unmarshal(data, &config)
+	}
+	if err != nil {
+		return checkResult{name: name, status: statusWarn, detail: fmt.Sprintf("cannot read %s: %v", configPath, err)}
+	}
+	sameFolder := func(path string) bool {
+		clean := func(p string) string { return strings.TrimRight(filepath.ToSlash(p), "/") }
+		return strings.EqualFold(clean(path), clean(root))
+	}
+	var spellings, untrusted []string
+	for path, project := range config.Projects {
+		if !sameFolder(path) {
+			continue
+		}
+		spellings = append(spellings, path)
+		if !project.HasTrustDialogAccepted {
+			untrusted = append(untrusted, path)
+		}
+	}
+	const fix = "open this folder in Claude Code, accept the trust dialog and run /reload-plugins; until then skillhub-guards does not load"
+	switch {
+	case len(spellings) == 0:
+		return checkResult{name: name, status: statusWarn, detail: "Claude Code has not trusted this folder: " + fix}
+	case len(untrusted) > 0:
+		sort.Strings(untrusted)
+		return checkResult{name: name, status: statusWarn, detail: fmt.Sprintf("not trusted as %s: %s", strings.Join(untrusted, ", "), fix)}
+	}
+	return checkResult{name: name, status: statusPass, detail: "trusted, so skillhub-guards can load"}
 }
 
 func checkEnv(root string) checkResult {
