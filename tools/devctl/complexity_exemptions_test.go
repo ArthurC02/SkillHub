@@ -26,22 +26,19 @@ func complexityFixtureLint(enableGocognit bool, minComplexity string, exemptionC
 	return b.String()
 }
 
+const fixtureLintPath = "fixture/.golangci.yml"
+
 func withComplexityFixture(t *testing.T, contents string) string {
 	t.Helper()
 	root := t.TempDir()
-	const lintPath = "fixture/.golangci.yml"
-	writeAt(t, root, lintPath, contents)
-
-	original := complexityGateLintPaths
-	complexityGateLintPaths = []string{lintPath}
-	t.Cleanup(func() { complexityGateLintPaths = original })
+	writeAt(t, root, fixtureLintPath, contents)
 	return root
 }
 
 func TestComplexityExemptionsAcceptsAModuleThatExemptsNoFunction(t *testing.T) {
 	t.Parallel()
 	root := withComplexityFixture(t, complexityFixtureLint(true, "20", 0))
-	if problems := complexityExemptionProblems(root); len(problems) != 0 {
+	if problems := complexityGateProblems(root, fixtureLintPath); len(problems) != 0 {
 		t.Fatalf("a module with no per-function exemption at the ceiling was rejected: %v", problems)
 	}
 }
@@ -49,7 +46,7 @@ func TestComplexityExemptionsAcceptsAModuleThatExemptsNoFunction(t *testing.T) {
 func TestComplexityExemptionsRejectsASingleExemptedFunction(t *testing.T) {
 	t.Parallel()
 	root := withComplexityFixture(t, complexityFixtureLint(true, "20", 1))
-	problems := complexityExemptionProblems(root)
+	problems := complexityGateProblems(root, fixtureLintPath)
 	if len(problems) != 1 || !strings.Contains(problems[0], "exempts 1 functions by name; none are allowed") {
 		t.Fatalf("a module that exempts one function by name was accepted: %v", problems)
 	}
@@ -58,7 +55,7 @@ func TestComplexityExemptionsRejectsASingleExemptedFunction(t *testing.T) {
 func TestComplexityExemptionsCountsEveryExemptedFunction(t *testing.T) {
 	t.Parallel()
 	root := withComplexityFixture(t, complexityFixtureLint(true, "20", 3))
-	problems := complexityExemptionProblems(root)
+	problems := complexityGateProblems(root, fixtureLintPath)
 	if len(problems) != 1 || !strings.Contains(problems[0], "exempts 3 functions by name") {
 		t.Fatalf("three exempted functions were not counted as three: %v", problems)
 	}
@@ -67,7 +64,7 @@ func TestComplexityExemptionsCountsEveryExemptedFunction(t *testing.T) {
 func TestComplexityExemptionsRejectsGocognitNotEnabled(t *testing.T) {
 	t.Parallel()
 	root := withComplexityFixture(t, complexityFixtureLint(false, "20", 0))
-	problems := complexityExemptionProblems(root)
+	problems := complexityGateProblems(root, fixtureLintPath)
 	if len(problems) != 1 || !strings.Contains(problems[0], "does not enable gocognit") {
 		t.Fatalf("a module that never enables gocognit was accepted: %v", problems)
 	}
@@ -76,7 +73,7 @@ func TestComplexityExemptionsRejectsGocognitNotEnabled(t *testing.T) {
 func TestComplexityExemptionsRejectsAMissingMinComplexity(t *testing.T) {
 	t.Parallel()
 	root := withComplexityFixture(t, complexityFixtureLint(true, "", 0))
-	problems := complexityExemptionProblems(root)
+	problems := complexityGateProblems(root, fixtureLintPath)
 	if len(problems) != 1 || !strings.Contains(problems[0], "sets no gocognit min-complexity") {
 		t.Fatalf("a module with no min-complexity setting was accepted: %v", problems)
 	}
@@ -85,7 +82,7 @@ func TestComplexityExemptionsRejectsAMissingMinComplexity(t *testing.T) {
 func TestComplexityExemptionsRejectsOneOverTheCeilingBoundary(t *testing.T) {
 	t.Parallel()
 	root := withComplexityFixture(t, complexityFixtureLint(true, "21", 0))
-	problems := complexityExemptionProblems(root)
+	problems := complexityGateProblems(root, fixtureLintPath)
 	if len(problems) != 1 || !strings.Contains(problems[0], "sets min-complexity 21, above the registered ceiling 20") {
 		t.Fatalf("a raised gocognit ceiling was accepted: %v", problems)
 	}
@@ -94,11 +91,7 @@ func TestComplexityExemptionsRejectsOneOverTheCeilingBoundary(t *testing.T) {
 func TestComplexityExemptionsReportsAMissingLintFile(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	original := complexityGateLintPaths
-	complexityGateLintPaths = []string{"does/not/exist.yml"}
-	t.Cleanup(func() { complexityGateLintPaths = original })
-
-	problems := complexityExemptionProblems(root)
+	problems := complexityGateProblems(root, "does/not/exist.yml")
 	if len(problems) != 1 || !strings.Contains(problems[0], "does/not/exist.yml") {
 		t.Fatalf("a missing .golangci.yml was not reported by its own path: %v", problems)
 	}
