@@ -155,8 +155,10 @@ func TestIsComprehensible(t *testing.T) {
 		"!!",
 		"、、",
 		"—",
-		"你",
 		"1",
+		"R",
+		"é",
+		"ア",
 	}
 	for _, q := range unsearchable {
 		if isComprehensible(q) {
@@ -173,6 +175,8 @@ func TestIsComprehensible(t *testing.T) {
 		"a1",
 
 		"C#", "C++", "F#", "R2",
+
+		"你", "表", "𠮟",
 	}
 	for _, q := range searchable {
 		if !isComprehensible(q) {

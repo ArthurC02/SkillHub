@@ -1,0 +1,31 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "single-han-query",
+  "proposal_id": "single-han-query-2026-11-01",
+  "obligations": [
+    {
+      "id": "rule-a-searchable-query-has-two-runes-and-a-letter-or-digit",
+      "source_type": "acceptance-criterion",
+      "source_id": "single-han-searchable",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-searchable-query-has-two-runes-and-a-letter-or-digit"
+        }
+      ],
+      "expected_outcome": "TestIsComprehensible accepts 你, 表 and 𠮟 and refuses a, 1, R, é and ア.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestIsComprehensible$ ./internal/skill/discovery/"
+    },
+    {
+      "id": "evidence-current",
+      "source_type": "acceptance-criterion",
+      "source_id": "single-non-han-refused",
+      "expected_outcome": "verify-evidence reports current for every citation of the updated record.",
+      "level": "architecture",
+      "status": "planned",
+      "check": ".domain-memory/domain-memory.exe verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/single-han-query-2026-11-01 --path apps/platform/internal/skill/discovery/http.go --path apps/platform/internal/skill/discovery/reason_test.go"
+    }
+  ]
+}

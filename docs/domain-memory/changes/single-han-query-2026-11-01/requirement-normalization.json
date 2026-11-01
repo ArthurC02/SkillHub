@@ -1,0 +1,26 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "single-han-query",
+  "status": "draft",
+  "intent": "A person can search the Catalog with one Han character, which is a complete word, while one Latin letter, digit or symbol is still too little to search.",
+  "actor": "catalog-searcher",
+  "observable_outcome": "GET /api/skills/search?q=表 searches; q=R, q=1 and q=! are still refused or answered as not searchable.",
+  "acceptance_criteria": [
+    {
+      "id": "single-han-searchable",
+      "statement": "A query of one Han character, including one outside the basic block such as 𠮟, is searchable."
+    },
+    {
+      "id": "single-non-han-refused",
+      "statement": "A query of one Latin letter, digit, kana or symbol is not searchable."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/skill/discovery/http.go",
+    "apps/platform/internal/skill/discovery/reason_test.go"
+  ]
+}

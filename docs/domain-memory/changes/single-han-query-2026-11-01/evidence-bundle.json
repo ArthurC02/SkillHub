@@ -1,0 +1,46 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "single-han-query",
+  "proposal_id": "single-han-query-2026-11-01",
+  "registry_revision": {
+    "observed_commit": "0c6e0a6c926ec9921822e7d4227140452ec08c8d",
+    "registry_digest": "sha256:eef8104d4e2b8f9c13ee26a05e24da4e60d385641076fd5da8dd5e4d35c1b082",
+    "committed_digest": "sha256:eef8104d4e2b8f9c13ee26a05e24da4e60d385641076fd5da8dd5e4d35c1b082"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-searchable-query-has-two-runes-and-a-letter-or-digit",
+      "mutated_protection": "apps/platform/internal/skill/discovery/http.go:585: || unicode.Is(unicode.Han, r) -> ",
+      "failure_evidence": "=== RUN   TestIsComprehensible\n    reason_test.go:183: \"你\" should be searchable\n    reason_test.go:183: \"表\" should be searchable\n    reason_test.go:183: \"𠮟\" should be searchable\n--- FAIL: TestIsComprehensible (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery\t0.153s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": ".domain-memory/domain-memory.exe verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/single-han-query-2026-11-01 --path apps/platform/internal/skill/discovery/http.go --path apps/platform/internal/skill/discovery/reason_test.go",
+      "command_profile": "architecture",
+      "exit_code": 0,
+      "output_sha256": "sha256:cd41ceccc609dec3017fc765928a743ca5b03c99283aa1e53d2c16fd33067da0",
+      "finished_at": "2026-11-01T13:58:12.621406Z"
+    },
+    {
+      "obligation_id": "rule-a-searchable-query-has-two-runes-and-a-letter-or-digit",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestIsComprehensible$ ./internal/skill/discovery/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:4dbbbfa373773d3a3af63ce7ca4757d9d1287512d33be2279881a09555cfcec3",
+      "finished_at": "2026-11-01T13:58:14.574711Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

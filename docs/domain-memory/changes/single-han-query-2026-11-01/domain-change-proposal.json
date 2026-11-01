@@ -1,0 +1,113 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "single-han-query-2026-11-01",
+  "proposer": "human:ArthurC",
+  "requirement_id": "single-han-query",
+  "status": "submitted",
+  "change_classification": "material",
+  "submitted_at": "2026-11-01T13:59:08.736544Z",
+  "verified_at": null,
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "0c6e0a6c926ec9921822e7d4227140452ec08c8d",
+    "registry_digest": "sha256:eef8104d4e2b8f9c13ee26a05e24da4e60d385641076fd5da8dd5e4d35c1b082",
+    "committed_digest": "sha256:eef8104d4e2b8f9c13ee26a05e24da4e60d385641076fd5da8dd5e4d35c1b082"
+  },
+  "affected_contexts": [
+    "catalog"
+  ],
+  "rule_ids": [
+    "a-searchable-query-has-two-runes-and-a-letter-or-digit"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "<context-id>",
+    "invariant": "<falsifiable-rule>",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "<existing-or-proposed-collaboration>",
+    "consistency": "<synchronous-or-eventual>",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "One Han character is a complete word a searcher types on purpose.",
+      "One Latin letter, digit, kana or symbol matches too much to be a useful search."
+    ],
+    "decision": "isComprehensible accepts a single rune when unicode.Is(unicode.Han, r); every other query still needs two runes and a letter or digit.",
+    "invariants_preserved": [
+      "Invalid UTF-8 and control characters are never searched.",
+      "A query without a letter or digit is never searched."
+    ],
+    "rejected_alternatives": [
+      "A hard-coded U+4E00-9FFF range, which misses the extension blocks.",
+      "Accepting any single letter, which would search one Latin letter."
+    ],
+    "proof_obligations": [
+      "rule-a-searchable-query-has-two-runes-and-a-letter-or-digit"
+    ],
+    "counterfactual_check": "Dropping the unicode.Han clause makes TestIsComprehensible fail on 你, 表 and 𠮟."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-searchable-query-has-two-runes-and-a-letter-or-digit",
+        "statement": "A query is searched only when it is valid text without control characters and holds a letter or digit, and it has at least two characters unless it is one Han character.",
+        "contexts": [
+          "catalog"
+        ],
+        "examples": [
+          "'R', '1', 'ア' and '!!' are not searched; '表', '𠮟', 'C#' and '轉表格' are."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/discovery/reason_test.go",
+            "lines": {
+              "start": 151,
+              "end": 187
+            },
+            "content_sha256": "sha256:abe5524db7ee39f93f1f0d0055261e956ddec25daac29396b2e1bcb6f25d85bb",
+            "excerpt_sha256": "sha256:053f4247fae9701866ec6edf169dafc459aadee5d627db25050177e72809c5b1"
+          },
+          {
+            "path": "apps/platform/internal/skill/discovery/http.go",
+            "lines": {
+              "start": 569,
+              "end": 590
+            },
+            "content_sha256": "sha256:cb3d19c34c30453487d213a474322bd237cfa4a8b9e6d5b9cc72db35f6c48e4a",
+            "excerpt_sha256": "sha256:28609d9979c6ec28bcf583f46a826ee311c21a534a3a8534857ca222e58f3b5a"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-11-01T13:59:08.847162Z",
+      "scope": "A single Han character is a searchable query; single Latin letters, digits, kana and symbols are still refused (rule a-searchable-query-has-two-runes-and-a-letter-or-digit)",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "0c6e0a6c926ec9921822e7d4227140452ec08c8d",
+        "registry_digest": "sha256:eef8104d4e2b8f9c13ee26a05e24da4e60d385641076fd5da8dd5e4d35c1b082",
+        "committed_digest": "sha256:eef8104d4e2b8f9c13ee26a05e24da4e60d385641076fd5da8dd5e4d35c1b082"
+      }
+    }
+  ],
+  "supersedes": [
+    "reasons-recite-2026-10-25"
+  ]
+}

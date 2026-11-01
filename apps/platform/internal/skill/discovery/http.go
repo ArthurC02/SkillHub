@@ -582,7 +582,7 @@ func isComprehensible(q string) bool {
 	}
 	for _, r := range q {
 		if unicode.IsLetter(r) || unicode.IsDigit(r) {
-			return utf8.RuneCountInString(q) >= 2
+			return utf8.RuneCountInString(q) >= 2 || unicode.Is(unicode.Han, r)
 		}
 	}
 	return false
@@ -605,7 +605,7 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 	}
 	if !isComprehensible(q) {
 		httpx.WriteError(w, http.StatusBadRequest,
-			"query parameter q must contain at least two characters, one of them a letter or a digit")
+			"query parameter q must be one Han character or at least two characters, one of them a letter or a digit")
 		return
 	}
 	limit, err := parseLimit(r)
