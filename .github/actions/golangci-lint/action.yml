@@ -1,5 +1,5 @@
 name: golangci-lint
-description: Installs the golangci-lint pinned in tools/toolchain.yaml with the job's Go toolchain, reusing a cached binary.
+description: Installs the golangci-lint pinned in tools/toolchain.yaml with the job's Go toolchain, reusing a cached binary and a cached analysis result.
 runs:
   using: composite
   steps:
@@ -29,3 +29,13 @@ runs:
       with:
         path: ${{ steps.pin.outputs.bin }}
         key: ${{ steps.restore.outputs.cache-primary-key }}
+    - id: analysis
+      shell: bash
+      run: |
+        echo "dir=$(golangci-lint cache status | sed -n 's/^Dir: //p')" >> "$GITHUB_OUTPUT"
+    - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: ${{ steps.analysis.outputs.dir }}
+        key: golangci-lint-analysis-${{ steps.pin.outputs.version }}-${{ runner.os }}-${{ steps.pin.outputs.go }}-${{ hashFiles('**/go.sum', '**/.golangci.yml') }}
+        restore-keys: |
+          golangci-lint-analysis-${{ steps.pin.outputs.version }}-${{ runner.os }}-${{ steps.pin.outputs.go }}-
