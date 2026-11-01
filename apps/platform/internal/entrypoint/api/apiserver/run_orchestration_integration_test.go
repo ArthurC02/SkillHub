@@ -1843,7 +1843,7 @@ func TestAFailedRunKeepsWhatTheWorkloadItselfPrinted(t *testing.T) {
 		t.Errorf("the trace kept %q of what the workload printed; the provider handed it back and "+
 			"the failure message on its own does not say why the run failed", kept)
 	}
-	if _, view := f.client.generalTrace(t, created.RunID); view.WorkloadOutput != "Traceback: the ledger file was never opened" {
+	if _, view := f.generalTrace(t, created.RunID); view.WorkloadOutput != "Traceback: the ledger file was never opened" {
 		t.Errorf("the general summary shows workload output %q; the run page only reads the summary", view.WorkloadOutput)
 	}
 }
