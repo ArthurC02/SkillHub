@@ -59,6 +59,7 @@ updates:
   - package-ecosystem: cargo
     directories:
       - /tools/codegen/ts
+      - /tools/harness
     schedule:
       interval: weekly
     open-pull-requests-limit: 0
@@ -115,6 +116,7 @@ updates:
       - /tools/codegen/go
       - /tools/codegen/python
       - /tools/codegen/ts
+      - /tools/harness
     schedule:
       interval: monthly
       time: "06:00"

@@ -1,21 +1,30 @@
 #!/bin/sh
 # domain-memory-pre-push
-engine='.domain-memory'
+engine=''
 memory='docs/domain-memory'
 existing="$(git rev-parse --git-path hooks)/pre-push.domain-memory-existing" || exit 1
 test -n "$DOMAIN_MEMORY_GIT_TIMEOUT" || DOMAIN_MEMORY_GIT_TIMEOUT=$(git config --get domain-memory.git-timeout) || unset DOMAIN_MEMORY_GIT_TIMEOUT
 export DOMAIN_MEMORY_GIT_TIMEOUT
 refs=$(cat)
 tool_for_hook() {
-  tool=$(git config --get domain-memory.executable) || case "$(uname -s)-$(uname -m)" in
-    Linux-x86_64) tool="$engine/bin/linux-x86_64/domain-memory" ;;
-    Darwin-*) tool="$engine/bin/macos-universal/domain-memory" ;;
-    MINGW*-x86_64|MSYS*-x86_64|CYGWIN*-x86_64) tool="$engine/bin/windows-x86_64/domain-memory.exe" ;;
-    *) tool="$engine/target/release/domain-memory" ;;
-  esac
-  test -x "$tool" && return 0
-  hint=$(git config --get domain-memory.install-hint) || hint="build one with cargo build --release --manifest-path $engine/Cargo.toml"
-  echo "domain-memory pre-push: no Domain Memory executable at $tool; $hint" >&2
+  tool=$(git config --get domain-memory.executable) || {
+    test -z "$engine" || case "$(uname -s)-$(uname -m)" in
+      Linux-x86_64) tool="$engine/bin/linux-x86_64/domain-memory" ;;
+      Darwin-*) tool="$engine/bin/macos-universal/domain-memory" ;;
+      MINGW*-x86_64|MSYS*-x86_64|CYGWIN*-x86_64) tool="$engine/bin/windows-x86_64/domain-memory.exe" ;;
+      *) tool="$engine/target/release/domain-memory" ;;
+    esac
+    if ! { test -n "$tool" && test -x "$tool"; }; then
+      found=$(command -v domain-memory) && tool=$found
+    fi
+  }
+  test -n "$tool" && test -x "$tool" && return 0
+  hint=$(git config --get domain-memory.install-hint) || if test -n "$engine"; then
+    hint="build one with cargo build --release --manifest-path $engine/Cargo.toml"
+  else
+    hint="install it on PATH with curl -fsSL https://github.com/ArthurC02/Domain-Memory-PlugIn/releases/latest/download/install.sh | sh, or set git config domain-memory.executable to it"
+  fi
+  echo "domain-memory pre-push: no Domain Memory executable${tool:+ at $tool}; $hint" >&2
   return 1
 }
 tool=''
