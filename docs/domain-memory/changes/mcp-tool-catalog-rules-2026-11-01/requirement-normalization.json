@@ -1,0 +1,44 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "mcp-tool-catalog-rules-2026-11-01",
+  "status": "draft",
+  "intent": "A Skill may declare only the MCP tools the platform offers, and operators decide which tools those are.",
+  "actor": "coding-agent",
+  "observable_outcome": "An mcp__ name in allowed-tools that no unretired mcp_tools row provides is blocked on a created draft or version and warned on an imported package; operators add and retire mcp_tools rows with a reason and an audit event.",
+  "acceptance_criteria": [
+    {
+      "id": "enforced-a-skill-declares-only-mcp-tools-listed-in-mcp-tools",
+      "statement": "A Skill may declare in allowed-tools only MCP tools that operators list in mcp_tools, referenced as mcp__<server>__<tool>; an mcp__ name that no unretired mcp_tools row provides is unlisted, and a name without the mcp__ prefix is never judged against the list."
+    },
+    {
+      "id": "enforced-an-unlisted-mcp-tool-blocks-a-created-draft-and-warns-an-import",
+      "statement": "A created draft or created version of a Skill that declares in allowed-tools an mcp__ name no mcp_tools row offers is blocked with the finding mcp-tool-not-offered naming it and listing the offered references; an imported or uploaded package gets the same finding as a warning and is not blocked."
+    },
+    {
+      "id": "enforced-an-unreadable-mcp-tools-list-fails-the-admission-check",
+      "statement": "When the mcp_tools list cannot be read, the allowed-tools check of a package that declares an mcp__ name fails with an error and gives no verdict on the name, instead of passing the package."
+    },
+    {
+      "id": "enforced-an-operator-lists-an-mcp-tool-once-with-a-reason-and-an-audit-event",
+      "statement": "An operator adds a row to mcp_tools with a server, tool, purpose, parameters, an HTTPS server_url and a reason, written in one transaction with its audit event; at most one unretired row exists per server and tool, and a second is refused as a conflict."
+    },
+    {
+      "id": "enforced-retiring-an-mcp-tool-keeps-its-row-with-its-reason",
+      "statement": "An operator retires an mcp_tools row with a non-blank reason, written with its audit event in one transaction; the row stays listed with its retirement reason, a blank reason is refused, and the retired row no longer occupies its server and tool."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/mcp_tools_integration_test.go",
+    "apps/platform/internal/skill/admission/creation.go",
+    "apps/platform/internal/skill/admission/mcp_tools.go",
+    "apps/platform/internal/skill/admission/mcp_tools_test.go",
+    "apps/platform/internal/skill/admission/mcptools/mcptools.go",
+    "apps/platform/internal/skill/admission/mcptools/mcptools_test.go",
+    "apps/platform/internal/skill/admission/service.go",
+    "db/migrations/0147_mcp_tool_catalog.sql"
+  ]
+}

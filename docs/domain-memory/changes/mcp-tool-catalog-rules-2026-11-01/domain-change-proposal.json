@@ -1,0 +1,320 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "mcp-tool-catalog-rules-2026-11-01",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "mcp-tool-catalog-rules-2026-11-01",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-11-01T04:29:04.466188Z",
+  "verified_at": "2026-11-01T04:29:21.967242Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "b45193c0e7574d76acd7346c7edfae5885f1216e",
+    "registry_digest": "sha256:2b83cd2c2498981b415063887bd238bd6cd7b66a1771c7fd76825530410286ca",
+    "committed_digest": "sha256:752cfd6f5e4d5102eb50ea507c5bf1fc91f9b1ec07d8454dda9267f7244af82e"
+  },
+  "affected_contexts": [
+    "ingest"
+  ],
+  "rule_ids": [
+    "a-skill-declares-only-mcp-tools-listed-in-mcp-tools",
+    "an-unlisted-mcp-tool-blocks-a-created-draft-and-warns-an-import",
+    "an-unreadable-mcp-tools-list-fails-the-admission-check",
+    "an-operator-lists-an-mcp-tool-once-with-a-reason-and-an-audit-event",
+    "retiring-an-mcp-tool-keeps-its-row-with-its-reason"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "ingest",
+    "invariant": "Only an mcp_tools row that is not retired makes an mcp__<server>__<tool> name declarable in allowed-tools.",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "Admission reads the unretired mcp_tools rows through the mcptools package; operators change them through the admin API",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A Skill that names a tool the platform does not offer cannot use it in a trial run.",
+      "An unreadable tool list must not read as a clean package."
+    ],
+    "decision": "Compare each mcp__ name against the unretired mcp_tools rows; block a created draft or version, warn an imported package, and fail the check when the list cannot be read.",
+    "invariants_preserved": [
+      "A retired row keeps its reason and frees its reference.",
+      "At most one unretired row exists per server and tool."
+    ],
+    "rejected_alternatives": [
+      "Blocking an imported package: the author of an outside package cannot be asked to edit it.",
+      "Passing the package when the list is unreadable: it would admit names nobody checked."
+    ],
+    "proof_obligations": [
+      "rule-a-skill-declares-only-mcp-tools-listed-in-mcp-tools",
+      "rule-an-unlisted-mcp-tool-blocks-a-created-draft-and-warns-an-import",
+      "rule-an-unreadable-mcp-tools-list-fails-the-admission-check",
+      "rule-an-operator-lists-an-mcp-tool-once-with-a-reason-and-an-audit-event",
+      "rule-retiring-an-mcp-tool-keeps-its-row-with-its-reason"
+    ],
+    "counterfactual_check": "Each rule's protection is broken in turn and the rule's own test fails; the evidence bundle's counterfactual_check list records every run."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-skill-declares-only-mcp-tools-listed-in-mcp-tools",
+        "statement": "A Skill may declare in allowed-tools only MCP tools that operators list in mcp_tools, referenced as mcp__<server>__<tool>; an mcp__ name that no unretired mcp_tools row provides is unlisted, and a name without the mcp__ prefix is never judged against the list.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "mcp__calendar__create_event is accepted while mcp_tools lists calendar and create_event, and mcp__calendar__create_events is unlisted.",
+          "Read and Bash(git:*) are not MCP names and are never unlisted."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/mcptools/mcptools.go",
+            "lines": {
+              "start": 49,
+              "end": 51
+            },
+            "excerpt_sha256": "sha256:9be60cab1cb2c286718201a3a634166ee3e0e41582c4fed90a0346beb8b0b949"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/mcptools/mcptools.go",
+            "lines": {
+              "start": 117,
+              "end": 129
+            },
+            "excerpt_sha256": "sha256:6ef9cff338529103f2a52db2ffe4b2828c9dc122e8e29b315d644a57df00af42"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/mcptools/mcptools_test.go",
+            "lines": {
+              "start": 18,
+              "end": 38
+            },
+            "excerpt_sha256": "sha256:a6a54c5f145a83227d92597249a12a3ed1dafa19db76a772fbd9099948e1236d"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-unlisted-mcp-tool-blocks-a-created-draft-and-warns-an-import",
+        "statement": "A created draft or created version of a Skill that declares in allowed-tools an mcp__ name no mcp_tools row offers is blocked with the finding mcp-tool-not-offered naming it and listing the offered references; an imported or uploaded package gets the same finding as a warning and is not blocked.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "A created draft declaring mcp__mail__send while mcp_tools is empty is blocked and told the list is empty.",
+          "An imported zip declaring mcp__mail__send is admitted with a warning."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/mcp_tools.go",
+            "lines": {
+              "start": 13,
+              "end": 43
+            },
+            "excerpt_sha256": "sha256:0dff15123f2cc103abfe2bd0a5a7540b2416c27b6570b8d23e26da3978f12a0c"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/mcp_tools.go",
+            "lines": {
+              "start": 54,
+              "end": 65
+            },
+            "excerpt_sha256": "sha256:df93ec0b6bdce85c9b44c6c99dc719a3f139cf39d9f3285af182dfa00ff04277"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/creation.go",
+            "lines": {
+              "start": 52,
+              "end": 52
+            },
+            "excerpt_sha256": "sha256:5248e297b8dda66dcf2785374f181b041475027ace06330c3bb3db3fbf4f716c"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/creation.go",
+            "lines": {
+              "start": 208,
+              "end": 208
+            },
+            "excerpt_sha256": "sha256:5248e297b8dda66dcf2785374f181b041475027ace06330c3bb3db3fbf4f716c"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/service.go",
+            "lines": {
+              "start": 341,
+              "end": 341
+            },
+            "excerpt_sha256": "sha256:06b9214ed080db7e866e502be192d11fe6152c484835061148a4e929f0848258"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/service.go",
+            "lines": {
+              "start": 414,
+              "end": 414
+            },
+            "excerpt_sha256": "sha256:06b9214ed080db7e866e502be192d11fe6152c484835061148a4e929f0848258"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/mcp_tools_test.go",
+            "lines": {
+              "start": 35,
+              "end": 57
+            },
+            "excerpt_sha256": "sha256:025365e193db70c470ad49a71c9016770caea2709cbab2e3ac8d07d8a8714085"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-unreadable-mcp-tools-list-fails-the-admission-check",
+        "statement": "When the mcp_tools list cannot be read, the allowed-tools check of a package that declares an mcp__ name fails with an error and gives no verdict on the name, instead of passing the package.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "A package declaring mcp__calendar__create_event, checked while the database is unreachable, returns an error and no findings."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/mcp_tools.go",
+            "lines": {
+              "start": 21,
+              "end": 31
+            },
+            "excerpt_sha256": "sha256:c27a56a58650c2a60d81826e07c17618b1129aeff89bb6429ee81a367a8ddfec"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/mcp_tools_test.go",
+            "lines": {
+              "start": 59,
+              "end": 70
+            },
+            "excerpt_sha256": "sha256:9ebff8f4db7234811f8fccbbdd98132a993ac2a3a3e4831bf6b3c8c64ebfd858"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-operator-lists-an-mcp-tool-once-with-a-reason-and-an-audit-event",
+        "statement": "An operator adds a row to mcp_tools with a server, tool, purpose, parameters, an HTTPS server_url and a reason, written in one transaction with its audit event; at most one unretired row exists per server and tool, and a second is refused as a conflict.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "Adding calendar/create_event twice without retiring the first answers 409 the second time.",
+          "A draft with an http address or an uppercase server name is refused before anything is listed."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/mcptools/mcptools.go",
+            "lines": {
+              "start": 76,
+              "end": 95
+            },
+            "excerpt_sha256": "sha256:3e033fa7b3d80002f5fe5fbf2eba61d9b2e110db67863b5289c407515a8c7873"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/mcptools/mcptools.go",
+            "lines": {
+              "start": 131,
+              "end": 155
+            },
+            "excerpt_sha256": "sha256:0dfe114956dcc7e7b823260ebc8d30bb3f7b2cb2605f5da83b64600413b17a5d"
+          },
+          {
+            "path": "db/migrations/0147_mcp_tool_catalog.sql",
+            "lines": {
+              "start": 1,
+              "end": 16
+            },
+            "excerpt_sha256": "sha256:6dcc462bc595155f8606d4ea22e96c4b37237347100b1ccdb11b5cbda9b1e638"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/mcp_tools_integration_test.go",
+            "lines": {
+              "start": 36,
+              "end": 58
+            },
+            "excerpt_sha256": "sha256:b0ab5c69924fa97a6c4b81db9b09993c2e7b698f5e509d84fed763a06e4cc23f"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "retiring-an-mcp-tool-keeps-its-row-with-its-reason",
+        "statement": "An operator retires an mcp_tools row with a non-blank reason, written with its audit event in one transaction; the row stays listed with its retirement reason, a blank reason is refused, and the retired row no longer occupies its server and tool.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "Retiring a tool with the note the pilot ended lists it with retire_reason the pilot ended, and the same server and tool can be added again.",
+          "Retiring with a blank note answers 400."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/mcptools/mcptools.go",
+            "lines": {
+              "start": 97,
+              "end": 115
+            },
+            "excerpt_sha256": "sha256:f187894956f43d6a02bcaba506684807ce3824c862b3ebc18f496aa22efd40ad"
+          },
+          {
+            "path": "db/migrations/0147_mcp_tool_catalog.sql",
+            "lines": {
+              "start": 11,
+              "end": 16
+            },
+            "excerpt_sha256": "sha256:6d250dee7144501cff9293d9582611a400a91f62c236b9e0038c2124c503425d"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/mcp_tools_integration_test.go",
+            "lines": {
+              "start": 85,
+              "end": 117
+            },
+            "excerpt_sha256": "sha256:15ce2b04f93c5831962eec0a189645586a552237d56aa5dd8abeb6bb5ec2d640"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-11-01T04:29:21.537405Z",
+      "scope": "Admission checks of allowed-tools against the mcp_tools list, and the operator operations that maintain the list.",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "b45193c0e7574d76acd7346c7edfae5885f1216e",
+        "registry_digest": "sha256:2b83cd2c2498981b415063887bd238bd6cd7b66a1771c7fd76825530410286ca",
+        "committed_digest": "sha256:752cfd6f5e4d5102eb50ea507c5bf1fc91f9b1ec07d8454dda9267f7244af82e"
+      }
+    }
+  ]
+}

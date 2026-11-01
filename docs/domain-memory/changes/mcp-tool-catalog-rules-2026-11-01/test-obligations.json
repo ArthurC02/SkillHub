@@ -1,0 +1,82 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "mcp-tool-catalog-rules-2026-11-01",
+  "proposal_id": "mcp-tool-catalog-rules-2026-11-01",
+  "obligations": [
+    {
+      "id": "rule-a-skill-declares-only-mcp-tools-listed-in-mcp-tools",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-skill-declares-only-mcp-tools-listed-in-mcp-tools",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-skill-declares-only-mcp-tools-listed-in-mcp-tools"
+        }
+      ],
+      "expected_outcome": "A Skill may declare in allowed-tools only MCP tools that operators list in mcp_tools, referenced as mcp__<server>__<tool>; an mcp__ name that no unretired mcp_tools row provides is unlisted, and a name without the mcp__ prefix is never judged against the list.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v ./internal/skill/admission/mcptools/ -run '^TestOnlyDeclaredMCPNamesMissingFromTheListAreUnlisted$'"
+    },
+    {
+      "id": "rule-an-unlisted-mcp-tool-blocks-a-created-draft-and-warns-an-import",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-unlisted-mcp-tool-blocks-a-created-draft-and-warns-an-import",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-unlisted-mcp-tool-blocks-a-created-draft-and-warns-an-import"
+        }
+      ],
+      "expected_outcome": "A created draft or created version of a Skill that declares in allowed-tools an mcp__ name no mcp_tools row offers is blocked with the finding mcp-tool-not-offered naming it and listing the offered references; an imported or uploaded package gets the same finding as a warning and is not blocked.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v ./internal/skill/admission/ -run '^TestAnUnlistedMCPNameWarnsAnImportAndBlocksACreatedDraft$'"
+    },
+    {
+      "id": "rule-an-unreadable-mcp-tools-list-fails-the-admission-check",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-unreadable-mcp-tools-list-fails-the-admission-check",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-unreadable-mcp-tools-list-fails-the-admission-check"
+        }
+      ],
+      "expected_outcome": "When the mcp_tools list cannot be read, the allowed-tools check of a package that declares an mcp__ name fails with an error and gives no verdict on the name, instead of passing the package.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v ./internal/skill/admission/ -run '^TestAnUnreadableToolListFailsTheCheckInsteadOfPassingThePackage$'"
+    },
+    {
+      "id": "rule-an-operator-lists-an-mcp-tool-once-with-a-reason-and-an-audit-event",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-an-operator-lists-an-mcp-tool-once-with-a-reason-and-an-audit-event",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-operator-lists-an-mcp-tool-once-with-a-reason-and-an-audit-event"
+        }
+      ],
+      "expected_outcome": "An operator adds a row to mcp_tools with a server, tool, purpose, parameters, an HTTPS server_url and a reason, written in one transaction with its audit event; at most one unretired row exists per server and tool, and a second is refused as a conflict.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v ./internal/entrypoint/api/apiserver/ -run '^TestAnOperatorAddsAnMCPToolThatSkillsReferenceByName$'"
+    },
+    {
+      "id": "rule-retiring-an-mcp-tool-keeps-its-row-with-its-reason",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-retiring-an-mcp-tool-keeps-its-row-with-its-reason",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "retiring-an-mcp-tool-keeps-its-row-with-its-reason"
+        }
+      ],
+      "expected_outcome": "An operator retires an mcp_tools row with a non-blank reason, written with its audit event in one transaction; the row stays listed with its retirement reason, a blank reason is refused, and the retired row no longer occupies its server and tool.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v ./internal/entrypoint/api/apiserver/ -run '^TestARetiredMCPToolStaysListedWithItsReasonAndFreesItsName$'"
+    }
+  ]
+}

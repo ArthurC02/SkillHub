@@ -1,0 +1,115 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "mcp-tool-catalog-rules-2026-11-01",
+  "proposal_id": "mcp-tool-catalog-rules-2026-11-01",
+  "registry_revision": {
+    "observed_commit": "b45193c0e7574d76acd7346c7edfae5885f1216e",
+    "registry_digest": "sha256:2b83cd2c2498981b415063887bd238bd6cd7b66a1771c7fd76825530410286ca",
+    "committed_digest": "sha256:752cfd6f5e4d5102eb50ea507c5bf1fc91f9b1ec07d8454dda9267f7244af82e"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-skill-declares-only-mcp-tools-listed-in-mcp-tools",
+      "mutated_protection": "apps/platform/internal/skill/admission/mcptools/mcptools.go:124: !offered[name] -> offered[name]",
+      "failure_evidence": "mcp__calendar__create_events]) = [], want [mcp__calendar__create_events]\n=== RUN   TestOnlyDeclaredMCPNamesMissingFromTheListAreUnlisted/each_unlisted_name_once_per_mention,_in_order\n    mcptools_test.go:34: Unlisted([mcp__b__x Read mcp__calendar__create_event mcp__a__y]) = [mcp__calendar__create_event], want [mcp__b__x mcp__a__y]\n=== RUN   TestOnlyDeclaredMCPNamesMissingFromTheListAreUnlisted/nothing_declared\n--- FAIL: TestOnlyDeclaredMCPNamesMissingFromTheListAreUnlisted (0.00s)\n    --- FAIL: TestOnlyDeclaredMCPNamesMissingFromTheListAreUnlisted/a_listed_tool (0.00s)\n    --- FAIL: TestOnlyDeclaredMCPNamesMissingFromTheListAreUnlisted/an_unlisted_tool (0.00s)\n    --- PASS: TestOnlyDeclaredMCPNamesMissingFromTheListAreUnlisted/a_built-in_tool_is_not_an_MCP_name (0.00s)\n    --- FAIL: TestOnlyDeclaredMCPNamesMissingFromTheListAreUnlisted/a_name_that_only_looks_alike (0.00s)\n    --- FAIL: TestOnlyDeclaredMCPNamesMissingFromTheListAreUnlisted/each_unlisted_name_once_per_mention,_in_order (0.00s)\n    --- PASS: TestOnlyDeclaredMCPNamesMissingFromTheListAreUnlisted/nothing_declared (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/admission/mcptools\t2.553s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-unlisted-mcp-tool-blocks-a-created-draft-and-warns-an-import",
+      "mutated_protection": "apps/platform/internal/skill/admission/mcp_tools.go:39: if severity == skillpkg.SeverityError { -> if false {",
+      "failure_evidence": "=== RUN   TestAnUnlistedMCPNameWarnsAnImportAndBlocksACreatedDraft\n=== RUN   TestAnUnlistedMCPNameWarnsAnImportAndBlocksACreatedDraft/warning\n=== RUN   TestAnUnlistedMCPNameWarnsAnImportAndBlocksACreatedDraft/error\n    mcp_tools_test.go:48: findings [{Severity:error Code:mcp-tool-not-offered Path:SKILL.md Message:allowed-tools 只能引用平台 MCP 工具清單上的名稱，mcp__mail__send 不在清單上；目前清單是空的，請拿掉這個名稱。 Details:[]}] blocked false, want one finding and blocked true\n--- FAIL: TestAnUnlistedMCPNameWarnsAnImportAndBlocksACreatedDraft (0.00s)\n    --- PASS: TestAnUnlistedMCPNameWarnsAnImportAndBlocksACreatedDraft/warning (0.00s)\n    --- FAIL: TestAnUnlistedMCPNameWarnsAnImportAndBlocksACreatedDraft/error (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/admission\t0.513s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-unreadable-mcp-tools-list-fails-the-admission-check",
+      "mutated_protection": "apps/platform/internal/skill/admission/mcp_tools.go:27: return fmt.Errorf(\"ingest: read the MCP tool list: %w\", err) -> active = nil",
+      "failure_evidence": "=== RUN   TestAnUnreadableToolListFailsTheCheckInsteadOfPassingThePackage\n    mcp_tools_test.go:68: err = <nil>, findings [{Severity:warning Code:mcp-tool-not-offered Path:SKILL.md Message:allowed-tools 宣告了 mcp__calendar__create_event，但平台的 MCP 工具清單上沒有它；在這個平台上試跑時用不到這個工具。 Details:[]}]; want an error and no verdict on the name\n--- FAIL: TestAnUnreadableToolListFailsTheCheckInsteadOfPassingThePackage (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/admission\t0.553s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-operator-lists-an-mcp-tool-once-with-a-reason-and-an-audit-event",
+      "mutated_protection": "apps/platform/internal/skill/admission/mcptools/mcptools.go:91: if pgconv.IsUniqueViolation(err) { -> if false && pgconv.IsUniqueViolation(err) {",
+      "failure_evidence": "=== RUN   TestAnOperatorAddsAnMCPToolThatSkillsReferenceByName\n2026/11/01 12:28:54 ERROR request failed on the server method=POST path=/admin/mcp-tools status=500\n    mcp_tools_integration_test.go:56: a second unretired srv-1793507334304644100/create_event answered 500 map[error:MCP tool change failed], want 409\n--- FAIL: TestAnOperatorAddsAnMCPToolThatSkillsReferenceByName (0.15s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t1.101s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-retiring-an-mcp-tool-keeps-its-row-with-its-reason",
+      "mutated_protection": "apps/platform/internal/skill/admission/mcptools/mcptools.go:99: if note == \"\" || utf8.RuneCountInString(note) -> if utf8.RuneCountInString(note)",
+      "failure_evidence": "=== RUN   TestARetiredMCPToolStaysListedWithItsReasonAndFreesItsName\n2026/11/01 12:29:02 ERROR request failed on the server method=POST path=/admin/mcp-tools/82169e8a-87d0-4837-ad17-097bac3af75c/retire status=500\n    mcp_tools_integration_test.go:95: a blank retirement note answered 500, want 400\n--- FAIL: TestARetiredMCPToolStaysListedWithItsReasonAndFreesItsName (0.15s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t0.742s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/mcp_tools_integration_test.go",
+    "apps/platform/internal/skill/admission/creation.go",
+    "apps/platform/internal/skill/admission/mcp_tools.go",
+    "apps/platform/internal/skill/admission/mcp_tools_test.go",
+    "apps/platform/internal/skill/admission/mcptools/mcptools.go",
+    "apps/platform/internal/skill/admission/mcptools/mcptools_test.go",
+    "apps/platform/internal/skill/admission/service.go",
+    "db/migrations/0147_mcp_tool_catalog.sql"
+  ],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-skill-declares-only-mcp-tools-listed-in-mcp-tools",
+      "status": "passed",
+      "evidence": "go test -count=1 -v ./internal/skill/admission/mcptools/ -run '^TestOnlyDeclaredMCPNamesMissingFromTheListAreUnlisted$'",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:617b1ad0bad950cea6eefe44a589e562439d8afb16249c80378d47327a16c2a5",
+      "finished_at": "2026-11-01T04:29:07.802617Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-unlisted-mcp-tool-blocks-a-created-draft-and-warns-an-import",
+      "status": "passed",
+      "evidence": "go test -count=1 -v ./internal/skill/admission/ -run '^TestAnUnlistedMCPNameWarnsAnImportAndBlocksACreatedDraft$'",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:03a1ec2cc8a5536b08c14d9868b4e3b1c832e2491509ef670ec05a43f7237e69",
+      "finished_at": "2026-11-01T04:29:09.972450Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-unreadable-mcp-tools-list-fails-the-admission-check",
+      "status": "passed",
+      "evidence": "go test -count=1 -v ./internal/skill/admission/ -run '^TestAnUnreadableToolListFailsTheCheckInsteadOfPassingThePackage$'",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:26d62d934912de6e14990edcd0b157e69b0dc77d75a0bd9ed802256b49c04fd3",
+      "finished_at": "2026-11-01T04:29:12.571949Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-an-operator-lists-an-mcp-tool-once-with-a-reason-and-an-audit-event",
+      "status": "passed",
+      "evidence": "go test -count=1 -v ./internal/entrypoint/api/apiserver/ -run '^TestAnOperatorAddsAnMCPToolThatSkillsReferenceByName$'",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:e1552c9e6c4469514c21e3b91c1dcc962e48255370cc161294def666628278e0",
+      "finished_at": "2026-11-01T04:29:17.171708Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-retiring-an-mcp-tool-keeps-its-row-with-its-reason",
+      "status": "passed",
+      "evidence": "go test -count=1 -v ./internal/entrypoint/api/apiserver/ -run '^TestARetiredMCPToolStaysListedWithItsReasonAndFreesItsName$'",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:9beb139c1927e2b4e0fc5c9472e1530e36036566966ed62d763dd3be56fea320",
+      "finished_at": "2026-11-01T04:29:21.529187Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}
