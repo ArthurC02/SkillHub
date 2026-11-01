@@ -35,7 +35,7 @@ func TestBrowserShardsRetainEverySupportedEnvironment(t *testing.T) {
 	t.Parallel()
 	job := browserWorkflowJob(t, "web-browser-shards")
 	for environment, total := range map[string]int{
-		"ubuntu-latest\n            browser: chromium":  2,
+		"ubuntu-latest\n            browser: chromium":  3,
 		"ubuntu-latest\n            browser: firefox":   4,
 		"ubuntu-latest\n            browser: webkit":    4,
 		"windows-latest\n            browser: chromium": 3,
@@ -47,8 +47,8 @@ func TestBrowserShardsRetainEverySupportedEnvironment(t *testing.T) {
 			}
 		}
 	}
-	if strings.Count(job, "- os:") != 13 {
-		t.Error("browser matrix must contain exactly thirteen shards")
+	if strings.Count(job, "- os:") != 14 {
+		t.Error("browser matrix must contain exactly fourteen shards")
 	}
 	for _, required := range []string{
 		"fail-fast: false",
@@ -121,7 +121,7 @@ func TestImagePublicationWaitsForNativeBrowserChecks(t *testing.T) {
 	for _, name := range strings.Split(line, ",") {
 		dependencies[strings.TrimSpace(name)] = true
 	}
-	expected := []string{"images", "web", "web-browser", "platform", "llm", "sandbox", "devctl", "contracts-drift", "dependency-audit"}
+	expected := []string{"images", "web", "web-browser", "platform", "platform-race", "llm", "sandbox", "devctl", "contracts-drift", "dependency-audit"}
 	for _, name := range expected {
 		if !dependencies[name] {
 			t.Errorf("image publication must wait for %s", name)
