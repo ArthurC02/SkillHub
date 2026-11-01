@@ -1029,6 +1029,7 @@
         "apps/web/src/shared/ui/timestamp.test.tsx",
         "apps/web/src/shared/ui/tip.test.tsx",
         "apps/web/src/shared/ui/usePaginationFocus.test.tsx",
+        "apps/web/src/testing/e2e-port.test.ts",
         "apps/web/src/testing/offline.test.ts",
         "apps/web/src/testing/poll.test.ts",
         "infra/images/runtime-agent-sdk/run.test.mjs",
