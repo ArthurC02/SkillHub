@@ -168,14 +168,17 @@ jobs:
             browser: chromium
             shard: 1
             total: 3
+            weights: "28:39:33"
           - os: ubuntu-latest
             browser: chromium
             shard: 2
             total: 3
+            weights: "28:39:33"
           - os: ubuntu-latest
             browser: chromium
             shard: 3
             total: 3
+            weights: "28:39:33"
           - os: ubuntu-latest
             browser: firefox
             shard: 1
@@ -196,18 +199,22 @@ jobs:
             browser: webkit
             shard: 1
             total: 4
+            weights: "21:22:31:26"
           - os: ubuntu-latest
             browser: webkit
             shard: 2
             total: 4
+            weights: "21:22:31:26"
           - os: ubuntu-latest
             browser: webkit
             shard: 3
             total: 4
+            weights: "21:22:31:26"
           - os: ubuntu-latest
             browser: webkit
             shard: 4
             total: 4
+            weights: "21:22:31:26"
           - os: windows-latest
             browser: chromium
             shard: 1
@@ -277,7 +284,9 @@ jobs:
           npx playwright install ${{ matrix.browser }}
       - if: runner.os != 'Linux'
         run: npx playwright install ${{ matrix.browser }}
-      - run: npm run test:e2e -- --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/${{ matrix.total }}
+      - env:
+          PWTEST_SHARD_WEIGHTS: ${{ matrix.weights }}
+        run: npm run test:e2e -- --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/${{ matrix.total }}
       - if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
