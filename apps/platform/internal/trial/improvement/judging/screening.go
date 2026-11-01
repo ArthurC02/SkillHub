@@ -10,6 +10,8 @@ import (
 
 const InjectionLine = 0.5
 
+const tokensPerMillion = 1_000_000
+
 const screeningTimeout = 15 * time.Second // budget-over: injection.TIMEOUT_SECONDS
 
 type ScreeningStatus string
@@ -65,7 +67,7 @@ func screeningOf(answer modelport.ScreeningAnswer, policy ScreeningPolicy) *Scre
 	if answer.Probability >= InjectionLine {
 		status = ScreeningFlagged
 	}
-	cost := float64(answer.InputTokens) * policy.USDPerMillionTokens / 1_000_000
+	cost := float64(answer.InputTokens) * policy.USDPerMillionTokens / tokensPerMillion
 	return &Screening{
 		Status: status, Probability: &answer.Probability,
 		Model: answer.Model, InputTokens: answer.InputTokens, CostUSD: &cost,

@@ -189,15 +189,7 @@ func TestAnOperatorPricesAndSwitchesTheInjectionCheckWithoutRewritingThePanelsRe
 		t.Fatalf("a refused change switched the check to %v (%v)", on, err)
 	}
 
-	for _, price := range []string{"1", "1000000"} {
-		code, settings = operatorCall(t, operator, http.MethodPut, "/admin/settings/injection-check",
-			`{"enabled":true,"credits_per_million_tokens":`+price+`,"note":"second signal"}`)
-		check, _ = settings["injection_check"].(map[string]any)
-		if code != http.StatusOK || check["enabled"] != true || check["credits_per_million_tokens"] != mustFloat(t, price) ||
-			check["reason"] != "second signal" || check["set_at"] == nil {
-			t.Fatalf("switching on at %s credits: %d %v", price, code, settings)
-		}
-	}
+	settings = switchInjectionCheckOnAt(t, operator, "1", "1000000")
 	panel, _ := settings["judge_panel"].(map[string]any)
 	if panel["enabled"] != false || panel["reason"] != nil || panel["set_at"] != nil {
 		t.Errorf("judge_panel = %v after only the injection check changed, want it off with no reason of its own", panel)
@@ -210,13 +202,34 @@ func TestAnOperatorPricesAndSwitchesTheInjectionCheckWithoutRewritingThePanelsRe
 		t.Errorf("switching on twice wrote %d matching audit events, want 2", n)
 	}
 
+	expectSwitchingOffKeepsThePanel(t, operator)
+}
+
+func switchInjectionCheckOnAt(t *testing.T, operator *client, prices ...string) map[string]any {
+	t.Helper()
+	var settings map[string]any
+	for _, price := range prices {
+		var code int
+		code, settings = operatorCall(t, operator, http.MethodPut, "/admin/settings/injection-check",
+			`{"enabled":true,"credits_per_million_tokens":`+price+`,"note":"second signal"}`)
+		check, _ := settings["injection_check"].(map[string]any)
+		if code != http.StatusOK || check["enabled"] != true || check["credits_per_million_tokens"] != mustFloat(t, price) ||
+			check["reason"] != "second signal" || check["set_at"] == nil {
+			t.Fatalf("switching on at %s credits: %d %v", price, code, settings)
+		}
+	}
+	return settings
+}
+
+func expectSwitchingOffKeepsThePanel(t *testing.T, operator *client) {
+	t.Helper()
 	if code, _ := operatorCall(t, operator, http.MethodPut, "/admin/settings/judge-panel", `{"enabled":true,"note":"panel"}`); code != http.StatusOK {
 		t.Fatalf("switching the panel on: %d", code)
 	}
-	code, settings = operatorCall(t, operator, http.MethodPut, "/admin/settings/injection-check",
+	code, settings := operatorCall(t, operator, http.MethodPut, "/admin/settings/injection-check",
 		`{"enabled":false,"credits_per_million_tokens":40,"note":"done"}`)
-	check, _ = settings["injection_check"].(map[string]any)
-	panel, _ = settings["judge_panel"].(map[string]any)
+	check, _ := settings["injection_check"].(map[string]any)
+	panel, _ := settings["judge_panel"].(map[string]any)
 	if code != http.StatusOK || check["enabled"] != false || check["credits_per_million_tokens"] != float64(40) || check["reason"] != "done" {
 		t.Fatalf("switching off: %d %v", code, settings)
 	}
