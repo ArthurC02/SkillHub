@@ -27,5 +27,5 @@ images:
   go_codegen: "skillhub/go-codegen:ogen-1.24.0"
 
 plugins:
-  domain_memory: "v6.8.0"
-  domain_memory_sha256sums: "b293eb37dcaf4aee915f6cf2c6d8649214c7105d23eab38221d45df71f8cb437"
+  domain_memory: "v6.8.1"
+  domain_memory_sha256sums: "c4bb10df08e8ab82aa0f961c965367ec7ce4a4ab9e928c74778c65974f85664e"
