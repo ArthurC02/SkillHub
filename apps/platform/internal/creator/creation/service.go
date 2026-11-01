@@ -277,6 +277,7 @@ type SessionChanges interface {
 type Service struct {
 	Pool                 *pgxpool.Pool
 	Limits               Limits
+	SettleDeadline       time.Duration
 	Streams              SessionChanges
 	LLM                  StepModel
 	Insert               func(context.Context, pgx.Tx, JobArgs) error
