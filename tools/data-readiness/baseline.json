@@ -19,9 +19,9 @@
       "ratio": 1.0
     },
     "meaning.columns_described": {
-      "numerator": 578,
-      "denominator": 665,
-      "ratio": 0.869
+      "numerator": 593,
+      "denominator": 682,
+      "ratio": 0.87
     },
     "meaning.enum_columns_whose_comment_names_every_value": {
       "numerator": 51,
@@ -34,9 +34,9 @@
       "ratio": 0.912
     },
     "meaning.tables_known_to_registry": {
-      "numerator": 11,
-      "denominator": 73,
-      "ratio": 0.151
+      "numerator": 12,
+      "denominator": 74,
+      "ratio": 0.162
     },
     "meaning.queried_columns_described": {
       "numerator": 568,
@@ -69,9 +69,9 @@
       "ratio": 1.0
     },
     "rules.constraints_cited_by_a_record": {
-      "numerator": 2,
-      "denominator": 290,
-      "ratio": 0.007
+      "numerator": 11,
+      "denominator": 307,
+      "ratio": 0.036
     },
     "rules.foreign_keys_inside_one_context": {
       "numerator": 45,
@@ -104,9 +104,9 @@
       "ratio": 0.983
     },
     "provenance.migrations_cited_by_a_record": {
-      "numerator": 2,
-      "denominator": 144,
-      "ratio": 0.014
+      "numerator": 3,
+      "denominator": 147,
+      "ratio": 0.02
     },
     "provenance.immutable_tables_known_to_registry": {
       "numerator": 0,

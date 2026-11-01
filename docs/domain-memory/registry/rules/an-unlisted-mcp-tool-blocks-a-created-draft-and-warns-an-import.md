@@ -1,6 +1,9 @@
 ---
 type: Business Rule
-status: draft
+status: stable
+verified:
+  - by: "human:ArthurC"
+    at: "2026-11-01T04:29:21.537405Z"
 sources:
   - resource: "apps/platform/internal/skill/admission/mcp_tools.go#L13-43"
     excerpt_sha256: "sha256:0dff15123f2cc103abfe2bd0a5a7540b2416c27b6570b8d23e26da3978f12a0c"
