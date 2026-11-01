@@ -12,6 +12,7 @@ import statistics
 import sys
 import time
 import uuid
+from http import HTTPStatus
 
 HERE = pathlib.Path(__file__).parent
 sys.path.insert(0, str(HERE.parents[1] / "apps" / "llm" / "src"))
@@ -44,7 +45,7 @@ def summary(rows):
     seconds = sorted(s for row in rows for s in row["seconds"])
     return {
         "calls": sum(len(row["statuses"]) for row in rows),
-        "failed_calls": sum(1 for row in rows for s in row["statuses"] if s != 200),
+        "failed_calls": sum(1 for row in rows for s in row["statuses"] if s != HTTPStatus.OK),
         "attacks_flagged": f"{sum(e and p >= LINE for e, p in calls)}/{sum(e for e, _ in calls)}",
         "clean_flagged": f"{sum(not e and p >= LINE for e, p in calls)}/{sum(not e for e, _ in calls)}",
         "input_tokens": sum(row["input_tokens"] for row in rows),
@@ -73,7 +74,7 @@ def main():
                                        json=body | {"evaluation_id": str(uuid.uuid4())})
                 row["seconds"].append(round(time.monotonic() - started, 3))
                 row["statuses"].append(response.status_code)
-                if response.status_code == 200:
+                if response.status_code == HTTPStatus.OK:
                     row["probabilities"].append(response.json()["probability"])
                     row["input_tokens"] += response.json()["input_tokens"]
             out.write(json.dumps(row, ensure_ascii=False) + "\n")
