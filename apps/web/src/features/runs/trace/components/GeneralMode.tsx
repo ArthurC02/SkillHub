@@ -94,25 +94,7 @@ export function GeneralMode({
       ) : null}
 
       <h3>最終輸出</h3>
-      {trace.final_output ? (
-        <>
-          {trace.final_output_truncated && (
-            <p className="notice">最終輸出超過長度上限，只保留了前段；被截掉的部分不列入評估。</p>
-          )}
-          <pre>
-            <Reveal text={trace.final_output} />
-          </pre>
-        </>
-      ) : trace.workload_output ? (
-        <>
-          <p>沒有最終輸出；以下是工作負載結束前留下的輸出。</p>
-          <pre>
-            <Reveal text={trace.workload_output} />
-          </pre>
-        </>
-      ) : (
-        <p>尚無最終輸出。</p>
-      )}
+      <FinalOutput trace={trace} />
 
       <h3>用量</h3>
       {trace.usage ? (
@@ -139,4 +121,28 @@ export function GeneralMode({
       )}
     </div>
   );
+}
+
+function FinalOutput({ trace }: { trace: TraceSummary }) {
+  if (trace.final_output)
+    return (
+      <>
+        {trace.final_output_truncated && (
+          <p className="notice">最終輸出超過長度上限，只保留了前段；被截掉的部分不列入評估。</p>
+        )}
+        <pre>
+          <Reveal text={trace.final_output} />
+        </pre>
+      </>
+    );
+  if (trace.workload_output)
+    return (
+      <>
+        <p>沒有最終輸出；以下是工作負載結束前留下的輸出。</p>
+        <pre>
+          <Reveal text={trace.workload_output} />
+        </pre>
+      </>
+    );
+  return <p>尚無最終輸出。</p>;
 }
