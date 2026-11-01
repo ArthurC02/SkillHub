@@ -737,7 +737,7 @@ jobs:
       - name: Domain Memory attested commits carry their packages
         run: >-
           bash tools/ci/report-failure.sh 'Domain Memory attestation audit'
-          .domain-memory/engine/bin/linux-x86_64/domain-memory audit-attestations
+          .domain-memory/domain-memory audit-attestations
           --repo-root . --changes-root docs/domain-memory/changes
 
   qa002:

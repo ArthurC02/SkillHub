@@ -3,29 +3,46 @@ package main
 import (
 	"errors"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
-func TestDomainMemoryExecutablePicksTheInstalledBinaryForThePlatform(t *testing.T) {
+func TestDomainMemoryAssetIsTheReleaseExecutableForThePlatform(t *testing.T) {
 	t.Parallel()
-	engine := filepath.Join("repo", ".domain-memory", "engine")
 	cases := []struct {
 		name, goos, goarch, want string
 	}{
-		{"linux on x86-64", "linux", "amd64", filepath.Join(engine, "bin", "linux-x86_64", "domain-memory")},
-		{"linux on arm builds its own", "linux", "arm64", filepath.Join(engine, "target", "release", "domain-memory")},
-		{"macOS on apple silicon", "darwin", "arm64", filepath.Join(engine, "bin", "macos-universal", "domain-memory")},
-		{"macOS on intel", "darwin", "amd64", filepath.Join(engine, "bin", "macos-universal", "domain-memory")},
-		{"windows on x86-64", "windows", "amd64", filepath.Join(engine, "bin", "windows-x86_64", "domain-memory.exe")},
-		{"windows on arm builds its own", "windows", "arm64", filepath.Join(engine, "target", "release", "domain-memory")},
-		{"another system builds its own", "freebsd", "amd64", filepath.Join(engine, "target", "release", "domain-memory")},
+		{"linux on x86-64", "linux", "amd64", "domain-memory-linux-x86_64"},
+		{"macOS on apple silicon", "darwin", "arm64", "domain-memory-macos-universal"},
+		{"macOS on intel", "darwin", "amd64", "domain-memory-macos-universal"},
+		{"windows on x86-64", "windows", "amd64", "domain-memory-windows-x86_64.exe"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if got := domainMemoryExecutable("repo", c.goos, c.goarch); got != c.want {
-				t.Errorf("executable = %q, want %q", got, c.want)
+			if got, err := domainMemoryAsset(c.goos, c.goarch); err != nil || got != c.want {
+				t.Errorf("asset = %q, %v; want %q", got, err, c.want)
 			}
 		})
+	}
+}
+
+func TestDomainMemoryAssetRefusesAPlatformNoReleaseCarries(t *testing.T) {
+	t.Parallel()
+	for _, platform := range [][2]string{{"linux", "arm64"}, {"windows", "arm64"}, {"freebsd", "amd64"}} {
+		_, err := domainMemoryAsset(platform[0], platform[1])
+		if err == nil || !strings.Contains(err.Error(), "carry no executable for "+platform[0]+"/"+platform[1]) {
+			t.Errorf("%s/%s: err = %v, want the platform named", platform[0], platform[1], err)
+		}
+	}
+}
+
+func TestDomainMemoryExecutableIsInTheInstallDirectory(t *testing.T) {
+	t.Parallel()
+	if got, want := domainMemoryExecutable("repo", "windows"), filepath.Join("repo", ".domain-memory", "domain-memory.exe"); got != want {
+		t.Errorf("windows executable = %q, want %q", got, want)
+	}
+	if got, want := domainMemoryExecutable("repo", "linux"), filepath.Join("repo", ".domain-memory", "domain-memory"); got != want {
+		t.Errorf("linux executable = %q, want %q", got, want)
 	}
 }
 

@@ -1,20 +1,21 @@
 #!/bin/sh
 # domain-memory-pre-push
-engine='.domain-memory/engine'
+engine='.domain-memory'
 memory='docs/domain-memory'
 existing="$(git rev-parse --git-path hooks)/pre-push.domain-memory-existing" || exit 1
 test -n "$DOMAIN_MEMORY_GIT_TIMEOUT" || DOMAIN_MEMORY_GIT_TIMEOUT=$(git config --get domain-memory.git-timeout) || unset DOMAIN_MEMORY_GIT_TIMEOUT
 export DOMAIN_MEMORY_GIT_TIMEOUT
 refs=$(cat)
 tool_for_hook() {
-  case "$(uname -s)-$(uname -m)" in
+  tool=$(git config --get domain-memory.executable) || case "$(uname -s)-$(uname -m)" in
     Linux-x86_64) tool="$engine/bin/linux-x86_64/domain-memory" ;;
     Darwin-*) tool="$engine/bin/macos-universal/domain-memory" ;;
     MINGW*-x86_64|MSYS*-x86_64|CYGWIN*-x86_64) tool="$engine/bin/windows-x86_64/domain-memory.exe" ;;
     *) tool="$engine/target/release/domain-memory" ;;
   esac
   test -x "$tool" && return 0
-  echo "domain-memory pre-push: no Domain Memory executable at $tool; build one with cargo build --release --manifest-path $engine/Cargo.toml" >&2
+  hint=$(git config --get domain-memory.install-hint) || hint="build one with cargo build --release --manifest-path $engine/Cargo.toml"
+  echo "domain-memory pre-push: no Domain Memory executable at $tool; $hint" >&2
   return 1
 }
 tool=''

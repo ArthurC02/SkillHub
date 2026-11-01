@@ -22,7 +22,7 @@ Usage:
   devctl agent-sync [--check]  regenerate or check portable Agent artifacts from .claude
   devctl automation-check  verify Task, Agent docs and generated ownership markers
   devctl comment-lint [path-prefix...]  list comments that break AGENTS.md's comment rule
-  devctl domain-memory-install  install the Domain Memory plugin at the commit tools/toolchain.yaml pins, into .domain-memory
+  devctl domain-memory-install  install the Domain Memory release tools/toolchain.yaml pins (checked against its SHA256SUMS) into .domain-memory
   devctl test-report dir [go test args]  run the suite and report what skipped and why
   devctl seed-clean [--dry-run]  upload PORT-007's real, traceable demo skills into a clean-mode deployment
   devctl image-gate  runtime image source gates: digest-pinned base, upgrade record, image content matches its published version
@@ -106,7 +106,7 @@ func runRepoCheckCommand(root, command string, args []string) (int, error) {
 	case "automation-check":
 		return 0, automationCheck(root, os.Stdout)
 	case cmdDomainMemoryInstall:
-		return 0, installDomainMemory(root, domainMemoryRepository, os.Stdout)
+		return 0, installDomainMemory(root, domainMemoryReleases, os.Stdout)
 	default:
 		return 0, commentLint(root, args, os.Stdout)
 	}
@@ -185,7 +185,7 @@ func bootstrap(root string, out io.Writer) error {
 		}
 	}
 	fmt.Fprintln(out, "==> Domain Memory plugin")
-	return installDomainMemory(root, domainMemoryRepository, out)
+	return installDomainMemory(root, domainMemoryReleases, out)
 }
 
 func envInit(root string, out io.Writer) error {
