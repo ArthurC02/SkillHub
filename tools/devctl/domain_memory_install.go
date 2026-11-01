@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -34,11 +35,25 @@ func installedDomainMemoryCommit(root string) string {
 	if _, err := os.Stat(filepath.Join(dir, ".git")); err != nil {
 		return ""
 	}
-	head, err := gitOutput(dir, "rev-parse", "HEAD")
+	head, err := installGit(dir, "rev-parse", "HEAD")
 	if err != nil {
 		return ""
 	}
 	return strings.TrimSpace(head)
+}
+
+func installGit(dir string, args ...string) (string, error) {
+	cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
+	for _, variable := range os.Environ() {
+		if !strings.HasPrefix(variable, "GIT_DIR=") && !strings.HasPrefix(variable, "GIT_WORK_TREE=") && !strings.HasPrefix(variable, "GIT_INDEX_FILE=") {
+			cmd.Env = append(cmd.Env, variable)
+		}
+	}
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("git %s: %s", strings.Join(args, " "), strings.TrimSpace(string(output)))
+	}
+	return string(output), nil
 }
 
 func installDomainMemory(root, repository string, out io.Writer) error {
@@ -58,13 +73,13 @@ func installDomainMemory(root, repository string, out io.Writer) error {
 func checkOutDomainMemory(root, repository, pin string) error {
 	dir := filepath.Join(root, domainMemoryInstallDir)
 	if _, err := os.Stat(filepath.Join(dir, ".git")); errors.Is(err, os.ErrNotExist) {
-		if _, err := gitOutput(root, "init", "-q", domainMemoryInstallDir); err != nil {
+		if _, err := installGit(root, "init", "-q", domainMemoryInstallDir); err != nil {
 			return err
 		}
 	}
-	if _, err := gitOutput(dir, "fetch", "-q", "--depth", "1", repository, pin); err != nil {
+	if _, err := installGit(dir, "fetch", "-q", "--depth", "1", repository, pin); err != nil {
 		return err
 	}
-	_, err := gitOutput(dir, "-c", "core.autocrlf=false", "checkout", "-q", "--force", "--detach", "FETCH_HEAD")
+	_, err := installGit(dir, "-c", "core.autocrlf=false", "checkout", "-q", "--force", "--detach", "FETCH_HEAD")
 	return err
 }

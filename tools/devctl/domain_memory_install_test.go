@@ -113,3 +113,16 @@ func TestTheToolRefusesToRunAnInstallThatIsNotThePin(t *testing.T) {
 		t.Fatalf("err = %v, want the install command named", err)
 	}
 }
+
+func TestTheInstalledCommitIsReadFromTheInstallEvenInsideAGitHook(t *testing.T) {
+	source, pin := pluginSource(t, "first\n")
+	root := consumerPinning(t, pin)
+	if err := installDomainMemory(root, source.root, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	source.commit(t, map[string]string{"README.md": "second\n"})
+	t.Setenv("GIT_DIR", filepath.Join(source.root, ".git"))
+	if got := installedDomainMemoryCommit(root); got != pin {
+		t.Fatalf("installed commit read as %q under the hook's GIT_DIR, want the pin %q", got, pin)
+	}
+}
