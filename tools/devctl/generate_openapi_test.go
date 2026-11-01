@@ -27,7 +27,7 @@ func TestContractLimitsIsSkippedWhenTypeScriptGenerationFails(t *testing.T) {
 	if err := os.WriteFile(scratch, []byte("x"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	images := map[string]string{"openapi_generator": "ts", "python_codegen": "py", "go_codegen": "go"}
+	images := map[string]string{"ts_codegen": "ts", "python_codegen": "py", "go_codegen": "go"}
 	jobs, err := openAPIGenerationJobs(root, scratch, map[string]string{"datamodel_code_generator": "1"}, images)
 	if err != nil || len(jobs) != 4 {
 		t.Fatalf("openAPIGenerationJobs() = %d jobs, %v; want 4 jobs", len(jobs), err)

@@ -56,6 +56,13 @@ updates:
       interval: weekly
     open-pull-requests-limit: 0
 
+  - package-ecosystem: cargo
+    directories:
+      - /tools/codegen/ts
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
+
   - package-ecosystem: uv
     directories:
       - /apps/llm
@@ -107,6 +114,7 @@ updates:
       - /infra/images/web
       - /tools/codegen/go
       - /tools/codegen/python
+      - /tools/codegen/ts
     schedule:
       interval: monthly
       time: "06:00"

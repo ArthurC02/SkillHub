@@ -39,6 +39,7 @@ dist/
 # Go build output
 /apps/*/bin/
 /tools/codegen/go/ogen
+/tools/codegen/ts/target/
 *.exe
 *.test
 

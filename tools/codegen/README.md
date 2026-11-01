@@ -6,7 +6,7 @@ atomically replaces only generated subdirectories.
 
 | Source | Generator | Generated target |
 | --- | --- | --- |
-| `contracts/openapi/public.yaml` | OpenAPI Generator 7.26.0 `typescript-fetch`, digest-pinned container | `packages/api-client-ts/src/generated/` |
+| `contracts/openapi/public.yaml` | `ts/` — our own Rust generator, built into the `ts_codegen` image; emits the model interfaces and enum constants only, no HTTP client | `packages/api-client-ts/src/generated/` |
 | `contracts/openapi/llm-internal.yaml` | datamodel-code-generator／Pydantic v2；版本與 Python codegen image 以 [`tools/toolchain.yaml`](../toolchain.yaml) 為準 | `packages/api-stub-py/src/skillhub_api_stub/generated/` |
 | `contracts/openapi/public.yaml` | ogen 1.24.0 models-only, fully locked image in `go/` | `apps/platform/internal/entrypoint/api/gen/` |
 

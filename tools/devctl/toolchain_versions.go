@@ -32,6 +32,7 @@ func toolchainPin(key string) *regexp.Regexp {
 const (
 	devtoolsDockerfile = "infra/images/devtools/Dockerfile"
 	toolchainYAML      = "tools/toolchain.yaml"
+	tsCodegenManifest  = "tools/codegen/ts/Cargo.toml"
 	ciWorkflow         = ".github/workflows/ci.yml"
 	toolRuff           = "ruff"
 	toolZizmor         = "zizmor"
@@ -84,9 +85,10 @@ var versionsThatMoveTogether = []versionGroup{
 		{toolchainYAML, toolchainPin("docker_compose")},
 		{devtoolsDockerfile, regexp.MustCompile(`(?m)^ARG COMPOSE_VERSION=(\S+)`)},
 	}},
-	{"openapi-generator", []versionSite{
-		{toolchainYAML, regexp.MustCompile(`(?m)^  openapi_generator: "(\d[^"]*)"`)},
-		{toolchainYAML, regexp.MustCompile(`openapi-generator-cli:v([^@\s]+)@`)},
+	{"openapi-ts", []versionSite{
+		{tsCodegenManifest, regexp.MustCompile(`(?m)^version = "([^"]+)"`)},
+		{toolchainYAML, toolchainPin("openapi_ts")},
+		{toolchainYAML, regexp.MustCompile(`skillhub/ts-codegen:([^"\s]+)"`)},
 	}},
 	{"redocly", []versionSite{
 		{toolchainYAML, toolchainPin("redocly")},

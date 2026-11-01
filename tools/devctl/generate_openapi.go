@@ -10,14 +10,12 @@ import (
 	"strings"
 )
 
-const shortRunJVMOptions = "-XX:TieredStopAtLevel=1 -XX:+UseSerialGC"
-
 func openAPIGenerationJobs(root, scratch string, toolchain, images map[string]string) ([]generationJob, error) {
-	tsImage := images["openapi_generator"]
+	tsImage := images["ts_codegen"]
 	pyImage := images["python_codegen"]
 	goImage := images["go_codegen"]
 	if tsImage == "" || pyImage == "" || goImage == "" {
-		return nil, errors.New("OpenAPI generator images are missing from tools/toolchain.yaml")
+		return nil, errors.New("OpenAPI codegen images are missing from tools/toolchain.yaml")
 	}
 	if toolchain["datamodel_code_generator"] == "" {
 		return nil, errors.New("datamodel-code-generator version is missing from tools/toolchain.yaml")
@@ -90,30 +88,33 @@ func generateTypeScriptOpenAPI(root, scratch, tsImage string, out io.Writer) (ge
 	if err := os.MkdirAll(tsRoot, 0o755); err != nil {
 		return generationOutput{}, err
 	}
+	buildArgs := []string{
+		cmdBuild, flagQuiet,
+		"-f", filepath.Join(root, "tools", "codegen", "ts", "Dockerfile"),
+		"-t", tsImage,
+		filepath.Join(root, "tools", "codegen", "ts"),
+	}
+	if err := runDocker("TypeScript codegen image build", buildArgs, out); err != nil {
+		return generationOutput{}, err
+	}
 	tsArgs := []string{cmdRun, dockerFlagRm}
 	tsArgs = append(tsArgs, dockerUserArgs()...)
 	tsArgs = append(tsArgs,
-		"-e", "JAVA_OPTS="+shortRunJVMOptions,
 		"-v", root+":/src",
 		"-w", "/src",
 		tsImage,
-		"generate",
-		"-i", "/src/contracts/openapi/public.yaml",
-		"-g", "typescript-fetch",
-		"-o", containerPath(root, tsRoot),
-		"--global-property", "apis,models,supportingFiles,apiDocs=false,modelDocs=false,apiTests=false,modelTests=false",
-		"--additional-properties", "supportsES6=true,useSingleRequestParameter=true,withInterfaces=true,npmName=@skillhub/api-client-ts",
+		"/src/contracts/openapi/public.yaml",
+		containerPath(root, tsRoot),
 	)
 	if err := runDocker("TypeScript OpenAPI generation", tsArgs, out); err != nil {
 		return generationOutput{}, err
 	}
-	tsSource := filepath.Join(tsRoot, "src")
-	if err := validateGeneratedContent(tsSource, root); err != nil {
+	if err := validateGeneratedContent(tsRoot, root); err != nil {
 		return generationOutput{}, err
 	}
 	return generationOutput{
 		label:  "typescript-openapi",
-		source: tsSource,
+		source: tsRoot,
 		target: filepath.Join(root, "packages", "api-client-ts", "src", "generated"),
 	}, nil
 }

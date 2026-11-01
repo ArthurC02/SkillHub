@@ -26,22 +26,21 @@ type toolRelease struct {
 }
 
 var toolchainReleaseSources = map[string]releaseSource{
-	"task":              {registryGoProxy, "github.com/go-task/task/v3"},
-	"uv":                {registryPyPI, "uv"},
-	"docker_cli":        {registryGoProxy, "github.com/docker/cli"},
-	"docker_compose":    {registryGoProxy, "github.com/docker/compose/v5"},
-	"golangci_lint":     {registryGoProxy, "github.com/golangci/golangci-lint/v2"},
-	"sqlc":              {registryGoProxy, "github.com/sqlc-dev/sqlc"},
-	"redocly":           {registryNPM, "@redocly/cli"},
-	"openapi_generator": {registryGitHubReleases, "OpenAPITools/openapi-generator"},
-	"govulncheck":       {registryGoProxy, "golang.org/x/vuln"},
-	"pip_audit":         {registryPyPI, "pip-audit"},
-	"go_licenses":       {registryGoProxy, "github.com/google/go-licenses/v2"},
-	toolZizmor:          {registryPyPI, toolZizmor},
+	"task":           {registryGoProxy, "github.com/go-task/task/v3"},
+	"uv":             {registryPyPI, "uv"},
+	"docker_cli":     {registryGoProxy, "github.com/docker/cli"},
+	"docker_compose": {registryGoProxy, "github.com/docker/compose/v5"},
+	"golangci_lint":  {registryGoProxy, "github.com/golangci/golangci-lint/v2"},
+	"sqlc":           {registryGoProxy, "github.com/sqlc-dev/sqlc"},
+	"redocly":        {registryNPM, "@redocly/cli"},
+	"govulncheck":    {registryGoProxy, "golang.org/x/vuln"},
+	"pip_audit":      {registryPyPI, "pip-audit"},
+	"go_licenses":    {registryGoProxy, "github.com/google/go-licenses/v2"},
+	toolZizmor:       {registryPyPI, toolZizmor},
 }
 
 var toolchainPinsFollowingAWatchedManifest = []string{
-	"ogen", "datamodel_code_generator", toolPglite, "pglite_socket", "pglite_pgvector", "pglite_pgvector_extension",
+	"ogen", "openapi_ts", "datamodel_code_generator", toolPglite, "pglite_socket", "pglite_pgvector", "pglite_pgvector_extension",
 }
 
 func toolchainFreshnessNotes(pins map[string]string, latest func(releaseSource) (toolRelease, error), now time.Time) []string {
