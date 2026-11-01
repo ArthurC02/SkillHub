@@ -687,11 +687,14 @@ jobs:
         with:
           go-version-file: tools/devctl/go.mod
           cache: false
+      - name: Key the codegen images by their sources and image tags only
+        id: codegen-key
+        run: echo "hash=$({ cat $(git ls-files tools/codegen); grep -E '_codegen:' tools/toolchain.yaml; } | sha256sum | cut -c1-16)" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         id: codegen-images
         with:
           path: ~/codegen-images.tar
-          key: codegen-images-${{ hashFiles('tools/codegen/**', 'tools/toolchain.yaml') }}
+          key: codegen-images-${{ steps.codegen-key.outputs.hash }}
       - if: steps.codegen-images.outputs.cache-hit == 'true'
         name: Load the codegen images built by an earlier run of the same sources
         run: docker load -i ~/codegen-images.tar
