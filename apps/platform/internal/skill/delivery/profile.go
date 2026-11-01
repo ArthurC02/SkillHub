@@ -208,9 +208,21 @@ func writeInstallLocations(b *strings.Builder, p Profile) {
 	for _, loc := range p.Install.Locations {
 		fmt.Fprintf(b, "- `%s` (%s) — %s\n", loc.Path, loc.Scope, loc.Description)
 	}
-	if len(p.Install.Locations) > 0 {
-		b.WriteString("\nUnzip the package and place its contents at that path.\n\n")
+	if len(p.Install.Locations) == 0 {
+		return
 	}
+	dir, path := "", p.Install.Locations[0].Path
+	if p.Install.TopLevelDir != nil {
+		dir = strings.TrimSuffix(*p.Install.TopLevelDir, "/") + "/"
+	}
+	if dir == "/" || dir == "" || !strings.HasSuffix(path, dir) {
+		b.WriteString("\nUnzip the package and place its contents at that path.\n\n")
+		return
+	}
+	fmt.Fprintf(b, "\nThe zip already holds a single `%s` folder, so unzip it inside `%s`: "+
+		"`SKILL.md` then ends up at `%sSKILL.md`. Unzipping into `%s` itself nests it as "+
+		"`%s%s`, where the Agent does not look.\n\n",
+		dir, strings.TrimSuffix(path, dir), path, path, path, dir)
 }
 
 func writeDependencies(b *strings.Builder, deps []string) {

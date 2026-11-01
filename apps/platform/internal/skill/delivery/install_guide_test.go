@@ -81,3 +81,33 @@ func TestAnInstallGuideLeavesOutTheSectionsAProfileHasNothingFor(t *testing.T) {
 		t.Errorf("a profile with no install location says nothing, lists one, or says where to unzip:\n%s", where)
 	}
 }
+
+func TestAnInstallGuideForAZipWithItsOwnFolderSaysToUnzipInTheParent(t *testing.T) {
+	top := "<name>"
+	for _, tc := range []struct {
+		name     string
+		path     string
+		top      *string
+		holds    string
+		notHolds string
+	}{
+		{"a wrapped zip whose path ends in its folder", "~/.claude/skills/<name>/", &top,
+			"so unzip it inside `~/.claude/skills/`: `SKILL.md` then ends up at `~/.claude/skills/demo/SKILL.md`. " +
+				"Unzipping into `~/.claude/skills/demo/` itself nests it as `~/.claude/skills/demo/demo/`",
+			"place its contents at that path"},
+		{"a wrapped zip whose path does not end in its folder", "~/.agent/skills/", &top,
+			"Unzip the package and place its contents at that path.", "unzip it inside"},
+		{"a zip whose root is the Skill root", "~/.agent/skills/<name>/", nil,
+			"Unzip the package and place its contents at that path.", "unzip it inside"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p := Profile{DisplayName: "Agent", Version: "1"}
+			p.Install.Locations = []InstallLocation{{Scope: "user", Path: tc.path, Description: "per user"}}
+			p.Install.TopLevelDir = tc.top
+			where, _ := installSection(renderInstall(p, "demo", nil), "Where it goes")
+			if !strings.Contains(where, tc.holds) || strings.Contains(where, tc.notHolds) {
+				t.Errorf("the guide should say %q and not %q:\n%s", tc.holds, tc.notHolds, where)
+			}
+		})
+	}
+}

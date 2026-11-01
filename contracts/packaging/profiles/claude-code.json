@@ -2,7 +2,7 @@
   "schema_version": "1.0",
   "id": "claude-code",
   "kind": "profile",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "display_name": "Claude Code",
   "support_status": "verified",
   "install": {
@@ -10,7 +10,7 @@
       {
         "scope": "user",
         "path": "~/.claude/skills/<name>/",
-        "description": "個人層級：你用 Claude Code 打開的每一個專案都能用。把套件解壓縮在這裡，讓 SKILL.md 最後落在 ~/.claude/skills/<name>/SKILL.md。（原文：Personal level: available in every project you open with Claude Code. Unzip the package here so that SKILL.md ends up at ~/.claude/skills/<name>/SKILL.md.）"
+        "description": "個人層級：你用 Claude Code 打開的每一個專案都能用。在 ~/.claude/skills/ 裡解壓縮套件（它自帶 <name>/ 這一層），讓 SKILL.md 最後落在 ~/.claude/skills/<name>/SKILL.md。（原文：Personal level: available in every project you open with Claude Code. Unzip the package inside ~/.claude/skills/ (it carries its own <name>/ folder) so that SKILL.md ends up at ~/.claude/skills/<name>/SKILL.md.）"
       },
       {
         "scope": "project",
