@@ -4,6 +4,7 @@ if (process.platform === "linux") process.env.WEBKIT_SKIA_ENABLE_CPU_RENDERING ?
 
 export default defineConfig({
   testDir: "./e2e",
+  testIgnore: process.env.SHOT_DIR ? [] : ["**/shots.spec.ts"],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   failOnFlakyTests: !!process.env.CI,
