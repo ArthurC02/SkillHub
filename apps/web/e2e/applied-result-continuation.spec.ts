@@ -70,7 +70,9 @@ for (const hasTestCase of [true, false]) {
             name: hasTestCase ? "以新版本重跑這個測試題" : "開啟剛建立的版本",
             exact: true,
           });
-          await expect(apply).toBeEnabled();
+          await expect(
+            page.getByRole("button", { name: "以已接受的 0 項建議建立新版本", exact: true }),
+          ).toBeDisabled();
           if (leavesForm) {
             await expect(search).toBeFocused();
             await expect(search).toHaveValue("保留目前搜尋草稿");

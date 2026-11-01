@@ -72,10 +72,7 @@ for (const { name, body } of [
         if (!["GET", "HEAD", "OPTIONS"].includes(request.method())) writes.push(request.url());
       });
       const nav = page.getByRole("navigation", { name: "這個小工具的工作台", exact: true });
-      const apply = page.getByRole("button", {
-        name: "以已接受的 1 項建議建立新版本",
-        exact: true,
-      });
+      const apply = page.getByRole("button", { name: /^以已接受的 [01] 項建議建立新版本$/ });
       const rerun = page.getByRole("link", { name: "以新版本重跑這個測試題", exact: true });
       const receipt = page.getByRole("link", { name: "開啟剛建立的版本", exact: true });
       const cleanup = page.locator("#run-trace .badge-row").filter({ hasText: "清理狀態" });
@@ -129,7 +126,8 @@ for (const { name, body } of [
       ).toBeFocused();
       await expect(nav).toBeVisible();
       if (phase !== "compare") {
-        await expect(apply).toBeEnabled();
+        if (phase === "applied") await expect(apply).toBeDisabled();
+        else await expect(apply).toBeEnabled();
         await expect(cleanup).toContainText("清理狀態：已清理");
         await expect(page.locator("#run-decision .verdict")).toHaveText("任務判定：未符合");
         if (phase === "applied") await expect(rerun).toBeVisible();

@@ -278,18 +278,15 @@ for (const [transport, saved, associated, failedRead] of [
       await expect(retry).toBeDisabled();
       await expect(alert).toContainText("無法確認是否已建立新版本。");
       expect(writes).toHaveLength(1);
-      if (!failedRead)
-        await expect(
-          region.getByRole("button", {
-            name: "核對後仍以已接受的 1 項建議建立新版本",
-            exact: true,
-          }),
-        ).toBeDisabled();
+      const rebuild = region.getByRole("button", {
+        name: `核對後仍以已接受的 ${associated ? 0 : 1} 項建議建立新版本`,
+        exact: true,
+      });
+      if (!failedRead) await expect(rebuild).toBeDisabled();
       release();
       await expect(retry).toBeEnabled();
-      await expect(
-        region.getByRole("button", { name: "核對後仍以已接受的 1 項建議建立新版本", exact: true }),
-      ).toBeEnabled();
+      if (associated) await expect(rebuild).toBeDisabled();
+      else await expect(rebuild).toBeEnabled();
       await expect(region.getByText(/^已建立新版本/)).toHaveCount(0);
       expect(writes).toHaveLength(1);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
