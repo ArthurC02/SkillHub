@@ -50,7 +50,7 @@ for (const owner of owners) {
           const section = page.getByRole("region", { name: owner.region, exact: true });
           const input = section.getByRole("textbox", { name: "發佈者名稱", exact: true });
           await input.fill("submitted-name");
-          await section.getByRole("button", { name: "註冊", exact: true }).click();
+          await input.press("Enter");
           await expect(
             section.getByRole("button", { name: "註冊中…", exact: true }),
           ).toBeDisabled();

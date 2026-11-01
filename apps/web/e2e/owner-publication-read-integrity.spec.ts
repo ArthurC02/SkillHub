@@ -91,13 +91,9 @@ for (const width of [375, 1280]) {
         await Promise.all([ownerReadResponse(page, owner.path), page.goBack()]);
       }
       if (scenario.phase === "registration") {
-        await section
-          .getByRole("textbox", { name: "發佈者名稱", exact: true })
-          .fill("kept-after-invalid-read");
-        await Promise.all([
-          ownerReadResponse(page, owner.path),
-          section.getByRole("button", { name: "註冊", exact: true }).click(),
-        ]);
+        const publisherName = section.getByRole("textbox", { name: "發佈者名稱", exact: true });
+        await publisherName.fill("kept-after-invalid-read");
+        await Promise.all([ownerReadResponse(page, owner.path), publisherName.press("Enter")]);
       }
       await expect(section.getByRole("alert")).toContainText(`暫時無法讀取${owner.what}`);
       await expect(section).not.toContainText("狀態：已發佈");
