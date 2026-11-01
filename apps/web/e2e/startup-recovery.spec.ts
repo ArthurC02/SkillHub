@@ -111,10 +111,11 @@ for (const dark of [false, true]) {
       return route.fallback();
     });
     await page.goto(path);
+    const routerReloadsOnceThenGivesUp = 2;
+    await expect.poll(() => blocked.length, { timeout: 15_000 }).toBe(routerReloadsOnceThenGivesUp);
     await expect(
       page.getByRole("heading", { name: "這一頁暫時無法顯示", exact: true }),
     ).toBeVisible();
-    expect(blocked.length).toBeGreaterThan(0);
     failing = false;
     await page.getByRole("button", { name: "重新載入頁面", exact: true }).focus();
     await page.keyboard.press("Enter");
