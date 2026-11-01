@@ -7,8 +7,8 @@
   "change_classification": "material",
   "submitted_at": "2026-11-01T04:29:04.466188Z",
   "verified_at": "2026-11-01T04:29:21.967242Z",
-  "finalized_at": "2026-11-01T04:31:38.009959Z",
-  "applied_at": "2026-11-01T04:31:44.636835Z",
+  "finalized_at": "2026-11-01T04:37:30.054377Z",
+  "applied_at": "2026-11-01T04:37:36.886383Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "b45193c0e7574d76acd7346c7edfae5885f1216e",
@@ -318,7 +318,7 @@
     }
   ],
   "applied_registry_revision": {
-    "observed_commit": "29aac639fab6298934a02a2da60ce60409883628",
+    "observed_commit": "f82124049c6c246e80c1223921af5c15347da1f2",
     "registry_digest": "sha256:7e029ebe189dac02da160bf8410ed4fd5d23aaa379c838ba1e194142ac9d519d"
   }
 }
