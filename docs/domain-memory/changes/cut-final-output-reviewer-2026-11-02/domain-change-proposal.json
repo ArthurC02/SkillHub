@@ -3,12 +3,12 @@
   "proposal_id": "cut-final-output-reviewer-2026-11-02",
   "proposer": "coding-agent",
   "requirement_id": "cut-final-output-reviewer",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-11-01T19:12:49.550372Z",
   "verified_at": "2026-11-01T19:12:50.163207Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-11-01T19:13:18.245817Z",
+  "applied_at": "2026-11-01T19:13:25.068705Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "114f3f0717cdaf83e865e0d8fc0077e03f4c8beb",
@@ -142,5 +142,9 @@
   ],
   "supersedes": [
     "cut-final-output-2026-11-02"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "b271b35492968ec2876562f2e52eaa74d92f5da6",
+    "registry_digest": "sha256:3d65d5edee6e13c5594bca3a63d58b68c146b5c76552214846c2b0bedc2d5b03"
+  }
 }

@@ -2,8 +2,8 @@
 type: Business Rule
 status: stable
 verified:
-  - by: "human:human:ArthurC"
-    at: "2026-11-01T19:08:29.954044Z"
+  - by: "human:ArthurC"
+    at: "2026-11-01T19:12:49.596997Z"
 sources:
   - resource: "apps/platform/internal/trial/improvement/checks/rule_graders_test.go#L133-140"
     excerpt_sha256: "sha256:eccaa335afd7e34555eb1a95f3139756a2a49cb5f9a7dc97ddcc617cab4a8c09"
