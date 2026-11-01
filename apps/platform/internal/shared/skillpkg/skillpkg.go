@@ -113,6 +113,19 @@ func (r Report) Categorize() CategorizedFindings {
 	return c
 }
 
+var reservedNameWords = []string{"anthropic", "claude"}
+
+func reservedNameWord(name string) string {
+	for _, word := range reservedNameWords {
+		if strings.Contains(name, word) {
+			return word
+		}
+	}
+	return ""
+}
+
+var xmlTag = regexp.MustCompile(`</?[A-Za-z][A-Za-z0-9_.-]*(?:\s[^<>]*)?/?>`)
+
 var nameRule = regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 
 func ValidName(name string) bool {
@@ -354,6 +367,14 @@ func (r *Report) checkManifest() {
 		r.add(SeverityError, "name-too-long", skillMDPath, fmt.Sprintf("name 超過 %d 個字元", maxNameLen))
 	case !nameRule.MatchString(m.Name):
 		r.add(SeverityError, "name-invalid", skillMDPath, "name 只能使用小寫英文字母、數字與單一連字號")
+	}
+	if word := reservedNameWord(m.Name); word != "" {
+		r.add(SeverityWarning, CodeNameReservedWord, skillMDPath, fmt.Sprintf(
+			"name 含保留字 %q；Claude API 不接受名稱含 anthropic 或 claude 的 Skill，請換一個說出這個 Skill 做什麼的名稱。", word))
+	}
+	if tag := xmlTag.FindString(m.Description); tag != "" {
+		r.add(SeverityWarning, CodeDescriptionXMLTag, skillMDPath, fmt.Sprintf(
+			"description 含 XML 標籤 %q；description 會放進 Agent 的系統提示，規格不允許標籤，請改寫成純文字。", tag))
 	}
 	switch {
 
@@ -760,9 +781,11 @@ func fenceTag(line string) string {
 	return ""
 }
 
+const pythonExt = ".py"
+
 var (
 	scriptExts = map[string]bool{
-		".sh": true, ".bash": true, ".zsh": true, ".py": true, ".js": true,
+		".sh": true, ".bash": true, ".zsh": true, pythonExt: true, ".js": true,
 		".mjs": true, ".ts": true, ".rb": true, ".pl": true, ".ps1": true,
 		".bat": true, ".cmd": true,
 	}

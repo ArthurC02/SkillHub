@@ -42,7 +42,7 @@ logger = logging.getLogger("skillhub_llm.generate")
 router = APIRouter()
 
 GENERATE_SKILL_MODEL = os.getenv("GENERATE_SKILL_MODEL") or "skillhub-generate"
-GENERATE_SKILL_PROMPT_VERSION = "generate-skill/v5"
+GENERATE_SKILL_PROMPT_VERSION = "generate-skill/v7"
 
 # budget-ceiling: generate.LLM_TIMEOUT_SECONDS
 LLM_TIMEOUT_SECONDS = 120.0
@@ -171,10 +171,12 @@ class GenerateSkillResponse(BaseModel):
     usage: GatewayUsage | None = None
 
 
-FIELD_RULES = """- `name`: lowercase letters, digits and single hyphens, at most 64 characters.
+FIELD_RULES = """- `name`: lowercase letters, digits and single hyphens, at most 64 characters,
+  saying what the skill does; never anthropic or claude in it.
 - `description`: what the skill does AND when to use it, in one or two sentences.
   This is the only thing an agent sees when deciding whether to load the skill, so
-  say the trigger, not just the capability.
+  say the trigger, not just the capability. Write it in the third person (never I
+  or you), name the words a request would use, and never put an XML tag in it.
 - `compatibility`: environment requirements. An empty string when there are
   none - not "none", not "N/A"; the field is written into the package as-is.
 - `allowed_tools`: a single space-separated string of tool names, only if the
@@ -183,12 +185,15 @@ FIELD_RULES = """- `name`: lowercase letters, digits and single hyphens, at most
   can follow. No placeholders for someone to fill in later, no "TODO", no
   "insert X here" - if you do not know a value, write instructions for finding it.
   Give each step only as much detail as doing it another way would cost: a goal
-  where many approaches work, an exact command where the result must not vary."""
+  where many approaches work, an exact command where the result must not vary.
+  Give one default method and the case that calls for another, not a menu; use
+  one term per concept; write nothing that goes stale with time."""
 
 PREFER_INSTRUCTIONS_RULE = """\
 - `files`: only when a script genuinely does the work better than instructions.
   Prefer instructions. Link every Markdown file directly from `body`, and open
-  one longer than 100 lines with a contents list."""
+  one longer than 100 lines with a contents list. Name each file for what it
+  holds, and have `body` say whether to run it (with the command) or read it."""
 
 SYSTEM_PROMPT = (
     """You write one Agent Skill from a description of a task.

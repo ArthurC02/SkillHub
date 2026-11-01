@@ -49,7 +49,7 @@ func (d *depScan) note(p string) {
 
 func (d *depScan) observe(p, content string) {
 	switch strings.ToLower(path.Ext(p)) {
-	case ".py":
+	case pythonExt:
 		d.observePython(content)
 	case ".js", ".mjs", ".cjs", ".ts":
 		d.observeJS(content)

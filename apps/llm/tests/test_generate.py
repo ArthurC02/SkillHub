@@ -83,7 +83,7 @@ def test_generates_a_skill_and_reports_its_own_provenance(capture):
 
     assert body["skill"]["name"] == "scanned-invoice-table"
     assert body["model"] == "skillhub-generate"
-    assert body["prompt_version"] == "generate-skill/v5"
+    assert body["prompt_version"] == "generate-skill/v7"
     assert body["usage"]["cost_usd"] == pytest.approx(0.0055)
     assert calls[0]["max_tokens"] == 16000
 
@@ -308,7 +308,7 @@ def test_four_references_is_422(capture):
 def test_prompt_version_reported_is_v4(capture):
     capture(json.dumps(GOOD_SKILL))
     body = client.post("/v1/generate-skill", json={"task_description": TASK}).json()
-    assert body["prompt_version"] == "generate-skill/v5"
+    assert body["prompt_version"] == "generate-skill/v7"
 
 
 def test_a_short_caption_beside_a_diagram_is_accepted(capture):
@@ -393,3 +393,21 @@ def test_the_model_is_told_how_to_lay_out_references_and_how_much_detail_each_st
     assert "Link every Markdown file directly from `body`" in system
     assert "longer than 100 lines with a contents list" in system
     assert "an exact command where the result must not vary" in system
+
+
+def test_the_model_is_told_how_to_name_and_describe_the_skill(capture):
+    calls = capture(json.dumps(GOOD_SKILL))
+    client.post("/v1/generate-skill", json={"task_description": TASK})
+    system = calls[0]["messages"][0]["content"]
+    assert "never anthropic or claude in it" in system
+    assert "Write it in the third person (never I" in system
+    assert "never put an XML tag in it" in system
+
+
+def test_the_model_is_told_to_name_files_and_say_how_each_is_used(capture):
+    calls = capture(json.dumps(GOOD_SKILL))
+    client.post("/v1/generate-skill", json={"task_description": TASK})
+    system = calls[0]["messages"][0]["content"]
+    assert "Name each file for what it" in system
+    assert "whether to run it (with the command) or read it" in system
+    assert "not a menu" in system

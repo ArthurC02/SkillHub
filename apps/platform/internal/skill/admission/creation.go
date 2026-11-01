@@ -209,7 +209,7 @@ func (s *Service) ValidateCreationDraft(ctx context.Context, draft GeneratedSkil
 	if err != nil {
 		return CreationDraftCheck{Blocked: true}, err
 	}
-	prepared.report.RequireLayout()
+	prepared.report.RequireAuthoringRules()
 	report, err := json.Marshal(prepared.report)
 	return CreationDraftCheck{ContentHash: prepared.contentHash, Report: string(report), Blocked: prepared.report.Blocked}, err
 }

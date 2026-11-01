@@ -38,6 +38,18 @@ func TestACreationDraftWhoseReferenceIsOnlyReachableThroughAnotherIsRefusedWithT
 	}
 }
 
+func TestACreationDraftNamedWithAReservedWordIsRefused(t *testing.T) {
+	g := goodGeneratedSkill()
+	g.Name = "claude-invoice-table"
+	check, err := (&Service{}).ValidateCreationDraft(context.Background(), g)
+	if err != nil || !check.Blocked {
+		t.Fatalf("blocked=%v err=%v, want the reserved word to block the draft", check.Blocked, err)
+	}
+	if !strings.Contains(check.Report, `"severity":"error","code":"name-reserved-word"`) {
+		t.Fatalf("the refusal does not name the reserved word as an error: %s", check.Report)
+	}
+}
+
 func TestACreationDraftKeepsOtherWarningsAsWarnings(t *testing.T) {
 	g := goodGeneratedSkill()
 	g.Body += "3. 讀 references/missing.md。\n"

@@ -1116,6 +1116,34 @@ def test_the_compose_prompt_states_the_layout_go_refuses_and_how_steps_are_writt
     assert "the step to return to when its check fails" in system
 
 
+def test_the_prompt_says_how_to_name_and_describe_the_skill():
+    response, calls = invoke(
+        request(brief="agreed", brief_confirmed=True),
+        decision(outcome="draft", draft=SKILL),
+    )
+    assert response.status_code == 200
+    system = calls[0]["messages"][0]["content"]
+    assert "never contain anthropic or claude" in system
+    assert "write it in the third person" in system
+    assert "never put an XML tag in it" in system
+
+
+def test_the_compose_prompt_asks_for_examples_named_files_and_safe_batch_changes():
+    response, calls = invoke(
+        request(brief="agreed", brief_confirmed=True),
+        decision(outcome="draft", draft=SKILL),
+    )
+    assert response.status_code == 200
+    system = calls[0]["messages"][0]["content"]
+    assert "ship one to three concrete pairs in references/examples.md" in system
+    assert "tier_rules.md, not doc2.md" in system
+    assert "whether the agent runs it (with the command) or reads it" in system
+    assert "never a menu of options" in system
+    assert "writes the planned changes to a file, checks that file" in system
+    assert "Write nothing that goes stale with time" in system
+    assert "every threshold and rate a named constant" in system
+
+
 @pytest.mark.parametrize(("offered", "status"), [(64, 200), (65, 422)])
 def test_the_offered_mcp_tool_list_is_capped_by_the_contract(offered, status):
     response, _ = invoke(request(mcp_tools=mcp_tools(offered)), decision())

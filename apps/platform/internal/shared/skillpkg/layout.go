@@ -13,9 +13,16 @@ const (
 	CodeSkillBodyTooLong         = "skill-body-too-long"
 	CodeNestedReference          = "nested-reference"
 	CodeReferenceWithoutContents = "reference-without-contents"
+	CodeBackslashPath            = "backslash-path"
+	CodeNameReservedWord         = "name-reserved-word"
+	CodeDescriptionXMLTag        = "description-xml-tag"
+	CodeUnmentionedFile          = "unmentioned-file"
 )
 
-var layoutCodes = []string{CodeSkillBodyTooLong, CodeNestedReference, CodeReferenceWithoutContents}
+var authoringCodes = []string{
+	CodeSkillBodyTooLong, CodeNestedReference, CodeReferenceWithoutContents,
+	CodeBackslashPath, CodeNameReservedWord, CodeDescriptionXMLTag,
+}
 
 const (
 	maxSkillBodyLines         = 500
@@ -25,11 +32,13 @@ const (
 
 var contentsHeading = regexp.MustCompile(`(?i)^#{1,6}\s*(contents|table of contents|toc|目錄|目录|目次)\s*$`)
 
+var backslashRef = regexp.MustCompile(`(?:^|[\s"'` + "`" + `(<\[])((?:[A-Za-z0-9._-]+\\)+[A-Za-z0-9._-]+\.[A-Za-z0-9]{1,8})`)
+
 var anchorListItem = regexp.MustCompile(`^\s*(?:[-*+]|\d+\.)\s+\[[^\]]+\]\(#[^)]+\)`)
 
-func (r *Report) RequireLayout() {
+func (r *Report) RequireAuthoringRules() {
 	for i, f := range r.Findings {
-		if slices.Contains(layoutCodes, f.Code) {
+		if slices.Contains(authoringCodes, f.Code) {
 			r.Findings[i].Severity = SeverityError
 			r.Blocked = true
 		}
@@ -42,12 +51,14 @@ func (r *Report) checkLayout(fsys fs.FS, body string) {
 			"SKILL.md 本文有 %d 行，超過 %d 行；本文應只是導覽，把規則表、範本、範例與背景移到 references/ 下的檔案，從本文直接連結。",
 			n, maxSkillBodyLines))
 	}
+	r.checkBackslashPaths(fsys, body)
 	refs, _ := referencedPaths(fsys, body)
 	direct := map[string]bool{skillMDPath: true}
 	for _, ref := range refs {
 		direct[ref] = true
 	}
 	nested := map[string]bool{}
+	instructions := []string{body}
 	for _, ref := range refs {
 		if !isMarkdown(ref) {
 			continue
@@ -58,6 +69,7 @@ func (r *Report) checkLayout(fsys fs.FS, body string) {
 		}
 		content := string(data)
 		r.checkContentsList(ref, content)
+		instructions = append(instructions, content)
 		for _, target := range markdownLinksFrom(fsys, ref, content) {
 			if direct[target] || nested[target] {
 				continue
@@ -67,6 +79,71 @@ func (r *Report) checkLayout(fsys fs.FS, body string) {
 				"%s 只能從 %s 連到，SKILL.md 沒有直接連結它；執行時可能只讀到它的開頭。請從 SKILL.md 直接連結，並寫一句何時要讀。",
 				target, ref))
 		}
+	}
+	r.checkUnmentionedFiles(fsys, strings.Join(instructions, "\n"))
+}
+
+var instructionFolders = []string{"scripts", "references"}
+
+func (r *Report) checkUnmentionedFiles(fsys fs.FS, instructions string) {
+	var candidates []string
+	scripts := map[string]string{}
+	EachReadableFile(fsys, func(p string, _ fs.DirEntry) {
+		folder, _, _ := strings.Cut(p, "/")
+		if !slices.Contains(instructionFolders, folder) || path.Base(p) == "__init__.py" ||
+			!scriptExts[strings.ToLower(path.Ext(p))] && !isMarkdown(p) {
+			return
+		}
+		candidates = append(candidates, p)
+		if folder == "scripts" {
+			if data, err := readCapped(fsys, p, int64(maxEntryBytes)); err == nil {
+				scripts[p] = string(data)
+			}
+		}
+	})
+	for _, p := range candidates {
+		if mentionedIn(instructions, p) || importedByAnotherScript(scripts, p) {
+			continue
+		}
+		r.add(SeverityWarning, CodeUnmentionedFile, p, fmt.Sprintf(
+			"SKILL.md 與它連結的檔案都沒有提到 %s；Agent 不會知道要執行或閱讀它。請在本文說明何時執行（附指令）或何時閱讀。", p))
+	}
+}
+
+func mentionedIn(text, p string) bool {
+	module := strings.TrimSuffix(strings.ReplaceAll(p, "/", "."), path.Ext(p))
+	return strings.Contains(text, path.Base(p)) || strings.Contains(text, module)
+}
+
+func importedByAnotherScript(scripts map[string]string, p string) bool {
+	if path.Ext(p) != pythonExt {
+		return false
+	}
+	stem := strings.TrimSuffix(path.Base(p), pythonExt)
+	imports := regexp.MustCompile(`\b(?:import|from)\s+[\w.]*\b` + regexp.QuoteMeta(stem) + `\b`)
+	for other, content := range scripts {
+		if other != p && imports.MatchString(content) {
+			return true
+		}
+	}
+	return false
+}
+
+func (r *Report) checkBackslashPaths(fsys fs.FS, body string) {
+	seen := map[string]bool{}
+	for _, m := range backslashRef.FindAllStringSubmatch(body, -1) {
+		written := m[1]
+		if seen[written] {
+			continue
+		}
+		dir, _, _ := strings.Cut(written, `\`)
+		if info, err := fs.Stat(fsys, dir); err != nil || !info.IsDir() {
+			continue
+		}
+		seen[written] = true
+		r.add(SeverityWarning, CodeBackslashPath, skillMDPath, fmt.Sprintf(
+			"SKILL.md 用反斜線寫了路徑 %q；在 Linux 與 macOS 上找不到這個檔案，請改寫成 %q。",
+			written, strings.ReplaceAll(written, `\`, "/")))
 	}
 }
 
