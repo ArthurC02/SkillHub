@@ -1,4 +1,4 @@
-import AxeBuilder from "@axe-core/playwright";
+import AxeBuilder from "./axe";
 import { expect, test, type Page, type Request } from "@playwright/test";
 import { writeFile } from "node:fs/promises";
 import { createServer } from "node:http";

@@ -1,4 +1,4 @@
-import AxeBuilder from "@axe-core/playwright";
+import AxeBuilder from "./axe";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
 import { writeFile } from "node:fs/promises";
 import { TEST_CASE, TEST_CASE_DRAFT } from "../src/testing/fixtures/platform";

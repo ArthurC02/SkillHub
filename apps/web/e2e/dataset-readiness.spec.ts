@@ -1,6 +1,6 @@
 import { setOffline } from "./offline";
 import { expect, test } from "@playwright/test";
-import AxeBuilder from "@axe-core/playwright";
+import AxeBuilder from "./axe";
 import { TEST_CASE, VERSION } from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";
 import type { Dataset } from "../src/features/lab/lab.service";

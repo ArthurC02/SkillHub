@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import AxeBuilder from "@axe-core/playwright";
+import AxeBuilder from "./axe";
 import { SKILL, TEST_CASE, VERSION, RUN, platformResponse } from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";
 

@@ -1,5 +1,6 @@
 import { test, expect, type Page, type TestInfo } from "@playwright/test";
-import AxeBuilder from "@axe-core/playwright";
+import RealAxeBuilder from "@axe-core/playwright";
+import AxeBuilder from "./axe";
 import {
   ADMIN_AGENTS,
   ADMIN_AGENT_FINDING,
@@ -243,7 +244,7 @@ test.describe("QA-008 composite pixels", () => {
         await expect(page.locator(".notice")).toHaveCount(2);
       }
 
-      const results = await new AxeBuilder({ page }).withRules(["color-contrast"]).analyze();
+      const results = await new RealAxeBuilder({ page }).withRules(["color-contrast"]).analyze();
 
       expect(
         results.incomplete.filter((r) => r.id === "color-contrast"),

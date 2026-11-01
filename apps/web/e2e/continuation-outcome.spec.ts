@@ -1,4 +1,4 @@
-import AxeBuilder from "@axe-core/playwright";
+import AxeBuilder from "./axe";
 import { expect, test, type Page } from "@playwright/test";
 import { RUN, RUNS, TRACE_GENERAL, platformResponse } from "../src/testing/fixtures/platform";
 import { STATIC_KINDS, serveStatic, stubPlatform } from "./stub";

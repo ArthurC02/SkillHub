@@ -1,5 +1,5 @@
 import { setOffline } from "./offline";
-import AxeBuilder from "@axe-core/playwright";
+import AxeBuilder from "./axe";
 import { writeFile } from "node:fs/promises";
 import { expect, test, type Page } from "@playwright/test";
 import { platformResponse, SKILL, VERSION } from "../src/testing/fixtures/platform";

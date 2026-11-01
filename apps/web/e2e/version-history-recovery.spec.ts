@@ -1,6 +1,6 @@
 import { setOffline } from "./offline";
 import { expect, test, type Page } from "@playwright/test";
-import AxeBuilder from "@axe-core/playwright";
+import AxeBuilder from "./axe";
 import { SKILL, SKILL_VERSIONS } from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";
 

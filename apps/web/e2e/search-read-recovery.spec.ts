@@ -1,4 +1,4 @@
-import AxeBuilder from "@axe-core/playwright";
+import AxeBuilder from "./axe";
 import { expect, test } from "@playwright/test";
 import { SEARCH, SKILL, SKILL_B } from "../src/testing/fixtures/platform";
 import { emptySearchIntent } from "../src/core/api/searchIntent";

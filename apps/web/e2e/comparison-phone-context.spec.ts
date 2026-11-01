@@ -1,4 +1,4 @@
-import AxeBuilder from "@axe-core/playwright";
+import AxeBuilder from "./axe";
 import { expect, test } from "@playwright/test";
 import { OTHER_RUN, RUN, SKILL, SKILL_B, SKILL_C } from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";

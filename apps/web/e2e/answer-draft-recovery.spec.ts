@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import AxeBuilder from "@axe-core/playwright";
+import AxeBuilder from "./axe";
 import { RUN, TRACE_GENERAL, ACTIVITY } from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";
 

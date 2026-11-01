@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import AxeBuilder from "@axe-core/playwright";
+import AxeBuilder from "./axe";
 import { writeFile } from "node:fs/promises";
 import { RUN, SKILL, SUGGESTIONS } from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";

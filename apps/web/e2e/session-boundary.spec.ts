@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { platformResponse } from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";
-import AxeBuilder from "@axe-core/playwright";
+import AxeBuilder from "./axe";
 
 for (const response of ["lost", "server-error"]) {
   for (const currentSession of ["signed-out", "unavailable"]) {

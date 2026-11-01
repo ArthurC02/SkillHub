@@ -3,7 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { platformResponse, SKILL, VERSION } from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";
 import type { ImportResult } from "../src/core/api/types";
-import AxeBuilder from "@axe-core/playwright";
+import AxeBuilder from "./axe";
 import { writeFile } from "node:fs/promises";
 
 const draft = "https://github.com/example/private-draft";

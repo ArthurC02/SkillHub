@@ -1,4 +1,4 @@
-import AxeBuilder from "@axe-core/playwright";
+import AxeBuilder, { auditsAccessibility } from "./axe";
 import { writeFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 import { ROUTES } from "./routes";
@@ -10,6 +10,7 @@ for (const [name, url] of ROUTES) {
     { name: "phone-dark", width: 375, colorScheme: "dark" },
   ] as const) {
     test(`${name} has accessible rendered content in ${view.name}`, async ({ page }) => {
+      test.skip(!auditsAccessibility(test.info()), "axe runs on the Linux chromium project only");
       await stubPlatform(page);
       await page.emulateMedia({ colorScheme: view.colorScheme, reducedMotion: "reduce" });
       await page.setViewportSize({ width: view.width, height: 900 });

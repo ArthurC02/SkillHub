@@ -3,7 +3,7 @@ import {
   EvaluationGraderRevisionInstructionsMaxLength,
   SetEvaluationFeedbackBodyCommentMaxLength,
 } from "@skillhub/api-client-ts/limits";
-import AxeBuilder from "@axe-core/playwright";
+import AxeBuilder from "./axe";
 import { expect, test, type Page, type Route, type TestInfo } from "@playwright/test";
 import { writeFile } from "node:fs/promises";
 import {
