@@ -11,6 +11,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/operations"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission/mcptools"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
@@ -41,6 +42,7 @@ type Deps struct {
 	Eval            *eval.Handler
 	EvalBatches     *batch.BatchHandler
 	Graders         *eval.GraderHandler
+	MCPTools        *mcptools.Service
 	Packaging       *packaging.Handler
 	Publishing      *publishing.Handler
 	Activity        *activityHandler
@@ -232,6 +234,9 @@ func mountOperatorRoutes(mux *http.ServeMux, d Deps) {
 	mux.HandleFunc("GET /admin/evaluation/graders", auth.RequireOperator(d.Graders.ListPlatformGraders))
 	mux.HandleFunc("POST /admin/evaluation/graders", auth.RequireOperator(d.Graders.CreatePlatformGrader))
 	mux.HandleFunc("POST /admin/evaluation/graders/{id}/versions", auth.RequireOperator(d.Graders.RevisePlatformGrader))
+	mux.HandleFunc("GET /admin/mcp-tools", auth.RequireOperator(d.MCPTools.ListTools))
+	mux.HandleFunc("POST /admin/mcp-tools", auth.RequireOperator(d.MCPTools.AddTool))
+	mux.HandleFunc("POST /admin/mcp-tools/{id}/retire", auth.RequireOperator(d.MCPTools.RetireTool))
 	mux.HandleFunc("PUT /admin/settings/judge-panel", auth.RequireOperator(d.Settings.SetJudgePanel))
 	mux.HandleFunc("PUT /admin/settings/injection-check", auth.RequireOperator(d.Settings.SetInjectionCheck))
 	mux.HandleFunc("GET /admin/settings/runs", auth.RequireOperator(d.RunSettings.Get))

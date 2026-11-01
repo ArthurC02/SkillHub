@@ -62,6 +62,13 @@ const (
 	ListSkillsOffsetMaximum                                   = 2147483647
 	ListTestCasesLimitMaximum                                 = 101
 	ListWorkspaceActivityLimitMaximum                         = 100
+	MCPToolDraftNoteMaxLength                                 = 500
+	MCPToolDraftParametersMaxLength                           = 1000
+	MCPToolDraftPurposeMaxLength                              = 500
+	MCPToolDraftServerMaxLength                               = 64
+	MCPToolDraftServerUrlMaxLength                            = 500
+	MCPToolDraftToolMaxLength                                 = 64
+	MCPToolRetirementNoteMaxLength                            = 500
 	MovePlatformAgentFindingBodyNoteMaxLength                 = 1000
 	PublicSearchResultRankMaximum                             = 1
 	PublicSearchSkillsLimitMaximum                            = 100

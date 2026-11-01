@@ -736,6 +736,90 @@ export function useInjectionCheckSwitch() {
   });
 }
 
+export type MCPTool = {
+  id: string;
+  reference: string;
+  server: string;
+  tool: string;
+  purpose: string;
+  parameters: string;
+  server_url: string;
+  reason: string;
+  created_at: string;
+  retired_at?: string;
+  retire_reason?: string;
+};
+
+const MCP_TOOL_TEXT_FIELDS = [
+  "id",
+  "reference",
+  "server",
+  "tool",
+  "purpose",
+  "parameters",
+  "server_url",
+  "reason",
+] as const;
+
+function isMCPTool(value: unknown): value is MCPTool {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const tool = value as Record<string, unknown>;
+  const retired = tool.retired_at !== undefined || tool.retire_reason !== undefined;
+  return (
+    MCP_TOOL_TEXT_FIELDS.every((field) => typeof tool[field] === "string") &&
+    typeof tool.created_at === "string" &&
+    Number.isFinite(Date.parse(tool.created_at)) &&
+    (!retired ||
+      (typeof tool.retired_at === "string" &&
+        Number.isFinite(Date.parse(tool.retired_at)) &&
+        typeof tool.retire_reason === "string"))
+  );
+}
+
+export async function getMCPTools() {
+  const result = await apiFetch<unknown>("/admin/mcp-tools");
+  const tools = (result as { tools?: unknown } | null)?.tools;
+  if (!Array.isArray(tools) || !tools.every(isMCPTool)) {
+    throw new Error("Invalid MCP tool list response");
+  }
+  return tools;
+}
+
+export function useMCPTools() {
+  return useQuery({
+    queryKey: queryKeys.admin.mcpTools,
+    queryFn: getMCPTools,
+    enabled: useOperator(),
+  });
+}
+
+export type MCPToolDraft = Pick<
+  MCPTool,
+  "server" | "tool" | "purpose" | "parameters" | "server_url"
+> & {
+  note: string;
+};
+
+export function useAddMCPTool() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: MCPToolDraft) => apiFetch<unknown>("/admin/mcp-tools", send("POST", body)),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.mcpTools }),
+  });
+}
+
+export function useRetireMCPTool() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, note }: { id: string; note: string }) =>
+      apiFetch<unknown>(
+        `/admin/mcp-tools/${encodeURIComponent(id)}/retire`,
+        send("POST", { note }),
+      ),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.mcpTools }),
+  });
+}
+
 export function useJudgePanelSwitch() {
   const queryClient = useQueryClient();
   return useMutation({

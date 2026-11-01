@@ -133,6 +133,7 @@ export const queryKeys = {
     modelBudgets: ["admin", "model-budgets"],
     agents: ["admin", "agents"],
     settings: ["admin", "settings"],
+    mcpTools: ["admin", "mcp-tools"],
     runSettings: ["admin", "settings", "runs"],
     agentRuns: ["admin", "agents", "runs"],
     agentRun: (id: string) => ["admin", "agents", "runs", "one", id],

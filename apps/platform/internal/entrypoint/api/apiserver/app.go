@@ -27,6 +27,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/learning"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/operations"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission/mcptools"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
@@ -363,6 +364,7 @@ func newDeps(cfg Config, app *App, creditSvc *credit.Service, funnel *analytics.
 		Eval:            &eval.Handler{Svc: evalSvc, Identity: auth.Service},
 		EvalBatches:     &batch.BatchHandler{Svc: app.EvalBatches, Identity: auth.Service},
 		Graders:         &eval.GraderHandler{Svc: &graders.Service{Pool: cfg.Pool}, Identity: auth.Service},
+		MCPTools:        &mcptools.Service{Pool: cfg.Pool},
 		Packaging:       &packaging.Handler{Svc: app.PackagingSvc, Identity: auth.Service},
 		Activity:        &activityHandler{Svc: app.ActivitySvc, Identity: identitySvc},
 		Credits: &creditsHandler{

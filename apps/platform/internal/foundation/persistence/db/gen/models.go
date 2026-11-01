@@ -876,6 +876,28 @@ type MaintenanceJobRun struct {
 	SucceededAt pgtype.Timestamptz
 }
 
+// The MCP tools operators allow Skills to declare. A Skill names one in allowed-tools as mcp__<server>__<tool>; a name not listed here is not a tool the platform offers.
+type McpTool struct {
+	ID pgtype.UUID
+	// The server part of the reference name: lowercase letters and digits in hyphen-separated words, so the double underscore of the reference never appears inside it.
+	Server string
+	// The tool name the server advertises, words joined by single underscores or hyphens.
+	Tool string
+	// What the tool does, written for the creator choosing it and for the creation model.
+	Purpose string
+	// A summary of the tool's parameters; empty when it takes none.
+	Parameters string
+	// The HTTPS address of the server: what identifies the tool, since a name alone can be pointed anywhere.
+	ServerUrl string
+	// Why an operator added the tool.
+	Reason    string
+	CreatedAt pgtype.Timestamptz
+	// When an operator withdrew the tool; a retired row stays so the history of what was offered is kept.
+	RetiredAt pgtype.Timestamptz
+	// Why the tool was withdrawn; present exactly when retired_at is.
+	RetireReason *string
+}
+
 // An operator-set per-call ceiling for one model endpoint (02:OPS-009). An absent row means the compiled default. Which kinds exist, and how far below the compiled deadline a value may sit, are decided in Go; this table stores a number and who set it.
 type ModelCallBudget struct {
 	// The model endpoint the ceiling applies to: one of enrich-skill, generate-skill, analyze-intent, match-reasons, suggest-criteria, judge-run or suggest-improvements.

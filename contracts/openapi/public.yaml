@@ -5967,6 +5967,80 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /admin/mcp-tools:
+    get:
+      operationId: listMCPTools
+      summary: The MCP tools Skills may declare, retired ones included (SKILL-007)
+      description: Operator only. Unretired tools come first.
+      responses:
+        "200":
+          description: Every tool operators have listed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MCPToolList" }
+        "404":
+          description: The caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    post:
+      operationId: addMCPTool
+      summary: Allow Skills to declare one more MCP tool (SKILL-007)
+      description: Operator only. The row and its audit event are written in one transaction.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MCPToolDraft" }
+      responses:
+        "201":
+          description: The listed tool.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MCPTool" }
+        "400":
+          description: A field is blank, too long or not in its allowed form, the address is not HTTPS, or the note is blank.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: An unretired tool already has that server and tool name.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /admin/mcp-tools/{id}/retire:
+    post:
+      operationId: retireMCPTool
+      summary: Withdraw an MCP tool from the list (SKILL-007)
+      description: Operator only. The row stays with its reason; Skills that declare it are warned from then on.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MCPToolRetirement" }
+      responses:
+        "200":
+          description: The retired tool.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MCPTool" }
+        "400":
+          description: The note is blank.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The caller is not an operator, or no unretired tool has that id.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /runs/{id}/evaluation:
     get:
       operationId: getRunEvaluation
@@ -10929,6 +11003,47 @@ components:
           type: string
           minLength: 1
           description: What this version changes; kept with the version and in the audit trail.
+    MCPToolRetirement:
+      type: object
+      additionalProperties: false
+      required: [note]
+      properties:
+        note: { type: string, minLength: 1, maxLength: 500 }
+    MCPToolDraft:
+      type: object
+      additionalProperties: false
+      required: [server, tool, purpose, parameters, server_url, note]
+      properties:
+        server: { type: string, minLength: 1, maxLength: 64, pattern: "^[a-z0-9]+(-[a-z0-9]+)*$" }
+        tool: { type: string, minLength: 1, maxLength: 64, pattern: "^[A-Za-z0-9]+([_-][A-Za-z0-9]+)*$" }
+        purpose: { type: string, minLength: 1, maxLength: 500 }
+        parameters: { type: string, maxLength: 1000 }
+        server_url: { type: string, minLength: 9, maxLength: 500, pattern: '^https://[^\s/?#]+' }
+        note: { type: string, minLength: 1, maxLength: 500 }
+    MCPTool:
+      type: object
+      required: [id, reference, server, tool, purpose, parameters, server_url, reason, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        reference:
+          type: string
+          description: The name a Skill writes in allowed-tools, mcp__ then the server, two underscores and the tool.
+        server: { type: string }
+        tool: { type: string }
+        purpose: { type: string }
+        parameters: { type: string }
+        server_url: { type: string }
+        reason: { type: string }
+        created_at: { type: string, format: date-time }
+        retired_at: { type: string, format: date-time }
+        retire_reason: { type: string }
+    MCPToolList:
+      type: object
+      required: [tools]
+      properties:
+        tools:
+          type: array
+          items: { $ref: "#/components/schemas/MCPTool" }
     EvaluationGraderDraft:
       allOf:
         - $ref: "#/components/schemas/EvaluationGraderRevision"

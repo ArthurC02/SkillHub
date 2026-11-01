@@ -25,6 +25,7 @@ files:
   search.sql: catalog
   skill_fork.sql: registry
   skill_import.sql: ingest
+  mcp_tools.sql: ingest
   skill_versions.sql: registry
   skills.sql: registry
   test_lab.sql: testlab
@@ -298,6 +299,8 @@ scope:
   SetEvaluationInjectionCheck: platform-wide
   SetRunSettings: platform-wide
   SetRunModelBudgetSetting: platform-wide
+  InsertMCPTool: platform-wide
+  RetireMCPTool: platform-wide
   SetRunRateLimitSetting: platform-wide
   EngagePlatformAgentBrake: platform-wide
   StartPlatformAgentRun: platform-wide
@@ -547,13 +550,13 @@ raw_sql_allow:
   apps/platform/internal/foundation/observability/capacity/capacity.go@tableSizes: reads PostgreSQL size catalogs rather than a domain table
   apps/platform/internal/foundation/persistence/partition/partition.go@childPartitions: reads PostgreSQL partition catalogs rather than a domain table
   apps/platform/internal/foundation/persistence/partition/partition.go@createMonth: creates validated monthly partitions through PostgreSQL DDL
-
-tables:
-  users: identity
   apps/platform/internal/foundation/persistence/testschema/testschema.go@Prepare: clones and drops the test binary's private database through PostgreSQL DDL
   apps/platform/internal/foundation/persistence/testschema/testschema.go@ensureTemplate: reads the PostgreSQL database catalog for the migrated template
   apps/platform/internal/foundation/persistence/testschema/testschema.go@buildTemplate: creates the migrated template database through PostgreSQL DDL
   apps/platform/internal/foundation/persistence/testschema/testschema.go@dropStaleTemplates: reads the database catalog and drops templates of superseded migrations
+
+tables:
+  users: identity
   user_identities: identity
   sessions: identity
   workspaces: identity
@@ -562,6 +565,7 @@ tables:
   skill_runtime_compatibility: registry
   object_collection_queue: registry
   skill_sources: ingest
+  mcp_tools: ingest
   generation_leases: ingest
   search_documents: catalog
   test_cases: testlab
@@ -653,6 +657,7 @@ retention:
   dispatch_halts: keep operator declarations
   model_call_budgets: keep operator configuration
   evaluation_settings: keep operator configuration
+  mcp_tools: keep operator configuration; a retired tool stays as history
   run_continuations: keep the link between two permanent runs
   run_settings: keep operator configuration
   run_model_budget_setting: keep operator configuration

@@ -76,6 +76,8 @@ const (
 	ActionEvaluationSettingsSet = "evaluation_settings.set"
 	ActionRunSettingsSet        = "run_settings.set"
 	ActionGraderVersionCreate   = "evaluation_grader.version_create"
+	ActionMCPToolAdd            = "mcp_tool.add"
+	ActionMCPToolRetire         = "mcp_tool.retire"
 
 	ActionCreditGrant   = "credit.grant"
 	ActionAccountLookup = "account.lookup"
@@ -136,6 +138,7 @@ const (
 	ResourceEvaluationSettings = "evaluation_settings"
 	ResourceRunSettings        = "run_settings"
 	ResourceEvaluationGrader   = "evaluation_grader"
+	ResourceMCPTool            = "mcp_tool"
 
 	ResourceCreditAccount = "credit_account"
 

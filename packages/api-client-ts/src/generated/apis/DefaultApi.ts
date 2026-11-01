@@ -554,6 +554,26 @@ import {
     ListTestCases200ResponseToJSON,
 } from '../models/ListTestCases200Response';
 import {
+    type MCPTool,
+    MCPToolFromJSON,
+    MCPToolToJSON,
+} from '../models/MCPTool';
+import {
+    type MCPToolDraft,
+    MCPToolDraftFromJSON,
+    MCPToolDraftToJSON,
+} from '../models/MCPToolDraft';
+import {
+    type MCPToolList,
+    MCPToolListFromJSON,
+    MCPToolListToJSON,
+} from '../models/MCPToolList';
+import {
+    type MCPToolRetirement,
+    MCPToolRetirementFromJSON,
+    MCPToolRetirementToJSON,
+} from '../models/MCPToolRetirement';
+import {
     type Me,
     MeFromJSON,
     MeToJSON,
@@ -895,6 +915,13 @@ export interface AddAcceptanceCriterionOperationRequest {
      * 
      */
     addAcceptanceCriterionRequest: AddAcceptanceCriterionRequest;
+}
+
+export interface AddMCPToolRequest {
+    /**
+     * 
+     */
+    mCPToolDraft: MCPToolDraft;
 }
 
 export interface BrowseCatalogRequest {
@@ -1911,6 +1938,17 @@ export interface ResumeEvaluationBatchRequest {
     batchId: string;
 }
 
+export interface RetireMCPToolRequest {
+    /**
+     * 
+     */
+    id: string;
+    /**
+     * 
+     */
+    mCPToolRetirement: MCPToolRetirement;
+}
+
 export interface ReviewExposureOperationRequest {
     /**
      * 
@@ -2294,6 +2332,30 @@ export interface DefaultApiInterface {
      * Add an acceptance criterion (TEST-003)
      */
     addAcceptanceCriterion(requestParameters: AddAcceptanceCriterionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TestCase>;
+
+    /**
+     * Creates request options for addMCPTool without sending the request
+     * @param {MCPToolDraft} mCPToolDraft 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    addMCPToolRequestOpts(requestParameters: AddMCPToolRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. The row and its audit event are written in one transaction.
+     * @summary Allow Skills to declare one more MCP tool (SKILL-007)
+     * @param {MCPToolDraft} mCPToolDraft 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    addMCPToolRaw(requestParameters: AddMCPToolRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MCPTool>>;
+
+    /**
+     * Operator only. The row and its audit event are written in one transaction.
+     * Allow Skills to declare one more MCP tool (SKILL-007)
+     */
+    addMCPTool(requestParameters: AddMCPToolRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MCPTool>;
 
     /**
      * Creates request options for browseCatalog without sending the request
@@ -4613,6 +4675,28 @@ export interface DefaultApiInterface {
     listGenerationFailures(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GenerationFailures>;
 
     /**
+     * Creates request options for listMCPTools without sending the request
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listMCPToolsRequestOpts(): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. Unretired tools come first.
+     * @summary The MCP tools Skills may declare, retired ones included (SKILL-007)
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    listMCPToolsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MCPToolList>>;
+
+    /**
+     * Operator only. Unretired tools come first.
+     * The MCP tools Skills may declare, retired ones included (SKILL-007)
+     */
+    listMCPTools(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MCPToolList>;
+
+    /**
      * Creates request options for listModelCallBudgets without sending the request
      * @throws {RequiredError}
      * @memberof DefaultApiInterface
@@ -5407,6 +5491,32 @@ export interface DefaultApiInterface {
      * Resume a batch paused for credit (EVAL-014)
      */
     resumeEvaluationBatch(requestParameters: ResumeEvaluationBatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void>;
+
+    /**
+     * Creates request options for retireMCPTool without sending the request
+     * @param {string} id 
+     * @param {MCPToolRetirement} mCPToolRetirement 
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    retireMCPToolRequestOpts(requestParameters: RetireMCPToolRequest): Promise<runtime.RequestOpts>;
+
+    /**
+     * Operator only. The row stays with its reason; Skills that declare it are warned from then on.
+     * @summary Withdraw an MCP tool from the list (SKILL-007)
+     * @param {string} id 
+     * @param {MCPToolRetirement} mCPToolRetirement 
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApiInterface
+     */
+    retireMCPToolRaw(requestParameters: RetireMCPToolRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MCPTool>>;
+
+    /**
+     * Operator only. The row stays with its reason; Skills that declare it are warned from then on.
+     * Withdraw an MCP tool from the list (SKILL-007)
+     */
+    retireMCPTool(requestParameters: RetireMCPToolRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MCPTool>;
 
     /**
      * Creates request options for reviewExposure without sending the request
@@ -6364,6 +6474,55 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async addAcceptanceCriterion(requestParameters: AddAcceptanceCriterionOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TestCase> {
         const response = await this.addAcceptanceCriterionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for addMCPTool without sending the request
+     */
+    async addMCPToolRequestOpts(requestParameters: AddMCPToolRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['mCPToolDraft'] == null) {
+            throw new runtime.RequiredError(
+                'mCPToolDraft',
+                'Required parameter "mCPToolDraft" was null or undefined when calling addMCPTool().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/admin/mcp-tools`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: MCPToolDraftToJSON(requestParameters['mCPToolDraft']),
+        };
+    }
+
+    /**
+     * Operator only. The row and its audit event are written in one transaction.
+     * Allow Skills to declare one more MCP tool (SKILL-007)
+     */
+    async addMCPToolRaw(requestParameters: AddMCPToolRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MCPTool>> {
+        const requestOptions = await this.addMCPToolRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MCPToolFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. The row and its audit event are written in one transaction.
+     * Allow Skills to declare one more MCP tool (SKILL-007)
+     */
+    async addMCPTool(requestParameters: AddMCPToolRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MCPTool> {
+        const response = await this.addMCPToolRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -10956,6 +11115,45 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
     }
 
     /**
+     * Creates request options for listMCPTools without sending the request
+     */
+    async listMCPToolsRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/admin/mcp-tools`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Operator only. Unretired tools come first.
+     * The MCP tools Skills may declare, retired ones included (SKILL-007)
+     */
+    async listMCPToolsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MCPToolList>> {
+        const requestOptions = await this.listMCPToolsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MCPToolListFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. Unretired tools come first.
+     * The MCP tools Skills may declare, retired ones included (SKILL-007)
+     */
+    async listMCPTools(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MCPToolList> {
+        const response = await this.listMCPToolsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for listModelCallBudgets without sending the request
      */
     async listModelCallBudgetsRequestOpts(): Promise<runtime.RequestOpts> {
@@ -12483,6 +12681,63 @@ export class DefaultApi extends runtime.BaseAPI implements DefaultApiInterface {
      */
     async resumeEvaluationBatch(requestParameters: ResumeEvaluationBatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.resumeEvaluationBatchRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for retireMCPTool without sending the request
+     */
+    async retireMCPToolRequestOpts(requestParameters: RetireMCPToolRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling retireMCPTool().'
+            );
+        }
+
+        if (requestParameters['mCPToolRetirement'] == null) {
+            throw new runtime.RequiredError(
+                'mCPToolRetirement',
+                'Required parameter "mCPToolRetirement" was null or undefined when calling retireMCPTool().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/admin/mcp-tools/{id}/retire`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: MCPToolRetirementToJSON(requestParameters['mCPToolRetirement']),
+        };
+    }
+
+    /**
+     * Operator only. The row stays with its reason; Skills that declare it are warned from then on.
+     * Withdraw an MCP tool from the list (SKILL-007)
+     */
+    async retireMCPToolRaw(requestParameters: RetireMCPToolRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<MCPTool>> {
+        const requestOptions = await this.retireMCPToolRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => MCPToolFromJSON(jsonValue));
+    }
+
+    /**
+     * Operator only. The row stays with its reason; Skills that declare it are warned from then on.
+     * Withdraw an MCP tool from the list (SKILL-007)
+     */
+    async retireMCPTool(requestParameters: RetireMCPToolRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<MCPTool> {
+        const response = await this.retireMCPToolRaw(requestParameters, initOverrides);
+        return await response.value();
     }
 
     /**

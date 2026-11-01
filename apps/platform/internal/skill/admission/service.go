@@ -338,6 +338,9 @@ func (s *Service) importZipWithCommit(ctx context.Context, ws identity.Workspace
 	if err != nil || p.report.Blocked {
 		return Result{Report: p.report}, err
 	}
+	if err := checkMCPTools(ctx, s.Pool, &p.report, skillpkg.SeverityWarning); err != nil {
+		return Result{}, err
+	}
 	e := s.enrichPackage(ctx, p, ws.ID)
 
 	tx, release, err := s.beginPackageWrite(ctx, ws, p.objectKey, data)
@@ -407,6 +410,9 @@ func (s *Service) saveVersion(ctx context.Context, ws identity.Workspace, skillI
 	p, err := prepare(data)
 	if err != nil || p.report.Blocked {
 		return Result{Report: p.report}, err
+	}
+	if err := checkMCPTools(ctx, s.Pool, &p.report, skillpkg.SeverityWarning); err != nil {
+		return Result{}, err
 	}
 	res := Result{Report: p.report}
 

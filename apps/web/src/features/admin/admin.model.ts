@@ -28,6 +28,8 @@ export const ACTION_LABEL: Record<string, string> = {
   "evaluation_settings.set": "調整評估設定",
   "run_settings.set": "調整試跑設定",
   "evaluation_grader.version_create": "存一版評分器",
+  "mcp_tool.add": "加入 MCP 工具",
+  "mcp_tool.retire": "退役 MCP 工具",
   "platform_agent_finding.opened": "開了一筆待辦",
   "platform_agent_finding.reopened": "重新打開待辦",
   "platform_agent_finding.recovered": "待辦自行恢復",

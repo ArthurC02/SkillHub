@@ -13,6 +13,10 @@ type AddAcceptanceCriterionRes interface {
 	addAcceptanceCriterionRes()
 }
 
+type AddMCPToolRes interface {
+	addMCPToolRes()
+}
+
 type BrowseCatalogRes interface {
 	browseCatalogRes()
 }
@@ -385,6 +389,10 @@ type ListGenerationFailuresRes interface {
 	listGenerationFailuresRes()
 }
 
+type ListMCPToolsRes interface {
+	listMCPToolsRes()
+}
+
 type ListModelCallBudgetsRes interface {
 	listModelCallBudgetsRes()
 }
@@ -507,6 +515,10 @@ type RestoreSkillRes interface {
 
 type ResumeEvaluationBatchRes interface {
 	resumeEvaluationBatchRes()
+}
+
+type RetireMCPToolRes interface {
+	retireMCPToolRes()
 }
 
 type ReviewExposureRes interface {

@@ -15,6 +15,7 @@ import { ActionForm } from "../components/ActionForm";
 import { useSettingDraft } from "../components/useSettingDraft";
 import { SettingsResult } from "./SettingsResult";
 import { InjectionCheck } from "./InjectionCheck";
+import { MCPTools } from "./MCPTools";
 import { RunModelBudget } from "./RunModelBudget";
 import { RunTokensPerMinute } from "./RunTokensPerMinute";
 import "./AdminSettings.page.css";
@@ -216,7 +217,7 @@ export function AdminSettings() {
   return (
     <AdminPage
       heading="平台設定"
-      lede="調整平台的評估方式、對話限制與試跑花費上限；每次改動都要附理由，並記進動作紀錄。"
+      lede="調整平台的評估方式、對話限制、試跑花費上限與 Skill 可宣告的工具；每次改動都要附理由，並記進動作紀錄。"
     >
       <p className="note">
         每日花費上限與啟停，前往{" "}
@@ -304,6 +305,7 @@ export function AdminSettings() {
             refreshing={settings.isFetching}
           />
         )}
+        <MCPTools />
       </div>
     </AdminPage>
   );

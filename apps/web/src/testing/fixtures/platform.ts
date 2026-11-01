@@ -10,6 +10,7 @@ import type {
   OperatorAuditEvent,
   FindingStatus,
   PlatformAgent,
+  MCPTool,
   PlatformSettings,
   RunSettings,
   PlatformAgentFinding,
@@ -1256,6 +1257,35 @@ export const ADMIN_SETTINGS = {
   injection_check: { enabled: false },
 } satisfies PlatformSettings;
 
+export const ADMIN_MCP_TOOLS = {
+  tools: [
+    {
+      id: "7a1c0000-0000-4000-8000-000000000001",
+      reference: "mcp__calendar__create_event",
+      server: "calendar",
+      tool: "create_event",
+      purpose: "Creates an event on the team calendar.",
+      parameters: "title, start, end",
+      server_url: "https://mcp.example.com/calendar",
+      reason: "sales asked for meeting follow-ups",
+      created_at: "2026-11-01T08:00:00Z",
+    },
+    {
+      id: "7a1c0000-0000-4000-8000-000000000002",
+      reference: "mcp__mail__send",
+      server: "mail",
+      tool: "send",
+      purpose: "Sends an email.",
+      parameters: "",
+      server_url: "https://mcp.example.com/mail",
+      reason: "pilot",
+      created_at: "2026-10-01T08:00:00Z",
+      retired_at: "2026-10-20T08:00:00Z",
+      retire_reason: "the pilot ended",
+    },
+  ],
+} satisfies { tools: MCPTool[] };
+
 export const ADMIN_RUN_SETTINGS = {
   continuation_rounds: { rounds: 3, min: 1, max: 10 },
   model_budget: { credits: 650, default_credits: 650, min_credits: 65, max_credits: 6500 },
@@ -1596,6 +1626,7 @@ const ROUTES: RouteMatcher[] = [
   (path) => (path === "/admin/agents" ? ok(ADMIN_AGENTS) : undefined),
   (path) => (path === "/admin/settings" ? ok(ADMIN_SETTINGS) : undefined),
   (path) => (path === "/admin/settings/runs" ? ok(ADMIN_RUN_SETTINGS) : undefined),
+  (path) => (path === "/admin/mcp-tools" ? ok(ADMIN_MCP_TOOLS) : undefined),
   (path) => (path === "/evaluation/check-kinds" ? ok(CHECK_KINDS) : undefined),
   (path) =>
     path === "/evaluation/graders"

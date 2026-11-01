@@ -572,6 +572,11 @@ type ResumeEvaluationBatchParams struct {
 	BatchId uuid.UUID
 }
 
+// RetireMCPToolParams is parameters of retireMCPTool operation.
+type RetireMCPToolParams struct {
+	ID uuid.UUID
+}
+
 // ReviewExposureParams is parameters of reviewExposure operation.
 type ReviewExposureParams struct {
 	Publisher string

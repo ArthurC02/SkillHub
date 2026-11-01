@@ -151,6 +151,8 @@ const (
 
 	CodeUndeclaredDependency = "undeclared-dependency"
 
+	CodeMCPToolNotOffered = "mcp-tool-not-offered"
+
 	CodeSymlinkEntry = "symlink-entry"
 
 	CodeUnsupportedEntryType = "unsupported-entry-type"

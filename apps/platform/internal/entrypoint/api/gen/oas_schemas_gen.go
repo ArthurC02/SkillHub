@@ -528,6 +528,18 @@ type AddAcceptanceCriterionUnauthorized Error
 
 func (*AddAcceptanceCriterionUnauthorized) addAcceptanceCriterionRes() {}
 
+type AddMCPToolBadRequest Error
+
+func (*AddMCPToolBadRequest) addMCPToolRes() {}
+
+type AddMCPToolConflict Error
+
+func (*AddMCPToolConflict) addMCPToolRes() {}
+
+type AddMCPToolNotFound Error
+
+func (*AddMCPToolNotFound) addMCPToolRes() {}
+
 // Ref: #/components/schemas/AmountTrend
 type AmountTrend struct {
 	From    time.Time     `json:"from"`
@@ -8320,6 +8332,7 @@ func (*Error) listDownloadArtifactsRes()           {}
 func (*Error) listEvaluationBatchesRes()           {}
 func (*Error) listEvaluationGradersRes()           {}
 func (*Error) listExposureQueueRes()               {}
+func (*Error) listMCPToolsRes()                    {}
 func (*Error) listModelCallBudgetsRes()            {}
 func (*Error) listOwnBundleOverviewRes()           {}
 func (*Error) listOwnBundlesRes()                  {}
@@ -15464,6 +15477,237 @@ func (*LookupAccountBadRequest) lookupAccountRes() {}
 type LookupAccountNotFound Error
 
 func (*LookupAccountNotFound) lookupAccountRes() {}
+
+// Ref: #/components/schemas/MCPTool
+type MCPTool struct {
+	ID uuid.UUID `json:"id"`
+	// The name a Skill writes in allowed-tools, mcp__ then the server, two underscores and the tool.
+	Reference    string      `json:"reference"`
+	Server       string      `json:"server"`
+	Tool         string      `json:"tool"`
+	Purpose      string      `json:"purpose"`
+	Parameters   string      `json:"parameters"`
+	ServerURL    string      `json:"server_url"`
+	Reason       string      `json:"reason"`
+	CreatedAt    time.Time   `json:"created_at"`
+	RetiredAt    OptDateTime `json:"retired_at"`
+	RetireReason OptString   `json:"retire_reason"`
+}
+
+// GetID returns the value of ID.
+func (s *MCPTool) GetID() uuid.UUID {
+	return s.ID
+}
+
+// GetReference returns the value of Reference.
+func (s *MCPTool) GetReference() string {
+	return s.Reference
+}
+
+// GetServer returns the value of Server.
+func (s *MCPTool) GetServer() string {
+	return s.Server
+}
+
+// GetTool returns the value of Tool.
+func (s *MCPTool) GetTool() string {
+	return s.Tool
+}
+
+// GetPurpose returns the value of Purpose.
+func (s *MCPTool) GetPurpose() string {
+	return s.Purpose
+}
+
+// GetParameters returns the value of Parameters.
+func (s *MCPTool) GetParameters() string {
+	return s.Parameters
+}
+
+// GetServerURL returns the value of ServerURL.
+func (s *MCPTool) GetServerURL() string {
+	return s.ServerURL
+}
+
+// GetReason returns the value of Reason.
+func (s *MCPTool) GetReason() string {
+	return s.Reason
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *MCPTool) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// GetRetiredAt returns the value of RetiredAt.
+func (s *MCPTool) GetRetiredAt() OptDateTime {
+	return s.RetiredAt
+}
+
+// GetRetireReason returns the value of RetireReason.
+func (s *MCPTool) GetRetireReason() OptString {
+	return s.RetireReason
+}
+
+// SetID sets the value of ID.
+func (s *MCPTool) SetID(val uuid.UUID) {
+	s.ID = val
+}
+
+// SetReference sets the value of Reference.
+func (s *MCPTool) SetReference(val string) {
+	s.Reference = val
+}
+
+// SetServer sets the value of Server.
+func (s *MCPTool) SetServer(val string) {
+	s.Server = val
+}
+
+// SetTool sets the value of Tool.
+func (s *MCPTool) SetTool(val string) {
+	s.Tool = val
+}
+
+// SetPurpose sets the value of Purpose.
+func (s *MCPTool) SetPurpose(val string) {
+	s.Purpose = val
+}
+
+// SetParameters sets the value of Parameters.
+func (s *MCPTool) SetParameters(val string) {
+	s.Parameters = val
+}
+
+// SetServerURL sets the value of ServerURL.
+func (s *MCPTool) SetServerURL(val string) {
+	s.ServerURL = val
+}
+
+// SetReason sets the value of Reason.
+func (s *MCPTool) SetReason(val string) {
+	s.Reason = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *MCPTool) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
+// SetRetiredAt sets the value of RetiredAt.
+func (s *MCPTool) SetRetiredAt(val OptDateTime) {
+	s.RetiredAt = val
+}
+
+// SetRetireReason sets the value of RetireReason.
+func (s *MCPTool) SetRetireReason(val OptString) {
+	s.RetireReason = val
+}
+
+func (*MCPTool) addMCPToolRes()    {}
+func (*MCPTool) retireMCPToolRes() {}
+
+// Ref: #/components/schemas/MCPToolDraft
+type MCPToolDraft struct {
+	Server     string `json:"server"`
+	Tool       string `json:"tool"`
+	Purpose    string `json:"purpose"`
+	Parameters string `json:"parameters"`
+	ServerURL  string `json:"server_url"`
+	Note       string `json:"note"`
+}
+
+// GetServer returns the value of Server.
+func (s *MCPToolDraft) GetServer() string {
+	return s.Server
+}
+
+// GetTool returns the value of Tool.
+func (s *MCPToolDraft) GetTool() string {
+	return s.Tool
+}
+
+// GetPurpose returns the value of Purpose.
+func (s *MCPToolDraft) GetPurpose() string {
+	return s.Purpose
+}
+
+// GetParameters returns the value of Parameters.
+func (s *MCPToolDraft) GetParameters() string {
+	return s.Parameters
+}
+
+// GetServerURL returns the value of ServerURL.
+func (s *MCPToolDraft) GetServerURL() string {
+	return s.ServerURL
+}
+
+// GetNote returns the value of Note.
+func (s *MCPToolDraft) GetNote() string {
+	return s.Note
+}
+
+// SetServer sets the value of Server.
+func (s *MCPToolDraft) SetServer(val string) {
+	s.Server = val
+}
+
+// SetTool sets the value of Tool.
+func (s *MCPToolDraft) SetTool(val string) {
+	s.Tool = val
+}
+
+// SetPurpose sets the value of Purpose.
+func (s *MCPToolDraft) SetPurpose(val string) {
+	s.Purpose = val
+}
+
+// SetParameters sets the value of Parameters.
+func (s *MCPToolDraft) SetParameters(val string) {
+	s.Parameters = val
+}
+
+// SetServerURL sets the value of ServerURL.
+func (s *MCPToolDraft) SetServerURL(val string) {
+	s.ServerURL = val
+}
+
+// SetNote sets the value of Note.
+func (s *MCPToolDraft) SetNote(val string) {
+	s.Note = val
+}
+
+// Ref: #/components/schemas/MCPToolList
+type MCPToolList struct {
+	Tools []MCPTool `json:"tools"`
+}
+
+// GetTools returns the value of Tools.
+func (s *MCPToolList) GetTools() []MCPTool {
+	return s.Tools
+}
+
+// SetTools sets the value of Tools.
+func (s *MCPToolList) SetTools(val []MCPTool) {
+	s.Tools = val
+}
+
+func (*MCPToolList) listMCPToolsRes() {}
+
+// Ref: #/components/schemas/MCPToolRetirement
+type MCPToolRetirement struct {
+	Note string `json:"note"`
+}
+
+// GetNote returns the value of Note.
+func (s *MCPToolRetirement) GetNote() string {
+	return s.Note
+}
+
+// SetNote sets the value of Note.
+func (s *MCPToolRetirement) SetNote(val string) {
+	s.Note = val
+}
 
 // Ref: #/components/schemas/Me
 type Me struct {
@@ -27046,6 +27290,14 @@ func (*ResumeEvaluationBatchNotFound) resumeEvaluationBatchRes() {}
 type ResumeEvaluationBatchUnauthorized Error
 
 func (*ResumeEvaluationBatchUnauthorized) resumeEvaluationBatchRes() {}
+
+type RetireMCPToolBadRequest Error
+
+func (*RetireMCPToolBadRequest) retireMCPToolRes() {}
+
+type RetireMCPToolNotFound Error
+
+func (*RetireMCPToolNotFound) retireMCPToolRes() {}
 
 type ReviewExposureBadRequest Error
 
