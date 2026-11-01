@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 )
 
 var domainMemoryTool = func(root string, args ...string) (string, error) {
@@ -59,14 +60,26 @@ func domainMemoryProblems(root string) []string {
 		{"verify-evidence", flagRepoRoot, root, flagRegistryRoot, registryRoot},
 		{"verify-audit", flagRegistryRoot, registryRoot},
 	}
-	var problems []string
-	for _, args := range checks {
-		if output, err := domainMemoryTool(root, args...); err != nil {
-			reason := firstLine(output)
-			if reason == "" {
-				reason = err.Error()
+	failures := make([]string, len(checks))
+	var wg sync.WaitGroup
+	for i, args := range checks {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if output, err := domainMemoryTool(root, args...); err != nil {
+				reason := firstLine(output)
+				if reason == "" {
+					reason = err.Error()
+				}
+				failures[i] = fmt.Sprintf("Domain Memory %s: %s", args[0], reason)
 			}
-			problems = append(problems, fmt.Sprintf("Domain Memory %s: %s", args[0], reason))
+		}()
+	}
+	wg.Wait()
+	var problems []string
+	for _, failure := range failures {
+		if failure != "" {
+			problems = append(problems, failure)
 		}
 	}
 	return problems

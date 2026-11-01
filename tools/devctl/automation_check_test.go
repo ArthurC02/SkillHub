@@ -50,6 +50,8 @@ func TestDocumentCheckerRosterIsComplete(t *testing.T) {
 	for _, checker := range documentCheckers() {
 		got = append(got, checker.name)
 	}
+	slices.Sort(want)
+	slices.Sort(got)
 	if strings.Join(got, ",") != strings.Join(want, ",") {
 		t.Fatalf("the checker roster changed: got [%s], want [%s]. "+
 			"Adding a checker means adding it here; removing one means saying so here too",
