@@ -36,6 +36,6 @@ runs:
     - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ${{ steps.analysis.outputs.dir }}
-        key: golangci-lint-analysis-${{ steps.pin.outputs.version }}-${{ runner.os }}-${{ steps.pin.outputs.go }}-${{ hashFiles('**/go.sum', '**/.golangci.yml') }}
+        key: golangci-lint-analysis-${{ github.job }}-${{ steps.pin.outputs.version }}-${{ runner.os }}-${{ steps.pin.outputs.go }}-${{ hashFiles('**/go.sum', '**/.golangci.yml') }}
         restore-keys: |
-          golangci-lint-analysis-${{ steps.pin.outputs.version }}-${{ runner.os }}-${{ steps.pin.outputs.go }}-
+          golangci-lint-analysis-${{ github.job }}-${{ steps.pin.outputs.version }}-${{ runner.os }}-${{ steps.pin.outputs.go }}-
