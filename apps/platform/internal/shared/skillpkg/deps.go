@@ -148,7 +148,7 @@ func (d *depScan) report(r *Report) {
 	}
 
 	r.Findings = append(r.Findings, Finding{
-		Severity: SeverityInfo, Code: CodePackageDependencies, Path: "SKILL.md",
+		Severity: SeverityInfo, Code: CodePackageDependencies, Path: skillMDPath,
 		Message: fmt.Sprintf(
 			"套件顯示出 %d 個第三方依賴套件：%s。"+
 				"這是從 import 陳述式與安裝指令行讀出的，不曾執行任何東西；"+
@@ -165,7 +165,7 @@ func (d *depScan) report(r *Report) {
 		return
 	}
 	r.Findings = append(r.Findings, Finding{
-		Severity: SeverityWarning, Code: CodeUndeclaredDependency, Path: "SKILL.md",
+		Severity: SeverityWarning, Code: CodeUndeclaredDependency, Path: skillMDPath,
 		Message: fmt.Sprintf(
 			"程式碼匯入了 %d 個套件從未宣告的依賴套件——沒有依賴清單檔，"+
 				"也沒有任何安裝指令行提到 %s。安裝 Runtime 的人若不逐一讀過每支 Script，"+

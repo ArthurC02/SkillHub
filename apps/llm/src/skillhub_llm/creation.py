@@ -43,7 +43,7 @@ logger = logging.getLogger("skillhub_llm.creation")
 
 router = APIRouter()
 MODEL = os.getenv("CREATION_MODEL") or "skillhub-creation"
-PROMPT_VERSION = "creation-step/v41"
+PROMPT_VERSION = "creation-step/v42"
 SHIPPED_FILES_RULE = (
     "- `files`: every script the body runs, each with its full path under scripts/ and "
     "its complete content; a body that runs a script the files do not ship is incomplete. "
@@ -473,6 +473,15 @@ PHASE_INSTRUCTIONS = {
         "commands, in the language the user wrote in, under about 120 lines. Anything longer — "
         "rule tables, templates, examples, background — goes into references/<topic>.md shipped "
         "in files and linked from the body, one level deep, with a line saying when to read it. "
+        "A reference longer than 100 lines opens with a contents list (a ## Contents heading, or "
+        "## 目錄 in Chinese, listing every section below it), and a reference never links to a "
+        "file the body does not link itself; Go refuses a draft that breaks either rule or whose "
+        "body passes 500 lines. Match each step's freedom to what doing it another way would "
+        "cost: where many approaches work, state the goal and leave the method to the agent; "
+        "where the result must come out the same every time, run a script; never spell out how "
+        "to do what a capable agent already does well. When the order of the steps matters, "
+        "write them as a numbered checklist, and give every step that checks a result the step "
+        "to return to when its check fails, so a failed check is never passed over. "
         "Rules that turn inputs into a result (thresholds, tiers, rates, caps, rounding, decision "
         "tables, sums, date arithmetic) live in scripts/<name>.py: standard library only (the "
         "sandbox has Python 3.11 and no package installation), argparse, the inputs as arguments, "

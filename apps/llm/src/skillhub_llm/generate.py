@@ -42,7 +42,7 @@ logger = logging.getLogger("skillhub_llm.generate")
 router = APIRouter()
 
 GENERATE_SKILL_MODEL = os.getenv("GENERATE_SKILL_MODEL") or "skillhub-generate"
-GENERATE_SKILL_PROMPT_VERSION = "generate-skill/v4"
+GENERATE_SKILL_PROMPT_VERSION = "generate-skill/v5"
 
 # budget-ceiling: generate.LLM_TIMEOUT_SECONDS
 LLM_TIMEOUT_SECONDS = 120.0
@@ -181,11 +181,14 @@ FIELD_RULES = """- `name`: lowercase letters, digits and single hyphens, at most
   skill needs specific tools. An empty string otherwise.
 - `body`: the actual instructions, in Markdown. Concrete steps a competent agent
   can follow. No placeholders for someone to fill in later, no "TODO", no
-  "insert X here" - if you do not know a value, write instructions for finding it."""
+  "insert X here" - if you do not know a value, write instructions for finding it.
+  Give each step only as much detail as doing it another way would cost: a goal
+  where many approaches work, an exact command where the result must not vary."""
 
 PREFER_INSTRUCTIONS_RULE = """\
 - `files`: only when a script genuinely does the work better than instructions.
-  Prefer instructions."""
+  Prefer instructions. Link every Markdown file directly from `body`, and open
+  one longer than 100 lines with a contents list."""
 
 SYSTEM_PROMPT = (
     """You write one Agent Skill from a description of a task.

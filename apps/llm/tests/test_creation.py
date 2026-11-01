@@ -1101,6 +1101,21 @@ def test_the_offered_mcp_tools_reach_the_model_with_the_rule_to_declare_only_the
     assert "建立行事曆事件" in data
 
 
+def test_the_compose_prompt_states_the_layout_go_refuses_and_how_steps_are_written():
+    response, calls = invoke(
+        request(brief="agreed", brief_confirmed=True),
+        decision(outcome="draft", draft=SKILL),
+    )
+    assert response.status_code == 200
+    system = calls[0]["messages"][0]["content"]
+    assert "A reference longer than 100 lines opens with a contents list" in system
+    assert "## 目錄" in system
+    assert "a reference never links to a file the body does not link itself" in system
+    assert "body passes 500 lines" in system
+    assert "state the goal and leave the method to the agent" in system
+    assert "the step to return to when its check fails" in system
+
+
 @pytest.mark.parametrize(("offered", "status"), [(64, 200), (65, 422)])
 def test_the_offered_mcp_tool_list_is_capped_by_the_contract(offered, status):
     response, _ = invoke(request(mcp_tools=mcp_tools(offered)), decision())

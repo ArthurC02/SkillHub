@@ -219,7 +219,7 @@ func (d *Discovery) collectTreeSkills(fsys fs.FS) {
 }
 
 func hasSkillFile(fsys fs.FS, dir string) bool {
-	info, err := fs.Stat(fsys, path.Join(dir, "SKILL.md"))
+	info, err := fs.Stat(fsys, path.Join(dir, skillMDPath))
 	return err == nil && info.Mode().IsRegular()
 }
 

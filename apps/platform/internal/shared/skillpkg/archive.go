@@ -389,7 +389,7 @@ type packageFS struct {
 func (p packageFS) ArchiveFindings() []Finding { return p.findings }
 
 func PackageRoot(zr *zip.Reader) string {
-	if _, err := fs.Stat(zr, "SKILL.md"); err == nil {
+	if _, err := fs.Stat(zr, skillMDPath); err == nil {
 		return ""
 	}
 	if dirs, err := fs.ReadDir(zr, "."); err == nil && len(dirs) == 1 && dirs[0].IsDir() {

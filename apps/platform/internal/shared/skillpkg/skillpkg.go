@@ -45,6 +45,8 @@ type Manifest struct {
 	Extra         map[string]any `json:"extra,omitempty"`
 }
 
+const skillMDPath = "SKILL.md"
+
 const SpecRevision = "agentskills.io, agentskills/agentskills@217be54 (2026-08-04)"
 
 const (
@@ -215,9 +217,9 @@ func Validate(fsys fs.FS) Report {
 		}
 	}
 
-	raw, err := fs.ReadFile(fsys, "SKILL.md")
+	raw, err := fs.ReadFile(fsys, skillMDPath)
 	if err != nil {
-		r.add(SeverityError, "skill-md-missing", "SKILL.md", "套件根目錄找不到 SKILL.md")
+		r.add(SeverityError, "skill-md-missing", skillMDPath, "套件根目錄找不到 SKILL.md")
 		return r
 	}
 
@@ -226,6 +228,7 @@ func Validate(fsys fs.FS) Report {
 		r.checkManifest()
 		r.resolveLicense(fsys)
 		r.checkFileReferences(fsys, body)
+		r.checkLayout(fsys, body)
 		r.checkEmbeddedCode(body)
 	}
 	r.scanTree(fsys)
@@ -239,18 +242,18 @@ func (r *Report) parseFrontmatter(raw []byte) (body string) {
 		rest, ok = strings.CutPrefix(s, "---\r\n")
 	}
 	if !ok {
-		r.add(SeverityError, "frontmatter-missing", "SKILL.md", "SKILL.md 必須以 YAML frontmatter（---）開頭")
+		r.add(SeverityError, "frontmatter-missing", skillMDPath, "SKILL.md 必須以 YAML frontmatter（---）開頭")
 		return s
 	}
 	fm, body, ok := cutClosingDelimiter(rest)
 	if !ok {
-		r.add(SeverityError, "frontmatter-unterminated", "SKILL.md", "frontmatter 沒有結尾的 --- 行")
+		r.add(SeverityError, "frontmatter-unterminated", skillMDPath, "frontmatter 沒有結尾的 --- 行")
 		return s
 	}
 
 	var fields map[string]any
 	if err := yaml.Unmarshal([]byte(fm), &fields); err != nil {
-		r.add(SeverityError, "frontmatter-invalid-yaml", "SKILL.md", "frontmatter 不是合法的 YAML")
+		r.add(SeverityError, "frontmatter-invalid-yaml", skillMDPath, "frontmatter 不是合法的 YAML")
 		return body
 	}
 
@@ -294,7 +297,7 @@ func (r *Report) decodeAllowedTools(v any) []string {
 				tools = append(tools, s)
 			}
 		}
-		r.add(SeverityWarning, "spec-allowed-tools-not-a-string", "SKILL.md",
+		r.add(SeverityWarning, "spec-allowed-tools-not-a-string", skillMDPath,
 			"allowed-tools 是一個 YAML 陣列；Agent Skills 規格將它定義為以空白分隔的字串，"+
 				"陣列是特定客戶端的擴充寫法，其他 Runtime 可能會忽略它")
 	}
@@ -305,21 +308,21 @@ func (r *Report) checkMetadataIsStringMap(v any) {
 	mm, ok := v.(map[string]any)
 	if !ok {
 		if v != nil {
-			r.add(SeverityWarning, "spec-metadata-not-string-map", "SKILL.md",
+			r.add(SeverityWarning, "spec-metadata-not-string-map", skillMDPath,
 				"metadata 不是一個映射；規格將它定義為「字串鍵對應字串值」的映射")
 		}
 		return
 	}
 	for mk, mv := range mm {
 		if _, isString := mv.(string); !isString {
-			r.add(SeverityWarning, "spec-metadata-not-string-map", "SKILL.md",
+			r.add(SeverityWarning, "spec-metadata-not-string-map", skillMDPath,
 				fmt.Sprintf("metadata.%s 的值不是字串；規格將 metadata 定義為「字串鍵對應字串值」的映射", mk))
 		}
 	}
 }
 
 func (r *Report) rejectUnknownField(k string) {
-	r.add(SeverityError, "frontmatter-unknown-field", "SKILL.md",
+	r.add(SeverityError, "frontmatter-unknown-field", skillMDPath,
 		fmt.Sprintf("不明的 frontmatter 欄位 %q — Agent Skills 規格只定義了六個欄位"+
 			"（name、description、license、compatibility、metadata、allowed-tools），其參考驗證器"+
 			"會拒絕其他任何欄位，至少一個主要客戶端的上傳流程也是如此。"+
@@ -346,22 +349,22 @@ func (r *Report) checkManifest() {
 	m := r.Manifest
 	switch {
 	case m.Name == "":
-		r.add(SeverityError, "name-missing", "SKILL.md", "frontmatter 欄位 name 為必填")
+		r.add(SeverityError, "name-missing", skillMDPath, "frontmatter 欄位 name 為必填")
 	case utf8.RuneCountInString(m.Name) > maxNameLen:
-		r.add(SeverityError, "name-too-long", "SKILL.md", fmt.Sprintf("name 超過 %d 個字元", maxNameLen))
+		r.add(SeverityError, "name-too-long", skillMDPath, fmt.Sprintf("name 超過 %d 個字元", maxNameLen))
 	case !nameRule.MatchString(m.Name):
-		r.add(SeverityError, "name-invalid", "SKILL.md", "name 只能使用小寫英文字母、數字與單一連字號")
+		r.add(SeverityError, "name-invalid", skillMDPath, "name 只能使用小寫英文字母、數字與單一連字號")
 	}
 	switch {
 
 	case strings.TrimSpace(m.Description) == "":
-		r.add(SeverityError, "description-missing", "SKILL.md", "frontmatter 欄位 description 為必填，且不可為空白")
+		r.add(SeverityError, "description-missing", skillMDPath, "frontmatter 欄位 description 為必填，且不可為空白")
 	case utf8.RuneCountInString(m.Description) > maxDescriptionLen:
-		r.add(SeverityError, "description-too-long", "SKILL.md", fmt.Sprintf("description 超過 %d 個字元", maxDescriptionLen))
+		r.add(SeverityError, "description-too-long", skillMDPath, fmt.Sprintf("description 超過 %d 個字元", maxDescriptionLen))
 	}
 
 	if n := utf8.RuneCountInString(m.Compatibility); n > maxCompatibilityLen {
-		r.add(SeverityWarning, "spec-compatibility-too-long", "SKILL.md",
+		r.add(SeverityWarning, "spec-compatibility-too-long", skillMDPath,
 			fmt.Sprintf("compatibility 有 %d 個字元，超過規格上限 %d", n, maxCompatibilityLen))
 	}
 }
@@ -452,7 +455,7 @@ func (r *Report) resolveLicense(fsys fs.FS) {
 		spdx := detectLicense(data)
 		if spdx == "" {
 
-			r.add(SeverityWarning, "license-unknown", "SKILL.md",
+			r.add(SeverityWarning, "license-unknown", skillMDPath,
 				fmt.Sprintf("frontmatter 未宣告授權，且 %s 不是可辨識的授權條款文字；視為未知授權", c.name))
 			return
 		}
@@ -467,7 +470,7 @@ func (r *Report) resolveLicense(fsys fs.FS) {
 		}
 		return
 	}
-	r.add(SeverityWarning, "license-unknown", "SKILL.md", "未宣告授權；視為未知授權")
+	r.add(SeverityWarning, "license-unknown", skillMDPath, "未宣告授權；視為未知授權")
 }
 
 func (r *Report) resolveDeclaredLicense(fsys fs.FS) {
@@ -583,7 +586,7 @@ var mdRef = regexp.MustCompile(`!?\[[^\]]*\]\(([^)\s]+)\)`)
 var bareRef = regexp.MustCompile(`(?:^|[\s"'` + "`" + `(<\[])((?:[A-Za-z0-9._-]+/)+[A-Za-z0-9._-]+\.[A-Za-z0-9]{1,8})`)
 
 func SkillMDReferences(fsys fs.FS) []string {
-	raw, err := fs.ReadFile(fsys, "SKILL.md")
+	raw, err := fs.ReadFile(fsys, skillMDPath)
 	if err != nil {
 		return nil
 	}
@@ -628,7 +631,7 @@ func referencedPaths(fsys fs.FS, body string) (refs, escapes []string) {
 func (r *Report) checkFileReferences(fsys fs.FS, body string) {
 	refs, escapes := referencedPaths(fsys, body)
 	for _, target := range escapes {
-		r.add(SeverityWarning, "file-ref-escapes-package", "SKILL.md", fmt.Sprintf("引用 %q 逃出了套件根目錄", target))
+		r.add(SeverityWarning, "file-ref-escapes-package", skillMDPath, fmt.Sprintf("引用 %q 逃出了套件根目錄", target))
 	}
 	for _, clean := range refs {
 		if _, err := fs.Stat(fsys, clean); err != nil {
@@ -691,7 +694,7 @@ func (r *Report) checkEmbeddedCode(body string) {
 	})
 
 	if untagged.longest > maxEmbeddedBlockLines {
-		r.add(SeverityInfo, CodeUnlabelledCodeBlock, "SKILL.md", fmt.Sprintf(
+		r.add(SeverityInfo, CodeUnlabelledCodeBlock, skillMDPath, fmt.Sprintf(
 			"SKILL.md 內有 %d 個未標記語言的程式碼區塊，合計 %d 行；最長 %d 行。"+
 				"沒有語言標記，平台無法判斷這是什麼程式碼，因此既不計入內嵌程式碼，也不會被讀取分析依賴套件。",
 			untagged.blocks, untagged.lines, untagged.longest))
@@ -705,7 +708,7 @@ func (r *Report) checkEmbeddedCode(body string) {
 		langs = append(langs, fmt.Sprintf("%s: %d", l, n))
 	}
 	sort.Strings(langs)
-	r.add(SeverityWarning, CodeEmbeddedScript, "SKILL.md", fmt.Sprintf(
+	r.add(SeverityWarning, CodeEmbeddedScript, skillMDPath, fmt.Sprintf(
 		"SKILL.md 內嵌了 %d 行可執行程式碼，共 %d 個程式碼區塊（%s）；最長區塊 %d 行。"+
 			"這段程式碼在匯入或掃描期間不會被執行，但套件的檔案清單不會顯示它。",
 		total, blocks, strings.Join(langs, ", "), longest))
