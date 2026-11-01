@@ -153,16 +153,13 @@ func (s *Service) exportPluginMember(
 		p.blockedBy(skill.Name, src.blockedReason, src.blockedMessage)
 		return nil, nil
 	}
-	name := skill.Name
-	if src.report.Manifest != nil && src.report.Manifest.Name != "" {
-		name = src.report.Manifest.Name
-	}
+	name := exportedName(skill.Name, src.report)
 	files := make([]exportFile, 0, len(src.files))
 	for _, f := range src.files {
 		if f.path == ManifestFile {
 			continue
 		}
-		files = append(files, exportFile{path: pluginSkillsDir + name + "/" + f.path, data: f.data})
+		files = append(files, exportFile{path: pluginSkillsDir + name + "/" + f.path, data: f.data, executable: f.executable})
 	}
 	p.Members = append(p.Members, PluginMemberView{
 		SkillID: pgconv.UUIDString(skill.ID), SkillVersionID: pgconv.UUIDString(version.ID),

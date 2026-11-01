@@ -359,7 +359,7 @@ func (s *Service) build(ctx context.Context, ws identity.Workspace, p *Plan) err
 	}
 	files := source.files
 
-	skillName := p.Skill.Name
+	skillName := exportedName(p.Skill.Name, source.report)
 	for i, f := range files {
 		if f.path != "SKILL.md" {
 			continue
@@ -1005,4 +1005,11 @@ func (a Artifact) withheld(facts VersionSummary) Artifact {
 	a.Servable = false
 	a.ServeState = labelled{"withheld", "不再提供下載", message}
 	return a
+}
+
+func exportedName(recordName string, report skillpkg.Report) string {
+	if report.Manifest != nil && report.Manifest.Name != "" {
+		return report.Manifest.Name
+	}
+	return recordName
 }

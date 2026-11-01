@@ -37,8 +37,9 @@ var excludedCredentialFiles = map[string]bool{
 }
 
 type exportFile struct {
-	path string
-	data []byte
+	path       string
+	data       []byte
+	executable bool
 }
 
 func collect(fsys fs.FS) ([]exportFile, []ExcludedFile, error) {
@@ -64,7 +65,7 @@ func collect(fsys fs.FS) ([]exportFile, []ExcludedFile, error) {
 		if err != nil {
 			return fmt.Errorf("read %s: %w", path, err)
 		}
-		out = append(out, exportFile{path: path, data: data})
+		out = append(out, exportFile{path: path, data: data, executable: isExecutable(d)})
 		return nil
 	})
 	if err != nil {
@@ -197,6 +198,9 @@ func writeZip(files []exportFile, prefix string) ([]byte, error) {
 		// the archive bytes; ModifiedDate holds a fixed value without that.
 		//nolint:staticcheck // SA1019: Modified would change the bytes; see above.
 		h := &zip.FileHeader{Name: prefix + f.path, Method: zip.Deflate, ModifiedDate: zipEpochDOSDate}
+		if f.executable {
+			h.SetMode(executableMode)
+		}
 		w, err := zw.CreateHeader(h)
 		if err != nil {
 			return nil, err
@@ -247,4 +251,11 @@ func marshalManifest(m Manifest) ([]byte, error) {
 		return nil, err
 	}
 	return append(body, '\n'), nil
+}
+
+const executableMode fs.FileMode = 0o755
+
+func isExecutable(d fs.DirEntry) bool {
+	info, err := d.Info()
+	return err == nil && info.Mode().Perm()&0o111 != 0
 }
