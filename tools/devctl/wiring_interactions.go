@@ -160,16 +160,18 @@ func wiringEdges(moduleDir string, patterns []string, contextOf func(string) (st
 		}
 	}
 	edges := map[contextEdge]string{}
+	fset := token.NewFileSet()
+	lookup := func(path string) (io.ReadCloser, error) { return os.Open(exports[path]) }
+	conf := types.Config{Importer: importer.ForCompiler(fset, "gc", lookup)}
 	for _, pkg := range roots {
-		if err := packageWiringEdges(moduleDir, pkg, exports, contextOf, edges); err != nil {
+		if err := packageWiringEdges(moduleDir, pkg, fset, conf, contextOf, edges); err != nil {
 			return nil, err
 		}
 	}
 	return edges, nil
 }
 
-func packageWiringEdges(moduleDir string, pkg listedPackage, exports map[string]string, contextOf func(string) (string, bool), edges map[contextEdge]string) error {
-	fset := token.NewFileSet()
+func packageWiringEdges(moduleDir string, pkg listedPackage, fset *token.FileSet, conf types.Config, contextOf func(string) (string, bool), edges map[contextEdge]string) error {
 	files := make([]*ast.File, 0, len(pkg.GoFiles))
 	for _, name := range pkg.GoFiles {
 		file, err := parser.ParseFile(fset, filepath.Join(pkg.Dir, name), nil, parser.SkipObjectResolution)
@@ -178,12 +180,10 @@ func packageWiringEdges(moduleDir string, pkg listedPackage, exports map[string]
 		}
 		files = append(files, file)
 	}
-	lookup := func(path string) (io.ReadCloser, error) { return os.Open(exports[path]) }
 	info := &types.Info{
 		Types: map[ast.Expr]types.TypeAndValue{},
 		Uses:  map[*ast.Ident]types.Object{},
 	}
-	conf := types.Config{Importer: importer.ForCompiler(fset, "gc", lookup)}
 	if _, err := conf.Check(pkg.ImportPath, fset, files, info); err != nil {
 		return fmt.Errorf("type-check %s: %w", pkg.ImportPath, err)
 	}
