@@ -36,7 +36,7 @@ PLATFORM_EXECUTABLES = {
     "win32": "windows-x86_64/domain-memory.exe",
     "darwin": "macos-universal/domain-memory",
 }
-DEFAULT_PLUGIN = Path(".claude/skills/domain-memory/engine/bin") / PLATFORM_EXECUTABLES.get(
+DEFAULT_PLUGIN = Path(".domain-memory/engine/bin") / PLATFORM_EXECUTABLES.get(
     sys.platform, "linux-x86_64/domain-memory"
 )
 

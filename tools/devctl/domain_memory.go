@@ -11,6 +11,13 @@ import (
 )
 
 var domainMemoryTool = func(root string, args ...string) (string, error) {
+	pin, err := domainMemoryPin(root)
+	if err != nil {
+		return "", err
+	}
+	if installedDomainMemoryCommit(root) != pin {
+		return "", fmt.Errorf("the Domain Memory plugin %s is not installed in %s; run %s", pin, domainMemoryInstallDir, domainMemoryInstallCmd)
+	}
 	command := exec.Command(domainMemoryExecutable(root, runtime.GOOS, runtime.GOARCH), args...)
 	command.Dir = root
 	output, err := command.CombinedOutput()
@@ -18,7 +25,7 @@ var domainMemoryTool = func(root string, args ...string) (string, error) {
 }
 
 func domainMemoryExecutable(root, goos, goarch string) string {
-	engine := filepath.Join(root, ".claude", "skills", "domain-memory", "engine")
+	engine := filepath.Join(root, domainMemoryInstallDir, "engine")
 	switch {
 	case goos == "linux" && goarch == "amd64":
 		return filepath.Join(engine, "bin", "linux-x86_64", "domain-memory")

@@ -56,13 +56,6 @@ updates:
       interval: weekly
     open-pull-requests-limit: 0
 
-  - package-ecosystem: cargo
-    directories:
-      - /.claude/skills/domain-memory/engine
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 0
-
   - package-ecosystem: uv
     directories:
       - /apps/llm

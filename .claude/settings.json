@@ -56,5 +56,13 @@
       "PowerShell(*git commit --amend*)",
       "PowerShell(*--no-verify*)"
     ]
+  },
+  "extraKnownMarketplaces": {
+    "domain-memory": {
+      "source": { "source": "github", "repo": "ArthurC02/Domain-Memory-PlugIn" }
+    }
+  },
+  "enabledPlugins": {
+    "domain-memory@domain-memory": true
   }
 }

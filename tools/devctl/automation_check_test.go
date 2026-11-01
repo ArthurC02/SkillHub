@@ -38,7 +38,6 @@ func TestDocumentCheckerRosterIsComplete(t *testing.T) {
 		"harness",
 		"comment-budget",
 		"domain-memory",
-		"domain-memory-release",
 		"complexity-exemptions",
 		"architecture-budget",
 		"transaction-callbacks",
@@ -185,7 +184,6 @@ func writeAutomationCheckDocsFixture(t *testing.T, root string) {
 	writeTestFile(t, root, ".claude/skills/x/SKILL.md", "---\nname: x\ndescription: y\n---\n\n見 docs/plans/04。\n")
 	writeTestFile(t, root, ".claude/workflows/x.js", "export const meta = { name: 'x', description: 'y' }\nawait agent('go')\n")
 	writeTestFile(t, root, "docs/domain-memory/not-a-registry", "")
-	writeTestFile(t, root, ".claude/skills/domain-memory/.claude-plugin/plugin.json", `{"version": "0.1.0"}`)
 }
 
 func TestAutomationCheckRunsEveryChecker(t *testing.T) {

@@ -632,6 +632,8 @@ jobs:
       - run: golangci-lint fmt --diff
         working-directory: tools/devctl
       - run: go -C tools/devctl vet ./...
+      - name: Install the pinned Domain Memory plugin
+        run: go -C tools/devctl run . domain-memory-install
       - name: devctl tests
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'devctl tests' go -C tools/devctl test -race -count=1 ./...
       - name: Agent automation contract
@@ -729,10 +731,13 @@ jobs:
           bash tools/ci/report-failure.sh 'Known answers'
           python tools/data-readiness/known_answers.py check --repo-root .
 
+      - name: Install the pinned Domain Memory plugin
+        run: go -C tools/devctl run . domain-memory-install
+
       - name: Domain Memory attested commits carry their packages
         run: >-
           bash tools/ci/report-failure.sh 'Domain Memory attestation audit'
-          .claude/skills/domain-memory/engine/bin/linux-x86_64/domain-memory audit-attestations
+          .domain-memory/engine/bin/linux-x86_64/domain-memory audit-attestations
           --repo-root . --changes-root docs/domain-memory/changes
 
   qa002:

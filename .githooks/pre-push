@@ -1,6 +1,6 @@
 #!/bin/sh
 # domain-memory-pre-push
-engine='.claude/skills/domain-memory/engine'
+engine='.domain-memory/engine'
 memory='docs/domain-memory'
 existing="$(git rev-parse --git-path hooks)/pre-push.domain-memory-existing" || exit 1
 test -n "$DOMAIN_MEMORY_GIT_TIMEOUT" || DOMAIN_MEMORY_GIT_TIMEOUT=$(git config --get domain-memory.git-timeout) || unset DOMAIN_MEMORY_GIT_TIMEOUT

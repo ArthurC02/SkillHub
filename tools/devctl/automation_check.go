@@ -190,7 +190,6 @@ func documentCheckers() []namedChecker {
 
 		{"dependency-policy", dependencyPolicyProblems},
 		{"harness", harnessProblems},
-		{cmdDomainMemoryRelease, domainMemoryReleaseProblems},
 		{"complexity-exemptions", complexityExemptionProblems},
 		{"architecture-budget", architectureBudgetProblems},
 		{"transaction-callbacks", transactionCallbackProblems},

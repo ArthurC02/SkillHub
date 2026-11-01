@@ -33,7 +33,7 @@ Dev Container 以 privileged mode 啟動獨立 DinD daemon，讓 Windows／macOS
 | --- | --- | --- | --- | --- |
 | `task doctor` | 只檢查 | 否 | 否 | 診斷 runtime、Task、uv、Docker、Compose、shell task 所需的 Bash 能力與 `.env` 是否存在；不讀值 |
 | `task env:init` | 否 | 否 | 否 | `.env.example` → `.env`，已有檔案時不覆寫 |
-| `task bootstrap` | 否 | 否 | 否 | Go download、npm ci/build、uv frozen sync |
+| `task bootstrap` | 否 | 否 | 否 | Go download、npm ci/build、uv frozen sync、Domain Memory 外掛（`tools/toolchain.yaml` 釘的 commit，裝進 `.domain-memory/`） |
 | `task dev`／`dev:core` | 是 | 否 | 否 | Postgres＋SeaweedFS |
 | `task dev:model` | 是 | **是** | 後續模型呼叫會 | 先 fail-closed 檢查 OPENAI/LiteLLM 變數，再啟動 gateway |
 | `task dev:llm` | 否 | **是** | 視後續呼叫而定 | 新簽或保留服務 Virtual Key；啟動前向閘道查證有限、未耗盡的預算，無法確認便拒絕啟動；沒設閘道變數則以空金鑰啟動 |

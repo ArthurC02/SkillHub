@@ -6,9 +6,9 @@ import (
 	"testing"
 )
 
-func TestDomainMemoryExecutablePicksTheCommittedBinaryForThePlatform(t *testing.T) {
+func TestDomainMemoryExecutablePicksTheInstalledBinaryForThePlatform(t *testing.T) {
 	t.Parallel()
-	engine := filepath.Join("repo", ".claude", "skills", "domain-memory", "engine")
+	engine := filepath.Join("repo", ".domain-memory", "engine")
 	cases := []struct {
 		name, goos, goarch, want string
 	}{

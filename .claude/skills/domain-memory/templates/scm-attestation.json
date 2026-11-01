@@ -1,8 +1,0 @@
-{
-  "provider": "git-signed-commit",
-  "commit": "<40-hex-commit>",
-  "status": "approved",
-  "proposal_revision": 1,
-  "base_registry_revision": null,
-  "verified_at": "<ISO-8601-timestamp>"
-}
