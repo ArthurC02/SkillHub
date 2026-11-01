@@ -20,6 +20,23 @@ test('a run that already sets -count keeps it', () => {
     .toBe(`${ENV} go -C apps/platform test -count=3 ./...`)
 })
 
+test('every go test in one command gets the test database, not just the first', () => {
+  expect(withTestDatabase('go -C apps/platform test -run A ./x/; go -C apps/platform test -run B ./x/', DSN))
+    .toBe(`${ENV} go -C apps/platform test -count=1 -run A ./x/; ${ENV} go -C apps/platform test -count=1 -run B ./x/`)
+})
+
+test('a go test inside a loop or a conditional gets the test database', () => {
+  expect(withTestDatabase('for i in 1 2; do go -C apps/platform test ./x/; done', DSN))
+    .toBe(`for i in 1 2; do ${ENV} go -C apps/platform test -count=1 ./x/; done`)
+  expect(withTestDatabase('if true; then go -C apps/platform test ./x/; fi', DSN))
+    .toBe(`if true; then ${ENV} go -C apps/platform test -count=1 ./x/; fi`)
+})
+
+test('each go test keeps or gets its own -count', () => {
+  expect(withTestDatabase('go -C apps/platform test -count=5 ./x/ && go -C apps/platform test ./y/', DSN))
+    .toBe(`${ENV} go -C apps/platform test -count=5 ./x/ && ${ENV} go -C apps/platform test -count=1 ./y/`)
+})
+
 test('a command that names its own database is left alone', () => {
   expect(withTestDatabase(`SKILLHUB_TEST_DATABASE_URL=x go -C apps/platform test ./...`, DSN)).toBeUndefined()
 })

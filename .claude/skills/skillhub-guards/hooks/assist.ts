@@ -8,7 +8,8 @@ export const TEST_DATABASE_NOTE = '[skillhub-guards] ran against the test databa
 
 const ARG = String.raw`(?:"[^"]*"|'[^']*'|\S+)`
 const GO_TEST = new RegExp(
-  String.raw`(^|[;&|(\n]|\$\()(\s*)((?:[A-Za-z_]\w*=\S*\s+)*)((?:rtk\s+(?:proxy\s+)?)?go(?:\s+-C\s+${ARG})?\s+test\b)`)
+  String.raw`(^|[;&|(\n]|\$\(|\b(?:do|then|else)\b)(\s*)((?:[A-Za-z_]\w*=\S*\s+)*)((?:rtk\s+(?:proxy\s+)?)?go(?:\s+-C\s+${ARG})?\s+test\b)`, 'g')
+const COMMAND_END = /[;&|\n]/
 const FAILURE_LINE = /--- FAIL|^FAIL\b|^panic:|\(fail\)|FAILED|AssertionError|✗|×|Error:/
 const BUILD_FAILURE = /\[build failed\]|\[setup failed\]|error TS\d+|SyntaxError|cannot find package|\bundefined: /
 
@@ -17,12 +18,13 @@ export const dsnFromEnvFile = (text: string): string | undefined =>
 
 export const withTestDatabase = (command: string, dsn: string): string | undefined => {
   if (!/apps[\\/]platform/.test(command) || /SKILLHUB_TEST_DATABASE_URL=/.test(command)) return undefined
-  const match = GO_TEST.exec(command)
-  if (!match) return undefined
-  const [whole, separator, space, assignments, goTest] = match
-  const count = /\s-count[= ]/.test(command) ? '' : ' -count=1'
-  const rewritten = `${separator}${space}${assignments}SKILLHUB_TEST_DATABASE_URL='${dsn}' SKILLHUB_REQUIRE_DB=1 ${goTest}${count}`
-  return command.slice(0, match.index) + rewritten + command.slice(match.index + whole.length)
+  const rewritten = command.replace(GO_TEST, (whole, separator, space, assignments, goTest, offset: number) => {
+    const rest = command.slice(offset + whole.length)
+    const end = rest.search(COMMAND_END)
+    const count = /\s-count[= ]/.test(end < 0 ? rest : rest.slice(0, end)) ? '' : ' -count=1'
+    return `${separator}${space}${assignments}SKILLHUB_TEST_DATABASE_URL='${dsn}' SKILLHUB_REQUIRE_DB=1 ${goTest}${count}`
+  })
+  return rewritten === command ? undefined : rewritten
 }
 
 export type CIVerdict = 'green' | 'red' | 'pending'
