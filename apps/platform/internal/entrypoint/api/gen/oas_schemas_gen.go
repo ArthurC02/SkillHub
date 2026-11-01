@@ -36367,6 +36367,9 @@ type TraceSummary struct {
 	// it restarts at zero on every page load and would report a stalled run as having just moved.
 	LastEventAt OptDateTime `json:"last_event_at"`
 	FinalOutput OptString   `json:"final_output"`
+	// What the workload printed before a run that did not succeed ended, masked; it is often the only
+	// explanation of that ending. Untrusted content — render as inert text.
+	WorkloadOutput OptString `json:"workload_output"`
 	// Present only when the run ended by handing questions back to the person (the ask tool). Each entry
 	// says what was asked, why it changes the result, and optional choices. Untrusted content — render
 	// as inert text.
@@ -36448,6 +36451,11 @@ func (s *TraceSummary) GetFinalOutput() OptString {
 	return s.FinalOutput
 }
 
+// GetWorkloadOutput returns the value of WorkloadOutput.
+func (s *TraceSummary) GetWorkloadOutput() OptString {
+	return s.WorkloadOutput
+}
+
 // GetQuestions returns the value of Questions.
 func (s *TraceSummary) GetQuestions() []TraceSummaryQuestionsItem {
 	return s.Questions
@@ -36526,6 +36534,11 @@ func (s *TraceSummary) SetLastEventAt(val OptDateTime) {
 // SetFinalOutput sets the value of FinalOutput.
 func (s *TraceSummary) SetFinalOutput(val OptString) {
 	s.FinalOutput = val
+}
+
+// SetWorkloadOutput sets the value of WorkloadOutput.
+func (s *TraceSummary) SetWorkloadOutput(val OptString) {
+	s.WorkloadOutput = val
 }
 
 // SetQuestions sets the value of Questions.

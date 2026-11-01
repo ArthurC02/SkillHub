@@ -15,6 +15,7 @@ const (
 
 	outputKindFinal    = "final"
 	outputKindQuestion = "question"
+	outputKindCaptured = "captured"
 	usageScopeRunTotal = "run_total"
 	toolCallSucceeded  = "succeeded"
 )
@@ -32,6 +33,7 @@ type generalFold struct {
 	summary     Summary
 	costUSD     *float64
 	finalOutput *gen.ListTraceGeneralFactsRow
+	captured    *gen.ListTraceGeneralFactsRow
 	question    *gen.ListTraceGeneralFactsRow
 }
 
@@ -61,6 +63,8 @@ func foldGeneral(rows []gen.ListTraceGeneralFactsRow) generalFold {
 				fold.finalOutput = row
 			case outputKindQuestion:
 				fold.question = row
+			case outputKindCaptured:
+				fold.captured = row
 			}
 		case TypeUsage:
 			usage = append(usage, *row)

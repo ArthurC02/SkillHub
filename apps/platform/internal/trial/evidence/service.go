@@ -364,21 +364,22 @@ type ProgressStep struct {
 }
 
 type Summary struct {
-	RunID        string          `json:"run_id"`
-	Status       string          `json:"status"`
-	StatusReason string          `json:"status_reason,omitempty"`
-	Complete     bool            `json:"complete"`
-	Skills       []SkillUse      `json:"skills"`
-	SkillsTotal  int             `json:"skills_total"`
-	ResourceRead int             `json:"resources_read"`
-	ToolCalls    ToolCallSummary `json:"tool_calls"`
-	Errors       []ErrorSummary  `json:"errors"`
-	ErrorsTotal  int             `json:"errors_total"`
-	Truncated    bool            `json:"summary_truncated"`
-	FinalOutput  string          `json:"final_output,omitempty"`
-	Questions    []Question      `json:"questions,omitempty"`
-	Usage        *UsageSummary   `json:"usage,omitempty"`
-	Steps        []ProgressStep  `json:"steps"`
+	RunID          string          `json:"run_id"`
+	Status         string          `json:"status"`
+	StatusReason   string          `json:"status_reason,omitempty"`
+	Complete       bool            `json:"complete"`
+	Skills         []SkillUse      `json:"skills"`
+	SkillsTotal    int             `json:"skills_total"`
+	ResourceRead   int             `json:"resources_read"`
+	ToolCalls      ToolCallSummary `json:"tool_calls"`
+	Errors         []ErrorSummary  `json:"errors"`
+	ErrorsTotal    int             `json:"errors_total"`
+	Truncated      bool            `json:"summary_truncated"`
+	FinalOutput    string          `json:"final_output,omitempty"`
+	WorkloadOutput string          `json:"workload_output,omitempty"`
+	Questions      []Question      `json:"questions,omitempty"`
+	Usage          *UsageSummary   `json:"usage,omitempty"`
+	Steps          []ProgressStep  `json:"steps"`
 
 	LastEventAt string `json:"last_event_at,omitempty"`
 }
@@ -690,13 +691,11 @@ func (s *Service) readGeneralFold(ctx context.Context, workspaceID, runID pgtype
 		return generalFold{}, err
 	}
 	fold := foldGeneral(rows)
-	if final := fold.finalOutput; final != nil {
-		fold.summary.FinalOutput, err = q.GetTraceEventText(ctx, gen.GetTraceEventTextParams{
-			RunID: runID, WorkspaceID: workspaceID, Source: final.Source, Attempt: final.Attempt, Seq: final.Seq,
-		})
-		if err != nil {
-			return generalFold{}, err
-		}
+	if fold.summary.FinalOutput, err = s.eventText(ctx, workspaceID, runID, fold.finalOutput); err != nil {
+		return generalFold{}, err
+	}
+	if fold.summary.WorkloadOutput, err = s.eventText(ctx, workspaceID, runID, fold.captured); err != nil {
+		return generalFold{}, err
 	}
 	if asked := fold.question; asked != nil {
 		raw, err := q.GetTraceEventQuestions(ctx, gen.GetTraceEventQuestionsParams{
@@ -710,6 +709,15 @@ func (s *Service) readGeneralFold(ctx context.Context, workspaceID, runID pgtype
 		}
 	}
 	return fold, nil
+}
+
+func (s *Service) eventText(ctx context.Context, workspaceID, runID pgtype.UUID, row *gen.ListTraceGeneralFactsRow) (string, error) {
+	if row == nil {
+		return "", nil
+	}
+	return s.queries().GetTraceEventText(ctx, gen.GetTraceEventTextParams{
+		RunID: runID, WorkspaceID: workspaceID, Source: row.Source, Attempt: row.Attempt, Seq: row.Seq,
+	})
 }
 
 func (s *Service) runState(ctx context.Context, workspaceID, runID pgtype.UUID) (RunState, error) {

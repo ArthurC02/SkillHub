@@ -156,10 +156,11 @@ type generalView struct {
 		Code     string `json:"code"`
 		Message  string `json:"message"`
 	} `json:"errors"`
-	ErrorsTotal int    `json:"errors_total"`
-	Truncated   bool   `json:"summary_truncated"`
-	FinalOutput string `json:"final_output"`
-	Questions   []struct {
+	ErrorsTotal    int    `json:"errors_total"`
+	Truncated      bool   `json:"summary_truncated"`
+	FinalOutput    string `json:"final_output"`
+	WorkloadOutput string `json:"workload_output"`
+	Questions      []struct {
 		Question string   `json:"question"`
 		Why      string   `json:"why"`
 		Options  []string `json:"options"`

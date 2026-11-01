@@ -33435,6 +33435,19 @@ func (s *GetRunTraceOK) Decode(d *jx.Decoder) error {
 				}
 				found = true
 				s.Type = match
+			case "workload_output":
+				// Type-based discrimination: check if field has expected JSON type
+				if typ := d.Next(); typ != jx.String {
+					// Field exists but has wrong type, not a match for this variant
+					return d.Skip()
+				}
+				match := TraceSummaryGetRunTraceOK
+				if found && s.Type != match {
+					s.Type = ""
+					return errors.Errorf("multiple oneOf matches: (%v, %v)", s.Type, match)
+				}
+				found = true
+				s.Type = match
 			}
 			return d.Skip()
 		})
@@ -78188,6 +78201,12 @@ func (s *TraceSummary) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
+		if s.WorkloadOutput.Set {
+			e.FieldStart("workload_output")
+			s.WorkloadOutput.Encode(e)
+		}
+	}
+	{
 		if s.Questions != nil {
 			e.FieldStart("questions")
 			e.ArrStart()
@@ -78213,7 +78232,7 @@ func (s *TraceSummary) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfTraceSummary = [16]string{
+var jsonFieldsNameOfTraceSummary = [17]string{
 	0:  "run_id",
 	1:  "status",
 	2:  "status_reason",
@@ -78227,9 +78246,10 @@ var jsonFieldsNameOfTraceSummary = [16]string{
 	10: "summary_truncated",
 	11: "last_event_at",
 	12: "final_output",
-	13: "questions",
-	14: "usage",
-	15: "steps",
+	13: "workload_output",
+	14: "questions",
+	15: "usage",
+	16: "steps",
 }
 
 // Decode decodes TraceSummary from json.
@@ -78237,7 +78257,7 @@ func (s *TraceSummary) Decode(d *jx.Decoder) error {
 	if s == nil {
 		return errors.New("invalid: unable to decode TraceSummary to nil")
 	}
-	var requiredBitSet [2]uint8
+	var requiredBitSet [3]uint8
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
@@ -78399,6 +78419,16 @@ func (s *TraceSummary) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"final_output\"")
 			}
+		case "workload_output":
+			if err := func() error {
+				s.WorkloadOutput.Reset()
+				if err := s.WorkloadOutput.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"workload_output\"")
+			}
 		case "questions":
 			if err := func() error {
 				s.Questions = make([]TraceSummaryQuestionsItem, 0)
@@ -78427,7 +78457,7 @@ func (s *TraceSummary) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"usage\"")
 			}
 		case "steps":
-			requiredBitSet[1] |= 1 << 7
+			requiredBitSet[2] |= 1 << 0
 			if err := func() error {
 				s.Steps = make([]TraceSummaryStepsItem, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -78453,9 +78483,10 @@ func (s *TraceSummary) Decode(d *jx.Decoder) error {
 	}
 	// Validate required fields.
 	var failures []validate.FieldError
-	for i, mask := range [2]uint8{
+	for i, mask := range [3]uint8{
 		0b11111011,
-		0b10000111,
+		0b00000111,
+		0b00000001,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

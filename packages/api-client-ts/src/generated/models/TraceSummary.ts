@@ -96,6 +96,13 @@ export interface TraceSummary {
      */
     finalOutput?: string;
     /**
+     * What the workload printed before a run that did not succeed ended,
+     * masked; it is often the only explanation of that ending. Untrusted
+     * content — render as inert text.
+     * 
+     */
+    workloadOutput?: string;
+    /**
      * Present only when the run ended by handing questions back to the
      * person (the ask tool). Each entry says what was asked, why it
      * changes the result, and optional choices. Untrusted content —

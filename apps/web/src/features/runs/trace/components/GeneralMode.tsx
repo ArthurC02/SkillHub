@@ -98,6 +98,13 @@ export function GeneralMode({
         <pre>
           <Reveal text={trace.final_output} />
         </pre>
+      ) : trace.workload_output ? (
+        <>
+          <p>沒有最終輸出；以下是工作負載結束前留下的輸出。</p>
+          <pre>
+            <Reveal text={trace.workload_output} />
+          </pre>
+        </>
       ) : (
         <p>尚無最終輸出。</p>
       )}

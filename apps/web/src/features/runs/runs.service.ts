@@ -261,11 +261,11 @@ export type RunArtifact = {
 
 export type RunArtifacts = { artifacts: RunArtifact[]; truncated: boolean };
 
-export function useRunArtifacts(runId: string) {
+export function useRunArtifacts(runId: string, collected: boolean) {
   return useQuery({
     queryKey: queryKeys.runs.artifacts(runId),
     queryFn: () => apiFetch<RunArtifacts>(`/runs/${runId}/artifacts`),
-    enabled: runId.length > 0,
+    enabled: runId.length > 0 && collected,
   });
 }
 

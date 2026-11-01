@@ -4,10 +4,12 @@ import { useState } from "react";
 import { useDeleteRunArtifact, useRunArtifacts } from "../../runs.service";
 import { ConfirmDelete } from "../../../../shared/ui/ConfirmDelete";
 import { RunArtifactFacts } from "./RunArtifactFacts";
+import { IN_FLIGHT_RUN_STATUSES } from "../../trace.service";
 
-export function RunArtifacts({ runId }: { runId: string }) {
-  const artifacts = useRunArtifacts(runId);
-  const readableArtifacts = artifacts.error ? undefined : artifacts.data;
+export function RunArtifacts({ runId, runStatus }: { runId: string; runStatus?: string }) {
+  const inFlight = runStatus !== undefined && IN_FLIGHT_RUN_STATUSES.has(runStatus);
+  const artifacts = useRunArtifacts(runId, !inFlight);
+  const readableArtifacts = artifacts.error || inFlight ? undefined : artifacts.data;
   const [message, setMessage] = useState("");
   const remove = useDeleteRunArtifact(runId);
 
@@ -16,7 +18,8 @@ export function RunArtifacts({ runId }: { runId: string }) {
       <h2 id="run-artifacts-heading" tabIndex={-1}>
         這次試跑的產出
       </h2>
-      {artifacts.isPending && <Loading what="產出清單" />}
+      {inFlight && <p>試跑結束後才會收集產出。</p>}
+      {artifacts.isPending && !inFlight && <Loading what="產出清單" />}
       <ReadFailure
         error={artifacts.error}
         what="產出清單"

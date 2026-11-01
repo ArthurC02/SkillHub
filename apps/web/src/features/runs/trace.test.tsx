@@ -744,6 +744,69 @@ test("the advanced trace reads once more when the run ends so its closing events
   }
 });
 
+test("a failed run without a final output shows what its workload left behind", async () => {
+  stubTrace(
+    { ...summary, final_output: undefined, workload_output: "npm ERR! missing script: start" },
+    advanced,
+  );
+  await render();
+  await waitFor(() => (container.textContent ?? "").includes("npm ERR! missing script: start"));
+  expect(container.textContent).toContain("沒有最終輸出；以下是工作負載結束前留下的輸出。");
+  expect(container.textContent).not.toContain("尚無最終輸出。");
+});
+
+test("the artifact list waits while the run is in flight and reads once it ends", async () => {
+  vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
+  try {
+    const general = { ...summary, status: "running" };
+    stubTrace(general, advanced);
+    const traceFetch = globalThis.fetch;
+    let artifactReads = 0;
+    vi.stubGlobal("fetch", (input: string) => {
+      if (!String(input).includes("/artifacts")) return traceFetch(input);
+      if (general.status === "succeeded") artifactReads += 1;
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({
+            artifacts: [
+              {
+                artifact_id: "a1",
+                file_name: "report.csv",
+                content_type: "text/csv",
+                size_bytes: 2048,
+                content_hash: "sha256:a1",
+                created_at: "2026-08-17T00:03:00Z",
+                purged: false,
+              },
+            ],
+            truncated: false,
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        ),
+      );
+    });
+    await render();
+    await waitFor(() => (container.textContent ?? "").includes("試跑結束後才會收集產出。"));
+    expect(container.textContent).not.toContain("這次試跑沒有留下任何檔案產出。");
+    expect(container.textContent).not.toContain("report.csv");
+
+    general.status = "succeeded";
+    for (let tick = 0; tick < 3 && artifactReads === 0; tick += 1) {
+      await act(async () => {
+        vi.advanceTimersByTime(1600);
+      });
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 30));
+      });
+    }
+    await waitFor(() => (container.textContent ?? "").includes("report.csv"));
+    expect(container.textContent).not.toContain("試跑結束後才會收集產出。");
+    expect(artifactReads).toBe(1);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
 test("no trace polling happens while the tab is hidden", async () => {
   vi.useFakeTimers({ toFake: ["setInterval", "clearInterval"] });
   try {

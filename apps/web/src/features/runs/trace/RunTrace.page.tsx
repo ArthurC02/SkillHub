@@ -238,7 +238,7 @@ function RunWorkspaceBody({
           </section>
 
           <section className="run-workspace-panel" id="run-artifacts">
-            <RunArtifacts runId={runId} />
+            <RunArtifacts runId={runId} runStatus={readableTrace?.status} />
           </section>
         </div>
       </div>
