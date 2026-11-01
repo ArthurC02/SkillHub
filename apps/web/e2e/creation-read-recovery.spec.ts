@@ -439,7 +439,11 @@ for (const status of [404, 503]) {
     try {
       await page.goto(`/workspace/creations?session=${ID}`);
       const current = page.locator("#creation-workspace");
-      await expect(current.getByRole("alert")).toContainText("暫時無法讀取創作紀錄");
+      await expect(current.getByRole("alert")).toContainText(
+        status === 404
+          ? "找不到這次創作：它可能已超過保存期限或已被刪除。"
+          : "暫時無法讀取創作紀錄",
+      );
       await expect(current.locator(".composer, .starter-cards, .budget-picker")).toHaveCount(0);
       const retry = current.getByRole("button", { name: "再試一次", exact: true });
       await retry.focus();
