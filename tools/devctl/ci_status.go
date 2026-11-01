@@ -41,9 +41,19 @@ type workflowJob struct {
 	ID          int64          `json:"id"`
 	Name        string         `json:"name"`
 	Conclusion  string         `json:"conclusion"`
+	CreatedAt   time.Time      `json:"created_at"`
 	StartedAt   time.Time      `json:"started_at"`
 	CompletedAt time.Time      `json:"completed_at"`
 	Steps       []workflowStep `json:"steps"`
+}
+
+const reportedQueueWait = time.Minute
+
+func (job workflowJob) queued() time.Duration {
+	if job.CreatedAt.IsZero() || job.StartedAt.IsZero() {
+		return 0
+	}
+	return job.StartedAt.Sub(job.CreatedAt).Round(time.Second)
 }
 
 type workflowStep struct {
@@ -335,35 +345,40 @@ func (c githubClient) reportJobs(out io.Writer, jobs []workflowJob) {
 }
 
 type timedUnit struct {
-	name  string
-	took  time.Duration
-	steps []timedUnit
+	name   string
+	took   time.Duration
+	queued time.Duration
+	steps  []timedUnit
 }
 
-func finishedUnits[T any](items []T, unit func(T) (string, time.Time, time.Time, []timedUnit)) []timedUnit {
+func finishedUnits[T any](items []T, unit func(T) (string, time.Time, time.Time, timedUnit)) []timedUnit {
 	var finished []timedUnit
 	for _, item := range items {
-		name, started, completed, steps := unit(item)
+		name, started, completed, extra := unit(item)
 		took := completed.Sub(started).Round(time.Second)
 		if started.IsZero() || completed.IsZero() || took <= 0 {
 			continue
 		}
-		finished = append(finished, timedUnit{name, took, steps})
+		finished = append(finished, timedUnit{name, took, extra.queued, extra.steps})
 	}
 	sort.SliceStable(finished, func(i, j int) bool { return finished[i].took > finished[j].took })
 	return finished
 }
 
 func jobTimings(jobs []workflowJob) []string {
-	finished := finishedUnits(jobs, func(job workflowJob) (string, time.Time, time.Time, []timedUnit) {
-		steps := finishedUnits(job.Steps, func(step workflowStep) (string, time.Time, time.Time, []timedUnit) {
-			return step.Name, step.StartedAt, step.CompletedAt, nil
+	finished := finishedUnits(jobs, func(job workflowJob) (string, time.Time, time.Time, timedUnit) {
+		steps := finishedUnits(job.Steps, func(step workflowStep) (string, time.Time, time.Time, timedUnit) {
+			return step.Name, step.StartedAt, step.CompletedAt, timedUnit{}
 		})
-		return job.Name, job.StartedAt, job.CompletedAt, steps
+		return job.Name, job.StartedAt, job.CompletedAt, timedUnit{queued: job.queued(), steps: steps}
 	})
 	var lines []string
 	for _, job := range finished {
-		lines = append(lines, fmt.Sprintf("took %8s  %s", job.took, job.name))
+		line := fmt.Sprintf("took %8s  %s", job.took, job.name)
+		if job.queued >= reportedQueueWait {
+			line += fmt.Sprintf("  (after %s in the queue)", job.queued)
+		}
+		lines = append(lines, line)
 		for _, step := range job.steps[:min(timedStepsPerJob, len(job.steps))] {
 			lines = append(lines, fmt.Sprintf("     %8s    %s", step.took, step.name))
 		}

@@ -83,12 +83,13 @@ func TestTimingIsOffUnlessAsked(t *testing.T) {
 	}
 }
 
-func TestJobTimingsListTheLongestJobFirstAndSkipUnfinishedOrSkippedOnes(t *testing.T) {
+func TestJobTimingsListTheLongestJobFirstNameQueueWaitsOfAMinuteAndSkipUnfinishedOrSkippedOnes(t *testing.T) {
 	t.Parallel()
 	start := time.Date(2026, 11, 1, 12, 0, 0, 0, time.UTC)
 	at := func(seconds int) time.Time { return start.Add(time.Duration(seconds) * time.Second) }
 	jobs := []workflowJob{
-		{Name: "quick", StartedAt: start, CompletedAt: at(42)},
+		{Name: "quick", CreatedAt: at(-59), StartedAt: start, CompletedAt: at(42)},
+		{Name: "waited", CreatedAt: at(-150), StartedAt: start, CompletedAt: at(30)},
 		{Name: "running", StartedAt: start},
 		{Name: "skipped", StartedAt: start, CompletedAt: start},
 		{Name: "skipped by a clock skew", StartedAt: start, CompletedAt: start.Add(-time.Second)},
@@ -107,6 +108,7 @@ func TestJobTimingsListTheLongestJobFirstAndSkipUnfinishedOrSkippedOnes(t *testi
 		"        1m40s    lint",
 		"          20s    upload",
 		"took      42s  quick",
+		"took      30s  waited  (after 2m30s in the queue)",
 	}
 	if strings.Join(got, "\n") != strings.Join(want, "\n") {
 		t.Fatalf("jobTimings() =\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
