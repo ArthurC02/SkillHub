@@ -181,7 +181,7 @@ function SessionCostDetails({
               />
             </label>
             <button type="button" disabled={busy} onClick={() => void onSubmitRaiseBudget()}>
-              提高預算後繼續
+              提高預算上限
             </button>
           </>
         )}

@@ -175,9 +175,7 @@ func runCreationRevisionScenario(t *testing.T, scenario string) {
 	skill := goodGeneratedSkill()
 	prov := GeneratedCandidateProvenance{TaskDescription: "test task", Model: "test-model", PromptVersion: "v1"}
 	first := firstMaterializedForRevisionScenario(t, svc, ws, skill, prov, scenario)
-	if scenario == "foreign" {
-		ws = seedCreationWorkspace(t, shared, "creation-enrich-other")
-	}
+	ws = revisingWorkspaceForScenario(t, shared, pool, ws, first, scenario)
 	stub := &stubEnricher{enrichStatus: http.StatusOK, embedStatus: http.StatusOK}
 	svc.LLM = stub.start(t)
 	svc.Budgets = &modelbudget.Service{Pool: pool}
@@ -186,9 +184,9 @@ func runCreationRevisionScenario(t *testing.T, scenario string) {
 	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
 	defer cancel()
 	got, err := svc.MaterializeGeneratedCandidate(ctx, ws, skill, prov, nil)
-	if scenario != "owned" {
-		if !errors.Is(err, ErrGeneratedNameCollision) || len(stub.embedded) != 0 {
-			t.Fatalf("unauthorized revision: error=%v, embedded=%d", err, len(stub.embedded))
+	if want, refused := revisionRefusals[scenario]; refused {
+		if !errors.Is(err, want) || len(stub.embedded) != 0 {
+			t.Fatalf("refused revision: error=%v, want %v; embedded=%d", err, want, len(stub.embedded))
 		}
 		return
 	}
@@ -203,8 +201,27 @@ func runCreationRevisionScenario(t *testing.T, scenario string) {
 	}
 }
 
+func revisingWorkspaceForScenario(t *testing.T, shared, pool *pgxpool.Pool, ws identity.Workspace, first Result, scenario string) identity.Workspace {
+	t.Helper()
+	switch scenario {
+	case "foreign":
+		return seedCreationWorkspace(t, shared, "creation-enrich-other")
+	case "deleted":
+		if _, err := pool.Exec(t.Context(), "UPDATE skills SET deleted_at = now() WHERE id = $1", first.Skill.ID); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return ws
+}
+
+var revisionRefusals = map[string]error{
+	"foreign":  ErrGeneratedSkillGone,
+	"deleted":  ErrGeneratedSkillGone,
+	"uploaded": ErrGeneratedNameCollision,
+}
+
 func TestCreationRevisionEnrichesWithoutHoldingTheOnlyConnection(t *testing.T) {
-	for _, scenario := range []string{"owned", "foreign", "uploaded"} {
+	for _, scenario := range []string{"owned", "foreign", "deleted", "uploaded"} {
 		t.Run(scenario, func(t *testing.T) {
 			runCreationRevisionScenario(t, scenario)
 		})

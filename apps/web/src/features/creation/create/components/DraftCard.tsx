@@ -222,6 +222,14 @@ function DraftSaveActions({
   locked: boolean;
   perform: Perform;
 }) {
+  const referencesUnconfirmed = p.pending_action === "confirm_references";
+  const blocked =
+    !inspectionReady || locked || draft.blocked || !draft.content_hash || referencesUnconfirmed;
+  const reason = !inspectionReady
+    ? "draft-inspection-unavailable"
+    : referencesUnconfirmed
+      ? "draft-references-unconfirmed"
+      : undefined;
   return (
     <>
       <p className={!p.candidate?.run_id || runNotPassing ? "notice notice-warning" : undefined}>
@@ -229,11 +237,16 @@ function DraftSaveActions({
         {!p.candidate?.run_id && "這份草稿尚未試跑。"}
         {runNotPassing && "試跑未通過或未評估；保存前請確認。"}
       </p>
+      {referencesUnconfirmed && (
+        <p id="draft-references-unconfirmed" className="notice notice-warning">
+          參考小工具需要重新確認；在上方確認或換選之後才能保存。
+        </p>
+      )}
       <div className="card-actions">
         {!p.candidate && p.pending_action !== "confirm_duplicate" && (
           <button
-            disabled={!inspectionReady || locked || draft.blocked || !draft.content_hash}
-            aria-describedby={!inspectionReady ? "draft-inspection-unavailable" : undefined}
+            disabled={blocked}
+            aria-describedby={reason}
             onClick={() => void perform("materialize", { content_hash: draft.content_hash })}
           >
             建立私人候選版本
@@ -241,8 +254,8 @@ function DraftSaveActions({
         )}
         <button
           className="action"
-          disabled={!inspectionReady || locked || draft.blocked || !draft.content_hash}
-          aria-describedby={!inspectionReady ? "draft-inspection-unavailable" : undefined}
+          disabled={blocked}
+          aria-describedby={reason}
           onClick={() => void perform("finalize", { content_hash: draft.content_hash })}
         >
           確認保存到私人工作區

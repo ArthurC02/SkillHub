@@ -159,6 +159,9 @@ func (h *creationHandler) creationError(w http.ResponseWriter, err error) {
 		if errors.As(err, &reached) {
 			text = reached.Sentence
 		}
+	case errors.Is(err, ingest.ErrGeneratedSkillGone):
+		code = 422
+		text = "這次創作先前建立的私人候選版本已被刪除，草稿不能再存成它的新版本；請開始新的創作。"
 	case errors.Is(err, ingest.ErrGeneratedNameCollision):
 		code = 422
 		text = "你的工作區已經有一個同名的小工具。請先刪除或改名它，或在對話中請 Agent 把草稿改名後再保存。"

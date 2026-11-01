@@ -256,7 +256,16 @@ function CreationReadState({
         what="創作紀錄"
         retry={() => void read.refetch()}
         focusTarget="creation-workspace"
-      />
+      >
+        {read.error instanceof ApiError && read.error.status === 404 && (
+          <p role="alert">
+            找不到這次創作：它可能已超過保存期限或已被刪除。{" "}
+            <Link to="/workspace/creations" search={{ session: undefined }}>
+              開始新的創作
+            </Link>
+          </p>
+        )}
+      </ReadFailure>
       {!missing && busy && (
         <p role="status">
           {read.fetchStatus === "paused" ? "等待連線以重新讀取創作紀錄…" : "正在重新讀取創作紀錄…"}

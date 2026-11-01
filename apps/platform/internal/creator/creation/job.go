@@ -35,7 +35,7 @@ func limitSentence(p Snapshot, l Limits) string {
 	if !p.hasRoomFor(2) {
 		return "這次創作的對話已達則數上限；請保存目前的草稿，或開始新的創作。"
 	}
-	return "已達這次核准的預算或步數上限；可以提高預算後繼續，或開始新的創作。"
+	return "已達這次核准的預算或步數上限；提高預算上限之後再送出一則訊息就會繼續，或開始新的創作。"
 }
 
 type LimitReached struct{ Sentence string }

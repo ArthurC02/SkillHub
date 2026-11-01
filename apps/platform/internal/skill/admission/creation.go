@@ -85,7 +85,7 @@ func (s *Service) MaterializeGeneratedCandidate(ctx context.Context, ws identity
 func loadGeneratedSkill(ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype.UUID) (*registry.SkillRoot, error) {
 	skill, err := registry.LoadSkill(ctx, tx, workspaceID, skillID)
 	if errors.Is(err, registry.ErrNotFound) {
-		return nil, ErrGeneratedNameCollision
+		return nil, ErrGeneratedSkillGone
 	}
 	if err != nil {
 		return nil, err
@@ -213,3 +213,5 @@ func (s *Service) ValidateCreationDraft(ctx context.Context, draft GeneratedSkil
 	report, err := json.Marshal(prepared.report)
 	return CreationDraftCheck{ContentHash: prepared.contentHash, Report: string(report), Blocked: prepared.report.Blocked}, err
 }
+
+var ErrGeneratedSkillGone = errors.New("ingest: the skill this creation saves into no longer exists")

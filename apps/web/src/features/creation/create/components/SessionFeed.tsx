@@ -5,6 +5,7 @@ import type {
   CreationSessionRead,
 } from "../../creation.service";
 import type { RunListItem } from "../../../runs";
+import { useDeadlinePassed } from "../../../../shared/useDeadlinePassed";
 import { buildRoundTimeline } from "../create.model";
 import type { Perform } from "../create.commands";
 import { ConversationLog } from "./ConversationLog";
@@ -50,6 +51,8 @@ export function SessionFeed({
 }) {
   const p = session.snapshot;
   const roundTimeline = buildRoundTimeline(p.messages);
+  const pastDeadline = useDeadlinePassed(session.deadline);
+  const decisionsLocked = locked || pastDeadline;
   return (
     <>
       <ConversationLog
@@ -60,7 +63,7 @@ export function SessionFeed({
         perform={perform}
       />
       {roundTimeline.length > 0 && <RoundTimeline items={roundTimeline} />}
-      {p.brief && <BriefCard p={p} locked={locked} perform={perform} />}
+      {p.brief && <BriefCard p={p} locked={decisionsLocked} perform={perform} />}
       {session.state === "needs_reupload" && (
         <p className="system-line">這一步中斷了，Agent 沒能讀出那張圖；請在下面重新上傳同一張。</p>
       )}
@@ -68,11 +71,11 @@ export function SessionFeed({
         p={p}
         diagramAnswers={diagramAnswers}
         onDiagramAnswers={onDiagramAnswers}
-        locked={locked}
+        locked={decisionsLocked}
         perform={perform}
       />
       {p.pending_action === "confirm_fetch" && p.pending_fetch_url && (
-        <FetchConsentCard url={p.pending_fetch_url} locked={locked} perform={perform} />
+        <FetchConsentCard url={p.pending_fetch_url} locked={decisionsLocked} perform={perform} />
       )}
       {!!p.fetches?.length && <FetchedPages fetches={p.fetches} />}
       {(p.references.length > 0 || p.pending_action === "confirm_references") && (
@@ -80,7 +83,7 @@ export function SessionFeed({
           references={p.references}
           pendingAction={p.pending_action}
           catalogChecked={p.catalog_checked}
-          locked={locked}
+          locked={decisionsLocked}
           perform={perform}
         />
       )}
@@ -88,7 +91,7 @@ export function SessionFeed({
         <DuplicatesCard
           duplicates={p.duplicates}
           contentHash={p.draft?.content_hash}
-          locked={locked}
+          locked={decisionsLocked}
           perform={perform}
         />
       )}

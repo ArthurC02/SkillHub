@@ -2179,20 +2179,20 @@ test("a failed session shows the raise form, refuses an out-of-band amount local
   await resume();
   await waitFor(() => !!box.querySelector('[aria-label="提高這次預算上限（點）"]'));
   await input("提高這次預算上限（點）", "50000");
-  await click("提高預算後繼續");
+  await click("提高預算上限");
   await waitFor(() => !!box.querySelector('[role="alert"]'));
   expect(box.textContent).toContain("不超過 6500 點");
   expect(posts).toHaveLength(0);
   await input("提高這次預算上限（點）", "1300");
-  await click("提高預算後繼續");
+  await click("提高預算上限");
   expect(box.textContent, "等於目前上限，應該被拒絕").toContain("高於目前上限 1300 點");
   expect(posts, "等於目前上限卻送出了").toHaveLength(0);
   await input("提高這次預算上限（點）", "1300.5");
-  await click("提高預算後繼續");
+  await click("提高預算上限");
   expect(box.textContent, "非整數，應該被拒絕").toContain("高於目前上限 1300 點");
   expect(posts, "非整數卻送出了").toHaveLength(0);
   await input("提高這次預算上限（點）", "2000");
-  await click("提高預算後繼續");
+  await click("提高預算上限");
   await waitFor(() => posts.length === 1);
   expect(posts[0]).toMatchObject({ kind: "raise_budget", budget_credits: 2000 });
 });
@@ -2217,7 +2217,7 @@ test.each([
     await waitFor(() => !box.querySelector('[aria-label="提高這次預算上限（點）"]'));
 
     expect(box.querySelector('[aria-label="提高這次預算上限（點）"]')).toBeNull();
-    expect(box.textContent).not.toContain("提高預算後繼續");
+    expect(box.textContent).not.toContain("提高預算上限");
   },
 );
 test("a candidate with a test_case_id renders the 測試題 sentence and the run link carries it", async () => {
@@ -3185,4 +3185,88 @@ test("a cached creation hides its old read error while a paused retry preserves 
   } finally {
     await act(async () => onlineManager.setOnline(true));
   }
+});
+
+test("a creation the server no longer has says so and offers a new one instead of asking to try later", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => {
+      if (url.endsWith("/creation-sessions/s1"))
+        return response({ error: "找不到可讀取的創作或參考內容。" }, 404);
+      return routeGet(url, [], sample());
+    }),
+  );
+  await render(<CreationSession sessionId="s1" />);
+  await waitFor(() => !!box.querySelector('.creation-current [role="alert"]'));
+  const text = box.querySelector(".creation-current")?.textContent ?? "";
+  expect(text).toContain("找不到這次創作：它可能已超過保存期限或已被刪除。");
+  expect(text).not.toContain("請再試一次，或稍後再試。");
+  expect([...box.querySelectorAll(".creation-current a")].map((a) => a.textContent)).toContain(
+    "開始新的創作",
+  );
+});
+
+test("a draft waiting on its references to be confirmed again cannot be saved, and says why", async () => {
+  const v = sample({ state: "waiting_confirmation" });
+  v.snapshot.draft = DRAFT;
+  v.snapshot.pending_action = "confirm_references";
+  v.snapshot.references = [
+    {
+      skill_id: "ref-1",
+      version_id: "v1",
+      name: "摘要小工具",
+      available: false,
+      confirmed: false,
+      description: "整理輸入並輸出摘要",
+      compatibility: "需要文字輸入",
+      allowed_tools: "Bash",
+      tier: "curated",
+      scan_status: "scanned",
+      warnings: 0,
+    },
+  ];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [v], v)),
+  );
+  await render();
+  await resume();
+
+  const save = button("確認保存到私人工作區");
+  expect(save.disabled).toBe(true);
+  expect(save.getAttribute("aria-describedby")).toBe("draft-references-unconfirmed");
+  expect(box.querySelector("#draft-references-unconfirmed")?.textContent).toBe(
+    "參考小工具需要重新確認；在上方確認或換選之後才能保存。",
+  );
+});
+
+test("past its deadline a session's decision cards lock", async () => {
+  const v = sample({ state: "waiting_confirmation", deadline: "2020-01-01T00:00:00Z" });
+  v.snapshot.draft = DRAFT;
+  v.snapshot.pending_action = "confirm_references";
+  v.snapshot.references = [
+    {
+      skill_id: "ref-1",
+      version_id: "v1",
+      name: "摘要小工具",
+      available: true,
+      confirmed: false,
+      description: "整理輸入並輸出摘要",
+      compatibility: "需要文字輸入",
+      allowed_tools: "Bash",
+      tier: "curated",
+      scan_status: "scanned",
+      warnings: 0,
+    },
+  ];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => routeGet(url, [v], v)),
+  );
+  await render();
+  await resume();
+  await waitFor(() => box.textContent!.includes(pastDeadline));
+
+  expect(button("以這些為參考").disabled).toBe(true);
+  expect(button("都不是，從頭寫").disabled).toBe(true);
 });
