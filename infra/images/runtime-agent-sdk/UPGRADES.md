@@ -1204,7 +1204,7 @@ CI 的 Runtime Image 工作流程自 2026-10-26 的排程掃描起就紅；以 C
 
 四項在 `-25` 的 digest 上跑過之後移動：`apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`（與它 `docker tag` 成的本地 tag）、`p02_docker_test.go` 的常數，以及 `automation.md` 的實跑範例。
 
-## `2026.08-25` → `2026.08-26`（2026-11-01）— **`run.mjs` 為清單上的 MCP 工具掛替身；四項實測尚未跑，預設映像仍留在 `-25`**
+## `2026.08-25` → `2026.08-26`（2026-11-01）— **`run.mjs` 為清單上的 MCP 工具掛替身；四項實測通過，預設映像移到 `-26`**
 
 Skill 在 `allowed-tools` 宣告營運者清單上的 MCP 工具時，試跑以替身回應它。平台派送時把「這個版本宣告的、且在清單上未退役的」工具放進 RunRequest 的 `mcp_tools`，sandbox 在 `ready` 之前寫成 `/work/.skillhub/mcp-tools.json`。`run.mjs` 為每個 MCP 伺服器名掛一個程序內 MCP 伺服器，每個工具一個替身，並把它們的引用名稱加進 `allowedTools`。替身的說明帶著營運者寫的用途與參數，並告訴模型它是替身；呼叫它只回一段說明：這一步需要哪個工具、沒有任何東西送到它的伺服器、請說出哪一步需要它。清單外的名稱不會被掛上。檔案讀不了或格式不對時，Run 在模型開始前以 `invalid_mcp_tools` 失敗，不會在少了工具的情況下照跑。伺服器名 `skillhub` 保留給 `ask_person`，營運者不能把工具登記在這個名稱下，`run.mjs` 也會略過它。
 
@@ -1215,8 +1215,32 @@ Skill 在 `allowed-tools` 宣告營運者清單上的 MCP 工具時，試跑以�
 | SDK 版本 | `0.3.233`（**未變**） |
 | 基底 digest | **未變** |
 | `run.mjs` | **變更**，見上 |
-| 預設映像 | 仍是 `-25`；四項在 CI 發佈的 digest 上跑過之後才移動 |
+| 預設映像 | 移到 `-26`，見本節最後 |
 
 ### 本機驗證（2026-11-01，沒有任何模型呼叫）
 
 `node --test run.test.mjs`：140 條，139 通過、1 條跳過（既有的 Unix 檔案權限測試，Windows 上不適用）。新增的 11 條各自弄壞過對應的那一行，都會變紅：主流程沒把替身交給 SDK、讀檔時不檢查形狀、沒略過 `skillhub` 伺服器。本機建置 `skillhub-runtime-agent-sdk:2026.08-26-local`，無網路：`id -u` → `65532`、`node --version` → `v22.23.4`、SDK `0.3.233`、version label → `2026.08-26`、`.Size` → 1,352,764,383 bytes；在映像裡以真的 SDK `createSdkMcpServer`／`tool` 與映像裡的 `zod` 建兩個替身伺服器（`calendar`、`team-mail`），兩者都回 `type: sdk`，`allowedTools` 帶上 `mcp__calendar__create_event`。
+
+### 2026-11-01：四項測項與替身實跑，全部跑在 CI 發佈的 digest 上
+
+| 欄位 | 值 |
+| --- | --- |
+| 映像 digest | `sha256:780116fae35191b7126d7fe89db552207be669e820dd1ef3519e558810e065c4`（`ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-26`，於 commit `cc7f5ae3` 發佈；以 digest `docker pull`） |
+| 環境 | 與 `-25` 相同：本機 LiteLLM（`skillhub-litellm-1`）＋ `skillhub_egress`；`sandboxd` 以 HEAD 交叉編譯、在 `debian:12-slim` 容器跑，`SKILLHUB_SANDBOX_IMAGE` **直接指上面那個 digest**；兩支測試二進位交叉編譯後在容器裡跑，repo 掛在容器的 `/C:/src/SkillHub`（Windows 上編出的測試二進位以編譯時的路徑找 migration）；允許清單只在暫存副本裡填 litellm 的 egress IP 與服務名，committed 的那份一字未動 |
+| 費用 | 合計 **$0.1349469**（`gpt-5.4-mini`，40 筆，以閘道 `LiteLLM_SpendLogs` 加總）：端到端六次 Run $0.0224805＋$0.0071819＋$0.0240518＋$0.0228015＋$0.0182898（替身）＋ `-25` 反證 $0.0337559；harness 兩支 $0.0063855；撤銷探測與被換掉的套件 $0 |
+| 映像層 | 同 `-26` 本機驗證：`node --version` → `v22.23.4`、SDK `0.3.233`、`id -u` → `65532` |
+
+| 項次 | 狀態 | 實測輸出 / 判定 |
+| --- | --- | --- |
+| **1. Skill 載入條件** | ✅ **通過，三種形狀各跑一次** | `TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey` PASS（26.99s）、`TestEndToEndRunOfASkillInsideAPluginInstallsThatDirectoryAlone` PASS（21.52s）、`TestEndToEndRunOfAPluginInsideARepositoryDirectoryInstallsItsSkill` PASS（21.33s）；`TestEndToEndRunHandsAQuestionOnlyThePersonCanAnswerBackAndStops` PASS（19.57s），`ask_person` 與替身並存時仍掛在自己的伺服器上 |
+| **2. 全數經閘道；金鑰撤銷後回 401** | ✅ **通過** | 每次 Run 的模型呼叫都在該 Run 自己的 Virtual Key 下（`skillhub-attempt-<id>` 六把，6／4／7／6／4／8 筆）。撤銷：新開一把限 `gpt-5.4-mini`、0.5 USD、6 小時的 Virtual Key 打 `/v1/models` → **200**，`/key/delete` → 200，同一把再打 → **401** |
+| **3. Prompt caching 計費欄位與對帳** | ✅ **通過，五次 Run 全數對上** | `usage_object.prompt_tokens_details.cached_tokens`：40 筆中 26 筆有值，合計 470,400。對帳：五次 Run 回報 $0.022481、$0.007182、$0.024052、$0.022801、$0.018290，與各自 Virtual Key 的 `LiteLLM_SpendLogs` 加總四捨五入到小數第六位全部相同；這一次沒有撞上 `-21`、`-23`、`-25` 記過的 `gatewaySpend` 競態 |
+| **4. `usage` 事件的發出條件** | ✅ **通過** | `TestHarnessReportsUsageForACompletedTurn` PASS（15.88s，`in=2011 out=29 token_source=result`）；`TestHarnessStopsAtTheTokenCeilingAndStillReportsUsage` PASS（15.61s，撞上限仍回報 `in=2011 out=26`，provider 錯誤指向 `token_budget_exceeded`）。harness 以 master key 當 grant，`cost` 為 `null`，與 `-25` 相同 |
+
+**套件位元組核對（不在四項清單上，同批驗證）**：`TestEndToEndRunRefusesAPackageWhoseStoredBytesAreNotTheAdmittedOnes` PASS（11.26s），沒有呼叫模型。
+
+**替身實跑（這一版的變更本身）**：`TestEndToEndRunAnswersADeclaredListedMCPToolWithAStandIn` PASS（13.51s，$0.0182898）。清單登記一個工具、Skill 在 `allowed-tools` 宣告它；真的模型呼叫了替身，送出 `{"arguments":{"start":"2026-11-03T10:00","title":"Follow-up"}}`，trace 的 `tool_call` 記下這次呼叫，`result_summary` 是「這一步需要這個工具」的說明。**會紅的反證**：把 `sandboxd` 指回 `-25` 的 digest、其他一切不動，同一支 FAIL：`the trace records no call of mcp__…__create_event`，模型照樣被呼叫（$0.0337559）但沒有那個工具可用。改回 `-26` 之後 PASS。
+
+### 預設映像從 `-25` 移到 `-26`
+
+四項在 `-26` 的 digest 上跑過之後移動：`apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`（與它 `docker tag` 成的本地 tag）、`p02_docker_test.go` 的常數，以及 `automation.md` 的實跑範例。

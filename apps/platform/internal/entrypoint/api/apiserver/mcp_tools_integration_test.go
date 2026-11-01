@@ -241,3 +241,50 @@ func TestATrialRunOfAVersionDeclaringNoMCPToolCarriesNoStandIns(t *testing.T) {
 		t.Errorf("the run was sent the stand-ins %+v (sent %v), want none", sent.MCPTools, ok)
 	}
 }
+
+func TestEndToEndRunAnswersADeclaredListedMCPToolWithAStandIn(t *testing.T) {
+	realGatewayEnv(t)
+	server := uniqueServer()
+	reference := "mcp__" + server + "__create_event"
+	if _, err := gen.New(requireDB(t)).InsertMCPTool(context.Background(), gen.InsertMCPToolParams{
+		Server: server, Tool: "create_event", Purpose: "Creates an event in the team calendar.",
+		Parameters: "title, start", ServerUrl: "https://mcp.example.com/" + server, Reason: "end to end stand-in check",
+	}); err != nil {
+		t.Fatalf("listing %s: %v", reference, err)
+	}
+	manifest, err := json.Marshal(map[string]any{"name": "book-follow-up", "allowed_tools": []string{reference}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	o := finishRealGatewayRun(t, realGatewayRunSpec{
+		user: "e2e-mcp-stand-in",
+		pkg: zipOf(t, map[string]string{"SKILL.md": "---\nname: book-follow-up\n" +
+			"description: Books a follow-up meeting in the team calendar.\nlicense: MIT\n" +
+			"allowed-tools: " + reference + "\n---\n\n" +
+			"Call the " + reference + " tool once, with the title \"Follow-up\" and the start \"2026-11-03T10:00\".\n" +
+			"Then reply in one sentence saying whether the meeting was booked.\n"}),
+		prompt:   "Use the book-follow-up skill to book the follow-up meeting.",
+		manifest: manifest,
+	})
+	if o.final.Status != "succeeded" {
+		t.Fatalf("run ended %s (%s / %s)", o.final.Status, o.final.FailureClass.Value, o.final.StatusReason)
+	}
+	var called map[string]any
+	for _, e := range traceEvents(t, o.client, o.runID) {
+		if e.Type == "tool_call" && e.Payload["tool_name"] == reference {
+			called = e.Payload
+		}
+	}
+	if called == nil {
+		t.Fatalf("the trace records no call of %s: the agent was not offered the stand-in, or did not use it", reference)
+	}
+	if summary, _ := called["result_summary"].(string); !strings.Contains(summary, "this step needs the "+reference+" tool") {
+		t.Errorf("calling %s answered %q, want the stand-in notice naming the tool the step needs", reference, summary)
+	}
+	t.Logf("the agent sent the stand-in %v", called["arguments"])
+	cost, problems := gatewayUsageFindings(traceUsageEvent(t, o.client, o.runID))
+	for _, problem := range problems {
+		t.Error(problem)
+	}
+	t.Logf("gateway-reported cost for this run: $%.6f", cost)
+}

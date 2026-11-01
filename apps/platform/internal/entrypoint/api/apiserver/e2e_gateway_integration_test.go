@@ -104,23 +104,14 @@ func TestEndToEndRunHandsAQuestionOnlyThePersonCanAnswerBackAndStops(t *testing.
 	t.Logf("gateway-reported cost for this run: $%.6f", cost)
 }
 
+type traceEvent struct {
+	Type    string         `json:"type"`
+	Payload map[string]any `json:"payload"`
+}
+
 func traceQuestions(t *testing.T, c *client, runID string) []any {
 	t.Helper()
-	resp, err := c.Get(c.base + "/runs/" + runID + "/trace?mode=advanced")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer resp.Body.Close()
-	var body struct {
-		Events []struct {
-			Type    string         `json:"type"`
-			Payload map[string]any `json:"payload"`
-		} `json:"events"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
-		t.Fatal(err)
-	}
-	for _, e := range body.Events {
+	for _, e := range traceEvents(t, c, runID) {
 		if e.Type == "agent_output" && e.Payload["kind"] == "question" {
 			questions, _ := e.Payload["questions"].([]any)
 			return questions
@@ -129,12 +120,29 @@ func traceQuestions(t *testing.T, c *client, runID string) []any {
 	return nil
 }
 
+func traceEvents(t *testing.T, c *client, runID string) []traceEvent {
+	t.Helper()
+	resp, err := c.Get(c.base + "/runs/" + runID + "/trace?mode=advanced")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	var body struct {
+		Events []traceEvent `json:"events"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	return body.Events
+}
+
 type realGatewayRunSpec struct {
 	user          string
 	pkg           []byte
 	storedInstead []byte
 	sourcePath    string
 	prompt        string
+	manifest      []byte
 }
 
 type realGatewayEnvironment struct {
@@ -210,7 +218,7 @@ func (r realGatewayRig) stagePackage(t *testing.T, f *fixture, spec realGatewayR
 		ContentHash:      "hash-" + spec.user + "-at-" + spec.sourcePath,
 		PackageObjectKey: key,
 		SourcePath:       spec.sourcePath,
-		Manifest:         []byte(`{}`),
+		Manifest:         manifestOr(spec.manifest),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -224,6 +232,13 @@ func (r realGatewayRig) stagePackage(t *testing.T, f *fixture, spec realGatewayR
 	); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func manifestOr(manifest []byte) []byte {
+	if manifest == nil {
+		return []byte(`{}`)
+	}
+	return manifest
 }
 
 func gatewayUsageFindings(usage map[string]any) (float64, []string) {

@@ -146,7 +146,7 @@ dev 的出口網路是 `skillhub_egress`，`internal: true`：上面的容器沒
 | `cwd` | 指向持有 `.claude/skills/` 的目錄 | 即 `/work` |
 | `settingSources` | **省略** | 見下 |
 | `skills` | `"all"` | 0.3.x 起 skill 啟用的唯一開關 |
-| `allowedTools` | 工作負載可用的工具清單，目前與 `skills` 同時配置 | 清單目前包含 `Skill`、檔案工具與 `Bash`；實際可用工具以 `run.mjs` 的設定為準 |
+| `allowedTools` | 工作負載可用的工具清單，目前與 `skills` 同時配置 | 清單包含 `Skill`、檔案工具、`Bash`、平台自己的 `ask_person`，以及 `RunRequest.mcp_tools` 帶來的 MCP 工具替身（交付在 `/work/.skillhub/mcp-tools.json`，呼叫只回「這一步需要這個工具」的說明，不連任何 MCP 伺服器）；實際可用工具以 `run.mjs` 的設定為準 |
 
 > `settingSources` 目前省略。`HOME` 指向每個 Run 專屬的 `/work` tmpfs；若 SDK 版本或設定來源行為改變，必須重新驗證 Skill 發現、啟用與隔離邊界。
 >
