@@ -643,18 +643,98 @@ export function renderQuestions(questions) {
     .join("\n");
 }
 
-export function agentOptions(dir, askServer) {
+const STAND_IN_REFERENCE =
+  /^mcp__([a-z0-9]+(?:-[a-z0-9]+)*)__([A-Za-z0-9]+(?:[_-][A-Za-z0-9]+)*)$/;
+
+function isStandIn(entry) {
+  return (
+    typeof entry?.reference === "string" &&
+    STAND_IN_REFERENCE.test(entry.reference) &&
+    typeof entry.purpose === "string" &&
+    (entry.parameters === undefined || typeof entry.parameters === "string")
+  );
+}
+
+export function readStandIns(path, onFailure = fail) {
+  if (!existsSync(path)) return [];
+  try {
+    const standIns = JSON.parse(readFileSync(path, "utf8"));
+    if (!Array.isArray(standIns) || !standIns.every(isStandIn)) {
+      throw new Error("expected a list of tools, each with a reference and a purpose");
+    }
+    return standIns.filter(
+      (s) => STAND_IN_REFERENCE.exec(s.reference)[1] !== ASK_PERSON_SERVER,
+    );
+  } catch (error) {
+    onFailure(
+      "provision",
+      "invalid_mcp_tools",
+      `the run's MCP tool stand-ins could not be read, so the tools this skill declares cannot be offered: ${error}`,
+    );
+    return [];
+  }
+}
+
+export function standInNotice(reference) {
+  return (
+    `This is a trial run, and ${reference} is a stand-in here: this step needs the ${reference} tool, and nothing was sent to it, so there is no real result. ` +
+    `Carry on with what you can do without it, and tell the person which step needs ${reference} and what you would have used its result for.`
+  );
+}
+
+function standInDescription({ purpose, parameters }) {
+  return [
+    purpose,
+    parameters ? `Parameters: ${parameters}` : "",
+    "During this trial run the tool is a stand-in: calling it returns a notice, not a real result.",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+export function standInServers({ createSdkMcpServer, tool }, z, standIns) {
+  const byServer = new Map();
+  for (const standIn of standIns) {
+    const [, server, name] = STAND_IN_REFERENCE.exec(standIn.reference);
+    const tools = byServer.get(server) ?? [];
+    tools.push(
+      tool(
+        name,
+        standInDescription(standIn),
+        {
+          arguments: z
+            .record(z.string(), z.unknown())
+            .optional()
+            .describe("What you would pass to the real tool, named as its parameters say."),
+        },
+        async () => ({
+          content: [{ type: "text", text: standInNotice(standIn.reference) }],
+        }),
+      ),
+    );
+    byServer.set(server, tools);
+  }
+  return Object.fromEntries(
+    [...byServer].map(([name, tools]) => [
+      name,
+      createSdkMcpServer({ name, version: "1.0.0", tools }),
+    ]),
+  );
+}
+
+export function agentOptions(dir, askServer, standIns = {}, standInReferences = []) {
   const options = {
     cwd: workDir,
     skills: "all",
-    allowedTools: ["Skill", "Read", "Write", "Edit", "Glob", "Grep", "Bash"],
+    allowedTools: ["Skill", "Read", "Write", "Edit", "Glob", "Grep", "Bash", ...standInReferences],
     model: process.env.SKILLHUB_MODEL,
     permissionMode: "bypassPermissions",
     systemPrompt: outputContract(dir),
     includePartialMessages: true,
   };
+  if (standInReferences.length > 0) options.mcpServers = { ...standIns };
   if (askServer) {
-    options.mcpServers = { [ASK_PERSON_SERVER]: askServer };
+    options.mcpServers = { ...options.mcpServers, [ASK_PERSON_SERVER]: askServer };
     options.allowedTools = [...options.allowedTools, ASK_PERSON_TOOL];
   }
   return options;
@@ -692,6 +772,7 @@ if (isMain) {
     });
   }
   mkdirSync(artifactDir, { recursive: true });
+  const standIns = readStandIns(join(inputDir, "mcp-tools.json"));
 
   const pending = new Map();
 
@@ -941,10 +1022,11 @@ if (isMain) {
       asked = questions;
       stopAfterAsking.abort();
     });
+    const references = standIns.map((standIn) => standIn.reference);
     for await (const msg of sdk.query({
       prompt,
       options: {
-        ...agentOptions(artifactDir, askServer),
+        ...agentOptions(artifactDir, askServer, standInServers(sdk, z, standIns), references),
         abortController: stopAfterAsking,
       },
     })) {

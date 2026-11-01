@@ -589,6 +589,7 @@ func (s *Service) buildRunRequest(ctx context.Context, run gen.Run, attempt gen.
 		Egress:         policy.Egress,
 		ObjectGrants:   grants,
 		ModelGateway:   gatewayGrant,
+		MCPTools:       version.MCPTools,
 
 		Trace: TracePolicy{
 			Level: "standard",

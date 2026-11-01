@@ -2,8 +2,10 @@ package apiserver_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -11,8 +13,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
 func uniqueServer() string {
@@ -174,5 +178,66 @@ func TestACreatedDraftMayDeclareOnlyListedMCPTools(t *testing.T) {
 	if !strings.Contains(check.Report, skillpkg.CodeMCPToolNotOffered) || !strings.Contains(check.Report, unlisted) ||
 		!strings.Contains(check.Report, listed) {
 		t.Errorf("report = %s, want it to name %s as not offered and list %s as available", check.Report, unlisted, listed)
+	}
+}
+
+func declaringVersion(t *testing.T, a *api, pool *pgxpool.Pool, f fixture, tools ...string) fixture {
+	t.Helper()
+	manifest, err := json.Marshal(map[string]any{"name": "clean-skill", "allowed_tools": tools})
+	if err != nil {
+		t.Fatal(err)
+	}
+	hash := fmt.Sprintf("hash-declaring-%d", time.Now().UnixNano())
+	v, err := gen.New(pool).CreateSkillVersion(context.Background(), gen.CreateSkillVersionParams{
+		WorkspaceID: mustUUID(t, f.workspaceID), SkillID: mustUUID(t, f.skillID), VersionNumber: nextVersionNumber(t, pool, f.skillID),
+		ContentHash: hash, PackageObjectKey: "packages/" + hash + ".zip", Manifest: manifest,
+	})
+	if err != nil {
+		t.Fatalf("a version declaring %v: %v", tools, err)
+	}
+	a.packages[v.PackageObjectKey] = cleanPackage(t)
+	f.versionID = uuidText(v.ID)
+	return f
+}
+
+func TestATrialRunOffersStandInsForTheListedToolsItsVersionDeclares(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	fake, svc := haltHarness(t, a, pool)
+	operator := a.login(t, freshName("operator-mcp-stand-in"))
+	a.auth.Operators = map[string]bool{operator.userID: true}
+	server := uniqueServer()
+	listed := addMCPTool(t, operator, server, "create_event")["reference"].(string)
+	retired := addMCPTool(t, operator, server, "delete_event")
+	if code, body := operatorCall(t, operator, http.MethodPost, fmt.Sprintf("/admin/mcp-tools/%s/retire", retired["id"]), `{"note":"withdrawn"}`); code != http.StatusOK {
+		t.Fatalf("retiring: %d %v", code, body)
+	}
+	addMCPTool(t, operator, server, "list_events")
+	f := declaringVersion(t, a, pool, newFixture(t, a, pool, "alice-mcp-stand-in"),
+		"Read", listed, retired["reference"].(string), "mcp__"+server+"__send_mail")
+
+	started := f.start(t)
+	if err := driveThroughPolls(context.Background(), svc.Drive, mustUUID(t, f.workspaceID), mustUUID(t, started.RunID)); err != nil {
+		t.Fatalf("driving the run: %v", err)
+	}
+	sent, ok := fake.Request(started.RunID, 1)
+	want := []run.MCPToolStandIn{{Reference: listed, Purpose: "Creates an event.", Parameters: "title, start"}}
+	if !ok || !reflect.DeepEqual(sent.MCPTools, want) {
+		t.Errorf("the run was sent the stand-ins %+v (sent %v), want only the listed, unretired tool it declares: %+v", sent.MCPTools, ok, want)
+	}
+}
+
+func TestATrialRunOfAVersionDeclaringNoMCPToolCarriesNoStandIns(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	fake, svc := haltHarness(t, a, pool)
+	f := declaringVersion(t, a, pool, newFixture(t, a, pool, "alice-mcp-no-stand-in"), "Read", "Bash")
+
+	started := f.start(t)
+	if err := driveThroughPolls(context.Background(), svc.Drive, mustUUID(t, f.workspaceID), mustUUID(t, started.RunID)); err != nil {
+		t.Fatalf("driving the run: %v", err)
+	}
+	if sent, ok := fake.Request(started.RunID, 1); !ok || sent.MCPTools != nil {
+		t.Errorf("the run was sent the stand-ins %+v (sent %v), want none", sent.MCPTools, ok)
 	}
 }

@@ -1,6 +1,7 @@
 package mcptools
 
 import (
+	"context"
 	"errors"
 	"slices"
 	"strings"
@@ -145,5 +146,48 @@ func TestHyphenatedNamesAreAccepted(t *testing.T) {
 	d.Server, d.Tool = "team-calendar", "create-event"
 	if _, err := validDraft(d); err != nil {
 		t.Errorf("hyphenated server and tool refused: %v", err)
+	}
+}
+
+func TestOnlyDeclaredToolsOnTheListAreOffered(t *testing.T) {
+	listed := []Tool{calendar(), {Server: "mail", Tool: "send"}}
+	for _, tc := range []struct {
+		name     string
+		declared []string
+		want     []string
+	}{
+		{"a declared listed tool", []string{"Read", "mcp__calendar__create_event"}, []string{"mcp__calendar__create_event"}},
+		{"a listed tool the version does not declare", []string{"mcp__mail__send"}, []string{"mcp__mail__send"}},
+		{"a declared name that is not listed", []string{"mcp__crm__lookup"}, nil},
+		{"only built-in tools", []string{"Read", "Bash"}, nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var got []string
+			for _, tool := range declaredAmong(tc.declared, slices.Clone(listed)) {
+				got = append(got, tool.Reference())
+			}
+			if !slices.Equal(got, tc.want) {
+				t.Errorf("declaredAmong(%v) = %v, want %v", tc.declared, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestTheListIsNotReadWhenTheVersionDeclaresNoMCPTool(t *testing.T) {
+	got, err := Offered(context.Background(), nil, []string{"Read", "Bash(git:*)"})
+	if err != nil || got != nil {
+		t.Errorf("Offered = %v, %v; want nothing offered and no read of the list", got, err)
+	}
+}
+
+func TestTheRuntimesOwnServerNameIsRefused(t *testing.T) {
+	d := draft()
+	d.Server = "skillhub"
+	if _, err := validDraft(d); !errors.Is(err, ErrShape) {
+		t.Errorf("server skillhub: err = %v, want ErrShape", err)
+	}
+	d.Server = "skillhub-crm"
+	if _, err := validDraft(d); err != nil {
+		t.Errorf("server skillhub-crm refused: %v", err)
 	}
 }

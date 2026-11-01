@@ -50,3 +50,24 @@ func TestAWorkloadThatEndsBeforeDeliveryIsNotAProvisionFailure(t *testing.T) {
 		t.Fatalf("start of a fast-exiting workload reported a delivery failure: %v", err)
 	}
 }
+
+func TestTheStandInsArePlacedBeforeTheReadySignal(t *testing.T) {
+	d, _ := newDriver(t)
+	req := testRequest(
+		"while [ ! -f /work/.skillhub/ready ]; do sleep 0.05; done; " +
+			`test "$(cat /work/.skillhub/mcp-tools.json)" = '[{"reference":"mcp__calendar__create_event","purpose":"Creates an event."}]'`,
+	)
+	req.MCPTools = []sandbox.MCPToolStandIn{{Reference: "mcp__calendar__create_event", Purpose: "Creates an event."}}
+
+	id := handle(t)
+	t.Cleanup(func() { _ = d.Remove(context.Background(), id) })
+	if err := d.Start(context.Background(), id, req); err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	waitCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	out, err := d.Wait(waitCtx, id)
+	if err != nil || out.ExitCode != 0 {
+		t.Fatalf("the workload did not find the stand-ins when its inputs were ready: outcome=%+v err=%v", out, err)
+	}
+}

@@ -838,3 +838,14 @@ func TestASkillThatIsItsWholePackageIsDispatchedWithNoDirectory(t *testing.T) {
 		t.Fatalf("source path = %q, want empty; the package root already is this skill's root", got.SourcePath)
 	}
 }
+
+func TestAWithheldSkillIsDispatchedWithoutItsStandIns(t *testing.T) {
+	facts := VersionFacts{
+		PackageObjectKey: "packages/one-skill.zip", SourcePath: "skills/tidy-notes",
+		MCPTools: []MCPToolStandIn{{Reference: "mcp__calendar__create_event", Purpose: "Creates an event."}},
+	}
+	got := facts.withoutPackage()
+	if got.PackageObjectKey != "" || got.SourcePath != "" || got.MCPTools != nil {
+		t.Errorf("withoutPackage = %+v, want no package, directory or stand-ins", got)
+	}
+}

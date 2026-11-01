@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission/mcptools"
 	registry "github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 	trace "github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
@@ -28,7 +29,24 @@ func (r runRegistryReader) Skill(ctx context.Context, workspaceID, skillID pgtyp
 
 func (r runRegistryReader) Version(ctx context.Context, workspaceID, versionID pgtype.UUID) (run.VersionFacts, bool, error) {
 	version, found, err := r.service.WorkspaceVersion(ctx, workspaceID, versionID)
-	return runVersionFacts(version), found, err
+	if err != nil || !found {
+		return run.VersionFacts{}, found, err
+	}
+	offered, err := mcptools.Offered(ctx, r.service.Pool, version.AllowedTools)
+	if err != nil {
+		return run.VersionFacts{}, false, err
+	}
+	facts := runVersionFacts(version)
+	facts.MCPTools = runStandIns(offered)
+	return facts, true, nil
+}
+
+func runStandIns(tools []mcptools.Tool) []run.MCPToolStandIn {
+	var out []run.MCPToolStandIn
+	for _, t := range tools {
+		out = append(out, run.MCPToolStandIn{Reference: t.Reference(), Purpose: t.Purpose, Parameters: t.Parameters})
+	}
+	return out
 }
 
 func runVersionFacts(version registry.Version) run.VersionFacts {

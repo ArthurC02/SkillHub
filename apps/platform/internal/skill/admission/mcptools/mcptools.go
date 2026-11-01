@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -22,6 +23,8 @@ import (
 const ReferencePrefix = "mcp__"
 
 const referenceSeparator = "__"
+
+const RuntimeServer = "skillhub"
 
 var (
 	ErrShape    = errors.New("ingest: invalid MCP tool")
@@ -114,6 +117,23 @@ func (s *Service) Retire(ctx context.Context, operator, id pgtype.UUID, note str
 	return toolOf(retired), err
 }
 
+func Offered(ctx context.Context, db gen.DBTX, declared []string) ([]Tool, error) {
+	if !slices.ContainsFunc(declared, isReference) {
+		return nil, nil
+	}
+	active, err := Active(ctx, db)
+	if err != nil {
+		return nil, fmt.Errorf("ingest: read the MCP tool list: %w", err)
+	}
+	return declaredAmong(declared, active), nil
+}
+
+func declaredAmong(declared []string, active []Tool) []Tool {
+	return slices.DeleteFunc(active, func(t Tool) bool { return !slices.Contains(declared, t.Reference()) })
+}
+
+func isReference(name string) bool { return strings.HasPrefix(name, ReferencePrefix) }
+
 func Unlisted(declared []string, active []Tool) []string {
 	offered := make(map[string]bool, len(active))
 	for _, t := range active {
@@ -121,7 +141,7 @@ func Unlisted(declared []string, active []Tool) []string {
 	}
 	var unlisted []string
 	for _, name := range declared {
-		if strings.HasPrefix(name, ReferencePrefix) && !offered[name] {
+		if isReference(name) && !offered[name] {
 			unlisted = append(unlisted, name)
 		}
 	}
@@ -147,6 +167,9 @@ func validDraft(d Draft) (Draft, error) {
 		if f.value == "" || utf8.RuneCountInString(f.value) > f.max || (f.form != nil && !f.form.MatchString(f.value)) {
 			return d, fmt.Errorf("%w: %s要 1 到 %d 個字並符合格式", ErrShape, f.label, f.max)
 		}
+	}
+	if d.Server == RuntimeServer {
+		return d, fmt.Errorf("%w: 伺服器名稱 %s 保留給平台自己的工具，請換一個名稱", ErrShape, RuntimeServer)
 	}
 	if utf8.RuneCountInString(d.Parameters) > limits.MCPToolDraftParametersMaxLength {
 		return d, fmt.Errorf("%w: 參數摘要最多 %d 個字", ErrShape, limits.MCPToolDraftParametersMaxLength)

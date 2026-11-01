@@ -19,6 +19,7 @@ const (
 	inputSubdir    = ".skillhub"
 	readyName      = "ready"
 	archiveName    = "skill.zip"
+	mcpToolsName   = "mcp-tools.json"
 	datasetSubdir  = "data"
 	artifactSubdir = "artifacts"
 	traceSubdir    = "trace"
@@ -63,6 +64,11 @@ func (d *Driver) pushInputs(ctx context.Context, r *run, req sandbox.RunRequest)
 		}
 		if err := os.WriteFile(target, body, 0o600); err != nil {
 			return fmt.Errorf("place %s in the run directory: %w", g.Purpose, err)
+		}
+	}
+	if tools, ok := req.MCPToolsFile(); ok {
+		if err := os.WriteFile(filepath.Join(inputDir(r.workDir), mcpToolsName), tools, 0o600); err != nil {
+			return fmt.Errorf("place the MCP tool stand-ins in the run directory: %w", err)
 		}
 	}
 	if err := os.WriteFile(filepath.Join(inputDir(r.workDir), readyName), []byte("ready\n"), 0o600); err != nil {

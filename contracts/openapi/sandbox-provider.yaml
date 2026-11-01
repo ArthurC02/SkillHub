@@ -512,6 +512,17 @@ components:
             $ref: "#/components/schemas/ObjectGrant"
         model_gateway:
           $ref: "#/components/schemas/ModelGatewayGrant"
+        mcp_tools:
+          type: array
+          description: |
+            The MCP tools on the operators' list that this Skill Version names
+            in `allowed-tools`. The runtime offers each to the agent as a
+            stand-in: calling it returns a notice that the step needs the real
+            tool, and nothing reaches the tool's server. A name the version
+            declares that is not on the list is left out, so the agent has no
+            such tool. Absent when the version names none.
+          items:
+            $ref: "#/components/schemas/MCPToolStandIn"
         trace:
           $ref: "#/components/schemas/TracePolicy"
         provider_extensions:
@@ -521,6 +532,21 @@ components:
             Escape hatch for capability a provider declares and the orchestrator
             opted into. A run whose success depends on a key in here is a
             RUN-001 violation.
+
+    MCPToolStandIn:
+      type: object
+      required: [reference, purpose]
+      properties:
+        reference:
+          type: string
+          pattern: '^mcp__[a-z0-9]+(-[a-z0-9]+)*__[A-Za-z0-9]+([_-][A-Za-z0-9]+)*$'
+          description: The name the Skill declares, `mcp__<server>__<tool>`.
+        purpose:
+          type: string
+          description: What the tool does, as the operator wrote it.
+        parameters:
+          type: string
+          description: The operator's summary of the tool's parameters; absent when it takes none.
 
     RunID:
       type: string

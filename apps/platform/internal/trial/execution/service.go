@@ -46,10 +46,11 @@ type VersionFacts struct {
 	ContentHash      string
 	PackageObjectKey string
 	SourcePath       string
+	MCPTools         []MCPToolStandIn
 }
 
 func (v VersionFacts) withoutPackage() VersionFacts {
-	v.PackageObjectKey, v.SourcePath = "", ""
+	v.PackageObjectKey, v.SourcePath, v.MCPTools = "", "", nil
 	return v
 }
 

@@ -25,6 +25,8 @@ const (
 
 	SkillArchivePath = InputDir + "/skill.zip"
 
+	MCPToolsPath = InputDir + "/mcp-tools.json"
+
 	DatasetDir = WorkDir + "/data"
 
 	ArtifactDir = OutDir + "/artifacts"
@@ -60,6 +62,16 @@ func (d *Driver) pushInputs(ctx context.Context, id string, req sandbox.RunReque
 		}
 		if err != nil {
 			return err
+		}
+	}
+
+	if tools, ok := req.MCPToolsFile(); ok {
+		err := d.exec(ctx, id, writeFileCommand(MCPToolsPath), tools)
+		if errors.Is(err, errGone) {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("place the MCP tool stand-ins in the sandbox: %w", err)
 		}
 	}
 

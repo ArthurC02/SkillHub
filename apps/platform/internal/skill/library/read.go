@@ -10,6 +10,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
 type Skill struct {
@@ -47,6 +48,7 @@ type Version struct {
 	LicenseExpression *string
 	CreatedAt         pgtype.Timestamptz
 	LicenseSource     *string
+	AllowedTools      []string
 }
 
 type RuntimeCompatibility struct {
@@ -492,7 +494,16 @@ func versionDTO(row gen.SkillVersion) Version {
 		PackageObjectKey: row.PackageObjectKey, SourcePath: row.SourcePath,
 		LicenseExpression: pgconv.Clone(row.LicenseExpression),
 		CreatedAt:         row.CreatedAt, LicenseSource: pgconv.Clone(row.LicenseSource),
+		AllowedTools:      declaredTools(row.Manifest),
 	}
+}
+
+func declaredTools(manifest []byte) []string {
+	var m skillpkg.Manifest
+	if json.Unmarshal(manifest, &m) != nil {
+		return nil
+	}
+	return m.AllowedTools
 }
 
 type Governance struct {

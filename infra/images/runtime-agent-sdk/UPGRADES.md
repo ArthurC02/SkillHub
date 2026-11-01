@@ -1203,3 +1203,20 @@ CI 的 Runtime Image 工作流程自 2026-10-26 的排程掃描起就紅；以 C
 ### 預設映像從 `-24` 移到 `-25`
 
 四項在 `-25` 的 digest 上跑過之後移動：`apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`（與它 `docker tag` 成的本地 tag）、`p02_docker_test.go` 的常數，以及 `automation.md` 的實跑範例。
+
+## `2026.08-25` → `2026.08-26`（2026-11-01）— **`run.mjs` 為清單上的 MCP 工具掛替身；四項實測尚未跑，預設映像仍留在 `-25`**
+
+Skill 在 `allowed-tools` 宣告營運者清單上的 MCP 工具時，試跑以替身回應它。平台派送時把「這個版本宣告的、且在清單上未退役的」工具放進 RunRequest 的 `mcp_tools`，sandbox 在 `ready` 之前寫成 `/work/.skillhub/mcp-tools.json`。`run.mjs` 為每個 MCP 伺服器名掛一個程序內 MCP 伺服器，每個工具一個替身，並把它們的引用名稱加進 `allowedTools`。替身的說明帶著營運者寫的用途與參數，並告訴模型它是替身；呼叫它只回一段說明：這一步需要哪個工具、沒有任何東西送到它的伺服器、請說出哪一步需要它。清單外的名稱不會被掛上。檔案讀不了或格式不對時，Run 在模型開始前以 `invalid_mcp_tools` 失敗，不會在少了工具的情況下照跑。伺服器名 `skillhub` 保留給 `ask_person`，營運者不能把工具登記在這個名稱下，`run.mjs` 也會略過它。
+
+| 欄位 | 值 |
+| --- | --- |
+| 變更 | `run.mjs`（`readStandIns`、`standInServers`、`standInNotice`、`agentOptions` 多收替身）；`ARG IMAGE_VERSION` |
+| 新增的依賴 | 無（`createSdkMcpServer`、`tool` 與 `zod` 都是 `ask_person` 已在用的） |
+| SDK 版本 | `0.3.233`（**未變**） |
+| 基底 digest | **未變** |
+| `run.mjs` | **變更**，見上 |
+| 預設映像 | 仍是 `-25`；四項在 CI 發佈的 digest 上跑過之後才移動 |
+
+### 本機驗證（2026-11-01，沒有任何模型呼叫）
+
+`node --test run.test.mjs`：140 條，139 通過、1 條跳過（既有的 Unix 檔案權限測試，Windows 上不適用）。新增的 11 條各自弄壞過對應的那一行，都會變紅：主流程沒把替身交給 SDK、讀檔時不檢查形狀、沒略過 `skillhub` 伺服器。本機建置 `skillhub-runtime-agent-sdk:2026.08-26-local`，無網路：`id -u` → `65532`、`node --version` → `v22.23.4`、SDK `0.3.233`、version label → `2026.08-26`、`.Size` → 1,352,764,383 bytes；在映像裡以真的 SDK `createSdkMcpServer`／`tool` 與映像裡的 `zod` 建兩個替身伺服器（`calendar`、`team-mail`），兩者都回 `type: sdk`，`allowedTools` 帶上 `mcp__calendar__create_event`。

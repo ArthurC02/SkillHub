@@ -175,7 +175,14 @@ type RunRequest struct {
 	Egress           EgressPolicy        `json:"egress"`
 	ObjectGrants     []ObjectGrant       `json:"object_grants,omitempty"`
 	ModelGateway     *ModelGatewayGrant  `json:"model_gateway,omitempty"`
+	MCPTools         []MCPToolStandIn    `json:"mcp_tools,omitempty"`
 	Trace            TracePolicy         `json:"trace"`
+}
+
+type MCPToolStandIn struct {
+	Reference  string `json:"reference"`
+	Purpose    string `json:"purpose"`
+	Parameters string `json:"parameters,omitempty"`
 }
 
 type RunError struct {

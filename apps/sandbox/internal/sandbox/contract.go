@@ -1,6 +1,9 @@
 package sandbox
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 type RunState string
 
@@ -50,6 +53,7 @@ type RunRequest struct {
 	Egress         EgressPolicy        `json:"egress"`
 	ObjectGrants   []ObjectGrant       `json:"object_grants,omitempty"`
 	ModelGateway   *ModelGatewayGrant  `json:"model_gateway,omitempty"`
+	MCPTools       []MCPToolStandIn    `json:"mcp_tools,omitempty"`
 	Trace          TracePolicy         `json:"trace"`
 	Extensions     map[string]any      `json:"provider_extensions,omitempty"`
 }
@@ -71,6 +75,20 @@ type PackageRef struct {
 	PackageSHA256  string `json:"package_sha256,omitempty"`
 	ObjectKey      string `json:"object_key,omitempty"`
 	SourcePath     string `json:"source_path,omitempty"`
+}
+
+func (r RunRequest) MCPToolsFile() ([]byte, bool) {
+	if len(r.MCPTools) == 0 {
+		return nil, false
+	}
+	body, err := json.Marshal(r.MCPTools)
+	return body, err == nil
+}
+
+type MCPToolStandIn struct {
+	Reference  string `json:"reference"`
+	Purpose    string `json:"purpose"`
+	Parameters string `json:"parameters,omitempty"`
 }
 
 type TestCaseSnapshotRef struct {

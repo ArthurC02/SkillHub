@@ -28,7 +28,10 @@ import {
   outputContract,
   packageRoot,
   provisionPackage,
+  readStandIns,
   renderQuestions,
+  standInNotice,
+  standInServers,
 } from "./run.mjs";
 
 test("gateway spend lookup times out instead of blocking run completion", async () => {
@@ -1327,7 +1330,7 @@ test("gateway spend lookup does not wait after its last attempt", async () => {
 
 const RUN_SCRIPT = fileURLToPath(new URL("./run.mjs", import.meta.url));
 
-function runWorkload(script, extraEnv = {}) {
+function runWorkload(script, extraEnv = {}, inputs = {}) {
   const root = mkdtempSync(join(tmpdir(), "run-main-"));
   try {
     const sdk = join(root, "fake-sdk.mjs");
@@ -1341,6 +1344,19 @@ function runWorkload(script, extraEnv = {}) {
         "    if (step.ask) {\n" +
         "      await options.mcpServers.skillhub.tools[0].handler({ questions: step.ask });\n" +
         "      if (options.abortController.signal.aborted) throw new Error('aborted');\n" +
+        "    }\n" +
+        "    if (step.offered) {\n" +
+        "      const offered = { allowed: options.allowedTools, servers: Object.keys(options.mcpServers ?? {}) };\n" +
+        "      yield { type: 'assistant', message: { content: [{ type: 'text', text: JSON.stringify(offered) }] } };\n" +
+        "      continue;\n" +
+        "    }\n" +
+        "    if (step.call) {\n" +
+        "      const [, server, name] = step.call.split('__');\n" +
+        "      const found = options.mcpServers?.[server]?.tools.find((t) => t.name === name);\n" +
+        "      const answer = found ? (await found.handler({})).content[0].text : 'no such tool';\n" +
+        "      yield { type: 'assistant', message: { content: [{ type: 'tool_use', id: 'tu-1', name: step.call, input: { arguments: { title: 'demo' } } }] } };\n" +
+        "      yield { type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 'tu-1', content: answer, is_error: !found }] } };\n" +
+        "      continue;\n" +
         "    }\n" +
         "    yield step;\n" +
         "  }\n" +
@@ -1365,6 +1381,7 @@ function runWorkload(script, extraEnv = {}) {
     mkdirSync(outDir);
     mkdirSync(inputDir);
     writeFileSync(join(inputDir, "ready"), "");
+    for (const [name, body] of Object.entries(inputs)) writeFileSync(join(inputDir, name), body);
     writeFileSync(join(outDir, ".collected"), "");
     const env = { ...process.env };
     delete env.ANTHROPIC_BASE_URL;
@@ -1616,4 +1633,155 @@ test("a turn that never asks carries no questions", () => {
 
   assert.equal(result.agent_output, "1600 元");
   assert.ok(!("questions" in result));
+});
+
+const CALENDAR = { reference: "mcp__calendar__create_event", purpose: "Creates an event.", parameters: "title, start" };
+
+function standInFile(body) {
+  const dir = mkdtempSync(join(tmpdir(), "stand-ins-"));
+  const path = join(dir, "mcp-tools.json");
+  if (body !== undefined) writeFileSync(path, body);
+  return { path, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
+}
+
+function readWith(body) {
+  const file = standInFile(body);
+  const failures = [];
+  try {
+    return { standIns: readStandIns(file.path, (...args) => failures.push(args)), failures };
+  } finally {
+    file.cleanup();
+  }
+}
+
+test("a run with no stand-in file offers no stand-ins and does not fail", () => {
+  assert.deepEqual(readWith(undefined), { standIns: [], failures: [] });
+});
+
+test("the stand-ins the platform sent are read as they were written", () => {
+  const mail = { reference: "mcp__team-mail__send", purpose: "Sends mail." };
+  assert.deepEqual(readWith(JSON.stringify([CALENDAR, mail])), { standIns: [CALENDAR, mail], failures: [] });
+});
+
+test("an unreadable stand-in file fails the run instead of running without the tools", () => {
+  for (const [name, body] of [
+    ["not JSON", "{"],
+    ["not a list", JSON.stringify(CALENDAR)],
+    ["a reference that is not an MCP name", JSON.stringify([{ ...CALENDAR, reference: "Bash" }])],
+    ["a reference with a double underscore in the tool", JSON.stringify([{ ...CALENDAR, reference: "mcp__calendar__create__event" }])],
+    ["no purpose", JSON.stringify([{ reference: CALENDAR.reference }])],
+    ["parameters that are not text", JSON.stringify([{ ...CALENDAR, parameters: 3 }])],
+  ]) {
+    const { standIns, failures } = readWith(body);
+    assert.deepEqual(standIns, [], name);
+    assert.equal(failures.length, 1, name);
+    assert.deepEqual(failures[0].slice(0, 2), ["provision", "invalid_mcp_tools"], name);
+  }
+});
+
+test("a stand-in on the runtime's own server is left out so ask_person stays the platform's", () => {
+  const own = { reference: "mcp__skillhub__ask_person", purpose: "Pretends to ask." };
+  assert.deepEqual(readWith(JSON.stringify([own, CALENDAR])), { standIns: [CALENDAR], failures: [] });
+});
+
+test("stand-ins are grouped into one server per MCP server, each tool under its own name", () => {
+  const servers = standInServers(fakeSdk, z, [
+    CALENDAR,
+    { reference: "mcp__calendar__list_events", purpose: "Lists events." },
+    { reference: "mcp__team-mail__send", purpose: "Sends mail." },
+  ]);
+
+  assert.deepEqual(Object.keys(servers), ["calendar", "team-mail"]);
+  assert.deepEqual(servers.calendar.tools.map((t) => t.name), ["create_event", "list_events"]);
+  assert.equal(servers.calendar.name, "calendar");
+  assert.deepEqual(servers["team-mail"].tools.map((t) => t.name), ["send"]);
+});
+
+test("a stand-in tells the agent what the tool does and that it is a stand-in", () => {
+  const described = [];
+  const sdk = { ...fakeSdk, tool: (name, description, shape, handler) => { described.push(description); return { name, shape, handler }; } };
+  standInServers(sdk, z, [CALENDAR, { reference: "mcp__mail__send", purpose: "Sends mail." }]);
+
+  assert.equal(
+    described[0],
+    "Creates an event.\nParameters: title, start\nDuring this trial run the tool is a stand-in: calling it returns a notice, not a real result.",
+  );
+  assert.equal(described[1], "Sends mail.\nDuring this trial run the tool is a stand-in: calling it returns a notice, not a real result.");
+});
+
+test("calling a stand-in returns the notice naming the tool the step needs", async () => {
+  const [created] = standInServers(fakeSdk, z, [CALENDAR]).calendar.tools;
+  const schema = z.object(created.shape);
+
+  assert.equal(schema.safeParse({}).success, true);
+  assert.equal(schema.safeParse({ arguments: { title: "demo", start: "09:00" } }).success, true);
+  assert.equal(schema.safeParse({ arguments: "demo" }).success, false);
+  assert.deepEqual(await created.handler({ arguments: { title: "demo" } }), {
+    content: [{ type: "text", text: standInNotice(CALENDAR.reference) }],
+  });
+  assert.equal(
+    standInNotice(CALENDAR.reference),
+    "This is a trial run, and mcp__calendar__create_event is a stand-in here: this step needs the mcp__calendar__create_event tool, and nothing was sent to it, so there is no real result. " +
+      "Carry on with what you can do without it, and tell the person which step needs mcp__calendar__create_event and what you would have used its result for.",
+  );
+});
+
+test("stand-ins are offered beside the ask tool, which keeps its own server", () => {
+  const ask = { name: "skillhub" };
+  const calendar = { name: "calendar" };
+  const options = agentOptions("/out/artifacts", ask, { calendar }, [CALENDAR.reference]);
+
+  assert.deepEqual(options.mcpServers, { calendar, skillhub: ask });
+  assert.ok(options.allowedTools.includes(CALENDAR.reference));
+  assert.ok(options.allowedTools.includes(ASK_PERSON_TOOL));
+
+  const without = agentOptions("/out/artifacts", undefined, { calendar }, [CALENDAR.reference]);
+  assert.deepEqual(without.mcpServers, { calendar });
+});
+
+test("a run offers the stand-ins it was sent and records what calling one answered", () => {
+  const { status, events } = runWorkload(
+    [
+      { offered: true },
+      { call: CALENDAR.reference },
+      { type: "result", result: "booked nothing", usage: { input_tokens: 10, output_tokens: 5 } },
+    ],
+    {},
+    { "mcp-tools.json": JSON.stringify([CALENDAR]) },
+  );
+
+  assert.equal(status, 0);
+  const offered = JSON.parse(events.find((e) => e.type === "agent_output" && e.payload.kind === "intermediate").payload.text);
+  assert.ok(offered.allowed.includes(CALENDAR.reference));
+  assert.deepEqual(offered.servers, ["calendar", "skillhub"]);
+  const call = events.find((e) => e.type === "tool_call");
+  assert.equal(call.payload.tool_name, CALENDAR.reference);
+  assert.equal(call.payload.outcome, "succeeded");
+  assert.deepEqual(call.payload.arguments, { arguments: { title: "demo" } });
+  assert.equal(call.payload.result_summary, standInNotice(CALENDAR.reference));
+});
+
+test("a run sent no stand-ins offers no MCP tool but its own", () => {
+  const { events } = runWorkload([
+    { offered: true },
+    { type: "result", result: "done", usage: { input_tokens: 10, output_tokens: 5 } },
+  ]);
+
+  const offered = JSON.parse(events.find((e) => e.type === "agent_output" && e.payload.kind === "intermediate").payload.text);
+  assert.deepEqual(offered.servers, ["skillhub"]);
+  assert.deepEqual(offered.allowed.filter((name) => name.startsWith("mcp__")), [ASK_PERSON_TOOL]);
+});
+
+test("a run whose stand-ins cannot be read fails before the agent starts", () => {
+  const { status, events, result } = runWorkload(
+    [{ offered: true }, { type: "result", result: "should not run", usage: { input_tokens: 1, output_tokens: 1 } }],
+    {},
+    { "mcp-tools.json": "{" },
+  );
+
+  assert.equal(status, 1);
+  assert.equal(result.status, "failed");
+  assert.match(result.error, /MCP tool stand-ins could not be read/);
+  assert.equal(events.find((e) => e.type === "error").payload.code, "invalid_mcp_tools");
+  assert.equal(events.filter((e) => e.type === "agent_output").length, 0);
 });

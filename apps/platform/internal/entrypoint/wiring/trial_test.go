@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission/mcptools"
 	registry "github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution/readmodel"
@@ -59,7 +60,24 @@ func TestRunReceivesTheVersionFactsTheRegistryRecorded(t *testing.T) {
 	}
 	want := run.VersionFacts{ID: version.ID, SkillID: version.SkillID, ContentHash: "sha256:abc",
 		PackageObjectKey: "packages/abc.zip", SourcePath: "skills/report"}
-	if got := runVersionFacts(version); got != want {
+	if got := runVersionFacts(version); !reflect.DeepEqual(got, want) {
 		t.Errorf("run facts for a version = %+v, want %+v", got, want)
+	}
+}
+
+func TestRunStandInsCarryEachListedToolUnderItsReference(t *testing.T) {
+	got := runStandIns([]mcptools.Tool{
+		{Server: "calendar", Tool: "create_event", Purpose: "Creates an event.", Parameters: "title, start", ServerURL: "https://mcp.example.com"},
+		{Server: "mail", Tool: "send", Purpose: "Sends mail."},
+	})
+	want := []run.MCPToolStandIn{
+		{Reference: "mcp__calendar__create_event", Purpose: "Creates an event.", Parameters: "title, start"},
+		{Reference: "mcp__mail__send", Purpose: "Sends mail."},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("runStandIns = %+v, want %+v", got, want)
+	}
+	if got := runStandIns(nil); got != nil {
+		t.Errorf("runStandIns(nil) = %+v, want nil so the request omits mcp_tools", got)
 	}
 }
