@@ -29,6 +29,8 @@ Fork Run 的 rubric 以來源 Skill 名稱選取，但送往 Judge 的 Skill 名
 | [`creation_frozen_compare.py`](creation_frozen_compare.py) | 互動創作兩個版本在[凍結測試集](../../docs/plans/mvp/m5/creation-measure/frozen/README.md)上的比較：讀量測 harness 存下的 `<task>-holdout-<n>-trial-r0.json`，算評審通過率與程式比對 `expected_numbers` 的通過率（Wilson 區間、分類別），兩版時再算以任務為群的成對 bootstrap 差值與兩邊各自獨有的通過數。**只印彙總**，不印任何案例的輸出或評審理由——凍結集的失敗細節不讀。測試 [`test_creation_frozen_compare.py`](test_creation_frozen_compare.py) 是純函式，進 CI 與 `task test:judge-rubric` |
 | [`decisions_probe.py`](decisions_probe.py) | 把判錯樣本集的每條條件（三選一判定）與注入樣本集加判錯樣本集的輸出（「有沒有對評審下指令」）送進閘道的 `/openai/v1/decisions` pass-through，每題重複 `--reps` 次。要一把限定 `gpt-6-luna` 的虛擬金鑰；這條路由在閘道記帳為 0 元，花費不進每日上限 |
 | `decisions-probe-results.jsonl` | 上者的逐題結果，**append-only**：每列記下題型、期望答案、每次的完整回答、輸入 token 與延遲 |
+| [`check_injection_probe.py`](check_injection_probe.py) | 把注入樣本集與判錯樣本集送進 `apps/llm` 正式的 `/v1/check-injection`，請求的形狀與 Go 送出的相同，每題重複 `--reps` 次；機率達 0.5 算抓到。從 `apps/llm` 以 `uv run` 執行，要一把限定 `gpt-6-luna` 的虛擬金鑰 |
+| `check-injection-results.jsonl` | 上者的逐題結果，**append-only**：每列記下期望答案、每次的狀態碼、機率、輸入 token 與延遲 |
 | [`rubric-content-007-writing-v1.json`](rubric-content-007-writing-v1.json) | `--rubric` 的輸入：`CONTENT-007` 五個 `writing` 精選的預設 rubric，逐字取自 [`docs/plans/mvp/content/writing-rubrics.md`](../../docs/plans/mvp/content/writing-rubrics.md) §4。**每個 item 的 `id` 是它加強的那條驗收條件的 id**（harness 會擋下對不上的檔案）。帶 `--rubric` 時回歸集縮到該檔涵蓋的 Skill、快照原本的條件照舊送出、`rubric_version` 不再是 `null`——**換 rubric 版本就是另一次回歸** |
 
 方法、逐筆結果、差異歸因與結論見 [`docs/plans/mvp/m3/report-judge-regression.md`](../../docs/plans/mvp/m3/report-judge-regression.md)；重跑指令見該報告 §10，帶 rubric 的那一輪見 §11，注入抵抗那一輪見 §12。

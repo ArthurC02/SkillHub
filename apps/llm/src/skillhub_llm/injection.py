@@ -63,7 +63,7 @@ def material(req: CheckInjectionRequest) -> str:
     """The untrusted text the judge also reads, in the order it reads it."""
     parts = [req.final_output]
     parts += [e.excerpt for e in req.trace_digest.entries]
-    parts += [f"{a.path}\n{a.text_excerpt}" for a in req.artifacts if a.text_excerpt]
+    parts += [f"{a.path}\n{a.text_excerpt}" if a.text_excerpt else a.path for a in req.artifacts]
     return "\n\n".join(parts)
 
 
