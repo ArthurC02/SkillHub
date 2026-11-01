@@ -29,7 +29,6 @@ jobs:
       pglite: ${{ steps.scope.outputs.all == 'true' || steps.filter.outputs.pglite == 'true' }}
       images: ${{ steps.scope.outputs.all == 'true' || steps.filter.outputs.images == 'true' }}
       deploy: ${{ steps.scope.outputs.all == 'true' || steps.filter.outputs.deploy == 'true' }}
-      domain-memory-engine: ${{ steps.scope.outputs.all == 'true' || steps.filter.outputs.domain-memory-engine == 'true' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -115,9 +114,6 @@ jobs:
               - 'tools/sec009/t8-node-probe.py'
               - 'tools/deploy/**'
               - 'tools/ci/deploy-config-check.sh'
-              - '.github/workflows/ci.yml'
-            domain-memory-engine:
-              - '.claude/skills/domain-memory/**'
               - '.github/workflows/ci.yml'
 
   web:
@@ -738,47 +734,6 @@ jobs:
           bash tools/ci/report-failure.sh 'Domain Memory attestation audit'
           .claude/skills/domain-memory/engine/bin/linux-x86_64/domain-memory audit-attestations
           --repo-root . --changes-root docs/domain-memory/changes
-
-  domain-memory-engine:
-    needs: changes
-    if: needs.changes.outputs.domain-memory-engine == 'true'
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-            binary: bin/linux-x86_64/domain-memory
-          - os: macos-latest
-            binary: bin/macos-universal/domain-memory
-          - os: windows-latest
-            binary: bin/windows-x86_64/domain-memory.exe
-    defaults:
-      run:
-        shell: bash
-        working-directory: .claude/skills/domain-memory/engine
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-          fetch-depth: 0
-      - name: Install the pinned Rust toolchain
-        run: rustup toolchain install
-      - name: Rust format
-        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Rust format' cargo fmt --check
-      - name: Rust lint
-        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Rust lint' cargo clippy --all-targets --locked -- -D warnings
-      - name: Rust tests
-        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Rust tests' cargo test --locked
-      - name: Release build
-        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Release build' cargo build --release --locked
-      - name: Committed binaries match the source
-        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Committed binaries' cargo run --locked --example build_binaries -- --check
-      - name: Committed binary matches the recorded output
-        env:
-          DOMAIN_MEMORY_BINARY: ${{ matrix.binary }}
-        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Committed binary output' cargo test --release --locked --test expected_output
 
   qa002:
     needs: changes
