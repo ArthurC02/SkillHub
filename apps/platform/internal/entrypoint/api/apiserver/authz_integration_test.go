@@ -44,6 +44,7 @@ func TestMain(m *testing.M) {
 		os.Setenv("SKILLHUB_MODEL_GATEWAY_URL", "http://model-gateway.test")
 		os.Setenv("SKILLHUB_MODEL_GATEWAY_KEY", "sk-test-not-a-real-key")
 	}
+	os.Setenv("DEV_LOGIN", "1")
 	dsn := os.Getenv(dbURLEnv)
 	if dsn == "" {
 
@@ -167,8 +168,6 @@ func newAPITuned(
 	t *testing.T, pool *pgxpool.Pool, llmBaseURL string, tune func(*apiserver.Deps),
 ) *api {
 	t.Helper()
-
-	t.Setenv("DEV_LOGIN", "1")
 
 	packages := packageStore{}
 	var llm *llmclient.Client

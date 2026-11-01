@@ -122,7 +122,9 @@ func startWorkerWith(t *testing.T, svc *run.Service, evaluator *eval.Service) *r
 	}
 	river.AddWorker(workers, outboxWorker)
 	c, err := queue.New(svc.Pool, &river.Config{
-		Workers: workers,
+		FetchPollInterval: 50 * time.Millisecond,
+		FetchCooldown:     20 * time.Millisecond,
+		Workers:           workers,
 		Queues:  map[string]river.QueueConfig{river.QueueDefault: {MaxWorkers: 2}, wiring.QueueRuns: {MaxWorkers: 2}, wiring.QueueModel: {MaxWorkers: 2}},
 		PeriodicJobs: []*river.PeriodicJob{
 			river.NewPeriodicJob(river.PeriodicInterval(outboxWorker.Interval()),
