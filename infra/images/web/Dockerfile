@@ -2,7 +2,7 @@
 
 # syntax=docker/dockerfile:1.7
 
-FROM node:24.21.0-bookworm-slim@sha256:2fe369e969550cde8e867afc3fe370b260140cab4a23d467074295b42163d553 AS build
+FROM node:26.12.0-bookworm-slim@sha256:742a0fe7320e09e0321222b68165e6ac731d30470e7ea7f98f9bfc3a6e1034fe AS build
 
 WORKDIR /src
 COPY packages/api-client-ts/package.json packages/api-client-ts/package-lock.json ./packages/api-client-ts/
@@ -15,7 +15,7 @@ RUN cd apps/web && npm ci --ignore-scripts
 COPY apps/web ./apps/web
 RUN cd apps/web && npm run build
 
-FROM nginx:1.31-alpine-slim@sha256:032d437f2945ec236b0d093d0a4865a4b8e39eea52f60a25103645c95ccb4de0 AS runtime
+FROM nginx:1.31-alpine-slim@sha256:f45171d36c76a8b2f5ef97108a3a8a2294248a6578a0a180edc2d78f7d2edc26 AS runtime
 
 RUN apk upgrade --no-cache zlib pcre2
 
