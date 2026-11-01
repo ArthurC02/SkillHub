@@ -159,22 +159,35 @@ func wiringEdges(moduleDir string, patterns []string, contextOf func(string) (st
 			roots = append(roots, pkg)
 		}
 	}
-	edges := map[contextEdge]string{}
 	fset := token.NewFileSet()
 	lookup := func(path string) (io.ReadCloser, error) { return os.Open(exports[path]) }
-	conf := types.Config{Importer: importer.ForCompiler(fset, "gc", lookup)}
+	check := wiringCheck{
+		moduleDir: moduleDir,
+		fset:      fset,
+		conf:      types.Config{Importer: importer.ForCompiler(fset, "gc", lookup)},
+		contextOf: contextOf,
+		edges:     map[contextEdge]string{},
+	}
 	for _, pkg := range roots {
-		if err := packageWiringEdges(moduleDir, pkg, fset, conf, contextOf, edges); err != nil {
+		if err := check.packageEdges(pkg); err != nil {
 			return nil, err
 		}
 	}
-	return edges, nil
+	return check.edges, nil
 }
 
-func packageWiringEdges(moduleDir string, pkg listedPackage, fset *token.FileSet, conf types.Config, contextOf func(string) (string, bool), edges map[contextEdge]string) error {
+type wiringCheck struct {
+	moduleDir string
+	fset      *token.FileSet
+	conf      types.Config
+	contextOf func(string) (string, bool)
+	edges     map[contextEdge]string
+}
+
+func (c *wiringCheck) packageEdges(pkg listedPackage) error {
 	files := make([]*ast.File, 0, len(pkg.GoFiles))
 	for _, name := range pkg.GoFiles {
-		file, err := parser.ParseFile(fset, filepath.Join(pkg.Dir, name), nil, parser.SkipObjectResolution)
+		file, err := parser.ParseFile(c.fset, filepath.Join(pkg.Dir, name), nil, parser.SkipObjectResolution)
 		if err != nil {
 			return err
 		}
@@ -184,10 +197,10 @@ func packageWiringEdges(moduleDir string, pkg listedPackage, fset *token.FileSet
 		Types: map[ast.Expr]types.TypeAndValue{},
 		Uses:  map[*ast.Ident]types.Object{},
 	}
-	if _, err := conf.Check(pkg.ImportPath, fset, files, info); err != nil {
+	if _, err := c.conf.Check(pkg.ImportPath, c.fset, files, info); err != nil {
 		return fmt.Errorf("type-check %s: %w", pkg.ImportPath, err)
 	}
-	w := wiringWalker{info: info, contextOf: contextOf, edges: edges, fset: fset, moduleDir: moduleDir}
+	w := wiringWalker{info: info, contextOf: c.contextOf, edges: c.edges, fset: c.fset, moduleDir: c.moduleDir}
 	for _, file := range files {
 		ast.Inspect(file, w.visit)
 	}
