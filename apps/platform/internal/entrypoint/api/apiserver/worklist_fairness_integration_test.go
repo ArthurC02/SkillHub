@@ -40,28 +40,31 @@ func shelveWorklistColumn(t *testing.T, pool *pgxpool.Pool, table, key, column, 
 	if err != nil {
 		t.Fatal(err)
 	}
-	type savedTime struct {
-		id    pgtype.UUID
-		value pgtype.Timestamptz
-	}
-	var saved []savedTime
+	var ids []pgtype.UUID
+	var values []pgtype.Timestamptz
 	for rows.Next() {
-		var item savedTime
-		if err := rows.Scan(&item.id, &item.value); err != nil {
+		var id pgtype.UUID
+		var value pgtype.Timestamptz
+		if err := rows.Scan(&id, &value); err != nil {
 			rows.Close()
 			t.Fatal(err)
 		}
-		saved = append(saved, item)
+		ids = append(ids, id)
+		values = append(values, value)
 	}
 	rows.Close()
 	if _, err := pool.Exec(ctx, fmt.Sprintf("UPDATE %s SET %s = now() WHERE %s", table, column, predicate)); err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		for _, item := range saved {
-			if _, err := pool.Exec(context.Background(), fmt.Sprintf("UPDATE %s SET %s = $2 WHERE %s = $1", table, column, key), item.id, item.value); err != nil {
-				t.Errorf("restore %s.%s: %v", table, column, err)
-			}
+		if len(ids) == 0 {
+			return
+		}
+		restore := fmt.Sprintf(
+			"UPDATE %s AS t SET %s = v.value FROM unnest($1::uuid[], $2::timestamptz[]) AS v(id, value) WHERE t.%s = v.id",
+			table, column, key)
+		if _, err := pool.Exec(context.Background(), restore, ids, values); err != nil {
+			t.Errorf("restore %s.%s: %v", table, column, err)
 		}
 	})
 }
@@ -984,5 +987,40 @@ func TestEnrichmentClaimsTheExactVersionAndLeavesVersionlessSkillsUnclaimed(t *t
 	}
 	if contains(ids, versionless) {
 		t.Errorf("claimed a skill with no version, which has no package to enrich: %v", ids)
+	}
+}
+
+func TestShelvingAWorklistColumnRestoresEveryRowWhenTheTestEnds(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	tag := uniqueWorklistLabel("shelve-restore")
+	f := newFixture(t, a, pool, tag)
+	ctx := context.Background()
+	base := time.Date(1600, time.January, 1, 0, 0, 0, 0, time.UTC)
+	w := &leaseWorld{pool: pool, f: f, tag: tag, base: base}
+	untried := w.insertArtifact(t, "download_package", tag+"-untried", base, nil)
+	tried := w.insertArtifact(t, "download_package", tag+"-tried", base, nil)
+	attempted := base.Add(time.Hour)
+	if _, err := pool.Exec(ctx, `UPDATE artifacts SET retention_attempted_at = $2 WHERE id = $1`, mustUUID(t, tried), attempted); err != nil {
+		t.Fatal(err)
+	}
+	attemptedAt := func(id string) pgtype.Timestamptz {
+		var at pgtype.Timestamptz
+		if err := pool.QueryRow(ctx, `SELECT retention_attempted_at FROM artifacts WHERE id = $1`, mustUUID(t, id)).Scan(&at); err != nil {
+			t.Fatal(err)
+		}
+		return at
+	}
+	t.Run("while shelved every row reads as attempted", func(t *testing.T) {
+		shelveWorklistColumn(t, pool, "artifacts", "id", "retention_attempted_at", "true")
+		if u, tr := attemptedAt(untried), attemptedAt(tried); !u.Valid || !tr.Valid || tr.Time.Equal(attempted) {
+			t.Fatalf("shelved rows read untried=%v tried=%v, want both stamped now", u, tr)
+		}
+	})
+	if u := attemptedAt(untried); u.Valid {
+		t.Fatalf("untried row restored as %v, want NULL", u.Time)
+	}
+	if tr := attemptedAt(tried); !tr.Valid || !tr.Time.Equal(attempted) {
+		t.Fatalf("tried row restored as %v, want %v", tr, attempted)
 	}
 }
