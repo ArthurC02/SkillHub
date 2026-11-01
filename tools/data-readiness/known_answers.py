@@ -14,7 +14,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 import measure_readiness as mr  # noqa: E402
-from sql_describe import allowed_values, describe_table  # noqa: E402
+from sql_describe import RegistryRecord, allowed_values, describe_table, read_registry_records  # noqa: E402
 
 QUESTIONS = HERE / "known-answers.jsonl"
 SYSTEM_PROMPT = (
@@ -160,13 +160,13 @@ def owner_rows(inputs: mr.Inputs, table: str) -> dict[str, Any]:
     return rows
 
 
-def context_for(question: dict[str, Any], inputs: mr.Inputs, repo_root: Path, registry_root: Path | None) -> str:
+def context_for(question: dict[str, Any], inputs: mr.Inputs, registry: list[RegistryRecord]) -> str:
     tables = question.get("tables") or []
     if not tables:
         return "Tables of the database, one per line as name: description\n" + catalog(inputs)
     parts = []
     for table in tables:
-        described = describe_table(registry_root, repo_root, repo_root / "db" / "migrations", table)
+        described = describe_table(inputs.schema, registry, table)
         described["ownership"] = owner_rows(inputs, table)
         parts.append(json.dumps(described, indent=1))
     return "\n".join(parts)
@@ -205,11 +205,11 @@ class Gateway:
             return text
 
 
-def ask(questions: list[dict[str, Any]], inputs: mr.Inputs, repo_root: Path, registry_root: Path | None,
-        gateway: Gateway) -> dict[str, Any]:
+def ask(questions: list[dict[str, Any]], inputs: mr.Inputs, registry_root: Path | None, gateway: Gateway) -> dict[str, Any]:
+    registry = read_registry_records(registry_root)
     results = []
     for question in questions:
-        context = context_for(question, inputs, repo_root, registry_root)
+        context = context_for(question, inputs, registry)
         given = gateway.ask(context, question["question"])
         results.append({"id": question["id"], "category": question["category"], "expected": question["answer"],
                         "given": given, "correct": correct(question["answer"], given)})
@@ -252,7 +252,7 @@ def main(argv: list[str] | None = None) -> int:
     if not args.gateway or not key:
         print(f"ask needs --gateway (or LITELLM_BASE_URL) and the key in ${args.key_env}", file=sys.stderr)
         return 2
-    report = ask(questions, inputs, args.repo_root, registry_root, Gateway(args.gateway, key, args.model))
+    report = ask(questions, inputs, registry_root, Gateway(args.gateway, key, args.model))
     if args.json:
         args.json.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(render(report))

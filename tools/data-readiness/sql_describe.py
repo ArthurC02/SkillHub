@@ -19,7 +19,6 @@ from sql_schema import (
     Table,
     live_tables,
     one_line,
-    read_schema,
     statements,
     strip_comments,
     top_level_words,
@@ -54,12 +53,20 @@ class ValueList:
     null_decided: bool
 
 
-def describe_table(registry_root: Path | None, repo_root: Path, migrations_dir: Path, name: str) -> dict[str, Any]:
-    schema = read_schema(migrations_dir, repo_root)
+RegistryRecord = tuple[str, dict[str, Any]]
+
+
+def read_registry_records(registry_root: Path | None) -> list[RegistryRecord]:
+    if registry_root is None:
+        return []
+    return [(key, record) for asset, key in ASSET_KEYS.items() for record in read_records(registry_root, asset)]
+
+
+def describe_table(schema: Schema, registry: list[RegistryRecord], name: str) -> dict[str, Any]:
     tables = live_tables(schema)
     table = tables.get(name)
     if table is None:
-        raise ValueError(f"no table {name!r} in {migrations_dir}{_did_you_mean(name, tables)}")
+        raise ValueError(f"no table {name!r} in the migrations{_did_you_mean(name, tables)}")
     constraints = [constraint for constraint in schema.constraints if constraint.table == name]
     primary = [schema.primary_keys[name]] if name in schema.primary_keys else []
     outgoing = [key for key in schema.foreign_keys if key.child == name]
@@ -80,7 +87,7 @@ def describe_table(registry_root: Path | None, repo_root: Path, migrations_dir: 
         "referenced_by": [_edge("child", key.child, key, tables) for key in incoming],
         "partitions": sorted(partition for partition, declared in schema.tables.items() if declared.partition_of == name),
         "dynamic_ddl": [{"at": f"{statement.file}:{statement.line}", "statement": statement.text} for statement in dynamic],
-        "registry": _mentions(registry_root, name, spans, retired) if registry_root is not None else [],
+        "registry": _mentions(registry, name, spans, retired),
         "undescribed_columns": _undescribed(table),
         "gaps": _gaps(table, schema),
     }
@@ -222,15 +229,14 @@ def _primary_columns(table: Table | None) -> list[str]:
     return [column for column, info in table.columns.items() if info.get("primary_key")] if table else []
 
 
-def _mentions(registry_root: Path, name: str, spans: list[tuple[str, int, int]], retired: list[Retired]) -> list[dict[str, Any]]:
+def _mentions(registry: list[RegistryRecord], name: str, spans: list[tuple[str, int, int]], retired: list[Retired]) -> list[dict[str, Any]]:
     word = re.compile(rf"\b{re.escape(name)}\b")
     found = []
-    for asset, key in ASSET_KEYS.items():
-        for record in read_records(registry_root, asset):
-            named = any(word.search(str(record.get(field, ""))) for field in SUMMARY_FIELDS)
-            replaced = next((gone for gone in retired if _cites_any(record.get("evidence"), [(gone.file, gone.line, gone.end)])), None)
-            if named or replaced or _cites_any(record.get("evidence"), spans):
-                found.append(_mention(key, record, replaced))
+    for key, record in registry:
+        named = any(word.search(str(record.get(field, ""))) for field in SUMMARY_FIELDS)
+        replaced = next((gone for gone in retired if _cites_any(record.get("evidence"), [(gone.file, gone.line, gone.end)])), None)
+        if named or replaced or _cites_any(record.get("evidence"), spans):
+            found.append(_mention(key, record, replaced))
     return found
 
 

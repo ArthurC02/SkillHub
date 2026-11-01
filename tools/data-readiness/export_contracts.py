@@ -10,7 +10,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 import measure_readiness as mr  # noqa: E402
-from sql_describe import CHECK_BODY, describe_table  # noqa: E402
+from sql_describe import CHECK_BODY, RegistryRecord, describe_table, read_registry_records  # noqa: E402
 from sql_schema import strip_comments  # noqa: E402
 
 API_VERSION = "v3.1.0"
@@ -76,8 +76,8 @@ def _custom(name: str, value: Any) -> dict[str, Any]:
     return {"property": name, "value": value}
 
 
-def contract(table: str, inputs: mr.Inputs, repo_root: Path, registry_root: Path | None) -> dict[str, Any]:
-    described = describe_table(registry_root, repo_root, repo_root / "db" / "migrations", table)
+def contract(table: str, inputs: mr.Inputs, registry: list[RegistryRecord]) -> dict[str, Any]:
+    described = describe_table(inputs.schema, registry, table)
     owners = inputs.owners
     custom = [_custom("owner", ", ".join(inputs.table_owners(table)) or None)]
     custom += [_custom(section, ", ".join(owners[section][table]))
@@ -111,12 +111,12 @@ def contract(table: str, inputs: mr.Inputs, repo_root: Path, registry_root: Path
     }
 
 
-def export(inputs: mr.Inputs, repo_root: Path, registry_root: Path | None, out: Path) -> list[str]:
+def export(inputs: mr.Inputs, registry_root: Path | None, out: Path) -> list[str]:
     out.mkdir(parents=True, exist_ok=True)
+    registry = read_registry_records(registry_root)
     written = []
     for table in sorted(inputs.tables):
-        (out / f"{table}.json").write_text(json.dumps(contract(table, inputs, repo_root, registry_root), indent=2) + "\n",
-                                           encoding="utf-8")
+        (out / f"{table}.json").write_text(json.dumps(contract(table, inputs, registry), indent=2) + "\n", encoding="utf-8")
         written.append(table)
     return written
 
@@ -129,7 +129,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     registry_root = args.registry_root or args.repo_root / "docs" / "domain-memory"
     inputs = mr.read_inputs(args.repo_root, registry_root)
-    written = export(inputs, args.repo_root, registry_root, args.out)
+    written = export(inputs, registry_root, args.out)
     print(f"{len(written)} contracts written to {args.out}")
     return 0
 

@@ -138,7 +138,7 @@ def test_asking_sends_the_catalog_for_a_question_without_tables_and_the_describe
 
     report = ka.ask(
         [question("exists", "runs", "runs"), question("owner", "runs", "run", tables=["runs"])],
-        inputs, root, None, ka.Gateway("http://gw/", "secret", "mini", post=post),
+        inputs, None, ka.Gateway("http://gw/", "secret", "mini", post=post),
     )
     assert [(url, auth, model) for url, auth, model, _ in sent] == [("http://gw/v1/chat/completions", "Bearer secret", "mini")] * 2
     assert "runs: one execution" in sent[0][3] and "users: one row per person" in sent[0][3]
