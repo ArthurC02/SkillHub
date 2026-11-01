@@ -68,6 +68,9 @@ func adrCitationProblems(root string) []string {
 	anchors := markdownAnchors(string(index))
 
 	for _, relative := range files {
+		if adrCitationExempt(relative) && !strings.HasSuffix(relative, ".md") {
+			continue
+		}
 		body, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(relative)))
 		if err != nil {
 			continue
@@ -82,6 +85,10 @@ func existingListedFiles(root, listed string) []string {
 	var files []string
 	for _, relative := range strings.Split(strings.TrimSpace(listed), "\n") {
 		if relative == "" {
+			continue
+		}
+		if !strings.HasPrefix(relative, adrDir+"/") {
+			files = append(files, relative)
 			continue
 		}
 		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(relative))); err == nil {
