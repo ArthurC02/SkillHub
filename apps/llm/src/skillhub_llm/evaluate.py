@@ -37,7 +37,7 @@ logger = logging.getLogger("skillhub_llm.evaluate")
 JUDGE_MODEL = os.getenv("JUDGE_MODEL") or "skillhub-judge"
 
 JUDGE_PROMPT_VERSION = "judge-run/v4"
-SUGGEST_IMPROVEMENTS_PROMPT_VERSION = "suggest-improvements/v3"
+SUGGEST_IMPROVEMENTS_PROMPT_VERSION = "suggest-improvements/v4"
 
 # budget-ceiling: evaluate.LLM_TIMEOUT_SECONDS
 LLM_TIMEOUT_SECONDS = 120.0
@@ -158,6 +158,11 @@ normalises outside the package is refused rather than cleaned up. It must not be
 not a description of the change - what you write replaces the file byte for byte. \
 Propose content only for a file whose current content you were given. It must not be empty.
 - expected_impact: what would be different about the next run if this were applied.
+
+The digest may end with the package files the run never opened. That list is context, \
+not evidence: quote only from the evidence lines. When a criterion that did not pass \
+needed what such a file holds, the usual fix is SKILL.md: point to that file at the step \
+that needs it and say when to read it or how to run it.
 
 Propose the changes with the most effect first, and at most {MAX_SUGGESTIONS}. Propose \
 nothing rather than something the digest does not support: an empty list is a valid \

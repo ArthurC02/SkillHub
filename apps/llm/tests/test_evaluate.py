@@ -534,7 +534,7 @@ def test_suggest_improvements_returns_proposals(capture):
     assert response.status_code == 200
     body = response.json()
     assert body["model"] == "skillhub-judge"
-    assert body["prompt_version"] == "suggest-improvements/v3"
+    assert body["prompt_version"] == "suggest-improvements/v4"
     proposal = body["suggestions"][0]
     assert set(proposal) == {
         "category",
@@ -718,3 +718,10 @@ def test_suggest_improvements_rejects_empty_digest():
         ).status_code
         == 422
     )
+
+
+def test_the_suggestion_prompt_treats_the_unopened_files_as_context_not_evidence():
+    prompt = evaluate.SUGGEST_IMPROVEMENTS_SYSTEM_PROMPT
+    assert "the package files the run never opened. That list is context" in prompt
+    assert "not evidence: quote only from the evidence lines" in prompt
+    assert "point to that file at the step that needs it" in prompt

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
+	"path"
 	"sort"
 	"strings"
 	"time"
@@ -16,6 +17,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/textx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/facts"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/modelport"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
@@ -69,6 +71,7 @@ func (s *Service) suggest(ctx context.Context, m facts.Material, ev gen.Evaluati
 		return SuggestionsNoEvidence
 	}
 	tree, files := s.packageFiles(ctx, m)
+	digest = withUnopenedFiles(digest, m.Advanced, tree)
 
 	callCtx, cancel := context.WithTimeout(ctx, suggestTimeout)
 	defer cancel()
@@ -365,6 +368,44 @@ func firstChars(s string, limit int) string {
 	out, truncated := textx.CutRunes(s, limit)
 	if truncated {
 		return out + "…[truncated]"
+	}
+	return out
+}
+
+const unopenedFilesHeading = "\npackage files the run never opened, neither by a read nor by a command naming them:\n"
+
+func withUnopenedFiles(digest string, view trace.AdvancedView, tree []string) string {
+	unopened := unopenedFiles(view, tree)
+	if len(unopened) == 0 {
+		return digest
+	}
+	var b strings.Builder
+	b.WriteString(digest)
+	b.WriteString(unopenedFilesHeading)
+	for _, p := range unopened {
+		fmt.Fprintf(&b, "  %s\n", p)
+	}
+	out, _ := textx.CutRunes(b.String(), maxDigestChars)
+	return out
+}
+
+func unopenedFiles(view trace.AdvancedView, tree []string) []string {
+	if !view.Complete || view.HasMore || view.EvaluationTruncated {
+		return nil
+	}
+	var touched strings.Builder
+	for _, e := range view.Events {
+		if e.Type == trace.TypeResourceRead || e.Type == trace.TypeToolCall {
+			touched.Write(e.Payload)
+			touched.WriteByte('\n')
+		}
+	}
+	seen := touched.String()
+	var out []string
+	for _, p := range tree {
+		if skillpkg.IsInstructionFile(p) && !strings.Contains(seen, path.Base(p)) {
+			out = append(out, p)
+		}
 	}
 	return out
 }

@@ -218,8 +218,8 @@ func TestAScriptOrReferenceNothingMentionsIsFlagged(t *testing.T) {
 			var got []string
 			for _, f := range findingsWithCode(r, CodeUnmentionedFile) {
 				got = append(got, f.Path)
-				if f.Severity != SeverityWarning {
-					t.Errorf("finding = %+v, want a warning", f)
+				if f.Severity != SeverityInfo {
+					t.Errorf("finding = %+v, want it disclosed as info", f)
 				}
 			}
 			if strings.Join(got, ",") != strings.Join(c.want, ",") {
@@ -233,8 +233,8 @@ func TestACreationRuleNeverPromotesAnUnmentionedFile(t *testing.T) {
 	r := Validate(pkg(layoutFrontmatter+"No links.\n", map[string]string{"references/tiers.md": "table\n"}))
 	r.RequireAuthoringRules()
 	got := findingsWithCode(r, CodeUnmentionedFile)
-	if len(got) != 1 || got[0].Severity != SeverityWarning || r.Blocked {
-		t.Fatalf("findings = %+v blocked = %v, want the unmentioned file to stay a warning", got, r.Blocked)
+	if len(got) != 1 || got[0].Severity != SeverityInfo || r.Blocked {
+		t.Fatalf("findings = %+v blocked = %v, want the unmentioned file to stay info", got, r.Blocked)
 	}
 }
 

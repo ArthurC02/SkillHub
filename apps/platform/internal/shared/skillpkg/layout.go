@@ -89,13 +89,11 @@ func (r *Report) checkUnmentionedFiles(fsys fs.FS, instructions string) {
 	var candidates []string
 	scripts := map[string]string{}
 	EachReadableFile(fsys, func(p string, _ fs.DirEntry) {
-		folder, _, _ := strings.Cut(p, "/")
-		if !slices.Contains(instructionFolders, folder) || path.Base(p) == "__init__.py" ||
-			!scriptExts[strings.ToLower(path.Ext(p))] && !isMarkdown(p) {
+		if !IsInstructionFile(p) {
 			return
 		}
 		candidates = append(candidates, p)
-		if folder == "scripts" {
+		if strings.HasPrefix(p, "scripts/") {
 			if data, err := readCapped(fsys, p, int64(maxEntryBytes)); err == nil {
 				scripts[p] = string(data)
 			}
@@ -105,9 +103,15 @@ func (r *Report) checkUnmentionedFiles(fsys fs.FS, instructions string) {
 		if mentionedIn(instructions, p) || importedByAnotherScript(scripts, p) {
 			continue
 		}
-		r.add(SeverityWarning, CodeUnmentionedFile, p, fmt.Sprintf(
+		r.add(SeverityInfo, CodeUnmentionedFile, p, fmt.Sprintf(
 			"SKILL.md 與它連結的檔案都沒有提到 %s；Agent 不會知道要執行或閱讀它。請在本文說明何時執行（附指令）或何時閱讀。", p))
 	}
+}
+
+func IsInstructionFile(p string) bool {
+	folder, _, _ := strings.Cut(p, "/")
+	return slices.Contains(instructionFolders, folder) && path.Base(p) != "__init__.py" &&
+		(scriptExts[strings.ToLower(path.Ext(p))] || isMarkdown(p))
 }
 
 func mentionedIn(text, p string) bool {
