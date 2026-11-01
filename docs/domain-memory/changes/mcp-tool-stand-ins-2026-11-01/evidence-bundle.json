@@ -1,0 +1,58 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "mcp-tool-stand-ins",
+  "proposal_id": "mcp-tool-stand-ins-2026-11-01",
+  "registry_revision": {
+    "observed_commit": "ae32aea68dd2b45ef3e41fc0932318f0922866b1",
+    "registry_digest": "sha256:c1e60e8ead291bff347139e68e2d11559c21e063c9f5174fcd83e07ed818cdab",
+    "committed_digest": "sha256:7e029ebe189dac02da160bf8410ed4fd5d23aaa379c838ba1e194142ac9d519d"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-trial-answers-each-listed-mcp-tool-its-version-declares-with-a-stand-in",
+      "mutated_protection": "apps/platform/internal/trial/execution/schedule.go:592: MCPTools: version.MCPTools, -> MCPTools: nil,",
+      "failure_evidence": "=== RUN   TestATrialRunOffersStandInsForTheListedToolsItsVersionDeclares\n    mcp_tools_integration_test.go:226: the run was sent the stand-ins [] (sent true), want only the listed, unretired tool it declares: [{Reference:mcp__srv-1793512892501547900__create_event Purpose:Creates an event. Parameters:title, start}]\n--- FAIL: TestATrialRunOffersStandInsForTheListedToolsItsVersionDeclares (0.39s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t0.901s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": ".claude/skills/domain-memory/engine/bin/windows-x86_64/domain-memory.exe verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/mcp-tool-stand-ins-2026-11-01 --path apps/platform/internal/entrypoint/api/apiserver/mcp_tools_integration_test.go --path apps/platform/internal/entrypoint/wiring/trial.go --path apps/platform/internal/skill/admission/mcptools/mcptools.go --path apps/platform/internal/skill/admission/mcptools/mcptools_test.go --path db/migrations/0147_mcp_tool_catalog.sql --path apps/platform/internal/trial/execution/schedule.go --path apps/platform/internal/trial/execution/provider.go",
+      "command_profile": "architecture",
+      "exit_code": 0,
+      "output_sha256": "sha256:5d3fcce8f072fd8cb3a7295fdf27c7d58875c704b7adab6b1ab7642a5c9aa245",
+      "finished_at": "2026-11-01T06:01:58.848717Z",
+      "working_directory": "."
+    },
+    {
+      "obligation_id": "rule-a-trial-answers-each-listed-mcp-tool-its-version-declares-with-a-stand-in",
+      "status": "passed",
+      "evidence": "go test -count=1 -v ./internal/entrypoint/api/apiserver/ -run '^TestATrialRunOffersStandInsForTheListedToolsItsVersionDeclares$|^TestATrialRunOfAVersionDeclaringNoMCPToolCarriesNoStandIns$'",
+      "command_profile": "integration",
+      "exit_code": 0,
+      "output_sha256": "sha256:9e32742be27d4c4ccddcef70f611bea686378d33d648160b9234de31fd752d66",
+      "finished_at": "2026-11-01T06:02:02.263980Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "contract-registry-run-facts-v1",
+      "status": "passed",
+      "evidence": "go test -count=1 -v ./internal/entrypoint/wiring/ -run '^TestRunReceivesTheVersionFactsTheRegistryRecorded$|^TestRunStandInsCarryEachListedToolUnderItsReference$'",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:a0358b55e614f9372e04b169baadd22d829dfbc8b176b68228bbc010f361a106",
+      "finished_at": "2026-11-01T06:02:04.022188Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

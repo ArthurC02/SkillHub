@@ -1,0 +1,40 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "mcp-tool-stand-ins",
+  "proposal_id": "mcp-tool-stand-ins-2026-11-01",
+  "obligations": [
+    {
+      "id": "evidence-current",
+      "source_type": "acceptance-criterion",
+      "source_id": "citations-current",
+      "expected_outcome": "verify-evidence reports current for every citation of the updated records.",
+      "level": "architecture",
+      "status": "planned",
+      "check": ".claude/skills/domain-memory/engine/bin/windows-x86_64/domain-memory.exe verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/mcp-tool-stand-ins-2026-11-01 --path apps/platform/internal/entrypoint/api/apiserver/mcp_tools_integration_test.go --path apps/platform/internal/entrypoint/wiring/trial.go --path apps/platform/internal/skill/admission/mcptools/mcptools.go --path apps/platform/internal/skill/admission/mcptools/mcptools_test.go --path db/migrations/0147_mcp_tool_catalog.sql --path apps/platform/internal/trial/execution/schedule.go --path apps/platform/internal/trial/execution/provider.go"
+    },
+    {
+      "id": "rule-a-trial-answers-each-listed-mcp-tool-its-version-declares-with-a-stand-in",
+      "source_type": "acceptance-criterion",
+      "source_id": "enforced-a-trial-answers-each-listed-mcp-tool-its-version-declares-with-a-stand-in",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-trial-answers-each-listed-mcp-tool-its-version-declares-with-a-stand-in"
+        }
+      ],
+      "expected_outcome": "A run of a version declaring Read, a listed tool, a retired tool and an unlisted name is dispatched with exactly the listed tool as a stand-in; a version declaring no mcp__ name is dispatched with none.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go test -count=1 -v ./internal/entrypoint/api/apiserver/ -run '^TestATrialRunOffersStandInsForTheListedToolsItsVersionDeclares$|^TestATrialRunOfAVersionDeclaringNoMCPToolCarriesNoStandIns$'"
+    },
+    {
+      "id": "contract-registry-run-facts-v1",
+      "source_type": "contract",
+      "source_id": "registry-run-facts-v1",
+      "expected_outcome": "The run context receives the version facts the registry recorded, with the offered MCP tools as stand-ins under their references, and none when no tool is offered.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v ./internal/entrypoint/wiring/ -run '^TestRunReceivesTheVersionFactsTheRegistryRecorded$|^TestRunStandInsCarryEachListedToolUnderItsReference$'"
+    }
+  ]
+}

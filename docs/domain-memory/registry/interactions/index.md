@@ -24,6 +24,7 @@
 - [ingest-identity-workspace-purge](/interactions/ingest-identity-workspace-purge)
 - [ingest-packaging-source-lineage](/interactions/ingest-packaging-source-lineage)
 - [ingest-registry-version-source](/interactions/ingest-registry-version-source)
+- [ingest-run-mcp-stand-ins](/interactions/ingest-run-mcp-stand-ins)
 - [packaging-activity-facts](/interactions/packaging-activity-facts)
 - [packaging-identity-workspace-purge](/interactions/packaging-identity-workspace-purge)
 - [packaging-publishing-recipient-package](/interactions/packaging-publishing-recipient-package)

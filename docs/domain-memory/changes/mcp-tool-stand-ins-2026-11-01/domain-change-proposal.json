@@ -1,0 +1,282 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "mcp-tool-stand-ins-2026-11-01",
+  "proposer": "domain-memory-agent",
+  "requirement_id": "mcp-tool-stand-ins",
+  "status": "submitted",
+  "change_classification": "material",
+  "submitted_at": "2026-11-01T06:01:58.637114Z",
+  "verified_at": null,
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "ae32aea68dd2b45ef3e41fc0932318f0922866b1",
+    "registry_digest": "sha256:c1e60e8ead291bff347139e68e2d11559c21e063c9f5174fcd83e07ed818cdab",
+    "committed_digest": "sha256:7e029ebe189dac02da160bf8410ed4fd5d23aaa379c838ba1e194142ac9d519d"
+  },
+  "affected_contexts": [
+    "ingest",
+    "registry",
+    "run"
+  ],
+  "rule_ids": [
+    "a-trial-answers-each-listed-mcp-tool-its-version-declares-with-a-stand-in"
+  ],
+  "contract_ids": [
+    "registry-run-facts-v1"
+  ],
+  "ownership_decision": {
+    "owner_context": "run",
+    "invariant": "A trial run is dispatched with a stand-in for exactly the unretired mcp_tools rows its Skill Version declares in allowed-tools, each without the server address.",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "ingest-run-mcp-stand-ins: the run context reads the offered tools through its registry fact adapter at the composition root; it never imports ingest",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [
+      "run importing ingest packages"
+    ],
+    "evidence": []
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A Skill that declares a listed MCP tool must be triable without any MCP server or credential.",
+      "The list changes after a version is admitted, and a Skill Version never changes.",
+      "A name the version declares but the list does not offer must not become a tool the agent can call.",
+      "An unreadable list must not read as a version with no tools."
+    ],
+    "decision": "At dispatch, intersect the version manifest allowed-tools with the unretired mcp_tools rows and send reference, purpose and parameters as RunRequest.mcp_tools; the registry fact adapter adds them to the version facts so execution.Service keeps its field budget. A version declaring no mcp__ name never reads the list; an unreadable list fails the dispatch attempt.",
+    "invariants_preserved": [
+      "Skill Version immutability: nothing about the list is stored with the version.",
+      "A withheld Skill carries no stand-ins.",
+      "The server address never leaves the platform for a trial."
+    ],
+    "rejected_alternatives": [
+      "Storing the offered tools with the version at admission: the list changes and the version cannot.",
+      "Sending the whole list and letting the runtime intersect: it would hand the sandbox tools the Skill never declared.",
+      "A new field on execution.Service for a catalog port: the Service is at its field budget."
+    ],
+    "proof_obligations": [
+      "rule-a-trial-answers-each-listed-mcp-tool-its-version-declares-with-a-stand-in",
+      "evidence-current"
+    ],
+    "counterfactual_check": "Dropping mcp_tools from the dispatched request turns the rule test red; the evidence bundle records the run."
+  },
+  "event_change": null,
+  "contract_change": {
+    "contract_id": "registry-run-facts-v1",
+    "change": "The version facts the run context reads now also carry the offered MCP stand-ins; existing fields are unchanged.",
+    "compatibility": "additive"
+  },
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-skill-declares-only-mcp-tools-listed-in-mcp-tools",
+        "statement": "A Skill may declare in allowed-tools only MCP tools that operators list in mcp_tools, referenced as mcp__<server>__<tool>; an mcp__ name that no unretired mcp_tools row provides is unlisted, and a name without the mcp__ prefix is never judged against the list.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "mcp__calendar__create_event is accepted while mcp_tools lists calendar and create_event, and mcp__calendar__create_events is unlisted.",
+          "Read and Bash(git:*) are not MCP names and are never unlisted."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/mcptools/mcptools.go",
+            "lines": {
+              "start": 49,
+              "end": 51
+            },
+            "excerpt_sha256": "sha256:9be60cab1cb2c286718201a3a634166ee3e0e41582c4fed90a0346beb8b0b949"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/mcptools/mcptools.go",
+            "lines": {
+              "start": 137,
+              "end": 149
+            },
+            "content_sha256": "sha256:3b4c5826cd7a80c3aa68b9b1d552b7e3891accfa24a9ba0557af80db45ac4b2e",
+            "excerpt_sha256": "sha256:89399023887ea21ff9ff504c50787c3b7d7c4d227d752cfccd2ceb74af6e6f52",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/mcptools/mcptools_test.go",
+            "lines": {
+              "start": 18,
+              "end": 38
+            },
+            "excerpt_sha256": "sha256:a6a54c5f145a83227d92597249a12a3ed1dafa19db76a772fbd9099948e1236d"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-operator-lists-an-mcp-tool-once-with-a-reason-and-an-audit-event",
+        "statement": "An operator adds a row to mcp_tools with a server, tool, purpose, parameters, an HTTPS server_url and a reason, written in one transaction with its audit event; at most one unretired row exists per server and tool, and a second is refused as a conflict.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "Adding calendar/create_event twice without retiring the first answers 409 the second time.",
+          "A draft with an http address or an uppercase server name is refused before anything is listed."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/mcptools/mcptools.go",
+            "lines": {
+              "start": 76,
+              "end": 95
+            },
+            "excerpt_sha256": "sha256:3e033fa7b3d80002f5fe5fbf2eba61d9b2e110db67863b5289c407515a8c7873"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/mcptools/mcptools.go",
+            "lines": {
+              "start": 151,
+              "end": 178
+            },
+            "content_sha256": "sha256:3b4c5826cd7a80c3aa68b9b1d552b7e3891accfa24a9ba0557af80db45ac4b2e",
+            "excerpt_sha256": "sha256:63ea4fbcaba89cd881824066a2f556b9529023dba85ece6a62012c4e4c36ceed",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "db/migrations/0147_mcp_tool_catalog.sql",
+            "lines": {
+              "start": 1,
+              "end": 16
+            },
+            "excerpt_sha256": "sha256:6dcc462bc595155f8606d4ea22e96c4b37237347100b1ccdb11b5cbda9b1e638"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/mcp_tools_integration_test.go",
+            "lines": {
+              "start": 36,
+              "end": 58
+            },
+            "excerpt_sha256": "sha256:b0ab5c69924fa97a6c4b81db9b09993c2e7b698f5e509d84fed763a06e4cc23f"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "contracts",
+      "record": {
+        "id": "registry-run-facts-v1",
+        "kind": "internal-fact-reader",
+        "version": "v1",
+        "compatibility_policy": "consumer-specific facts evolve deliberately",
+        "data_classification": "internal",
+        "producer_context": "registry",
+        "consumer_contexts": [
+          "run"
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/wiring/trial.go",
+            "lines": {
+              "start": 19,
+              "end": 55
+            },
+            "content_sha256": "sha256:9d1ef8125b634ba4e8a50c9791b46502d94fbbbc873374cae661e2409a6d8fb0",
+            "excerpt_sha256": "sha256:e2b7d2e989a82c6bf6e8264694bc69736a6a82023c45a3162481aa32441d14fb",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "ingest-run-mcp-stand-ins",
+        "relationship": "customer-supplier",
+        "consistency": "synchronous",
+        "delivery": "composition-root fact reader: at dispatch the run context reads, through its registry fact adapter, the unretired mcp_tools rows its Skill Version declares in allowed-tools, and hands their reference, purpose and parameters to the provider as stand-ins",
+        "producer_context": "ingest",
+        "consumer_context": "run",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/wiring/trial.go",
+            "lines": {
+              "start": 30,
+              "end": 50
+            },
+            "excerpt_sha256": "sha256:3a8b7da64bbea465db17d97e785e8e7284019abbef119254221d2f899967088e"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-trial-answers-each-listed-mcp-tool-its-version-declares-with-a-stand-in",
+        "statement": "A trial run is dispatched with a stand-in for each MCP tool its Skill Version declares in allowed-tools that is on the mcp_tools list and not retired, and for no other mcp__ name; each stand-in carries the tool reference, purpose and parameters and never the server address, so the runtime can answer the call without reaching the tool.",
+        "contexts": [
+          "run"
+        ],
+        "examples": [
+          "A version declaring Read, a listed mcp__calendar__create_event, a retired mcp__calendar__delete_event and an unlisted mcp__calendar__send_mail is dispatched with one stand-in, mcp__calendar__create_event.",
+          "A version declaring only Read and Bash is dispatched with no stand-ins."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/execution/schedule.go",
+            "lines": {
+              "start": 592,
+              "end": 592
+            },
+            "excerpt_sha256": "sha256:04664ebf16d7d50a17fb31fa4df7b5aa70d3cec22e0575d6baa14890d35eecec"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/mcp_tools_integration_test.go",
+            "lines": {
+              "start": 203,
+              "end": 228
+            },
+            "excerpt_sha256": "sha256:48d47487ae43876a53d6321ac6a25e5e3684b31897f0b84eff02b312ff2e5928"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/provider.go",
+            "lines": {
+              "start": 182,
+              "end": 186
+            },
+            "excerpt_sha256": "sha256:44281042665c3a7e0f846cbc4efeb03bedc6c6d26f42f14cdecac10a1a00060f"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-11-01T06:02:14.778167Z",
+      "scope": "Trial dispatch carries a stand-in for each declared, unretired mcp_tools row (ingest-run-mcp-stand-ins, the run rule); re-cites of the two ingest rules and registry-run-facts-v1 after the code moved",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "ae32aea68dd2b45ef3e41fc0932318f0922866b1",
+        "registry_digest": "sha256:c1e60e8ead291bff347139e68e2d11559c21e063c9f5174fcd83e07ed818cdab",
+        "committed_digest": "sha256:7e029ebe189dac02da160bf8410ed4fd5d23aaa379c838ba1e194142ac9d519d"
+      }
+    }
+  ],
+  "supersedes": [
+    "mcp-tool-catalog-rules-2026-11-01",
+    "shifted-recite-2026-10-24"
+  ]
+}
