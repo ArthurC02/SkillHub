@@ -171,11 +171,15 @@ jobs:
           - os: ubuntu-latest
             browser: chromium
             shard: 1
-            total: 2
+            total: 3
           - os: ubuntu-latest
             browser: chromium
             shard: 2
-            total: 2
+            total: 3
+          - os: ubuntu-latest
+            browser: chromium
+            shard: 3
+            total: 3
           - os: ubuntu-latest
             browser: firefox
             shard: 1
@@ -395,10 +399,37 @@ jobs:
             bash "$GITHUB_WORKSPACE/db/tests/upgrade_with_data.sh" 'postgres://postgres:postgres@localhost:5432/skillhub_upgrade?sslmode=disable'
       - name: Platform tests
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Platform tests' go test -count=1 ./...
-      - name: Platform tests (race detector, database-free packages)
-        run: |
-          bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Platform race tests'             go test -race -count=1               ./cmd/...               ./internal/creator/...               ./internal/entrypoint/worker/...               ./internal/foundation/...               ./internal/product/...               ./internal/trial/evidence/...               ./internal/trial/execution/...
       - run: go build ./...
+
+  platform-race:
+    needs: changes
+    if: needs.changes.outputs.platform == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/platform
+    env:
+      SKILLHUB_CREATION_PYTHON: ${{ github.workspace }}/apps/llm/.venv/bin/python
+      SKILLHUB_REQUIRE_CREATION_PYTHON: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: apps/platform/go.mod
+          cache-dependency-path: apps/platform/go.sum
+      - uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
+        with:
+          enable-cache: true
+      - name: Sync the creation service's interpreter (Go-to-Python test)
+        working-directory: apps/llm
+        run: uv sync --frozen
+      - name: Platform tests (race detector, database-free packages)
+        run: >-
+          bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Platform race tests'
+          go test -race -count=1 ./cmd/... ./internal/creator/... ./internal/entrypoint/worker/... ./internal/foundation/... ./internal/product/... ./internal/trial/evidence/... ./internal/trial/execution/...
 
   sandbox:
     needs: changes
@@ -897,7 +928,7 @@ jobs:
           [ "$status" = 1 ] && grep -q 'SKILLHUB_SANDBOX_TOKEN is required' <<<"$output"
 
   images-push:
-    needs: [images, web, web-browser, platform, llm, sandbox, devctl, contracts-drift, dependency-audit]
+    needs: [images, web, web-browser, platform, platform-race, llm, sandbox, devctl, contracts-drift, dependency-audit]
     if: ${{ !failure() && !cancelled() && needs.images.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
