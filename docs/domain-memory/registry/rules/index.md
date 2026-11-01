@@ -124,7 +124,7 @@
 - [a-search-limit-is-1-to-100](/rules/a-search-limit-is-1-to-100) — The search limit must be a whole number from 1 to 100; anything else is refused.
 - [a-search-purpose-is-reference-or-absent](/rules/a-search-purpose-is-reference-or-absent) — The public search refuses any purpose other than reference with 400.
 - [a-search-query-is-at-most-2000-runes](/rules/a-search-query-is-at-most-2000-runes) — A search query longer than 2000 characters, counted in runes, is refused; exactly 2000 is accepted.
-- [a-searchable-query-has-two-runes-and-a-letter-or-digit](/rules/a-searchable-query-has-two-runes-and-a-letter-or-digit) — A query is searched only when it is valid text without control characters, has at least two characters and holds a letter or digit.
+- [a-searchable-query-has-two-runes-and-a-letter-or-digit](/rules/a-searchable-query-has-two-runes-and-a-letter-or-digit) — A query is searched only when it is valid text without control characters and holds a letter or digit, and it has at least two characters unless it is one Han….
 - [a-served-activity-page-is-complete-and-names-every-source](/rules/a-served-activity-page-is-complete-and-names-every-source) — A page the activity service serves says it is complete and names all contracted sources, even when it holds no items.
 - [a-session-budget-lies-between-one-call-and-the-ceiling](/rules/a-session-budget-lies-between-one-call-and-the-ceiling) — A session is refused before any database work when its budget is below one model call's cost or above the session ceiling.
 - [a-session-ends-at-its-expiry-instant](/rules/a-session-ends-at-its-expiry-instant) — A session counts only strictly before its expiry; at the expiry instant it is already signed out.

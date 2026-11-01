@@ -3,12 +3,12 @@
   "proposal_id": "single-han-query-2026-11-01",
   "proposer": "human:ArthurC",
   "requirement_id": "single-han-query",
-  "status": "submitted",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-11-01T13:59:08.736544Z",
-  "verified_at": null,
-  "finalized_at": null,
-  "applied_at": null,
+  "verified_at": "2026-11-01T13:59:51.258465Z",
+  "finalized_at": "2026-11-01T13:59:59.437686Z",
+  "applied_at": "2026-11-01T14:00:05.680940Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "0c6e0a6c926ec9921822e7d4227140452ec08c8d",
@@ -109,5 +109,9 @@
   ],
   "supersedes": [
     "reasons-recite-2026-10-25"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "a3a13e664775b8bffce61cf0be82caedd6c52692",
+    "registry_digest": "sha256:9990885c9a61d98368bd1745c7932c578f49522baf42cf2c27c68e81ee6ccc31"
+  }
 }

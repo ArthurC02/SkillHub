@@ -10,7 +10,7 @@ catalog owns the rule a-searchable-query-has-two-runes-and-a-letter-or-digit. It
 
 ## Implementation handoff
 
-isComprehensible accepts one rune when unicode.Is(unicode.Han, r), so the extension blocks count as well as U+4E00–9FFF; rejected: a hard-coded basic-block range, and accepting any single letter. Proof: dropping the Han clause makes TestIsComprehensible fail on 你, 表 and 𠮟, then restored.
+isComprehensible accepts one rune when unicode.Is(unicode.Han, r), so the extension blocks count as well as U+4E00–9FFF; rejected: a hard-coded basic-block range, and accepting any single letter. Proof: dropping the Han clause makes TestIsComprehensible fail on each of the three one-character Han queries (U+4F60, U+8868, U+20B9F), then restored.
 
 ## Proposal and approvals
 
