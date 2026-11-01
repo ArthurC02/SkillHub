@@ -104,12 +104,13 @@ func (h *Handler) CorrectedSearch(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "expected one corrected search request")
 		return
 	}
-	if strings.TrimSpace(body.Query) == "" || queryTooLong(body.Query) != "" {
+	query := strings.TrimSpace(body.Query)
+	if query == "" || queryTooLong(query) != "" {
 		httpx.WriteError(w, http.StatusBadRequest, "query must contain between 1 and 2000 characters")
 		return
 	}
 	interpretation := SearchInterpretation{Status: interpretationCorrected, Intent: body.Intent, Keywords: body.Keywords, Filters: body.Filters}
-	if err := interpretation.validate(body.Query, correctedByUser); err != nil {
+	if err := interpretation.validate(query, correctedByUser); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -125,9 +126,9 @@ func (h *Handler) CorrectedSearch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out, err := h.Svc.searchInterpreted(r.Context(), interpretedSearch{
-		original: body.Query, limit: limit, interpretation: interpretation, purpose: searchByPerson,
+		original: query, limit: limit, interpretation: interpretation, purpose: searchByPerson,
 	})
-	h.writeSearchResult(w, body.Query, limit, out, err)
+	h.writeSearchResult(w, query, limit, out, err)
 }
 
 func (h *Handler) writeSearchResult(w http.ResponseWriter, query string, limit int32, out searchOutcome, err error) {

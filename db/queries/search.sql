@@ -78,7 +78,7 @@ WHERE s.workspace_id = $1
        OR s.bigram @@ to_tsquery('simple', nullif(sqlc.arg(bigram_query)::text, '')))
 ORDER BY GREATEST(
     ts_rank_cd(s.tsv, websearch_to_tsquery('english', sqlc.arg(query)::text)),
-    ts_rank_cd(s.bigram, to_tsquery('simple', nullif(sqlc.arg(bigram_query)::text, '')))) DESC
+    ts_rank_cd(s.bigram, to_tsquery('simple', nullif(sqlc.arg(bigram_query)::text, '')))) DESC, s.skill_id
 LIMIT $2;
 
 -- name: PublicSearchSkills :many
@@ -119,7 +119,7 @@ WHERE (s.workspace_id = ANY(sqlc.arg(catalog_workspace_ids)::uuid[])
   )
 ORDER BY GREATEST(
     ts_rank_cd(s.tsv, websearch_to_tsquery('english', sqlc.arg(query)::text)),
-    ts_rank_cd(s.bigram, to_tsquery('simple', nullif(sqlc.arg(bigram_query)::text, '')))) DESC
+    ts_rank_cd(s.bigram, to_tsquery('simple', nullif(sqlc.arg(bigram_query)::text, '')))) DESC, s.skill_id
 LIMIT sqlc.arg(result_limit);
 
 -- name: BrowseCatalogSkills :many
