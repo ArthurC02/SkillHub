@@ -10,6 +10,8 @@ import (
 	"strings"
 )
 
+const shortRunJVMOptions = "-XX:TieredStopAtLevel=1 -XX:+UseSerialGC"
+
 func openAPIGenerationJobs(root, scratch string, toolchain, images map[string]string) ([]generationJob, error) {
 	tsImage := images["openapi_generator"]
 	pyImage := images["python_codegen"]
@@ -46,16 +48,22 @@ func openAPIGenerationJobs(root, scratch string, toolchain, images map[string]st
 			return generateGoOpenAPI(root, scratch, goImage, out)
 		}),
 		single(func(out io.Writer) (generationOutput, error) {
+			output, err := generateContractLimits(root, scratch, out)
 			<-tsDone
 			if tsErr != nil {
 				return generationOutput{}, errors.New("contract limits generation: skipped because TypeScript OpenAPI generation failed")
 			}
-			return generateContractLimits(root, scratch, ts.source, out)
+			if err != nil {
+				return generationOutput{}, err
+			}
+			return output, os.Rename(filepath.Join(output.source, limitsTSFile), filepath.Join(ts.source, limitsTSFile))
 		}),
 	}, nil
 }
 
-func generateContractLimits(root, scratch, tsSource string, out io.Writer) (generationOutput, error) {
+const limitsTSFile = "limits.ts"
+
+func generateContractLimits(root, scratch string, out io.Writer) (generationOutput, error) {
 	goRoot := filepath.Join(scratch, "contractlimits")
 	if err := os.MkdirAll(goRoot, 0o755); err != nil {
 		return generationOutput{}, err
@@ -63,7 +71,7 @@ func generateContractLimits(root, scratch, tsSource string, out io.Writer) (gene
 	cmd := exec.Command("go", "run", "./cmd/contractlimits",
 		"-contract", filepath.Join(root, "contracts", "openapi", "public.yaml"),
 		"-go", filepath.Join(goRoot, "limits_gen.go"),
-		"-ts", filepath.Join(tsSource, "limits.ts"))
+		"-ts", filepath.Join(goRoot, limitsTSFile))
 	cmd.Dir = filepath.Join(root, "apps", "platform")
 	if output, err := cmd.CombinedOutput(); err != nil {
 		_, _ = out.Write(output)
@@ -85,6 +93,7 @@ func generateTypeScriptOpenAPI(root, scratch, tsImage string, out io.Writer) (ge
 	tsArgs := []string{cmdRun, dockerFlagRm}
 	tsArgs = append(tsArgs, dockerUserArgs()...)
 	tsArgs = append(tsArgs,
+		"-e", "JAVA_OPTS="+shortRunJVMOptions,
 		"-v", root+":/src",
 		"-w", "/src",
 		tsImage,
