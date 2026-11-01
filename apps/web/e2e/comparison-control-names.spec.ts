@@ -36,13 +36,17 @@ async function toggleFromKeyboard(page: Page, pick: Locator, checked: boolean) {
   await page.keyboard.press("Space");
   await expect(pick).toBeChecked({ checked });
   await expect(pick).toBeFocused();
-  expect(
-    await pick.evaluate((element) => {
-      const rect = element.getBoundingClientRect();
-      const top = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
-      return Boolean(top && (top === element || element.parentElement?.contains(top)));
-    }),
-  ).toBe(true);
+  const hit = await pick.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const top = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+    return {
+      uncovered: Boolean(top && (top === element || element.parentElement?.contains(top))),
+      top: top ? `${top.tagName.toLowerCase()}.${top.className}` : null,
+      rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+      viewport: { width: window.innerWidth, height: window.innerHeight, scrollY: window.scrollY },
+    };
+  });
+  expect(hit.uncovered, JSON.stringify(hit)).toBe(true);
 }
 
 for (const surface of ["catalog", "search"] as const) {
