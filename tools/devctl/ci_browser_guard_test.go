@@ -146,9 +146,9 @@ func TestBrowserPreviewPinsOneLoopbackAddress(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, required := range []string{
-		`baseURL: "http://127.0.0.1:4173"`,
-		`url: "http://127.0.0.1:4173"`,
-		`npm run preview -- --host 127.0.0.1 --port 4173 --strictPort`,
+		"baseURL: `http://127.0.0.1:${port}`",
+		"url: `http://127.0.0.1:${port}`",
+		"npm run preview -- --host 127.0.0.1 --port ${port} --strictPort",
 	} {
 		if !strings.Contains(string(data), required) {
 			t.Errorf("browser and preview server must use the same explicit loopback endpoint: missing %q", required)
