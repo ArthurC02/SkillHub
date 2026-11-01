@@ -10,7 +10,7 @@
   "approvals": [],
   "scm_attestation": {
     "provider": "git-signed-commit",
-    "commit": "a6bdb714bc253d3baf075b56cced06dc62b70306",
+    "commit": "9222fd99e43508f372982fab217901d2f5836ed1",
     "status": "approved",
     "proposal_revision": 1,
     "base_registry_revision": {
