@@ -9,7 +9,10 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"runtime"
+	"strconv"
 	"strings"
+	"sync"
 )
 
 var (
@@ -66,44 +69,56 @@ func preflight(root string, args []string, in io.Reader, out io.Writer) error {
 	return nil
 }
 
+type stepFindings struct {
+	problems, warnings []string
+	err                error
+}
+
 func committedProblems(root, rangeSpec string, out io.Writer) ([]string, error) {
-	format, warnings, err := formatProblems(root, rangeSpec)
-	if err != nil {
-		return nil, err
+	steps := []func() stepFindings{
+		func() stepFindings {
+			problems, warnings, err := formatProblems(root, rangeSpec)
+			return stepFindings{problems, warnings, err}
+		},
+		func() stepFindings {
+			problems, err := committedCommentProblems(root, rangeSpec)
+			return stepFindings{problems: problems, err: err}
+		},
+		func() stepFindings {
+			problems, warnings, err := committedEvidenceProblems(root, rangeSpec)
+			return stepFindings{problems, warnings, err}
+		},
+		func() stepFindings {
+			problems, err := imageBumpProblems(root, rangeEnd(rangeSpec))
+			return stepFindings{problems: problems, err: err}
+		},
+		func() stepFindings {
+			problems, warnings, err := committedGuardsTestProblems(root, rangeSpec, guardsTestCommand)
+			return stepFindings{problems, warnings, err}
+		},
+		func() stepFindings {
+			warnings, err := committedDecisionCommentWarnings(root, rangeSpec, newDecisionJudge(root))
+			return stepFindings{warnings: warnings, err: err}
+		},
 	}
-	for _, warning := range warnings {
-		fmt.Fprintln(out, statusWarn, warning)
+	findings := make([]stepFindings, len(steps))
+	var wg sync.WaitGroup
+	for i, step := range steps {
+		wg.Go(func() { findings[i] = step() })
 	}
-	comments, err := committedCommentProblems(root, rangeSpec)
-	if err != nil {
-		return nil, err
+	wg.Wait()
+
+	var problems []string
+	for _, found := range findings {
+		if found.err != nil {
+			return nil, found.err
+		}
+		for _, warning := range found.warnings {
+			fmt.Fprintln(out, statusWarn, warning)
+		}
+		problems = append(problems, found.problems...)
 	}
-	evidence, evidenceWarnings, err := committedEvidenceProblems(root, rangeSpec)
-	if err != nil {
-		return nil, err
-	}
-	for _, warning := range evidenceWarnings {
-		fmt.Fprintln(out, statusWarn, warning)
-	}
-	bump, err := imageBumpProblems(root, rangeEnd(rangeSpec))
-	if err != nil {
-		return nil, err
-	}
-	guards, guardsWarnings, err := committedGuardsTestProblems(root, rangeSpec, guardsTestCommand)
-	if err != nil {
-		return nil, err
-	}
-	for _, warning := range guardsWarnings {
-		fmt.Fprintln(out, statusWarn, warning)
-	}
-	advice, err := committedDecisionCommentWarnings(root, rangeSpec, newDecisionJudge(root))
-	if err != nil {
-		return nil, err
-	}
-	for _, warning := range advice {
-		fmt.Fprintln(out, statusWarn, warning)
-	}
-	return append(append(append(append(format, comments...), evidence...), bump...), guards...), nil
+	return problems, nil
 }
 
 func unpushedRange(root string) string {
@@ -150,30 +165,99 @@ func formatProblems(root, rangeSpec string) (problems, warnings []string, err er
 	if err != nil {
 		return nil, nil, err
 	}
-	end := rangeEnd(rangeSpec)
-	unavailable := map[string]bool{}
+	type formatCheck struct {
+		file        string
+		f           formatter
+		unavailable error
+		formatted   string
+		err         error
+	}
+	var checks []*formatCheck
+	var files []string
+	availability := map[string]error{}
 	for _, file := range lines(names) {
 		f, ok := formatterFor(root, file)
-		if !ok || unavailable[f.name] {
+		if !ok {
 			continue
 		}
-		blob, err := gitOutput(root, "cat-file", "blob", end+":"+file)
-		if err != nil {
-			return nil, nil, err
+		unavailable, seen := availability[f.name]
+		if !seen {
+			unavailable = f.availability()
+			availability[f.name] = unavailable
+			if unavailable != nil {
+				checks = append(checks, &formatCheck{f: f, unavailable: unavailable})
+			}
 		}
-		formatted, err := f.format(root, blob)
+		if unavailable == nil {
+			checks = append(checks, &formatCheck{file: file, f: f})
+			files = append(files, file)
+		}
+	}
+	blobs, err := committedBlobs(root, rangeEnd(rangeSpec), files)
+	if err != nil {
+		return nil, nil, err
+	}
+	var wg sync.WaitGroup
+	workers := make(chan struct{}, runtime.NumCPU())
+	for _, check := range checks {
+		if check.unavailable != nil {
+			continue
+		}
+		wg.Go(func() {
+			workers <- struct{}{}
+			defer func() { <-workers }()
+			check.formatted, check.err = check.f.format(root, blobs[check.file])
+		})
+	}
+	wg.Wait()
+
+	for _, check := range checks {
 		switch {
-		case errors.Is(err, errFormatterUnavailable):
-			unavailable[f.name] = true
-			warnings = append(warnings, fmt.Sprintf("%s skipped (%v); CI still checks it", f.name, err))
-		case errors.Is(err, errNotFormattable):
-		case err != nil:
-			warnings = append(warnings, fmt.Sprintf("%s could not check %s (%v); CI still checks it", f.name, file, err))
-		case formatted != blob:
-			problems = append(problems, fmt.Sprintf("%s is not %s-formatted as committed; run `%s` and commit the result", file, f.name, f.fix))
+		case check.unavailable != nil:
+			warnings = append(warnings, fmt.Sprintf("%s skipped (%v); CI still checks it", check.f.name, check.unavailable))
+		case errors.Is(check.err, errNotFormattable):
+		case check.err != nil:
+			warnings = append(warnings, fmt.Sprintf("%s could not check %s (%v); CI still checks it", check.f.name, check.file, check.err))
+		case check.formatted != blobs[check.file]:
+			problems = append(problems, fmt.Sprintf("%s is not %s-formatted as committed; run `%s` and commit the result", check.file, check.f.name, check.f.fix))
 		}
 	}
 	return problems, warnings, nil
+}
+
+func committedBlobs(root, revision string, files []string) (map[string]string, error) {
+	blobs := make(map[string]string, len(files))
+	if len(files) == 0 {
+		return blobs, nil
+	}
+	var request strings.Builder
+	for _, file := range files {
+		request.WriteString(revision + ":" + file + "\n")
+	}
+	command := exec.Command("git", "-C", root, "cat-file", "--batch")
+	command.Stdin = strings.NewReader(request.String())
+	output, err := command.Output()
+	if err != nil {
+		return nil, fmt.Errorf("git cat-file --batch: %w", err)
+	}
+	reader := bufio.NewReader(bytes.NewReader(output))
+	for _, file := range files {
+		header, err := reader.ReadString('\n')
+		fields := strings.Fields(header)
+		if err != nil || len(fields) != 3 || fields[1] != "blob" {
+			return nil, fmt.Errorf("git cat-file --batch: %s:%s: %s", revision, file, strings.TrimSpace(header))
+		}
+		size, err := strconv.Atoi(fields[2])
+		if err != nil {
+			return nil, fmt.Errorf("git cat-file --batch: %s:%s: size %q", revision, file, fields[2])
+		}
+		content := make([]byte, size+1)
+		if _, err := io.ReadFull(reader, content); err != nil {
+			return nil, fmt.Errorf("git cat-file --batch: %s:%s: %w", revision, file, err)
+		}
+		blobs[file] = string(content[:size])
+	}
+	return blobs, nil
 }
 
 func committedCommentProblems(root, rangeSpec string) ([]string, error) {
@@ -181,18 +265,20 @@ func committedCommentProblems(root, rangeSpec string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	end := rangeEnd(rangeSpec)
-	var problems []string
+	var files []string
 	for _, file := range lines(names) {
-		prefixes, ok := commentPrefixesFor(path.Base(file))
-		if !ok || !commentBudgetCovers(file) {
-			continue
+		if _, ok := commentPrefixesFor(path.Base(file)); ok && commentBudgetCovers(file) {
+			files = append(files, file)
 		}
-		blob, err := gitOutput(root, "cat-file", "blob", end+":"+file)
-		if err != nil {
-			return nil, err
-		}
-		if found := commentViolationsIn([]byte(blob), prefixes); len(found) > 0 {
+	}
+	blobs, err := committedBlobs(root, rangeEnd(rangeSpec), files)
+	if err != nil {
+		return nil, err
+	}
+	var problems []string
+	for _, file := range files {
+		prefixes, _ := commentPrefixesFor(path.Base(file))
+		if found := commentViolationsIn([]byte(blobs[file]), prefixes); len(found) > 0 {
 			problems = append(problems, commentBudgetProblem(file, len(found)))
 		}
 	}
@@ -220,12 +306,19 @@ func formatterFor(root, file string) (formatter, bool) {
 	return formatter{}, false
 }
 
-func (f formatter) format(root, source string) (string, error) {
+func (f formatter) availability() error {
 	if _, err := exec.LookPath(f.cmd); err != nil {
-		return "", fmt.Errorf("%w: %w", errFormatterUnavailable, err)
+		return fmt.Errorf("%w: %w", errFormatterUnavailable, err)
 	}
 	if f.requires != "" && !fileExists(f.requires) {
-		return "", fmt.Errorf("%w: %s is missing, run task bootstrap", errFormatterUnavailable, f.requires)
+		return fmt.Errorf("%w: %s is missing, run task bootstrap", errFormatterUnavailable, f.requires)
+	}
+	return nil
+}
+
+func (f formatter) format(root, source string) (string, error) {
+	if err := f.availability(); err != nil {
+		return "", err
 	}
 	cmd := exec.Command(f.cmd, f.args...)
 	cmd.Dir = filepath.Join(root, filepath.FromSlash(f.dir))

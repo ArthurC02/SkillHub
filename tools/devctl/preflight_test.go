@@ -358,3 +358,66 @@ func TestAnUnavailableFormatterWarnsOnceAndBlocksNothing(t *testing.T) {
 		t.Fatalf("an unavailable formatter did not warn exactly once: %v %v %v", problems, warnings, err)
 	}
 }
+
+func TestCommittedBlobsReturnsEachFileExactlyAsCommitted(t *testing.T) {
+	t.Parallel()
+	repo := newGitRepo(t)
+	want := map[string]string{
+		"crlf.txt":         "one\r\ntwo\r\n",
+		"empty.txt":        "",
+		"no-newline.txt":   "last line",
+		"dir/nested.go":    formattedGo,
+		"two words/a b.md": "spaced\n",
+	}
+	repo.commit(t, want)
+	repo.commit(t, map[string]string{"crlf.txt": "changed in the working tree's next commit\n"})
+	names := make([]string, 0, len(want))
+	for name := range want {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	got, err := committedBlobs(repo.root, "HEAD~1", names)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range names {
+		if got[name] != want[name] {
+			t.Errorf("%s = %q, want %q", name, got[name], want[name])
+		}
+	}
+}
+
+func TestCommittedBlobsNamesAPathTheRevisionDoesNotHave(t *testing.T) {
+	t.Parallel()
+	repo := newGitRepo(t)
+	repo.commit(t, map[string]string{"present.txt": "here\n"})
+	_, err := committedBlobs(repo.root, "HEAD", []string{"present.txt", "absent.txt"})
+	if err == nil || !strings.Contains(err.Error(), "HEAD:absent.txt") || !strings.Contains(err.Error(), "missing") {
+		t.Fatalf("err = %v, want the missing path named", err)
+	}
+}
+
+func TestFormatProblemsAreListedInTheOrderTheRangeNamesTheFiles(t *testing.T) {
+	t.Parallel()
+	repo := newGitRepo(t)
+	repo.commit(t, map[string]string{"README.md": "base\n"})
+	base := repo.head(t)
+	files := map[string]string{}
+	for _, name := range []string{"a", "b", "c", "d", "e", "f", "g", "h"} {
+		files["apps/platform/"+name+".go"] = unformattedGo
+	}
+	repo.commit(t, files)
+	problems, _, err := formatProblems(repo.root, base+".."+repo.head(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var order []string
+	for _, problem := range problems {
+		order = append(order, strings.Fields(problem)[0])
+	}
+	want := []string{"apps/platform/a.go", "apps/platform/b.go", "apps/platform/c.go", "apps/platform/d.go",
+		"apps/platform/e.go", "apps/platform/f.go", "apps/platform/g.go", "apps/platform/h.go"}
+	if !slices.Equal(order, want) {
+		t.Fatalf("problems in order %v, want %v", order, want)
+	}
+}
