@@ -38,20 +38,34 @@ type workflowRun struct {
 }
 
 type workflowJob struct {
-	ID         int64  `json:"id"`
-	Name       string `json:"name"`
-	Conclusion string `json:"conclusion"`
-	Steps      []struct {
-		Name       string `json:"name"`
-		Conclusion string `json:"conclusion"`
-	} `json:"steps"`
+	ID          int64          `json:"id"`
+	Name        string         `json:"name"`
+	Conclusion  string         `json:"conclusion"`
+	StartedAt   time.Time      `json:"started_at"`
+	CompletedAt time.Time      `json:"completed_at"`
+	Steps       []workflowStep `json:"steps"`
 }
 
+type workflowStep struct {
+	Name        string    `json:"name"`
+	Conclusion  string    `json:"conclusion"`
+	StartedAt   time.Time `json:"started_at"`
+	CompletedAt time.Time `json:"completed_at"`
+}
+
+const timedStepsPerJob = 3
+
 type githubClient struct {
-	repo  string
-	token string
-	http  *http.Client
-	pause func(time.Duration)
+	repo   string
+	token  string
+	http   *http.Client
+	pause  func(time.Duration)
+	timing bool
+}
+
+type ciStatusOptions struct {
+	ref          string
+	wait, timing bool
 }
 
 type githubHTTPError struct {
@@ -94,11 +108,11 @@ func (c githubClient) wait(d time.Duration) {
 var githubRemote = regexp.MustCompile(`github\.com[:/]([^/]+)/([^/]+?)(?:\.git)?/?$`)
 
 func ciStatus(root string, args []string, out io.Writer) (int, error) {
-	ref, wait, err := parseCIStatusArgs(args)
+	options, err := parseCIStatusArgs(args)
 	if err != nil {
 		return 2, err
 	}
-	sha, err := resolveCommitSHA(root, ref)
+	sha, err := resolveCommitSHA(root, options.ref)
 	if err != nil {
 		return 2, err
 	}
@@ -106,36 +120,39 @@ func ciStatus(root string, args []string, out io.Writer) (int, error) {
 	if err != nil {
 		return 2, err
 	}
-	if !wait {
+	client.timing = options.timing
+	if !options.wait {
 		return reportCIStatusOnce(client, sha, out)
 	}
 	return pollCIStatusUntilDecided(client, sha, out)
 }
 
-func parseCIStatusArgs(args []string) (ref string, wait bool, err error) {
-	usage := errors.New("usage: devctl ci-status [ref | --sha ref] [--wait]")
-	ref = "HEAD"
+func parseCIStatusArgs(args []string) (ciStatusOptions, error) {
+	usage := errors.New("usage: devctl ci-status [ref | --sha ref] [--wait] [--timing]")
+	options := ciStatusOptions{ref: "HEAD"}
 	for index := 0; index < len(args); index++ {
 		arg := args[index]
 		switch {
 		case arg == "--wait":
-			wait = true
+			options.wait = true
+		case arg == "--timing":
+			options.timing = true
 		case arg == "--sha":
 			if index+1 == len(args) || strings.HasPrefix(args[index+1], "-") {
-				return "", false, usage
+				return ciStatusOptions{}, usage
 			}
 		case strings.HasPrefix(arg, "--sha="):
-			ref = strings.TrimPrefix(arg, "--sha=")
-			if ref == "" {
-				return "", false, usage
+			options.ref = strings.TrimPrefix(arg, "--sha=")
+			if options.ref == "" {
+				return ciStatusOptions{}, usage
 			}
 		case strings.HasPrefix(arg, "-"):
-			return "", false, usage
+			return ciStatusOptions{}, usage
 		default:
-			ref = arg
+			options.ref = arg
 		}
 	}
-	return ref, wait, nil
+	return options, nil
 }
 
 func resolveCommitSHA(root, ref string) (string, error) {
@@ -310,6 +327,48 @@ func (c githubClient) reportJobs(out io.Writer, jobs []workflowJob) {
 	if len(skipped) > 0 {
 		fmt.Fprintf(out, "    did not run: %s\n", strings.Join(skipped, ", "))
 	}
+	if c.timing {
+		for _, line := range jobTimings(jobs) {
+			fmt.Fprintln(out, "    "+line)
+		}
+	}
+}
+
+type timedUnit struct {
+	name  string
+	took  time.Duration
+	steps []timedUnit
+}
+
+func finishedUnits[T any](items []T, unit func(T) (string, time.Time, time.Time, []timedUnit)) []timedUnit {
+	var finished []timedUnit
+	for _, item := range items {
+		name, started, completed, steps := unit(item)
+		took := completed.Sub(started).Round(time.Second)
+		if started.IsZero() || completed.IsZero() || took <= 0 {
+			continue
+		}
+		finished = append(finished, timedUnit{name, took, steps})
+	}
+	sort.SliceStable(finished, func(i, j int) bool { return finished[i].took > finished[j].took })
+	return finished
+}
+
+func jobTimings(jobs []workflowJob) []string {
+	finished := finishedUnits(jobs, func(job workflowJob) (string, time.Time, time.Time, []timedUnit) {
+		steps := finishedUnits(job.Steps, func(step workflowStep) (string, time.Time, time.Time, []timedUnit) {
+			return step.Name, step.StartedAt, step.CompletedAt, nil
+		})
+		return job.Name, job.StartedAt, job.CompletedAt, steps
+	})
+	var lines []string
+	for _, job := range finished {
+		lines = append(lines, fmt.Sprintf("took %8s  %s", job.took, job.name))
+		for _, step := range job.steps[:min(timedStepsPerJob, len(job.steps))] {
+			lines = append(lines, fmt.Sprintf("     %8s    %s", step.took, step.name))
+		}
+	}
+	return lines
 }
 
 func failedSteps(job workflowJob) []string {

@@ -1,6 +1,10 @@
 package main
 
-import "testing"
+import (
+	"strings"
+	"testing"
+	"time"
+)
 
 func TestCIVerdictIsGreenOnlyWhenEveryRunFinishedWithoutFailing(t *testing.T) {
 	t.Parallel()
@@ -50,22 +54,62 @@ func TestParseCIStatusArgs(t *testing.T) {
 		{"--sha without a value is rejected", []string{"--sha"}, "", false, true},
 		{"--sha followed by a flag is rejected", []string{"--sha", "--wait"}, "", false, true},
 		{"--sha= with an empty value is rejected", []string{"--sha="}, "", false, true},
+		{"--timing is not a ref and does not wait", []string{"--timing"}, "HEAD", false, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			ref, wait, err := parseCIStatusArgs(tc.args)
+			options, err := parseCIStatusArgs(tc.args)
 			if tc.wantErr {
 				if err == nil {
 					t.Fatalf("parseCIStatusArgs(%v) = nil error, want a usage error", tc.args)
 				}
 				return
 			}
-			if err != nil || ref != tc.wantRef || wait != tc.wantWait {
-				t.Fatalf("parseCIStatusArgs(%v) = %q, %v, %v; want %q, %v, nil",
-					tc.args, ref, wait, err, tc.wantRef, tc.wantWait)
+			if err != nil || options.ref != tc.wantRef || options.wait != tc.wantWait {
+				t.Fatalf("parseCIStatusArgs(%v) = %+v, %v; want ref %q, wait %v, nil",
+					tc.args, options, err, tc.wantRef, tc.wantWait)
 			}
 		})
+	}
+}
+
+func TestTimingIsOffUnlessAsked(t *testing.T) {
+	t.Parallel()
+	off, _ := parseCIStatusArgs([]string{"abc123", "--wait"})
+	on, _ := parseCIStatusArgs([]string{"--timing", "abc123"})
+	if off.timing || !on.timing || on.ref != "abc123" {
+		t.Fatalf("timing: off=%+v on=%+v", off, on)
+	}
+}
+
+func TestJobTimingsListTheLongestJobFirstAndSkipUnfinishedOrSkippedOnes(t *testing.T) {
+	t.Parallel()
+	start := time.Date(2026, 11, 1, 12, 0, 0, 0, time.UTC)
+	at := func(seconds int) time.Time { return start.Add(time.Duration(seconds) * time.Second) }
+	jobs := []workflowJob{
+		{Name: "quick", StartedAt: start, CompletedAt: at(42)},
+		{Name: "running", StartedAt: start},
+		{Name: "skipped", StartedAt: start, CompletedAt: start},
+		{Name: "skipped by a clock skew", StartedAt: start, CompletedAt: start.Add(-time.Second)},
+		{Name: "slow", StartedAt: start, CompletedAt: start.Add(12*time.Minute + 3*time.Second + 600*time.Millisecond), Steps: []workflowStep{
+			{Name: "checkout", StartedAt: start, CompletedAt: at(4)},
+			{Name: "tests", StartedAt: at(4), CompletedAt: at(600)},
+			{Name: "lint", StartedAt: at(600), CompletedAt: at(700)},
+			{Name: "upload", StartedAt: at(700), CompletedAt: at(720)},
+			{Name: "still running", StartedAt: at(720)},
+		}},
+	}
+	got := jobTimings(jobs)
+	want := []string{
+		"took    12m4s  slow",
+		"        9m56s    tests",
+		"        1m40s    lint",
+		"          20s    upload",
+		"took      42s  quick",
+	}
+	if strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Fatalf("jobTimings() =\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
 	}
 }
 

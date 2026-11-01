@@ -29,7 +29,7 @@ Usage:
   devctl preflight [--hook]  check unpushed commits for what CI would fail on (--hook reads git's pre-push input)
   devctl fix-proof message-file  warn when a fix commit's message reports no test seen failing without the change (the commit-msg hook runs it)
   devctl comment-advice file  read {"old","new"} text of an edit on stdin and warn on added comments that read like decision records (skillhub-guards runs it)
-  devctl ci-status [ref | --sha ref] [--wait]  every workflow run for a commit; exit 0 green, 1 red, 2 GitHub unreadable, 3 pending, 4 no runs
+  devctl ci-status [ref | --sha ref] [--wait] [--timing]  every workflow run for a commit (--timing lists each job's duration, longest first); exit 0 green, 1 red, 2 GitHub unreadable, 3 pending, 4 no runs
   devctl dep-audit [--full]  fail on fixable vulnerabilities, disallowed licenses and workflow findings (--full: vulnerabilities in every project, dev dependencies too)
 `
 
