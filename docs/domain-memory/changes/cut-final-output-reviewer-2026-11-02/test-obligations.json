@@ -1,0 +1,35 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "cut-final-output-reviewer",
+  "proposal_id": "cut-final-output-reviewer-2026-11-02",
+  "obligations": [
+    {
+      "id": "rule-a-check-on-a-cut-final-output-cannot-fail-on-what-was-cut",
+      "source_type": "acceptance-criterion",
+      "source_id": "cut-missing-value-undetermined",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-check-on-a-cut-final-output-cannot-fail-on-what-was-cut"
+        },
+        {
+          "source_type": "acceptance-criterion",
+          "source_id": "cut-within-limit-undetermined"
+        }
+      ],
+      "expected_outcome": "TestEachRuleCheckDecidesFromTheRunsOwnRecords records undetermined for a missing value and for a within-limit length on a cut answer, passed for a kept value and failed for a kept part over the limit; TestACutAnswerSaysWhereItWasCut names the cut at 10 characters.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^(TestEachRuleCheckDecidesFromTheRunsOwnRecords|TestACutAnswerSaysWhereItWasCut)$ ./internal/trial/improvement/checks/"
+    },
+    {
+      "id": "judge-runtime-cut",
+      "source_type": "acceptance-criterion",
+      "source_id": "judge-sees-runtime-cut",
+      "expected_outcome": "TestAFinalOutputTheRuntimeCutIsSentAsCut reports final_output in the judge truncation list only when the runtime cut it.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestAFinalOutputTheRuntimeCutIsSentAsCut$ ./internal/trial/improvement/judging/"
+    }
+  ]
+}

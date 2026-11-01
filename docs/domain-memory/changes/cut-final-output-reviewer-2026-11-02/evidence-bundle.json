@@ -1,0 +1,46 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "cut-final-output-reviewer",
+  "proposal_id": "cut-final-output-reviewer-2026-11-02",
+  "registry_revision": {
+    "observed_commit": "114f3f0717cdaf83e865e0d8fc0077e03f4c8beb",
+    "registry_digest": "sha256:040e198c83e314258a40232f3659852b4a9f9badad191d5c4da62f672b0642af",
+    "committed_digest": "sha256:040e198c83e314258a40232f3659852b4a9f9badad191d5c4da62f672b0642af"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-check-on-a-cut-final-output-cannot-fail-on-what-was-cut",
+      "mutated_protection": "apps/platform/internal/trial/improvement/facts/facts.go:115: if !m.Summary.FinalOutputTruncated { -> if true {",
+      "failure_evidence": "--- FAIL: TestEachRuleCheckDecidesFromTheRunsOwnRecords (0.00s)\n    --- PASS: TestEachRuleCheckDecidesFromTheRunsOwnRecords/every_value_is_in_the_answer (0.00s)\n    --- PASS: TestEachRuleCheckDecidesFromTheRunsOwnRecords/one_value_is_missing_from_the_answer (0.00s)\n    --- PASS: TestEachRuleCheckDecidesFromTheRunsOwnRecords/the_run_asked (0.00s)\n...\nould_have_avoided (0.00s)\n    --- PASS: TestEachRuleCheckDecidesFromTheRunsOwnRecords/avoiding_a_tool_on_incomplete_evidence_is_not_recorded_as_passed (0.00s)\n    --- FAIL: TestEachRuleCheckDecidesFromTheRunsOwnRecords/a_value_missing_from_a_cut_answer_is_undetermined (0.00s)\n    --- PASS: TestEachRuleCheckDecidesFromTheRunsOwnRecords/a_value_found_in_the_kept_part_of_a_cut_answer_still_passes (0.00s)\n    --- FAIL: TestEachRuleCheckDecidesFromTheRunsOwnRecords/a_cut_answer_within_the_character_limit_is_undetermined (0.00s)\n    --- PASS: TestEachRuleCheckDecidesFromTheRunsOwnRecords/a_cut_answer_already_over_the_character_limit_fails (0.00s)\n    --- PASS: TestEachRuleCheckDecidesFromTheRunsOwnRecords/a_fail_on_incomplete_evidence_stays_failed (0.00s)\n=== RUN   TestACutAnswerSaysWhereItWasCut\n    rule_graders_test.go:270: reason = \"the final output does not mention 2026-10-03\", want \"the final output does not mention 2026-10-03 in the part kept; the final output was cut off at 10 characters, so the rest of the answer cannot be checked\"\n--- FAIL: TestACutAnswerSaysWhereItWasCut (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/checks\t1.959s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-check-on-a-cut-final-output-cannot-fail-on-what-was-cut",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^(TestEachRuleCheckDecidesFromTheRunsOwnRecords|TestACutAnswerSaysWhereItWasCut)$ ./internal/trial/improvement/checks/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:d3f6ec902ecf26644fa8b9cdf76a673340189d1134ad7796f88aa4994cb075d8",
+      "finished_at": "2026-11-01T19:12:46.971267Z"
+    },
+    {
+      "obligation_id": "judge-runtime-cut",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestAFinalOutputTheRuntimeCutIsSentAsCut$ ./internal/trial/improvement/judging/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:382e5df62ec0e4e57eddc12cd4fc210a6b8d98d01f29d3a053ea0fb0ac3309cd",
+      "finished_at": "2026-11-01T19:12:48.919638Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

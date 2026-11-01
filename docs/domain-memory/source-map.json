@@ -1121,6 +1121,7 @@
         "tools/devctl/preflight_guards_test.go",
         "tools/devctl/preflight_test.go",
         "tools/devctl/purge_schedule_test.go",
+        "tools/devctl/python_ratchet_test.go",
         "tools/devctl/query_owners_characterization_test.go",
         "tools/devctl/query_owners_test.go",
         "tools/devctl/query_scope_test.go",
