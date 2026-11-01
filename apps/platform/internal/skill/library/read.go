@@ -494,7 +494,7 @@ func versionDTO(row gen.SkillVersion) Version {
 		PackageObjectKey: row.PackageObjectKey, SourcePath: row.SourcePath,
 		LicenseExpression: pgconv.Clone(row.LicenseExpression),
 		CreatedAt:         row.CreatedAt, LicenseSource: pgconv.Clone(row.LicenseSource),
-		AllowedTools:      declaredTools(row.Manifest),
+		AllowedTools: declaredTools(row.Manifest),
 	}
 }
 
