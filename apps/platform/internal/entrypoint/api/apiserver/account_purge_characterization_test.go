@@ -69,15 +69,13 @@ func accountEmail(t *testing.T, pool *pgxpool.Pool, userID string) string {
 	return email
 }
 
-const testSchemaLockConnections = 1
-
 func advisoryLocksHeldByTheProduct(t *testing.T, pool *pgxpool.Pool) int64 {
 	t.Helper()
 	ctx := context.Background()
-	for deadline := time.Now().Add(2 * time.Second); pool.Stat().AcquiredConns() > testSchemaLockConnections && time.Now().Before(deadline); {
+	for deadline := time.Now().Add(2 * time.Second); pool.Stat().AcquiredConns() > 0 && time.Now().Before(deadline); {
 		time.Sleep(10 * time.Millisecond)
 	}
-	if leaked := pool.Stat().AcquiredConns() - testSchemaLockConnections; leaked != 0 {
+	if leaked := pool.Stat().AcquiredConns(); leaked != 0 {
 		t.Fatalf("%d connections are still checked out of the pool; their advisory locks cannot be observed", leaked)
 	}
 	idle := pool.AcquireAllIdle(ctx)

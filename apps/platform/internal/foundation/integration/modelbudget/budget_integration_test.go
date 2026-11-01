@@ -4,11 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
 	"os"
-	"path/filepath"
-	"sort"
-	"strings"
 	"testing"
 	"time"
 
@@ -33,81 +29,18 @@ func TestMain(m *testing.M) {
 		}
 		os.Exit(m.Run())
 	}
-	if err := validateDestructiveBudgetDatabaseURL(dsn); err != nil {
-		panic(err)
-	}
 	ctx := context.Background()
+	dsn, drop := testschema.MustPrepare(ctx, dsn)
+	os.Setenv(budgetDBURLEnv, dsn)
 	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
 		panic(err)
 	}
-	unlock := testschema.MustLock(ctx, pool)
-	if err := migrateBudgetSchema(ctx, pool); err != nil {
-		panic(err)
-	}
 	budgetPool = pool
 	code := m.Run()
-	unlock()
 	pool.Close()
+	drop()
 	os.Exit(code)
-}
-
-func validateDestructiveBudgetDatabaseURL(raw string) error {
-	u, err := url.Parse(raw)
-	if err != nil {
-		return fmt.Errorf("%s is invalid: %w", budgetDBURLEnv, err)
-	}
-	host := strings.ToLower(u.Hostname())
-	database := strings.Trim(u.Path, "/")
-	if host != "localhost" && host != "127.0.0.1" && host != "::1" {
-		return fmt.Errorf("%s must target localhost before destructive migrations", budgetDBURLEnv)
-	}
-	if !strings.HasSuffix(strings.ToLower(database), "_test") {
-		return fmt.Errorf("%s database name must end in _test before destructive migrations", budgetDBURLEnv)
-	}
-	return nil
-}
-
-func TestDestructiveBudgetDatabaseURLGuard(t *testing.T) {
-	for _, raw := range []string{
-		"postgres://user:pass@db.internal/skillhub_test",
-		"postgres://user:pass@localhost/skillhub",
-	} {
-		if err := validateDestructiveBudgetDatabaseURL(raw); err == nil {
-			t.Fatalf("unsafe DSN accepted: %s", raw)
-		}
-	}
-	if err := validateDestructiveBudgetDatabaseURL("postgres://u:p@localhost/skillhub_test"); err != nil {
-		t.Fatalf("safe test DSN rejected: %v", err)
-	}
-}
-
-func migrateBudgetSchema(ctx context.Context, pool *pgxpool.Pool) error {
-	if _, err := pool.Exec(ctx, "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"); err != nil {
-		return err
-	}
-	dir := filepath.Join("..", "..", "..", "..", "..", "..", "db", "migrations")
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return err
-	}
-	names := make([]string, 0, len(entries))
-	for _, e := range entries {
-		if strings.HasSuffix(e.Name(), ".sql") {
-			names = append(names, e.Name())
-		}
-	}
-	sort.Strings(names)
-	for _, name := range names {
-		body, err := os.ReadFile(filepath.Join(dir, name))
-		if err != nil {
-			return err
-		}
-		if _, err := pool.Exec(ctx, string(body)); err != nil {
-			return fmt.Errorf("%s: %w", name, err)
-		}
-	}
-	return nil
 }
 
 // requireBudgetDB gives each test its own endpoint kind. Audit events are

@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -54,54 +53,21 @@ func TestMain(m *testing.M) {
 		}
 		os.Exit(m.Run())
 	}
-	if err := validateDestructiveTestDatabaseURL(dsn); err != nil {
-		panic(err)
-	}
 	ctx := context.Background()
+	dsn, drop := testschema.MustPrepare(ctx, dsn)
+	os.Setenv(dbURLEnv, dsn)
 	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
 		panic(err)
 	}
-	unlock := testschema.MustLock(ctx, pool)
-	if err := migrate(ctx, pool); err != nil {
+	if err := queue.EnsureSchema(ctx, pool); err != nil {
 		panic(err)
 	}
 	testPool = pool
 	code := m.Run()
-	unlock()
 	pool.Close()
+	drop()
 	os.Exit(code)
-}
-
-func validateDestructiveTestDatabaseURL(raw string) error {
-	u, err := url.Parse(raw)
-	if err != nil {
-		return fmt.Errorf("%s is invalid: %w", dbURLEnv, err)
-	}
-	host := strings.ToLower(u.Hostname())
-	database := strings.Trim(u.Path, "/")
-	if host != "localhost" && host != "127.0.0.1" && host != "::1" {
-		return fmt.Errorf("%s must target localhost before destructive migrations", dbURLEnv)
-	}
-	if !strings.HasSuffix(strings.ToLower(database), "_test") {
-		return fmt.Errorf("%s database name must end in _test before destructive migrations", dbURLEnv)
-	}
-	return nil
-}
-
-func TestDestructiveTestDatabaseURLGuard(t *testing.T) {
-	for _, raw := range []string{
-		"postgres://user:pass@db.internal/skillhub_test",
-		"postgres://user:pass@localhost/skillhub",
-		"postgres://user:pass@localhost/postgres",
-	} {
-		if err := validateDestructiveTestDatabaseURL(raw); err == nil {
-			t.Fatalf("unsafe DSN accepted: %s", raw)
-		}
-	}
-	if err := validateDestructiveTestDatabaseURL("postgres://user:pass@localhost/skillhub_test"); err != nil {
-		t.Fatalf("safe test DSN rejected: %v", err)
-	}
 }
 
 func TestConcurrentFirstLoginCreatesOneAccount(t *testing.T) {
@@ -145,36 +111,6 @@ func TestConcurrentFirstLoginCreatesOneAccount(t *testing.T) {
 	if users != 1 || identities != 1 || workspaces != 1 {
 		t.Fatalf("first login created users=%d identities=%d workspaces=%d, want 1/1/1", users, identities, workspaces)
 	}
-}
-
-func migrate(ctx context.Context, pool *pgxpool.Pool) error {
-	if _, err := pool.Exec(ctx, "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"); err != nil {
-		return err
-	}
-	dir := filepath.Join("..", "..", "..", "..", "..", "..", "db", "migrations")
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return err
-	}
-	names := make([]string, 0, len(entries))
-	for _, e := range entries {
-		if strings.HasSuffix(e.Name(), ".sql") {
-			names = append(names, e.Name())
-		}
-	}
-	sort.Strings(names)
-	for _, name := range names {
-		body, err := os.ReadFile(filepath.Join(dir, name))
-		if err != nil {
-			return err
-		}
-
-		if _, err := pool.Exec(ctx, string(body)); err != nil {
-			return err
-		}
-	}
-
-	return queue.EnsureSchema(ctx, pool)
 }
 
 func requireDB(t *testing.T) *pgxpool.Pool {

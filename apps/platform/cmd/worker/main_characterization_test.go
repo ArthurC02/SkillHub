@@ -10,8 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
-
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/testschema"
 )
 
@@ -63,18 +61,14 @@ func runWorkerMain(t *testing.T, env ...string) workerExit {
 	return workerExit{code: code, stderr: stderr.String()}
 }
 
-func holdTheTestSchema(t *testing.T, dsn string) {
+func privateDatabase(t *testing.T, dsn string) string {
 	t.Helper()
-	pool, err := pgxpool.New(context.Background(), dsn)
+	clone, drop, err := testschema.Prepare(context.Background(), dsn)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(pool.Close)
-	unlock, err := testschema.Lock(context.Background(), pool)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(unlock)
+	t.Cleanup(drop)
+	return clone
 }
 
 func hasAnyPrefix(s string, prefixes []string) bool {
@@ -124,7 +118,7 @@ func TestAJudgeServiceWithoutItsTokenStopsTheWorkerAfterReportingItsDependencies
 		}
 		t.Skip("SKILLHUB_TEST_DATABASE_URL not set; skipping the database-backed start-up path")
 	}
-	holdTheTestSchema(t, dsn)
+	dsn = privateDatabase(t, dsn)
 	got := runWorkerMain(t, "COOKIE_INSECURE=1", "DATABASE_URL="+dsn, "LLM_SERVICE_URL=http://127.0.0.1:1")
 	if got.code != 1 || !strings.Contains(got.stderr, "LLM_SERVICE_TOKEN is required when LLM_SERVICE_URL is set") {
 		t.Fatalf("exit %d, want 1 naming the missing token; stderr:\n%s", got.code, got.stderr)

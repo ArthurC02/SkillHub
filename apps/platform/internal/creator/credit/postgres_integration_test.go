@@ -18,26 +18,37 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/testschema"
 )
 
-func integrationPool(t *testing.T) *pgxpool.Pool {
-	t.Helper()
+var creditPool *pgxpool.Pool
+
+func TestMain(m *testing.M) {
 	dsn := os.Getenv("SKILLHUB_TEST_DATABASE_URL")
 	if dsn == "" {
 		if os.Getenv("SKILLHUB_REQUIRE_DB") == "1" {
-			t.Fatal("SKILLHUB_REQUIRE_DB=1 but SKILLHUB_TEST_DATABASE_URL is unset")
+			fmt.Fprintln(os.Stderr, "SKILLHUB_REQUIRE_DB=1 but SKILLHUB_TEST_DATABASE_URL is unset; this run would have skipped every database test and still reported success")
+			os.Exit(1)
 		}
+		os.Exit(m.Run())
+	}
+	ctx := context.Background()
+	dsn, drop := testschema.MustPrepare(ctx, dsn)
+	os.Setenv("SKILLHUB_TEST_DATABASE_URL", dsn)
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		panic(err)
+	}
+	creditPool = pool
+	code := m.Run()
+	pool.Close()
+	drop()
+	os.Exit(code)
+}
+
+func integrationPool(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+	if creditPool == nil {
 		t.Skip("SKILLHUB_TEST_DATABASE_URL not set; skipping credit store integration test")
 	}
-	pool, err := pgxpool.New(context.Background(), dsn)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(pool.Close)
-	unlock, err := testschema.Lock(context.Background(), pool)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(unlock)
-	return pool
+	return creditPool
 }
 
 // savepointTx keeps a failed statement from aborting the surrounding test transaction, as autocommit does in production.

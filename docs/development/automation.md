@@ -315,7 +315,7 @@ docker run -d --name skillhub-sandboxd --network skillhub_default --network-alia
 
 ### 測試程序要跑在容器裡，而且要與 postgres 共用網路命名空間
 
-`TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey` 有一道守門：**`SKILLHUB_TEST_DATABASE_URL` 必須指向 localhost**，因為它會 `DROP SCHEMA public`。而測試同時需要用服務名解析 `seaweedfs`／`litellm`／`sandboxd`——在 Windows 主機上兩者不能同時成立。
+`TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey` 有一道守門：**`SKILLHUB_TEST_DATABASE_URL` 必須指向 localhost、資料庫名以 `_test` 結尾**，因為測試會在那個伺服器上建立與丟棄資料庫（`testschema.Prepare` 把 migration 灌進一個樣板庫，再為每個測試程序複製一份私有的）。而測試同時需要用服務名解析 `seaweedfs`／`litellm`／`sandboxd`——在 Windows 主機上兩者不能同時成立。
 
 **`--network container:skillhub-postgres-1` 一次解決兩邊**：`localhost:5432` 就是那個 postgres（守門的用意完全成立，不是繞過），而 DNS 仍然是 `skillhub_default` 的，服務名照樣解析得到。sandboxd 要推 trace 回來，所以 `SKILLHUB_E2E_PUBLIC_HOST=postgres`——測試的 httptest server 綁在同一個命名空間裡。
 

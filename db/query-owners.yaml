@@ -550,6 +550,10 @@ raw_sql_allow:
 
 tables:
   users: identity
+  apps/platform/internal/foundation/persistence/testschema/testschema.go@Prepare: clones and drops the test binary's private database through PostgreSQL DDL
+  apps/platform/internal/foundation/persistence/testschema/testschema.go@ensureTemplate: reads the PostgreSQL database catalog for the migrated template
+  apps/platform/internal/foundation/persistence/testschema/testschema.go@buildTemplate: creates the migrated template database through PostgreSQL DDL
+  apps/platform/internal/foundation/persistence/testschema/testschema.go@dropStaleTemplates: reads the database catalog and drops templates of superseded migrations
   user_identities: identity
   sessions: identity
   workspaces: identity

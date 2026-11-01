@@ -5,11 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
 	"os"
-	"path/filepath"
-	"sort"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -37,67 +33,18 @@ func TestMain(m *testing.M) {
 		}
 		os.Exit(m.Run())
 	}
-	if err := validateDestructiveCreationDatabaseURL(dsn); err != nil {
-		panic(err)
-	}
 	ctx := context.Background()
+	dsn, drop := testschema.MustPrepare(ctx, dsn)
+	os.Setenv(creationDBURLEnv, dsn)
 	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
 		panic(err)
 	}
-	unlock := testschema.MustLock(ctx, pool)
-	if err := migrateCreationSchema(ctx, pool); err != nil {
-		panic(err)
-	}
 	creationPool = pool
 	code := m.Run()
-	unlock()
 	pool.Close()
+	drop()
 	os.Exit(code)
-}
-
-func validateDestructiveCreationDatabaseURL(raw string) error {
-	u, err := url.Parse(raw)
-	if err != nil {
-		return fmt.Errorf("%s is invalid: %w", creationDBURLEnv, err)
-	}
-	host := strings.ToLower(u.Hostname())
-	database := strings.Trim(u.Path, "/")
-	if host != "localhost" && host != "127.0.0.1" && host != "::1" {
-		return fmt.Errorf("%s must target localhost before destructive migrations", creationDBURLEnv)
-	}
-	if !strings.HasSuffix(strings.ToLower(database), "_test") {
-		return fmt.Errorf("%s database name must end in _test before destructive migrations", creationDBURLEnv)
-	}
-	return nil
-}
-
-func migrateCreationSchema(ctx context.Context, pool *pgxpool.Pool) error {
-	if _, err := pool.Exec(ctx, "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"); err != nil {
-		return err
-	}
-	dir := filepath.Join("..", "..", "..", "..", "..", "db", "migrations")
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return err
-	}
-	names := make([]string, 0, len(entries))
-	for _, e := range entries {
-		if strings.HasSuffix(e.Name(), ".sql") {
-			names = append(names, e.Name())
-		}
-	}
-	sort.Strings(names)
-	for _, name := range names {
-		body, err := os.ReadFile(filepath.Join(dir, name))
-		if err != nil {
-			return err
-		}
-		if _, err := pool.Exec(ctx, string(body)); err != nil {
-			return fmt.Errorf("%s: %w", name, err)
-		}
-	}
-	return nil
 }
 
 func requireCreationDB(t *testing.T) *pgxpool.Pool {

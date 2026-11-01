@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -26,26 +27,37 @@ func (f fixedIdentityProvider) Identify(context.Context, string) (ExternalIdenti
 	return f.identity, nil
 }
 
-func signupPool(t *testing.T) *pgxpool.Pool {
-	t.Helper()
+var identityPool *pgxpool.Pool
+
+func TestMain(m *testing.M) {
 	dsn := os.Getenv("SKILLHUB_TEST_DATABASE_URL")
 	if dsn == "" {
 		if os.Getenv("SKILLHUB_REQUIRE_DB") == "1" {
-			t.Fatal("SKILLHUB_REQUIRE_DB=1 but SKILLHUB_TEST_DATABASE_URL is unset")
+			fmt.Fprintln(os.Stderr, "SKILLHUB_REQUIRE_DB=1 but SKILLHUB_TEST_DATABASE_URL is unset; this run would have skipped every database test and still reported success")
+			os.Exit(1)
 		}
+		os.Exit(m.Run())
+	}
+	ctx := context.Background()
+	dsn, drop := testschema.MustPrepare(ctx, dsn)
+	os.Setenv("SKILLHUB_TEST_DATABASE_URL", dsn)
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		panic(err)
+	}
+	identityPool = pool
+	code := m.Run()
+	pool.Close()
+	drop()
+	os.Exit(code)
+}
+
+func signupPool(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+	if identityPool == nil {
 		t.Skip("SKILLHUB_TEST_DATABASE_URL not set; skipping sign-up integration test")
 	}
-	pool, err := pgxpool.New(context.Background(), dsn)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(pool.Close)
-	unlock, err := testschema.Lock(context.Background(), pool)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(unlock)
-	return pool
+	return identityPool
 }
 
 func seedUser(t *testing.T, pool *pgxpool.Pool, email string, deleted bool) {

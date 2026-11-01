@@ -28,15 +28,16 @@ func TestMain(m *testing.M) {
 		os.Exit(m.Run())
 	}
 	ctx := context.Background()
+	dsn, drop := testschema.MustPrepare(ctx, dsn)
+	os.Setenv("SKILLHUB_TEST_DATABASE_URL", dsn)
 	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
 		panic(err)
 	}
-	unlock := testschema.MustLock(ctx, pool)
 	publishingPool = pool
 	code := m.Run()
-	unlock()
 	pool.Close()
+	drop()
 	os.Exit(code)
 }
 
