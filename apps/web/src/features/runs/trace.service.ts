@@ -26,6 +26,7 @@ export type TraceSummary = {
   errors_total: number;
   summary_truncated: boolean;
   final_output?: string;
+  final_output_truncated?: boolean;
   workload_output?: string;
   questions?: { question: string; why: string; options?: string[] }[];
   usage?: {

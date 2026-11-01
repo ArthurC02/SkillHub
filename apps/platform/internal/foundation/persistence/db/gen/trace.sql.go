@@ -126,7 +126,8 @@ func (q *Queries) GetTraceEventQuestions(ctx context.Context, arg GetTraceEventQ
 }
 
 const getTraceEventText = `-- name: GetTraceEventText :one
-SELECT COALESCE(payload->>'text', '')::text AS text
+SELECT COALESCE(payload->>'text', '')::text AS text,
+       COALESCE(payload->'truncated' = 'true'::jsonb, false)::boolean AS truncated
 FROM trace_events
 WHERE run_id = $1 AND workspace_id = $2
   AND source = $3 AND attempt = $4 AND seq = $5
@@ -140,7 +141,12 @@ type GetTraceEventTextParams struct {
 	Seq         int64
 }
 
-func (q *Queries) GetTraceEventText(ctx context.Context, arg GetTraceEventTextParams) (string, error) {
+type GetTraceEventTextRow struct {
+	Text      string
+	Truncated bool
+}
+
+func (q *Queries) GetTraceEventText(ctx context.Context, arg GetTraceEventTextParams) (GetTraceEventTextRow, error) {
 	row := q.db.QueryRow(ctx, getTraceEventText,
 		arg.RunID,
 		arg.WorkspaceID,
@@ -148,9 +154,9 @@ func (q *Queries) GetTraceEventText(ctx context.Context, arg GetTraceEventTextPa
 		arg.Attempt,
 		arg.Seq,
 	)
-	var text string
-	err := row.Scan(&text)
-	return text, err
+	var i GetTraceEventTextRow
+	err := row.Scan(&i.Text, &i.Truncated)
+	return i, err
 }
 
 const getTraceStreamHealth = `-- name: GetTraceStreamHealth :many

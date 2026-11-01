@@ -22,7 +22,11 @@ func gradeContainsValues(m facts.Material, values []string) (string, string) {
 		}
 	}
 	if len(missing) > 0 {
-		return verdict.ResultFailed, "the final output does not mention " + strings.Join(missing, ", ")
+		reason := "the final output does not mention " + strings.Join(missing, ", ")
+		if cut, ok := m.FinalOutputCut(); ok {
+			return verdict.ResultUndetermined, reason + " in the part kept; " + cut
+		}
+		return verdict.ResultFailed, reason
 	}
 	return verdict.ResultPassed, "the final output mentions " + strings.Join(values, ", ")
 }

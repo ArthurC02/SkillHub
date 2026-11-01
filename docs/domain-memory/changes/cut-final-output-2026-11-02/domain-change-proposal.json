@@ -1,0 +1,135 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "cut-final-output-2026-11-02",
+  "proposer": "human:ArthurC",
+  "requirement_id": "cut-final-output",
+  "status": "submitted",
+  "change_classification": "material",
+  "submitted_at": "2026-11-01T19:05:36.117758Z",
+  "verified_at": null,
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "5096054ade2c238209ae35a45621929c66f4e3fc",
+    "registry_digest": "sha256:f9a504573eaca04aa930f5eea98bec7f3ae61d795c9553842cfa16b6cbac7bad",
+    "committed_digest": "sha256:9990885c9a61d98368bd1745c7932c578f49522baf42cf2c27c68e81ee6ccc31"
+  },
+  "affected_contexts": [
+    "eval"
+  ],
+  "rule_ids": [
+    "a-check-on-a-cut-final-output-cannot-fail-on-what-was-cut"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "<context-id>",
+    "invariant": "<falsifiable-rule>",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "<existing-or-proposed-collaboration>",
+    "consistency": "<synchronous-or-eventual>",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "The runtime cuts a final output at its size limit and marks the event truncated.",
+      "A value or a length the check could not see is unknown, not absent: insufficient evidence answers cannot tell, not no."
+    ],
+    "decision": "The trace summary carries final_output_truncated; Material.FinalOutputCut gives the reason with the kept character count; contains_values turns a miss into undetermined and the length limits turn a within-limit result into undetermined when it is set; the judge adds final_output to its truncation list for a runtime cut as it does for its own.",
+    "invariants_preserved": [
+      "A pass is never recorded on incomplete evidence.",
+      "A value found in the kept part still passes and a kept part over the limit still fails.",
+      "Trace gaps that do not touch the final output do not soften a fail."
+    ],
+    "rejected_alternatives": [
+      "Only showing the cut on the page, which leaves the verdict wrong.",
+      "Treating any cut as making all evidence incomplete, which would also withhold passes that the kept part proves."
+    ],
+    "proof_obligations": [
+      "rule-a-check-on-a-cut-final-output-cannot-fail-on-what-was-cut",
+      "judge-runtime-cut"
+    ],
+    "counterfactual_check": "Making FinalOutputCut ignore the truncated flag makes the cut-answer rows of TestEachRuleCheckDecidesFromTheRunsOwnRecords fail."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-check-on-a-cut-final-output-cannot-fail-on-what-was-cut",
+        "statement": "When the runtime cut the final output, a check that reads it records undetermined, not failed, for a value it cannot find, and undetermined, not passed, for a length within the limit; a value found in the kept part still passes and a kept part already over the limit still fails.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "A cut answer that does not mention 2026-10-03 is undetermined, with the reason that the final output was cut off at 10 characters.",
+          "A cut answer of three characters is undetermined against a three-character limit and fails against a two-character limit."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/improvement/checks/rule_graders_test.go",
+            "lines": {
+              "start": 133,
+              "end": 140
+            },
+            "content_sha256": "sha256:55dc7804b0423e66202502fa9cfb9e22e7e529e69e42dc0ef8aedd3f07d7a5d8",
+            "excerpt_sha256": "sha256:eccaa335afd7e34555eb1a95f3139756a2a49cb5f9a7dc97ddcc617cab4a8c09"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/facts/facts.go",
+            "lines": {
+              "start": 114,
+              "end": 120
+            },
+            "content_sha256": "sha256:a1a75d00effbeca473ce47bb6b10dc4641ad125458c1eb56a12b5be1902e6d6b",
+            "excerpt_sha256": "sha256:671193b623512b1132e5af3173444c47df0aa6545012a620be869b89e91f1045"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/checks/rule_graders.go",
+            "lines": {
+              "start": 17,
+              "end": 32
+            },
+            "content_sha256": "sha256:f36eb70dd3e90f89392f44b204e4ff152e54b1fb8ede00eadb0725519435281e",
+            "excerpt_sha256": "sha256:eecd17f96f0890cd40fa55a08755526189a1386030e88a755653e75bd8454fe3"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/checks/measured_graders.go",
+            "lines": {
+              "start": 42,
+              "end": 61
+            },
+            "content_sha256": "sha256:908d5690593e835a9995175e17965c0bdb34ad0ab3a2f01ce5397632ee5eccd8",
+            "excerpt_sha256": "sha256:7e4efd5b3a18c0bf4b6cf15cd513f69a7cb0d44c5fc2de4ab57df374d219ea29"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/checks/rule_graders_test.go",
+            "lines": {
+              "start": 265,
+              "end": 272
+            },
+            "content_sha256": "sha256:55dc7804b0423e66202502fa9cfb9e22e7e529e69e42dc0ef8aedd3f07d7a5d8",
+            "excerpt_sha256": "sha256:d169c96c8834d09bc2514cd629868b121c70c97fb4517dd8af60c8919b6323f4"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/judging/judge_test.go",
+            "lines": {
+              "start": 803,
+              "end": 813
+            },
+            "content_sha256": "sha256:4cb311425c0c747e0dcbcbc32da90ecc58f71c9f47f0abc1ecf0f51859bb8b05",
+            "excerpt_sha256": "sha256:95de7fa587dcc01cd023a056755a8c63dc9b276dedf59e757967886d8500f564"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": []
+}

@@ -364,22 +364,23 @@ type ProgressStep struct {
 }
 
 type Summary struct {
-	RunID          string          `json:"run_id"`
-	Status         string          `json:"status"`
-	StatusReason   string          `json:"status_reason,omitempty"`
-	Complete       bool            `json:"complete"`
-	Skills         []SkillUse      `json:"skills"`
-	SkillsTotal    int             `json:"skills_total"`
-	ResourceRead   int             `json:"resources_read"`
-	ToolCalls      ToolCallSummary `json:"tool_calls"`
-	Errors         []ErrorSummary  `json:"errors"`
-	ErrorsTotal    int             `json:"errors_total"`
-	Truncated      bool            `json:"summary_truncated"`
-	FinalOutput    string          `json:"final_output,omitempty"`
-	WorkloadOutput string          `json:"workload_output,omitempty"`
-	Questions      []Question      `json:"questions,omitempty"`
-	Usage          *UsageSummary   `json:"usage,omitempty"`
-	Steps          []ProgressStep  `json:"steps"`
+	RunID                string          `json:"run_id"`
+	Status               string          `json:"status"`
+	StatusReason         string          `json:"status_reason,omitempty"`
+	Complete             bool            `json:"complete"`
+	Skills               []SkillUse      `json:"skills"`
+	SkillsTotal          int             `json:"skills_total"`
+	ResourceRead         int             `json:"resources_read"`
+	ToolCalls            ToolCallSummary `json:"tool_calls"`
+	Errors               []ErrorSummary  `json:"errors"`
+	ErrorsTotal          int             `json:"errors_total"`
+	Truncated            bool            `json:"summary_truncated"`
+	FinalOutput          string          `json:"final_output,omitempty"`
+	FinalOutputTruncated bool            `json:"final_output_truncated"`
+	WorkloadOutput       string          `json:"workload_output,omitempty"`
+	Questions            []Question      `json:"questions,omitempty"`
+	Usage                *UsageSummary   `json:"usage,omitempty"`
+	Steps                []ProgressStep  `json:"steps"`
 
 	LastEventAt string `json:"last_event_at,omitempty"`
 }
@@ -691,12 +692,16 @@ func (s *Service) readGeneralFold(ctx context.Context, workspaceID, runID pgtype
 		return generalFold{}, err
 	}
 	fold := foldGeneral(rows)
-	if fold.summary.FinalOutput, err = s.eventText(ctx, workspaceID, runID, fold.finalOutput); err != nil {
+	final, err := s.eventText(ctx, workspaceID, runID, fold.finalOutput)
+	if err != nil {
 		return generalFold{}, err
 	}
-	if fold.summary.WorkloadOutput, err = s.eventText(ctx, workspaceID, runID, fold.captured); err != nil {
+	fold.summary.FinalOutput, fold.summary.FinalOutputTruncated = final.Text, final.Truncated
+	captured, err := s.eventText(ctx, workspaceID, runID, fold.captured)
+	if err != nil {
 		return generalFold{}, err
 	}
+	fold.summary.WorkloadOutput = captured.Text
 	if asked := fold.question; asked != nil {
 		raw, err := q.GetTraceEventQuestions(ctx, gen.GetTraceEventQuestionsParams{
 			RunID: runID, WorkspaceID: workspaceID, Source: asked.Source, Attempt: asked.Attempt, Seq: asked.Seq,
@@ -711,9 +716,9 @@ func (s *Service) readGeneralFold(ctx context.Context, workspaceID, runID pgtype
 	return fold, nil
 }
 
-func (s *Service) eventText(ctx context.Context, workspaceID, runID pgtype.UUID, row *gen.ListTraceGeneralFactsRow) (string, error) {
+func (s *Service) eventText(ctx context.Context, workspaceID, runID pgtype.UUID, row *gen.ListTraceGeneralFactsRow) (gen.GetTraceEventTextRow, error) {
 	if row == nil {
-		return "", nil
+		return gen.GetTraceEventTextRow{}, nil
 	}
 	return s.queries().GetTraceEventText(ctx, gen.GetTraceEventTextParams{
 		RunID: runID, WorkspaceID: workspaceID, Source: row.Source, Attempt: row.Attempt, Seq: row.Seq,

@@ -1,7 +1,9 @@
 package facts
 
 import (
+	"fmt"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -107,4 +109,12 @@ func (m Material) EvidenceComplete() bool { return m.Advanced.Complete && !m.Abs
 
 func (m Material) CannotRecordPass(result string) bool {
 	return result == verdict.ResultPassed && !m.EvidenceComplete()
+}
+
+func (m Material) FinalOutputCut() (reason string, cut bool) {
+	if !m.Summary.FinalOutputTruncated {
+		return "", false
+	}
+	return fmt.Sprintf("the final output was cut off at %d characters, so the rest of the answer cannot be checked",
+		utf8.RuneCountInString(m.Summary.FinalOutput)), true
 }

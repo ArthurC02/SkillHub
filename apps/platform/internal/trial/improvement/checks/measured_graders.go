@@ -54,6 +54,9 @@ func (g limitGrader) grade(m facts.Material, values []string) (string, string) {
 	if n > limit {
 		return verdict.ResultFailed, fmt.Sprintf("the final output has %d %s, over the limit of %d", n, g.unit, limit)
 	}
+	if cut, ok := m.FinalOutputCut(); ok {
+		return verdict.ResultUndetermined, fmt.Sprintf("the part of the final output kept has %d %s, within the limit of %d; %s", n, g.unit, limit, cut)
+	}
 	return verdict.ResultPassed, fmt.Sprintf("the final output has %d %s, within the limit of %d", n, g.unit, limit)
 }
 

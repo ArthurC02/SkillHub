@@ -8551,6 +8551,12 @@ components:
             restarts at zero on every page load and would report a stalled run as
             having just moved.
         final_output: { type: string }
+        final_output_truncated:
+          type: boolean
+          description: |
+            True when the runtime cut the final output to its size limit, so
+            final_output holds only the start of the answer. A check that reads
+            the final output cannot say a value is missing from a cut answer.
         workload_output:
           type: string
           description: |

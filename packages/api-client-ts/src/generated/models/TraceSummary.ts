@@ -96,6 +96,13 @@ export interface TraceSummary {
      */
     finalOutput?: string;
     /**
+     * True when the runtime cut the final output to its size limit, so
+     * final_output holds only the start of the answer. A check that reads
+     * the final output cannot say a value is missing from a cut answer.
+     * 
+     */
+    finalOutputTruncated?: boolean;
+    /**
      * What the workload printed before a run that did not succeed ended,
      * masked; it is often the only explanation of that ending. Untrusted
      * content — render as inert text.

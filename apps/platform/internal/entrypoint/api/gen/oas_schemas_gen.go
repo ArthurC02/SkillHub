@@ -36367,6 +36367,9 @@ type TraceSummary struct {
 	// it restarts at zero on every page load and would report a stalled run as having just moved.
 	LastEventAt OptDateTime `json:"last_event_at"`
 	FinalOutput OptString   `json:"final_output"`
+	// True when the runtime cut the final output to its size limit, so final_output holds only the start
+	// of the answer. A check that reads the final output cannot say a value is missing from a cut answer.
+	FinalOutputTruncated OptBool `json:"final_output_truncated"`
 	// What the workload printed before a run that did not succeed ended, masked; it is often the only
 	// explanation of that ending. Untrusted content — render as inert text.
 	WorkloadOutput OptString `json:"workload_output"`
@@ -36449,6 +36452,11 @@ func (s *TraceSummary) GetLastEventAt() OptDateTime {
 // GetFinalOutput returns the value of FinalOutput.
 func (s *TraceSummary) GetFinalOutput() OptString {
 	return s.FinalOutput
+}
+
+// GetFinalOutputTruncated returns the value of FinalOutputTruncated.
+func (s *TraceSummary) GetFinalOutputTruncated() OptBool {
+	return s.FinalOutputTruncated
 }
 
 // GetWorkloadOutput returns the value of WorkloadOutput.
@@ -36534,6 +36542,11 @@ func (s *TraceSummary) SetLastEventAt(val OptDateTime) {
 // SetFinalOutput sets the value of FinalOutput.
 func (s *TraceSummary) SetFinalOutput(val OptString) {
 	s.FinalOutput = val
+}
+
+// SetFinalOutputTruncated sets the value of FinalOutputTruncated.
+func (s *TraceSummary) SetFinalOutputTruncated(val OptBool) {
+	s.FinalOutputTruncated = val
 }
 
 // SetWorkloadOutput sets the value of WorkloadOutput.

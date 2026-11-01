@@ -1,0 +1,32 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "cut-final-output",
+  "status": "draft",
+  "intent": "An evaluation never calls a trial answer wrong or within its limit on the strength of a part the runtime cut off.",
+  "actor": "skill-author",
+  "observable_outcome": "A rule check on a run whose final output was cut records undetermined with the reason that the output was cut off at N characters, instead of failed for a missing value or passed for a length within the limit.",
+  "acceptance_criteria": [
+    {
+      "id": "cut-missing-value-undetermined",
+      "statement": "A value a rule check cannot find in a cut final output is undetermined, and the reason names the character count the output was cut at."
+    },
+    {
+      "id": "cut-within-limit-undetermined",
+      "statement": "A cut final output within a length limit is undetermined; a kept part already over the limit fails, and a value found in the kept part passes."
+    },
+    {
+      "id": "judge-sees-runtime-cut",
+      "statement": "The judge request reports the final output as cut when the runtime cut it, so a judge pass on it is not recorded."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/trial/improvement/facts/facts.go",
+    "apps/platform/internal/trial/improvement/checks/rule_graders.go",
+    "apps/platform/internal/trial/improvement/checks/measured_graders.go",
+    "apps/platform/internal/trial/improvement/judging/judge.go"
+  ]
+}

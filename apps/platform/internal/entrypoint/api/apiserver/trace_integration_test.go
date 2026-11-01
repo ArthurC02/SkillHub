@@ -159,6 +159,7 @@ type generalView struct {
 	ErrorsTotal    int    `json:"errors_total"`
 	Truncated      bool   `json:"summary_truncated"`
 	FinalOutput    string `json:"final_output"`
+	FinalOutputCut bool   `json:"final_output_truncated"`
 	WorkloadOutput string `json:"workload_output"`
 	Questions      []struct {
 		Question string   `json:"question"`
@@ -1019,5 +1020,23 @@ func TestGeneralModeCountsAnEventWhosePayloadIsNotAnObjectWithoutFailing(t *test
 	}
 	if view.ToolCalls.Total != 2 || view.ToolCalls.Succeeded != 1 || view.ToolCalls.TotalMS != 5 {
 		t.Errorf("tool call summary = %+v, want both calls counted and only the readable one's outcome and duration", view.ToolCalls)
+	}
+}
+
+func TestTheGeneralSummarySaysWhenTheRuntimeCutTheFinalOutput(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	owner := a.login(t, "trace-cut-owner")
+	for _, truncated := range []bool{false, true} {
+		skillID := seedSkill(t, pool, owner.workspaceID, fmt.Sprintf("trace-cut-skill-%t", truncated))
+		runID := seedRun(t, pool, owner.workspaceID, skillID)
+		payload := fmt.Sprintf(`{"kind":"final","text":"the start of a long answer","truncated":%t}`, truncated)
+		if code, report := a.ingest(t, runID, 1, event(runID, 1, 1, "agent_output", payload)); code != http.StatusAccepted || report.Stored != 1 {
+			t.Fatalf("ingest: got %d %+v", code, report)
+		}
+		_, view := owner.generalTrace(t, runID)
+		if view.FinalOutput != "the start of a long answer" || view.FinalOutputCut != truncated {
+			t.Errorf("truncated=%t: final output %q, final_output_truncated %t", truncated, view.FinalOutput, view.FinalOutputCut)
+		}
 	}
 }

@@ -744,6 +744,22 @@ test("the advanced trace reads once more when the run ends so its closing events
   }
 });
 
+test("a final output the runtime cut says so above the kept part", async () => {
+  stubTrace({ ...summary, final_output_truncated: true }, advanced);
+  await render();
+  await waitFor(() => (container.textContent ?? "").includes("Removed 17 duplicate rows."));
+  expect(container.textContent).toContain(
+    "最終輸出超過長度上限，只保留了前段；被截掉的部分不列入評估。",
+  );
+});
+
+test("a final output kept whole carries no cut notice", async () => {
+  stubTrace({ ...summary, final_output_truncated: false }, advanced);
+  await render();
+  await waitFor(() => (container.textContent ?? "").includes("Removed 17 duplicate rows."));
+  expect(container.textContent).not.toContain("最終輸出超過長度上限");
+});
+
 test("a failed run without a final output shows what its workload left behind", async () => {
   stubTrace(
     { ...summary, final_output: undefined, workload_output: "npm ERR! missing script: start" },

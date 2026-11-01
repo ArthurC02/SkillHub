@@ -51,6 +51,12 @@ func ruledMaterial(final string, questions []trace.Question, status string, comp
 	return m
 }
 
+func cutMaterial(final string) facts.Material {
+	m := ruledMaterial(final, nil, "succeeded", true)
+	m.Summary.FinalOutputTruncated = true
+	return m
+}
+
 func toolMaterial(calls map[string]int, complete bool) facts.Material {
 	m := ruledMaterial("答完了", nil, "succeeded", complete)
 	m.Summary.ToolCalls.ByName = calls
@@ -124,6 +130,14 @@ func TestEachRuleCheckDecidesFromTheRunsOwnRecords(t *testing.T) {
 			criterion("c", "avoids_tool", "WebSearch"), verdict.ResultFailed},
 		{"avoiding a tool on incomplete evidence is not recorded as passed", toolMaterial(nil, false),
 			criterion("c", "avoids_tool", "WebSearch"), verdict.ResultUndetermined},
+		{"a value missing from a cut answer is undetermined", cutMaterial("訂金 1,200 元"),
+			criterion("c", "contains_values", "1200", "2026-10-03"), verdict.ResultUndetermined},
+		{"a value found in the kept part of a cut answer still passes", cutMaterial("訂金 1,200 元"),
+			criterion("c", "contains_values", "1200"), verdict.ResultPassed},
+		{"a cut answer within the character limit is undetermined", cutMaterial("一二三"),
+			criterion("c", "max_chars", "3"), verdict.ResultUndetermined},
+		{"a cut answer already over the character limit fails", cutMaterial("一二三"),
+			criterion("c", "max_chars", "2"), verdict.ResultFailed},
 		{"a fail on incomplete evidence stays failed", ruledMaterial("訂金 1,200 元", nil, "succeeded", false),
 			criterion("c", "contains_values", "999"), verdict.ResultFailed},
 	}
@@ -245,5 +259,14 @@ func TestCountsFollowTheSkillsOwnCheckScript(t *testing.T) {
 				t.Errorf("countSentences(%q) = %d, want %d", c.text, got, c.sentences)
 			}
 		})
+	}
+}
+
+func TestACutAnswerSaysWhereItWasCut(t *testing.T) {
+	got, _ := treeResult(cutMaterial("訂金 1,200 元"), criterion("c", "contains_values", "2026-10-03"), nil)
+	const want = "the final output does not mention 2026-10-03 in the part kept; " +
+		"the final output was cut off at 10 characters, so the rest of the answer cannot be checked"
+	if got.Reason != want {
+		t.Errorf("reason = %q, want %q", got.Reason, want)
 	}
 }

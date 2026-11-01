@@ -799,3 +799,15 @@ func TestTheJudgeSeesAtMostTwentyCriteriaAndSaysTheListWasCut(t *testing.T) {
 		}
 	}
 }
+
+func TestAFinalOutputTheRuntimeCutIsSentAsCut(t *testing.T) {
+	m, _ := fixtureMaterial(true)
+	if _, sent := buildRequest(m, ""); slices.Contains(sent.truncation, "final_output") {
+		t.Fatalf("an uncut final output was reported cut: %v", sent.truncation)
+	}
+	m.Summary.FinalOutputTruncated = true
+	_, sent := buildRequest(m, "")
+	if !slices.Contains(sent.truncation, "final_output") {
+		t.Errorf("a final output the runtime cut was not reported cut, so a pass on it would stand: %v", sent.truncation)
+	}
+}

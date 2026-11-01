@@ -118,7 +118,7 @@ func buildRequest(m facts.Material, evaluationID string) (modelport.JudgeRequest
 	truncation := []string{}
 
 	final, cutOutput := textx.CutRunes(m.Summary.FinalOutput, maxFinalOutput)
-	if cutOutput {
+	if cutOutput || m.Summary.FinalOutputTruncated {
 		truncation = append(truncation, "final_output")
 	}
 

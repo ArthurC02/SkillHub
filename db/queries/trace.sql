@@ -124,7 +124,8 @@ WHERE e.run_id = @run_id AND e.workspace_id = @workspace_id AND e.event_type = A
 ORDER BY e.occurred_at, e.source, e.attempt, e.seq;
 
 -- name: GetTraceEventText :one
-SELECT COALESCE(payload->>'text', '')::text AS text
+SELECT COALESCE(payload->>'text', '')::text AS text,
+       COALESCE(payload->'truncated' = 'true'::jsonb, false)::boolean AS truncated
 FROM trace_events
 WHERE run_id = @run_id AND workspace_id = @workspace_id
   AND source = @source AND attempt = @attempt AND seq = @seq;

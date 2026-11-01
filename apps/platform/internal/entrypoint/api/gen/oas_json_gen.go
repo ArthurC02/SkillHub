@@ -33258,6 +33258,19 @@ func (s *GetRunTraceOK) Decode(d *jx.Decoder) error {
 				}
 				found = true
 				s.Type = match
+			case "final_output_truncated":
+				// Type-based discrimination: check if field has expected JSON type
+				if typ := d.Next(); typ != jx.Bool {
+					// Field exists but has wrong type, not a match for this variant
+					return d.Skip()
+				}
+				match := TraceSummaryGetRunTraceOK
+				if found && s.Type != match {
+					s.Type = ""
+					return errors.Errorf("multiple oneOf matches: (%v, %v)", s.Type, match)
+				}
+				found = true
+				s.Type = match
 			case "has_more":
 				// Type-based discrimination: check if field has expected JSON type
 				if typ := d.Next(); typ != jx.Bool {
@@ -78201,6 +78214,12 @@ func (s *TraceSummary) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
+		if s.FinalOutputTruncated.Set {
+			e.FieldStart("final_output_truncated")
+			s.FinalOutputTruncated.Encode(e)
+		}
+	}
+	{
 		if s.WorkloadOutput.Set {
 			e.FieldStart("workload_output")
 			s.WorkloadOutput.Encode(e)
@@ -78232,7 +78251,7 @@ func (s *TraceSummary) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfTraceSummary = [17]string{
+var jsonFieldsNameOfTraceSummary = [18]string{
 	0:  "run_id",
 	1:  "status",
 	2:  "status_reason",
@@ -78246,10 +78265,11 @@ var jsonFieldsNameOfTraceSummary = [17]string{
 	10: "summary_truncated",
 	11: "last_event_at",
 	12: "final_output",
-	13: "workload_output",
-	14: "questions",
-	15: "usage",
-	16: "steps",
+	13: "final_output_truncated",
+	14: "workload_output",
+	15: "questions",
+	16: "usage",
+	17: "steps",
 }
 
 // Decode decodes TraceSummary from json.
@@ -78419,6 +78439,16 @@ func (s *TraceSummary) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"final_output\"")
 			}
+		case "final_output_truncated":
+			if err := func() error {
+				s.FinalOutputTruncated.Reset()
+				if err := s.FinalOutputTruncated.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"final_output_truncated\"")
+			}
 		case "workload_output":
 			if err := func() error {
 				s.WorkloadOutput.Reset()
@@ -78457,7 +78487,7 @@ func (s *TraceSummary) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"usage\"")
 			}
 		case "steps":
-			requiredBitSet[2] |= 1 << 0
+			requiredBitSet[2] |= 1 << 1
 			if err := func() error {
 				s.Steps = make([]TraceSummaryStepsItem, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -78486,7 +78516,7 @@ func (s *TraceSummary) Decode(d *jx.Decoder) error {
 	for i, mask := range [3]uint8{
 		0b11111011,
 		0b00000111,
-		0b00000001,
+		0b00000010,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
