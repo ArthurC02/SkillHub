@@ -75,3 +75,6 @@ tools/**/embeddings_cache.json
 .cleanmode-bundle/
 .claude/skills/*/.claude-plugin/types/
 .claude/skills/skillhub-guards/tsconfig.json
+
+# Rust build output
+/tools/harness/target/

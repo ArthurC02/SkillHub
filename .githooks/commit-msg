@@ -1,3 +1,12 @@
 #!/bin/sh
-head -n 1 "$1" | grep -Eq '^fix(\(|!?:)' || exit 0
-go -C "$(git rev-parse --show-toplevel)/tools/devctl" run . fix-proof "$1" || true
+IFS= read -r subject < "$1" || true
+case "$subject" in
+  'fix('* | 'fix:'* | 'fix!:'*) ;;
+  *) exit 0 ;;
+esac
+harness=tools/harness/target/release/harness
+if [ -x "$harness" ] || cargo build --quiet --release --manifest-path tools/harness/Cargo.toml; then
+  "$harness" devctl fix-proof "$1" || true
+else
+  go -C tools/devctl run . fix-proof "$1" || true
+fi

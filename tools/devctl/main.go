@@ -172,6 +172,7 @@ func bootstrap(root string, out io.Writer) error {
 		{name: "generated TypeScript client build", dir: dirAPIClientTS, cmd: ecosystemNPM, args: []string{cmdRun, cmdBuild}},
 		{name: "web packages", dir: dirAppsWeb, cmd: ecosystemNPM, args: []string{"ci"}},
 		{name: "LLM packages", dir: dirAppsLLM, cmd: "uv", args: []string{"sync", "--frozen"}, env: []string{"UV_LINK_MODE=copy"}},
+		{name: "hook launcher", dir: "tools/harness", cmd: "cargo", args: []string{cmdBuild, "--quiet", "--release"}},
 		{name: "git hooks (pre-push runs devctl preflight --hook, commit-msg runs devctl fix-proof)", dir: ".", cmd: "git", args: []string{"config", "core.hooksPath", ".githooks"}},
 	}
 	for _, step := range steps {

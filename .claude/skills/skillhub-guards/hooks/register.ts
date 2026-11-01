@@ -223,6 +223,9 @@ const COMMENT_LIKE = /^\s*(?:\/\/|#|\/\*|\*|--)/
 const PROSE_FILE = /\.(?:md|mdx|json|txt)$/i
 const COMMENT_ADVICE_TIMEOUT_MS = 30_000
 
+const devctl = (root: string, ...args: string[]) =>
+  ['cargo', 'run', '--quiet', '--release', '--manifest-path', `${root}/tools/harness/Cargo.toml`, '--', 'devctl', ...args]
+
 export const addsCommentLines = (path: string, before: string, after: string): boolean => {
   if (PROSE_FILE.test(path)) return false
   const existing = new Set(before.split('\n').map(line => line.trim()))
@@ -232,7 +235,7 @@ export const addsCommentLines = (path: string, before: string, after: string): b
 async function commentAdvice($: EngineInterface, root: string, path: string, before: string, after: string): Promise<string[]> {
   if (!addsCommentLines(path, before, after)) return []
   try {
-    const run = await $.process.run(['go', '-C', `${root}/tools/devctl`, 'run', '.', 'comment-advice', path],
+    const run = await $.process.run(devctl(root, 'comment-advice', path),
       { stdin: JSON.stringify({ old: before, new: after }), timeoutMs: COMMENT_ADVICE_TIMEOUT_MS })
     if (run.exitCode !== 0) return []
     return run.stdout.split('\n').filter(line => line.trim() !== '').map(line => `skillhub-guards: ${line}`)
@@ -304,7 +307,7 @@ async function pollCI($: EngineInterface) {
     return
   }
   const root = await $.session.root()
-  const run = await $.process.run(['go', '-C', `${root}/tools/devctl`, 'run', '.', 'ci-status', watch.sha],
+  const run = await $.process.run(devctl(root, 'ci-status', watch.sha),
     { timeoutMs: 120_000 })
   const output = `${run.stdout}\n${run.stderr}`
   const verdict = ciVerdict(output)
@@ -407,7 +410,7 @@ export const register: Register = on => {
       if (await isDirectory($, `${root}/${path}`)) return { result: `"${path}" is a directory; name each file`, isError: true as const }
     }
 
-    const lint = await $.process.run(['go', '-C', `${root}/tools/devctl`, 'run', '.', 'comment-lint', ...paths],
+    const lint = await $.process.run(devctl(root, 'comment-lint', ...paths),
       { timeoutMs: 300_000 })
     if (lint.exitCode !== 0) return { result: `comment-lint refused:\n${lint.stdout}${lint.stderr}`, isError: true as const }
 

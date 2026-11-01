@@ -632,6 +632,14 @@ jobs:
       - run: golangci-lint fmt --diff
         working-directory: tools/devctl
       - run: go -C tools/devctl vet ./...
+      - name: Hook launcher toolchain
+        run: rustup toolchain install
+        working-directory: tools/harness
+      - name: Hook launcher lint
+        run: cargo fmt --check && cargo clippy --quiet --all-targets -- -D warnings
+        working-directory: tools/harness
+      - name: Hook launcher tests
+        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'hook launcher tests' cargo test --quiet --manifest-path tools/harness/Cargo.toml
       - name: Install the pinned Domain Memory plugin
         run: go -C tools/devctl run . domain-memory-install
       - name: devctl tests

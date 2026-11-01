@@ -32,7 +32,7 @@ const repo = (on: On, answers: Answers, runs: string[][], stdins: (string | unde
     const argv = [...e.argv]
     runs.push(argv)
     stdins.push(e.init?.stdin)
-    const verb = argv[0] === 'go' ? 'comment-lint' : argv[3] ?? ''
+    const verb = argv[0] === 'cargo' ? 'comment-lint' : argv[3] ?? ''
     const exitCode = verb === 'comment-lint' ? answers.lint ?? 0
       : verb === 'merge-base' ? answers.ancestor ?? 0
       : verb === 'push' ? answers.push ?? 0
@@ -57,7 +57,8 @@ test('a clean ship lints, stages each file, commits from stdin, checks fast-forw
   const result = await $.tool.call(ship as never) as { result: string; isError?: boolean }
   expect(result.isError).toBeUndefined()
   expect(result.result).toMatch(/^pushed abcdef01; CI is being watched/)
-  expect(runs[0]).toEqual(['go', '-C', 'c:/repo/tools/devctl', 'run', '.', 'comment-lint', 'apps/web/a.ts', 'docs/x.md'])
+  expect(runs[0]).toEqual(['cargo', 'run', '--quiet', '--release', '--manifest-path', 'c:/repo/tools/harness/Cargo.toml', '--', 'devctl',
+    'comment-lint', 'apps/web/a.ts', 'docs/x.md'])
   expect(gitVerbs(runs)).toEqual([
     'add -- apps/web/a.ts docs/x.md',
     'commit -F - -- apps/web/a.ts docs/x.md',

@@ -55,6 +55,7 @@ func doctor(root string, out io.Writer) error {
 		checkRequiredVersion("node", []string{versionFlag}, "v"+nodeVersion),
 		checkRequiredVersion("uv", []string{versionFlag}, "uv "+toolchain["uv"]),
 		checkRequiredVersion("task", []string{versionFlag}, toolchain["task"]),
+		checkRequiredVersion("cargo", []string{versionFlag}, ""),
 		checkRequiredVersion("docker", []string{"version", "--format", "{{.Client.Version}}"}, ""),
 		checkOptionalVersion("golangci-lint", []string{versionFlag}, toolchain["golangci_lint"]),
 	}

@@ -1,2 +1,6 @@
 #!/bin/sh
-exec go -C "$(git rev-parse --show-toplevel)/tools/devctl" run . preflight --hook
+harness=tools/harness/target/release/harness
+if [ -x "$harness" ] || cargo build --quiet --release --manifest-path tools/harness/Cargo.toml; then
+  exec "$harness" devctl preflight --hook
+fi
+exec go -C tools/devctl run . preflight --hook
