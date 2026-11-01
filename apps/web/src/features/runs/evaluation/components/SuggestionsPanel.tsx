@@ -214,11 +214,13 @@ function SuggestionsContent({
   }
 
   const accepted = suggestions.data.suggestions.filter((s) => s.decision === "accepted");
+  const unapplied = accepted.filter((s) => !s.applied_skill_version_id);
   const holds: BuildHolds = {
     applying: apply.isPending,
     decisionsUnsettled,
     refreshing: suggestions.fetchStatus !== "idle",
     noneAccepted: Boolean(skillId) && accepted.length === 0,
+    allApplied: Boolean(skillId) && accepted.length > 0 && unapplied.length === 0,
     sourceMissing: !skillId,
   };
 
@@ -246,11 +248,11 @@ function SuggestionsContent({
               apply.mutate({
                 skillId: skillId as string,
                 evaluationId: suggestions.data.evaluation_id,
-                suggestionIds: accepted.map((s) => s.suggestion_id),
+                suggestionIds: unapplied.map((s) => s.suggestion_id),
               });
             }}
           >
-            {unknown ? "核對後仍" : ""}以已接受的 {accepted.length} 項建議建立新版本
+            {unknown ? "核對後仍" : ""}以已接受的 {unapplied.length} 項建議建立新版本
           </button>
           <BuildHoldNotes holds={holds} />
           <SuggestionSourceNote skillId={skillId} sourceUnavailable={sourceUnavailable} />
@@ -265,6 +267,7 @@ type BuildHolds = {
   decisionsUnsettled: boolean;
   refreshing: boolean;
   noneAccepted: boolean;
+  allApplied: boolean;
   sourceMissing: boolean;
 };
 
@@ -273,6 +276,7 @@ function buildHoldNoteId(holds: BuildHolds): string | undefined {
   if (holds.decisionsUnsettled) return "suggestion-decisions-note";
   if (holds.refreshing) return "suggestions-refresh-note";
   if (holds.noneAccepted) return "suggestions-none-accepted-note";
+  if (holds.allApplied) return "suggestions-all-applied-note";
   return holds.sourceMissing ? "suggestion-source-note" : undefined;
 }
 
@@ -298,6 +302,11 @@ function BuildHoldNotes({ holds }: { holds: BuildHolds }) {
       {quiet && holds.noneAccepted && (
         <p id="suggestions-none-accepted-note" className="note">
           還沒有接受任何建議。先在上面的建議接受至少一項，才能用它們建立新版本。
+        </p>
+      )}
+      {quiet && holds.allApplied && (
+        <p id="suggestions-all-applied-note" className="note">
+          已接受的建議都已套用於新版本；要再建立版本，先接受其他建議。
         </p>
       )}
     </>

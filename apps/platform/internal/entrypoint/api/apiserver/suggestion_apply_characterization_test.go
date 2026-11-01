@@ -155,3 +155,27 @@ func TestAValidationRefusalNamesWhatTheImportCheckFound(t *testing.T) {
 		t.Errorf("message = %q, want the refusal to name the failing checks", msg)
 	}
 }
+
+func TestARenamingSuggestionIsRefusedWithTheReasonTheNewVersionWasRefused(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	c := a.login(t, uniqueWorklistLabel("sugg-rename"))
+	const name = "sugg-rename-skill"
+	seed := evaluateWithSuggestions(t, a, pool, c, name, []llmclient.ImprovementProposal{{
+		Category: "skill", Problem: "the name is vague", Evidence: suggestionQuote,
+		TargetPath: "SKILL.md", ProposedContent: packagedSkillMD("sugg-renamed-skill"), ExpectedImpact: "clearer",
+	}})
+	suggestions, evaluationID := acceptAll(t, c, seed.runID)
+
+	code, applied := c.applySuggestions(t, seed.skillID, evaluationID, suggestions[0].SuggestionID)
+	if code != http.StatusUnprocessableEntity || len(applied.RejectedSuggestions) != 1 {
+		t.Fatalf("got %d %+v, want one refusal", code, applied)
+	}
+	refusal := applied.RejectedSuggestions[0]
+	if refusal.BlockedReason != "validation_blocked" || !strings.Contains(refusal.Message, "不是這個 Skill 的名稱 "+name) {
+		t.Errorf("refusal = %+v, want it to say the package names a different skill", refusal)
+	}
+	if n := versionsOf(t, seed.skillID); n != 1 {
+		t.Errorf("the skill has %d versions, want 1", n)
+	}
+}

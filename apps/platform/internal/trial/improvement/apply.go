@@ -578,7 +578,7 @@ func (s *Service) buildImprovedVersion(
 		return out, err
 	}
 	if res.Report.Blocked {
-		out.rejectApplied(BlockedValidation, "with these changes applied the package no longer passes import validation")
+		out.rejectApplied(BlockedValidation, "the new version was refused: "+errorFindingMessages(res.Report))
 		return out, nil
 	}
 	if res.Duplicate {
@@ -588,4 +588,14 @@ func (s *Service) buildImprovedVersion(
 	}
 	out.Created, out.Version = true, ingest.NewUploadResult(res)
 	return out, nil
+}
+
+func errorFindingMessages(report skillpkg.Report) string {
+	var messages []string
+	for _, f := range report.Findings {
+		if f.Severity == skillpkg.SeverityError {
+			messages = append(messages, f.Message)
+		}
+	}
+	return strings.Join(messages, " ")
 }
