@@ -31,43 +31,67 @@ var runningChecker = sync.OnceValue(func() string {
 	return hex.EncodeToString(sum[:])
 })
 
-func wiringCacheDir() string {
+func userCacheDir(purpose string) string {
 	dir, err := os.UserCacheDir()
 	if err != nil {
 		return ""
 	}
-	return filepath.Join(dir, "skillhub", "wiring-edges")
+	return filepath.Join(dir, "skillhub", purpose)
+}
+
+func wiringCacheDir() string {
+	return userCacheDir("wiring-edges")
 }
 
 func cachedWiringEdges(cacheDir, checker, moduleDir string, identities map[string]packageIdentity, compute func() (map[contextEdge]string, error)) (map[contextEdge]string, error) {
-	key, err := wiringKey(checker, moduleDir, identities)
-	if err != nil || cacheDir == "" || checker == "" {
+	identityJSON, err := json.Marshal(identities)
+	if err != nil || checker == "" {
 		return compute()
 	}
-	path := filepath.Join(cacheDir, key+".json")
-	if edges, ok := readStoredEdges(path); ok {
-		return edges, nil
+	key, err := moduleKey(moduleDir, checker, runtime.GOOS, runtime.GOARCH, os.Getenv("GOFLAGS"), string(identityJSON))
+	if err != nil {
+		return compute()
 	}
-	edges, err := compute()
+	var edges map[contextEdge]string
+	_, err = cachedModuleOutput(cacheDir, key, func(data []byte) bool {
+		var ok bool
+		edges, ok = decodeStoredEdges(data)
+		return ok
+	}, func() ([]byte, error) {
+		computed, err := compute()
+		if err != nil {
+			return nil, err
+		}
+		edges = computed
+		return encodeStoredEdges(computed)
+	})
+	return edges, err
+}
+
+func cachedModuleOutput(cacheDir, key string, usable func([]byte) bool, compute func() ([]byte, error)) ([]byte, error) {
+	if cacheDir == "" {
+		return compute()
+	}
+	path := filepath.Join(cacheDir, key)
+	if data, err := os.ReadFile(path); err == nil && usable(data) {
+		return data, nil
+	}
+	data, err := compute()
 	if err != nil {
 		return nil, err
 	}
-	writeStoredEdges(cacheDir, path, edges)
-	return edges, nil
+	writeCacheEntry(cacheDir, path, data)
+	return data, nil
 }
 
-func wiringKey(checker, moduleDir string, identities map[string]packageIdentity) (string, error) {
+func moduleKey(moduleDir string, parts ...string) (string, error) {
 	files, err := wiringSources(moduleDir)
 	if err != nil {
 		return "", err
 	}
 	sort.Strings(files)
 	hash := sha256.New()
-	identityJSON, err := json.Marshal(identities)
-	if err != nil {
-		return "", err
-	}
-	for _, part := range []string{checker, runtime.GOOS, runtime.GOARCH, os.Getenv("GOFLAGS"), string(identityJSON)} {
+	for _, part := range parts {
 		writeHashPart(hash, []byte(part))
 	}
 	for _, file := range files {
@@ -113,11 +137,7 @@ func writeHashPart(hash interface{ Write([]byte) (int, error) }, part []byte) {
 	_, _ = hash.Write(part)
 }
 
-func readStoredEdges(path string) (map[contextEdge]string, bool) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, false
-	}
+func decodeStoredEdges(data []byte) (map[contextEdge]string, bool) {
 	var stored []storedEdge
 	if err := json.Unmarshal(data, &stored); err != nil || stored == nil {
 		return nil, false
@@ -129,7 +149,7 @@ func readStoredEdges(path string) (map[contextEdge]string, bool) {
 	return edges, true
 }
 
-func writeStoredEdges(cacheDir, path string, edges map[contextEdge]string) {
+func encodeStoredEdges(edges map[contextEdge]string) ([]byte, error) {
 	stored := make([]storedEdge, 0, len(edges))
 	for edge, at := range edges {
 		stored = append(stored, storedEdge{edge.from, edge.to, at})
@@ -137,8 +157,11 @@ func writeStoredEdges(cacheDir, path string, edges map[contextEdge]string) {
 	sort.Slice(stored, func(i, j int) bool {
 		return stored[i].From+"->"+stored[i].To < stored[j].From+"->"+stored[j].To
 	})
-	data, err := json.Marshal(stored)
-	if err != nil || os.MkdirAll(cacheDir, 0o755) != nil {
+	return json.Marshal(stored)
+}
+
+func writeCacheEntry(cacheDir, path string, data []byte) {
+	if os.MkdirAll(cacheDir, 0o755) != nil {
 		return
 	}
 	partial, err := os.CreateTemp(cacheDir, "partial-*")

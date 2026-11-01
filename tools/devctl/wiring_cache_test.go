@@ -100,7 +100,7 @@ func TestAnUnreadableCachedResultIsComputedAgainNotTakenAsNoEdges(t *testing.T) 
 	if _, err := cachedWiringEdges(cache, someChecker, module, someIdentities, counted.compute); err != nil {
 		t.Fatal(err)
 	}
-	stored, err := filepath.Glob(filepath.Join(cache, "*.json"))
+	stored, err := filepath.Glob(filepath.Join(cache, "*"))
 	if err != nil || len(stored) != 1 {
 		t.Fatalf("stored results = %v, %v; want one", stored, err)
 	}

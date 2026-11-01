@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -138,11 +139,13 @@ func declaredCapabilityVars(root string) (map[string]bool, error) {
 	if _, err := os.Stat(filepath.Join(platform, "go.mod")); err != nil {
 		return nil, fmt.Errorf("apps/platform is not here: %w", err)
 	}
-	cmd := exec.Command("go", "-C", platform, cmdRun, "./cmd/api", "--capabilities")
-	cmd.Env = append(os.Environ(), "GOFLAGS=")
-	done := time.AfterFunc(3*time.Minute, func() { _ = cmd.Process.Kill() })
-	defer done.Stop()
-	out, err := cmd.Output()
+	out, err := capabilityTable(userCacheDir("capabilities"), platform, func() ([]byte, error) {
+		cmd := exec.Command("go", "-C", platform, cmdRun, "./cmd/api", "--capabilities")
+		cmd.Env = append(os.Environ(), "GOFLAGS=")
+		done := time.AfterFunc(3*time.Minute, func() { _ = cmd.Process.Kill() })
+		defer done.Stop()
+		return cmd.Output()
+	})
 	if err != nil {
 		return nil, fmt.Errorf("go run ./cmd/api --capabilities: %w", err)
 	}
@@ -166,4 +169,12 @@ func declaredCapabilityVars(root string) (map[string]bool, error) {
 		}
 	}
 	return declared, nil
+}
+
+func capabilityTable(cacheDir, platform string, run func() ([]byte, error)) ([]byte, error) {
+	key, err := moduleKey(platform, "capabilities", runtime.GOOS, runtime.GOARCH)
+	if err != nil {
+		return run()
+	}
+	return cachedModuleOutput(cacheDir, key, json.Valid, run)
 }
