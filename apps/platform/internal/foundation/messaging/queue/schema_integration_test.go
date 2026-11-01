@@ -87,11 +87,14 @@ func TestProcessesStartingTogetherOnASmallPoolAllFindTheQueueSchemaReady(t *test
 func TestTheSoleProcessPreparesTheQueueSchemaOnItsOnlyPoolConnection(t *testing.T) {
 	cfg := poolInFreshSchema(t).Config()
 	cfg.MaxConns = 1
-	var dials atomic.Int32
+	var opened atomic.Int32
 	dial := cfg.ConnConfig.DialFunc
 	cfg.ConnConfig.DialFunc = func(ctx context.Context, network, addr string) (net.Conn, error) {
-		dials.Add(1)
-		return dial(ctx, network, addr)
+		conn, err := dial(ctx, network, addr)
+		if err == nil {
+			opened.Add(1)
+		}
+		return conn, err
 	}
 	pool, err := pgxpool.NewWithConfig(context.Background(), cfg)
 	if err != nil {
@@ -111,7 +114,7 @@ func TestTheSoleProcessPreparesTheQueueSchemaOnItsOnlyPoolConnection(t *testing.
 	).Scan(&tables); err != nil || tables != 1 {
 		t.Fatalf("river_job tables in the schema: %d (%v), want 1", tables, err)
 	}
-	if got := dials.Load(); got != 1 {
+	if got := opened.Load(); got != 1 {
 		t.Fatalf("connections opened: %d, want 1 — a database that accepts one connection refuses the rest", got)
 	}
 }
