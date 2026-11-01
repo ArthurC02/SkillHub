@@ -118,6 +118,7 @@ var strangerRoutes = []strangerCase{
 		body: `{"status":"resolved","note":"a stranger asked"}`, want: http.StatusNotFound},
 	{pattern: "PUT /admin/agents/proposals/{id}/decision",
 		body: `{"decision":"approve","note":"a stranger asked"}`, want: http.StatusNotFound},
+	{pattern: "POST /admin/mcp-tools/{id}/retire", body: `{"note":"a stranger asked"}`, want: http.StatusNotFound},
 	{pattern: "PUT /admin/agents/{name}/enabled",
 		body: `{"enabled":true,"note":"a stranger asked"}`, want: http.StatusNotFound},
 	{pattern: "PUT /admin/agents/{name}/spend-cap",
