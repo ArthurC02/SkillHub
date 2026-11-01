@@ -711,6 +711,9 @@ jobs:
       - name: Shell scripts
         run: bash tools/ci/shell-lint.sh
 
+      - name: Install the pinned Domain Memory plugin
+        run: go -C tools/devctl run . domain-memory-install
+
       - name: Tools scripts — characterisation tests
         run: |
           pip install PyYAML==6.0.2
@@ -730,9 +733,6 @@ jobs:
         run: >-
           bash tools/ci/report-failure.sh 'Known answers'
           python tools/data-readiness/known_answers.py check --repo-root .
-
-      - name: Install the pinned Domain Memory plugin
-        run: go -C tools/devctl run . domain-memory-install
 
       - name: Domain Memory attested commits carry their packages
         run: >-
