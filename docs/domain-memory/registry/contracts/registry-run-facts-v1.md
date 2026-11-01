@@ -7,10 +7,10 @@ compatibility_policy: consumer-specific facts evolve deliberately
 data_classification: internal
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-24T10:35:00.265291Z"
+    at: "2026-11-01T06:02:14.778167Z"
 sources:
-  - resource: "apps/platform/internal/entrypoint/wiring/trial.go#L18-37"
-    excerpt_sha256: "sha256:5ebb45f646375d626ddc502f9acf3ce51086ecc092d30a845a2674e52e8d2822"
+  - resource: "apps/platform/internal/entrypoint/wiring/trial.go#L19-55"
+    excerpt_sha256: "sha256:e2b7d2e989a82c6bf6e8264694bc69736a6a82023c45a3162481aa32441d14fb"
 ---
 # Relations
 - Producer context: [registry](/contexts/registry)

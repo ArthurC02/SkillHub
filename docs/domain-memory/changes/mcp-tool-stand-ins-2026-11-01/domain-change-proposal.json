@@ -3,12 +3,12 @@
   "proposal_id": "mcp-tool-stand-ins-2026-11-01",
   "proposer": "domain-memory-agent",
   "requirement_id": "mcp-tool-stand-ins",
-  "status": "submitted",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-11-01T06:01:58.637114Z",
-  "verified_at": null,
-  "finalized_at": null,
-  "applied_at": null,
+  "verified_at": "2026-11-01T06:02:39.375361Z",
+  "finalized_at": "2026-11-01T06:02:48.093129Z",
+  "applied_at": "2026-11-01T06:02:53.834775Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "ae32aea68dd2b45ef3e41fc0932318f0922866b1",
@@ -278,5 +278,9 @@
   "supersedes": [
     "mcp-tool-catalog-rules-2026-11-01",
     "shifted-recite-2026-10-24"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "ba17b2b0c8051466a15bf7e6c6e45e5804641490",
+    "registry_digest": "sha256:eef8104d4e2b8f9c13ee26a05e24da4e60d385641076fd5da8dd5e4d35c1b082"
+  }
 }

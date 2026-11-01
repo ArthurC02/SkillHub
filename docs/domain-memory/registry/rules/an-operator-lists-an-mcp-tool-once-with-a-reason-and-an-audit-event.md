@@ -3,12 +3,12 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-11-01T04:29:21.537405Z"
+    at: "2026-11-01T06:02:14.778167Z"
 sources:
   - resource: "apps/platform/internal/skill/admission/mcptools/mcptools.go#L76-95"
     excerpt_sha256: "sha256:3e033fa7b3d80002f5fe5fbf2eba61d9b2e110db67863b5289c407515a8c7873"
-  - resource: "apps/platform/internal/skill/admission/mcptools/mcptools.go#L131-155"
-    excerpt_sha256: "sha256:0dfe114956dcc7e7b823260ebc8d30bb3f7b2cb2605f5da83b64600413b17a5d"
+  - resource: "apps/platform/internal/skill/admission/mcptools/mcptools.go#L151-178"
+    excerpt_sha256: "sha256:63ea4fbcaba89cd881824066a2f556b9529023dba85ece6a62012c4e4c36ceed"
   - resource: "db/migrations/0147_mcp_tool_catalog.sql#L1-16"
     excerpt_sha256: "sha256:6dcc462bc595155f8606d4ea22e96c4b37237347100b1ccdb11b5cbda9b1e638"
   - resource: "apps/platform/internal/entrypoint/api/apiserver/mcp_tools_integration_test.go#L36-58"
