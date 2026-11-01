@@ -2,6 +2,7 @@ package creation
 
 import (
 	"context"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -21,6 +22,14 @@ type BillingHooks struct {
 	ReserveFunc      func(ctx context.Context, workspaceID pgtype.UUID, reservedUSD float64) (bool, error)
 	SettleFunc       func(ctx context.Context, tx pgx.Tx, step StepSettlement) error
 	SessionEndedFunc func(ctx context.Context, tx pgx.Tx, sessionID pgtype.UUID) error
+	SettleDeadline   time.Duration
+}
+
+func (h BillingHooks) settleDeadline() time.Duration {
+	if h.SettleDeadline > 0 {
+		return h.SettleDeadline
+	}
+	return settleTimeout
 }
 
 func (h BillingHooks) CanStart(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {

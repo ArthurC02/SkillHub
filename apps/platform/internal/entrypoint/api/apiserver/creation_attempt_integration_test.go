@@ -590,14 +590,17 @@ func TestFinishWhenCreditSettleFailsStepReturnsItAndTheSessionStaysWorking(t *te
 	rec := &jobRecorder{}
 	settleErr := errors.New("ledger down")
 	svc := &creation.Service{
-		Pool: pool, Limits: creationLimits(), SettleDeadline: 2 * time.Second, Insert: rec.insert,
+		Pool: pool, Limits: creationLimits(), Insert: rec.insert,
 		IssueKey: okIssueKey, RevokeKey: okRevokeKey,
 		LLM: creationStepFunc(func(context.Context, creation.StepRequest) (*creation.StepResult, error) {
 			return &creation.StepResult{Outcome: "clarification", Message: "好的"}, nil
 		}),
-		Billing: creation.BillingHooks{SettleFunc: func(context.Context, pgx.Tx, creation.StepSettlement) error {
-			return settleErr
-		}},
+		Billing: creation.BillingHooks{
+			SettleDeadline: 2 * time.Second,
+			SettleFunc: func(context.Context, pgx.Tx, creation.StepSettlement) error {
+				return settleErr
+			},
+		},
 	}
 	id := creationID(t)
 	if _, err := svc.Create(context.Background(), ws, id, "開始創作", .5); err != nil {

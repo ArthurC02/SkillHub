@@ -153,15 +153,8 @@ const (
 	activeStepSlack  = 10 * time.Second
 )
 
-func (s *Service) settleDeadline() time.Duration {
-	if s.SettleDeadline > 0 {
-		return s.SettleDeadline
-	}
-	return settleTimeout
-}
-
 func (s *Service) settle(a JobArgs, call stepCall) error {
-	ctx, cancel := context.WithTimeout(context.Background(), s.settleDeadline())
+	ctx, cancel := context.WithTimeout(context.Background(), s.Billing.settleDeadline())
 	defer cancel()
 	for {
 		err := s.finish(ctx, a, call)
