@@ -16,6 +16,7 @@ func TestShippedGoDependencyGraphsExcludeUnmaintainedOpenPGP(t *testing.T) {
 	}
 	for _, module := range []string{"apps/platform", "apps/sandbox"} {
 		t.Run(module, func(t *testing.T) {
+			t.Parallel()
 			cmd := exec.Command("go", "list", "-deps", "-test", "./...")
 			cmd.Dir = filepath.Join(root, filepath.FromSlash(module))
 			cmd.Env = append(os.Environ(), "GOOS=linux", "GOARCH=amd64", "CGO_ENABLED=0")

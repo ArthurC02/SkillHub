@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -39,17 +40,30 @@ type Row struct{ ID string }
 const Kind = "b"
 `
 
-func wiringFixtureEdges(t *testing.T, body string) map[contextEdge]string {
+type wiringCase struct {
+	name, body, at string
+}
+
+func (c wiringCase) contexts(i int) (string, string) {
+	return fmt.Sprintf("a%d", i), fmt.Sprintf("b%d", i)
+}
+
+func wiringFixtureEdges(t *testing.T, cases []wiringCase) map[contextEdge]string {
 	t.Helper()
 	root := t.TempDir()
 	writeAt(t, root, "go.mod", "module example.com/m\n\ngo 1.27\n")
-	writeAt(t, root, "internal/a/a.go", wiringFixtureA)
-	writeAt(t, root, "internal/b/b.go", wiringFixtureB)
-	writeAt(t, root, "internal/entrypoint/wiring/wiring.go", `package wiring
+	contexts := map[string]string{}
+	for i, c := range cases {
+		a, b := c.contexts(i)
+		contexts["example.com/m/internal/"+a] = a
+		contexts["example.com/m/internal/"+b] = b
+		writeAt(t, root, "internal/"+a+"/a.go", wiringFixtureA)
+		writeAt(t, root, "internal/"+b+"/b.go", wiringFixtureB)
+		writeAt(t, root, fmt.Sprintf("internal/entrypoint/w%d/wiring.go", i), `package wiring
 
 import (
-	"example.com/m/internal/a"
-	"example.com/m/internal/b"
+	a "example.com/m/internal/`+a+`"
+	b "example.com/m/internal/`+b+`"
 )
 
 var (
@@ -57,15 +71,11 @@ var (
 	_ a.Params
 )
 
-`+body)
+`+c.body)
+	}
 	contextOf := func(path string) (string, bool) {
-		switch path {
-		case "example.com/m/internal/a":
-			return "a", true
-		case "example.com/m/internal/b":
-			return "b", true
-		}
-		return "", false
+		name, ok := contexts[path]
+		return name, ok
 	}
 	edges, err := wiringEdges(root, []string{"./internal/entrypoint/..."}, contextOf)
 	if err != nil {
@@ -76,9 +86,7 @@ var (
 
 func TestBehaviourInjectedIntoAnotherContextIsAnEdge(t *testing.T) {
 	t.Parallel()
-	cases := []struct {
-		name, body, at string
-	}{
+	cases := []wiringCase{
 		{"a function in a struct field", "func w() { _ = a.Service{Read: b.Read} }\n", "wiring.go:13"},
 		{"a method value assigned to a field", "func w(s *a.Service, bs *b.Service) { s.Read = bs.Read }\n", "wiring.go:13"},
 		{"a service object in a struct field", "func w(bs *b.Service) { _ = &a.Service{Reader: bs} }\n", "wiring.go:13"},
@@ -87,32 +95,32 @@ func TestBehaviourInjectedIntoAnotherContextIsAnEdge(t *testing.T) {
 		{"a service object held in a field", "type deps struct{ B *b.Service }\n\nfunc w(d deps) { _ = a.New(d.B) }\n", "wiring.go:15"},
 		{"a closure calling the other context", "func w(bs *b.Service) {\n\t_ = a.Service{Read: func() string { return bs.Read() }}\n}\n", "wiring.go:14"},
 	}
-	for _, c := range cases {
-		edges := wiringFixtureEdges(t, c.body)
-		at, ok := edges[contextEdge{"a", "b"}]
-		if !ok || len(edges) != 1 || !strings.HasSuffix(at, c.at) {
-			t.Errorf("%s: %v, want only a->b at %s", c.name, edges, c.at)
+	edges := wiringFixtureEdges(t, cases)
+	if len(edges) != len(cases) {
+		t.Errorf("edges: %v, want exactly one per case", edges)
+	}
+	for i, c := range cases {
+		a, b := c.contexts(i)
+		at, ok := edges[contextEdge{a, b}]
+		if !ok || !strings.HasSuffix(at, fmt.Sprintf("w%d/%s", i, c.at)) {
+			t.Errorf("%s: %v, want %s->%s at %s", c.name, edges, a, b, c.at)
 		}
 	}
 }
 
 func TestDataAndForeignSlotsAreNotCollaborations(t *testing.T) {
 	t.Parallel()
-	cases := []struct {
-		name, body string
-	}{
-		{"a constant", "func w() { _ = a.Service{Name: b.Kind} }\n"},
-		{"a field read off a data row", "func w(r b.Row) { _ = a.Params{ID: r.ID} }\n"},
-		{"a whole data row with no methods", "func w(r b.Row) { _ = a.Params{Value: r} }\n"},
-		{"a parameter the context does not declare", "func w(bs *b.Service) { _ = a.Wrap(bs.Read) }\n"},
-		{"a value read through a service object", "type deps struct{ B *b.Service }\n\nfunc w(d deps) { _ = a.Params{ID: d.B.Limit} }\n"},
-		{"a context wiring itself", "func w(s *a.Service) { s.Read = s.Own }\n"},
-		{"a slot outside any context", "type local struct{ Read func() string }\n\nfunc w() { _ = local{Read: b.Read} }\n"},
+	cases := []wiringCase{
+		{"a constant", "func w() { _ = a.Service{Name: b.Kind} }\n", ""},
+		{"a field read off a data row", "func w(r b.Row) { _ = a.Params{ID: r.ID} }\n", ""},
+		{"a whole data row with no methods", "func w(r b.Row) { _ = a.Params{Value: r} }\n", ""},
+		{"a parameter the context does not declare", "func w(bs *b.Service) { _ = a.Wrap(bs.Read) }\n", ""},
+		{"a value read through a service object", "type deps struct{ B *b.Service }\n\nfunc w(d deps) { _ = a.Params{ID: d.B.Limit} }\n", ""},
+		{"a context wiring itself", "func w(s *a.Service) { s.Read = s.Own }\n", ""},
+		{"a slot outside any context", "type local struct{ Read func() string }\n\nfunc w() { _ = local{Read: b.Read} }\n", ""},
 	}
-	for _, c := range cases {
-		if edges := wiringFixtureEdges(t, c.body); len(edges) != 0 {
-			t.Errorf("%s: %v, want none", c.name, edges)
-		}
+	if edges := wiringFixtureEdges(t, cases); len(edges) != 0 {
+		t.Errorf("%v, want none", edges)
 	}
 }
 

@@ -8,8 +8,39 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 )
+
+type domainMemoryStub func(args ...string) (string, error)
+
+var (
+	stubbedDomainMemoryTools sync.Map
+	realDomainMemoryTool     domainMemoryStub
+)
+
+func installDomainMemoryToolDispatcher() {
+	installed := domainMemoryTool
+	repoRoot, err := findRepoRoot()
+	realDomainMemoryTool = func(args ...string) (string, error) {
+		if err != nil {
+			return "", err
+		}
+		return installed(repoRoot, args...)
+	}
+	domainMemoryTool = func(root string, args ...string) (string, error) {
+		if stub, ok := stubbedDomainMemoryTools.Load(root); ok {
+			return stub.(domainMemoryStub)(args...)
+		}
+		return installed(root, args...)
+	}
+}
+
+func stubDomainMemoryToolForRoot(t *testing.T, root string, stub domainMemoryStub) {
+	t.Helper()
+	stubbedDomainMemoryTools.Store(root, stub)
+	t.Cleanup(func() { stubbedDomainMemoryTools.Delete(root) })
+}
 
 func evidenceRepo(t *testing.T) (gitRepo, string) {
 	t.Helper()
@@ -18,16 +49,9 @@ func evidenceRepo(t *testing.T) (gitRepo, string) {
 
 func evidenceRepoCiting(t *testing.T, citedPath, content string, withoutHash bool) (gitRepo, string) {
 	t.Helper()
-	t.Setenv("PYTHONUTF8", "1")
-	real, err := findRepoRoot()
-	if err != nil {
-		t.Fatal(err)
-	}
-	original := domainMemoryTool
-	t.Cleanup(func() { domainMemoryTool = original })
-	domainMemoryTool = func(_ string, args ...string) (string, error) { return original(real, args...) }
-
+	t.Parallel()
 	repo := newGitRepo(t)
+	stubDomainMemoryToolForRoot(t, repo.root, realDomainMemoryTool)
 	repo.git(t, "config", "core.autocrlf", "true")
 	writeAt(t, repo.root, citedPath, content)
 	cited, err := domainMemoryTool(repo.root, "cite", "--repo-root", repo.root, "--path", citedPath, "--lines", "1-1")
@@ -129,7 +153,7 @@ func TestTheEvidenceCheckReadsTheCommittedBytesNotTheWorkingTree(t *testing.T) {
 func TestAnEvidenceToolThatCannotRunWarnsInsteadOfBlockingThePush(t *testing.T) {
 	repo, base := evidenceRepo(t)
 	repo.commit(t, map[string]string{"src/a.py": "rule = 3\nother = 2\n"})
-	domainMemoryTool = func(string, ...string) (string, error) { return "", errors.New("uv: not found") }
+	stubDomainMemoryToolForRoot(t, repo.root, func(...string) (string, error) { return "", errors.New("uv: not found") })
 	problems, warnings, err := committedEvidenceProblems(repo.root, base+"..HEAD")
 	if err != nil || len(problems) != 0 || len(warnings) != 1 || !strings.Contains(warnings[0], "Domain Memory evidence skipped (uv: not found); CI still checks it") {
 		t.Fatalf("a missing tool did not warn: %v %v %v", problems, warnings, err)
@@ -148,14 +172,14 @@ func TestThePrePushHookStopsAStaleCitation(t *testing.T) {
 
 const currentReport = `{"results":[{"asset":"rules","id":"rule","path":"src/a.py","status":"current","cited_lines":{"start":1,"end":1}}]}`
 
-func stubEvidenceTool(output string, err error) {
-	export := domainMemoryTool
-	domainMemoryTool = func(root string, args ...string) (string, error) {
+func stubEvidenceTool(t *testing.T, repo gitRepo, output string, err error) {
+	t.Helper()
+	stubDomainMemoryToolForRoot(t, repo.root, func(args ...string) (string, error) {
 		if args[0] == "verify-evidence" {
 			return output, err
 		}
-		return export(root, args...)
-	}
+		return realDomainMemoryTool(args...)
+	})
 }
 
 func editCitedLine(t *testing.T, repo gitRepo) {
@@ -243,7 +267,7 @@ func TestPushingAnEditToAFileCitedWithoutAHashIsStoppedAsUnhashed(t *testing.T) 
 func TestAnUnknownEvidenceStatusIsAProblem(t *testing.T) {
 	repo, base := evidenceRepo(t)
 	editCitedLine(t, repo)
-	stubEvidenceTool(`{"results":[{"asset":"rules","id":"rule","path":"src/a.py","status":"unreadable","cited_lines":{"start":1,"end":1}}]}`, nil)
+	stubEvidenceTool(t, repo, `{"results":[{"asset":"rules","id":"rule","path":"src/a.py","status":"unreadable","cited_lines":{"start":1,"end":1}}]}`, nil)
 	problems, warnings, err := committedEvidenceProblems(repo.root, base+"..HEAD")
 	want := "Domain Memory evidence: rules/rule cites src/a.py:1-1, which is unreadable as committed; check the fact still holds, then re-cite it (verify-evidence --path src/a.py)"
 	if err != nil || len(warnings) != 0 || len(problems) != 1 || problems[0] != want {
@@ -254,7 +278,7 @@ func TestAnUnknownEvidenceStatusIsAProblem(t *testing.T) {
 func TestAStaleReportFollowedByTheToolsSummaryLineIsAProblem(t *testing.T) {
 	repo, base := evidenceRepo(t)
 	editCitedLine(t, repo)
-	stubEvidenceTool(`{"results":[{"asset":"rules","id":"rule","path":"src/a.py","status":"stale","cited_lines":{"start":1,"end":1}}]}`+"\nverify-evidence failed: 1 stale citation; run recite on each to cite its current lines", errors.New("exit status 1"))
+	stubEvidenceTool(t, repo, `{"results":[{"asset":"rules","id":"rule","path":"src/a.py","status":"stale","cited_lines":{"start":1,"end":1}}]}`+"\nverify-evidence failed: 1 stale citation; run recite on each to cite its current lines", errors.New("exit status 1"))
 	problems, warnings, err := committedEvidenceProblems(repo.root, base+"..HEAD")
 	want := "Domain Memory evidence: rules/rule cites src/a.py:1-1, which is stale as committed; check the fact still holds, then re-cite it (verify-evidence --path src/a.py)"
 	if err != nil || len(warnings) != 0 || len(problems) != 1 || problems[0] != want {
@@ -265,7 +289,7 @@ func TestAStaleReportFollowedByTheToolsSummaryLineIsAProblem(t *testing.T) {
 func TestAReportWithoutResultsWarnsInsteadOfPassing(t *testing.T) {
 	repo, base := evidenceRepo(t)
 	editCitedLine(t, repo)
-	stubEvidenceTool("{}", nil)
+	stubEvidenceTool(t, repo, "{}", nil)
 	problems, warnings, err := committedEvidenceProblems(repo.root, base+"..HEAD")
 	if err != nil || len(problems) != 0 || len(warnings) != 1 || warnings[0] != "Domain Memory evidence skipped ({}); CI still checks it" {
 		t.Fatalf("a report without results did not warn: %v %v %v", problems, warnings, err)
@@ -275,7 +299,7 @@ func TestAReportWithoutResultsWarnsInsteadOfPassing(t *testing.T) {
 func TestAToolThatFailsWithOnlyCurrentResultsIsAProblem(t *testing.T) {
 	repo, base := evidenceRepo(t)
 	editCitedLine(t, repo)
-	stubEvidenceTool(currentReport, errors.New("exit status 1"))
+	stubEvidenceTool(t, repo, currentReport, errors.New("exit status 1"))
 	problems, warnings, err := committedEvidenceProblems(repo.root, base+"..HEAD")
 	want := "Domain Memory evidence: verify-evidence failed on the committed bytes (exit status 1); run it with --path on the files you changed"
 	if err != nil || len(warnings) != 0 || len(problems) != 1 || problems[0] != want {
@@ -286,7 +310,7 @@ func TestAToolThatFailsWithOnlyCurrentResultsIsAProblem(t *testing.T) {
 func TestAToolThatPassesWithOnlyCurrentResultsIsClean(t *testing.T) {
 	repo, base := evidenceRepo(t)
 	editCitedLine(t, repo)
-	stubEvidenceTool(currentReport, nil)
+	stubEvidenceTool(t, repo, currentReport, nil)
 	problems, warnings, err := committedEvidenceProblems(repo.root, base+"..HEAD")
 	if err != nil || len(warnings) != 0 || len(problems) != 0 {
 		t.Fatalf("a passing tool was not clean: %v %v %v", problems, warnings, err)
@@ -326,7 +350,7 @@ func TestARegistryFileThatIsNotAConceptIsNamedAndLeftToCI(t *testing.T) {
 func TestAWarningFromTheEvidenceToolIsPrintedByThePrePushHook(t *testing.T) {
 	repo, base := evidenceRepo(t)
 	editCitedLine(t, repo)
-	stubEvidenceTool("", errors.New("uv: not found"))
+	stubEvidenceTool(t, repo, "", errors.New("uv: not found"))
 	var out strings.Builder
 	pushed := "refs/heads/main " + repo.head(t) + " refs/heads/main " + base + "\n"
 	err := preflight(repo.root, []string{"--hook"}, strings.NewReader(pushed), &out)

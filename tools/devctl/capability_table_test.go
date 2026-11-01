@@ -30,6 +30,7 @@ func writeFakeDeclaredCapabilities(t *testing.T, root, capsJSON string) {
 func TestCapabilityTableProblemsCatchesTheThreeWaysTheTableDrifts(t *testing.T) {
 	t.Parallel()
 	t.Run("an undeclared, unexcused var in .env.example", func(t *testing.T) {
+		t.Parallel()
 		root := t.TempDir()
 		writeFakeDeclaredCapabilities(t, root, `[{"id":"x","needs":["KNOWN_VAR"]}]`)
 		writeTestFile(t, root, ".env.example", "KNOWN_VAR=1\nSURPRISE_VAR=1\n")
@@ -40,6 +41,7 @@ func TestCapabilityTableProblemsCatchesTheThreeWaysTheTableDrifts(t *testing.T) 
 	})
 
 	t.Run("a declared var missing from .env.example", func(t *testing.T) {
+		t.Parallel()
 		root := t.TempDir()
 		writeFakeDeclaredCapabilities(t, root, `[{"id":"x","needs":["MISSING_VAR"]}]`)
 		writeTestFile(t, root, ".env.example", "OTHER_VAR=1\n")
@@ -50,6 +52,7 @@ func TestCapabilityTableProblemsCatchesTheThreeWaysTheTableDrifts(t *testing.T) 
 	})
 
 	t.Run("a ledger-excused var no longer in .env.example", func(t *testing.T) {
+		t.Parallel()
 		root := t.TempDir()
 		writeFakeDeclaredCapabilities(t, root, `[{"id":"x","needs":[]}]`)
 		writeTestFile(t, root, ".env.example", "OTHER_VAR=1\n")
