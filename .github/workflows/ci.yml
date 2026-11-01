@@ -687,8 +687,21 @@ jobs:
         with:
           go-version-file: tools/devctl/go.mod
           cache: false
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: codegen-images
+        with:
+          path: ~/codegen-images.tar
+          key: codegen-images-${{ hashFiles('tools/codegen/**', 'tools/toolchain.yaml') }}
+      - if: steps.codegen-images.outputs.cache-hit == 'true'
+        name: Load the codegen images built by an earlier run of the same sources
+        run: docker load -i ~/codegen-images.tar
       - name: Deterministic generated-output check
+        env:
+          SKILLHUB_CODEGEN_IMAGES_PREBUILT: ${{ steps.codegen-images.outputs.cache-hit }}
         run: go -C tools/devctl run . gen --check
+      - if: steps.codegen-images.outputs.cache-hit != 'true'
+        name: Save the codegen images for the next run of the same sources
+        run: docker save -o ~/codegen-images.tar $(grep -o '"skillhub/[^"]*"' tools/toolchain.yaml | tr -d '"')
 
       - name: redocly lint (contracts/openapi)
         run: npx --yes @redocly/cli@2.71.0 lint contracts/openapi/*.yaml

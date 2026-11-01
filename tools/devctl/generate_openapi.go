@@ -88,13 +88,7 @@ func generateTypeScriptOpenAPI(root, scratch, tsImage string, out io.Writer) (ge
 	if err := os.MkdirAll(tsRoot, 0o755); err != nil {
 		return generationOutput{}, err
 	}
-	buildArgs := []string{
-		cmdBuild, flagQuiet,
-		"-f", filepath.Join(root, "tools", "codegen", "ts", "Dockerfile"),
-		"-t", tsImage,
-		filepath.Join(root, "tools", "codegen", "ts"),
-	}
-	if err := runDocker("TypeScript codegen image build", buildArgs, out); err != nil {
+	if err := buildCodegenImage("TypeScript codegen image build", filepath.Join(root, "tools", "codegen", "ts"), tsImage, out); err != nil {
 		return generationOutput{}, err
 	}
 	tsArgs := []string{cmdRun, dockerFlagRm}
@@ -120,13 +114,7 @@ func generateTypeScriptOpenAPI(root, scratch, tsImage string, out io.Writer) (ge
 }
 
 func generatePythonOpenAPI(root, scratch, pyImage string, out io.Writer) (generationOutput, error) {
-	buildArgs := []string{
-		cmdBuild, flagQuiet,
-		"-f", filepath.Join(root, "tools", "codegen", "python", "Dockerfile"),
-		"-t", pyImage,
-		filepath.Join(root, "tools", "codegen", "python"),
-	}
-	if err := runDocker("Python codegen image build", buildArgs, out); err != nil {
+	if err := buildCodegenImage("Python codegen image build", filepath.Join(root, "tools", "codegen", "python"), pyImage, out); err != nil {
 		return generationOutput{}, err
 	}
 	pyRoot := filepath.Join(scratch, "python")
@@ -164,13 +152,7 @@ func generatePythonOpenAPI(root, scratch, pyImage string, out io.Writer) (genera
 }
 
 func generateGoOpenAPI(root, scratch, goImage string, out io.Writer) (generationOutput, error) {
-	goBuildArgs := []string{
-		cmdBuild, flagQuiet,
-		"-f", filepath.Join(root, "tools", "codegen", "go", "Dockerfile"),
-		"-t", goImage,
-		filepath.Join(root, "tools", "codegen", "go"),
-	}
-	if err := runDocker("Go codegen image build", goBuildArgs, out); err != nil {
+	if err := buildCodegenImage("Go codegen image build", filepath.Join(root, "tools", "codegen", "go"), goImage, out); err != nil {
 		return generationOutput{}, err
 	}
 	goRoot := filepath.Join(scratch, "go")
@@ -199,6 +181,29 @@ func generateGoOpenAPI(root, scratch, goImage string, out io.Writer) (generation
 		source: goRoot,
 		target: filepath.Join(root, "apps", "platform", "internal", "entrypoint", "api", dirGen),
 	}, nil
+}
+
+const envCodegenImagesPrebuilt = "SKILLHUB_CODEGEN_IMAGES_PREBUILT"
+
+func buildCodegenImage(label, contextDir, image string, out io.Writer) error {
+	if reuseCodegenImage(os.Getenv(envCodegenImagesPrebuilt), image, dockerImagePresent) {
+		fmt.Fprintln(out, label+": reused "+image)
+		return nil
+	}
+	return runDocker(label, []string{
+		cmdBuild, flagQuiet,
+		"-f", filepath.Join(contextDir, "Dockerfile"),
+		"-t", image,
+		contextDir,
+	}, out)
+}
+
+func reuseCodegenImage(prebuilt, image string, present func(string) bool) bool {
+	return prebuilt == "true" && present(image)
+}
+
+func dockerImagePresent(image string) bool {
+	return exec.Command("docker", "image", "inspect", image).Run() == nil
 }
 
 func runDocker(label string, args []string, out io.Writer) error {

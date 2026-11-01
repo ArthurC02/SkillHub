@@ -8,6 +8,27 @@ import (
 	"testing"
 )
 
+func TestACodegenImageIsReusedOnlyWhenCIDeclaresItPrebuiltAndItIsPresent(t *testing.T) {
+	t.Parallel()
+	present := func(image string) bool { return image == "skillhub/ts-codegen:0.1.0" }
+	cases := []struct {
+		name     string
+		prebuilt string
+		image    string
+		want     bool
+	}{
+		{"prebuilt and present", "true", "skillhub/ts-codegen:0.1.0", true},
+		{"prebuilt but the image is missing", "true", "skillhub/ts-codegen:0.2.0", false},
+		{"present but nobody declared it prebuilt", "", "skillhub/ts-codegen:0.1.0", false},
+		{"a cache miss reports false, not empty", "false", "skillhub/ts-codegen:0.1.0", false},
+	}
+	for _, tc := range cases {
+		if got := reuseCodegenImage(tc.prebuilt, tc.image, present); got != tc.want {
+			t.Errorf("%s: reuseCodegenImage(%q, %q) = %v, want %v", tc.name, tc.prebuilt, tc.image, got, tc.want)
+		}
+	}
+}
+
 func TestGenerateTypeScriptOpenAPIFailsFastWhenScratchIsUnusable(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
