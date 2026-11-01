@@ -46,7 +46,7 @@ const FIELD_LABELS: { key: keyof Fields; label: string; max: number }[] = [
   { key: "tool", label: "工具名稱（英數，以 _ 或 - 連接）", max: MAX_TOOL },
   { key: "purpose", label: "用途", max: MAX_PURPOSE },
   { key: "parameters", label: "參數摘要（可留空）", max: MAX_PARAMETERS },
-  { key: "server_url", label: "伺服器位址（https://）", max: MAX_URL },
+  { key: "server_url", label: "伺服器位址（HTTPS）", max: MAX_URL },
 ];
 
 function AddTool() {
