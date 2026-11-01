@@ -11,11 +11,25 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"sync"
 )
 
 type storedEdge struct {
 	From, To, At string
 }
+
+var runningChecker = sync.OnceValue(func() string {
+	executable, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	data, err := os.ReadFile(executable)
+	if err != nil {
+		return ""
+	}
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
+})
 
 func wiringCacheDir() string {
 	dir, err := os.UserCacheDir()
@@ -25,9 +39,9 @@ func wiringCacheDir() string {
 	return filepath.Join(dir, "skillhub", "wiring-edges")
 }
 
-func cachedWiringEdges(cacheDir, moduleDir string, identities map[string]packageIdentity, compute func() (map[contextEdge]string, error)) (map[contextEdge]string, error) {
-	key, err := wiringKey(moduleDir, identities)
-	if err != nil || cacheDir == "" {
+func cachedWiringEdges(cacheDir, checker, moduleDir string, identities map[string]packageIdentity, compute func() (map[contextEdge]string, error)) (map[contextEdge]string, error) {
+	key, err := wiringKey(checker, moduleDir, identities)
+	if err != nil || cacheDir == "" || checker == "" {
 		return compute()
 	}
 	path := filepath.Join(cacheDir, key+".json")
@@ -42,7 +56,7 @@ func cachedWiringEdges(cacheDir, moduleDir string, identities map[string]package
 	return edges, nil
 }
 
-func wiringKey(moduleDir string, identities map[string]packageIdentity) (string, error) {
+func wiringKey(checker, moduleDir string, identities map[string]packageIdentity) (string, error) {
 	files, err := wiringSources(moduleDir)
 	if err != nil {
 		return "", err
@@ -53,7 +67,7 @@ func wiringKey(moduleDir string, identities map[string]packageIdentity) (string,
 	if err != nil {
 		return "", err
 	}
-	for _, part := range []string{runtime.GOOS, runtime.GOARCH, os.Getenv("GOFLAGS"), string(identityJSON)} {
+	for _, part := range []string{checker, runtime.GOOS, runtime.GOARCH, os.Getenv("GOFLAGS"), string(identityJSON)} {
 		writeHashPart(hash, []byte(part))
 	}
 	for _, file := range files {

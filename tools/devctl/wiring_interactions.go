@@ -75,7 +75,7 @@ func wiringInteractionProblems(root string) []string {
 	if err != nil {
 		return []string{fmt.Sprintf("wiring-interactions: %v", err)}
 	}
-	edges, err := cachedWiringEdges(wiringCacheDir(), moduleDir, identities, func() (map[contextEdge]string, error) {
+	edges, err := cachedWiringEdges(wiringCacheDir(), runningChecker(), moduleDir, identities, func() (map[contextEdge]string, error) {
 		return wiringEdges(moduleDir, compositionRootPatterns, contextOf)
 	})
 	if err != nil {
