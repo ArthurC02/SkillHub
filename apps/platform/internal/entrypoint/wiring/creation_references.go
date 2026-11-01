@@ -12,14 +12,19 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission/mcptools"
 	catalog "github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 	trace "github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 )
 
 func WireCreationReferenceReads(s *creation.Service, versions *ingest.Service, search *catalog.Service) {
-	s.ValidateDraft = func(ctx context.Context, draft creation.GeneratedSkill) (string, string, bool, error) {
+	s.Drafts.Validate = func(ctx context.Context, draft creation.GeneratedSkill) (string, string, bool, error) {
 		check, err := versions.ValidateCreationDraft(ctx, GeneratedSkillForIngest(draft))
 		return check.ContentHash, check.Report, check.Blocked, err
+	}
+	s.Drafts.OfferedMCPTools = func(ctx context.Context) ([]creation.MCPTool, error) {
+		active, err := mcptools.Active(ctx, s.Pool)
+		return creationMCPTools(active), err
 	}
 	s.Mask = (&trace.Masker{}).MaskString
 	s.ResolveReference = referenceResolver(versions, search)
@@ -91,6 +96,14 @@ func addCatalogFacts(ctx context.Context, search *catalog.Service, ref *creation
 	if facts.ScanStatus == "scanned" {
 		ref.Warnings = &facts.Warnings
 	}
+}
+
+func creationMCPTools(active []mcptools.Tool) []creation.MCPTool {
+	out := make([]creation.MCPTool, 0, len(active))
+	for _, t := range active {
+		out = append(out, creation.MCPTool{Reference: t.Reference(), Purpose: t.Purpose, Parameters: t.Parameters})
+	}
+	return out
 }
 
 func GeneratedSkillForIngest(g creation.GeneratedSkill) ingest.GeneratedSkill {

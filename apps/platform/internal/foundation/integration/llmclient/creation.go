@@ -28,6 +28,7 @@ type CreationStepRequest struct {
 	Draft                       *GeneratedSkill          `json:"draft,omitempty"`
 	DraftValidation             *CreationDraftValidation `json:"draft_validation,omitempty"`
 	AllowedTools                []string                 `json:"allowed_tools"`
+	MCPTools                    []CreationMCPTool        `json:"mcp_tools,omitempty"`
 	TimeoutSeconds              int                      `json:"timeout_seconds"`
 	MaxOutputTokens             int                      `json:"max_output_tokens"`
 	GatewayKey                  string                   `json:"-"`
@@ -56,6 +57,11 @@ type CreationDraftValidation struct {
 	ContentHash string `json:"content_hash"`
 	Blocked     bool   `json:"blocked"`
 	Report      string `json:"report"`
+}
+type CreationMCPTool struct {
+	Reference  string `json:"reference"`
+	Purpose    string `json:"purpose"`
+	Parameters string `json:"parameters"`
 }
 type CreationChallengeCase struct {
 	Name     string   `json:"name"`

@@ -826,6 +826,15 @@ class AgentToolIntent(BaseModel):
     )
 
 
+class CreationMCPTool(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    reference: constr(min_length=1, max_length=135)
+    purpose: constr(max_length=500)
+    parameters: constr(max_length=1000)
+
+
 class CreationDraftValidation(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -1025,6 +1034,11 @@ class CreationStepRequest(BaseModel):
     draft: GeneratedSkill | None = None
     draft_validation: CreationDraftValidation | None = None
     allowed_tools: list[AllowedTool]
+    mcp_tools: list[CreationMCPTool] | None = Field(
+        None,
+        description='The MCP tools the operator currently offers. A draft may declare only these references in allowed_tools; Go refuses any other mcp__ name.',
+        max_length=64,
+    )
     timeout_seconds: conint(ge=1, le=120) = Field(
         ..., description='Remaining per-call deadline authorized by Go.'
     )

@@ -231,10 +231,10 @@ func runDraftGuardCase(t *testing.T, tc guardCase, entry string) {
 	if tc.name == "validator not wired" {
 		s = &Service{}
 	} else {
-		s = &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
+		s = &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 			calls++
 			return "hash", "report", false, nil
-		}}
+		}}}
 	}
 	p, r := tc.build()
 	e := envelope{Snapshot: p, Limits: testLimitsForProposal()}
@@ -280,9 +280,9 @@ func TestProposalValidateDraftErrorLeavesDraftUnchanged(t *testing.T) {
 	sentinel := errors.New("validator exploded")
 	for _, entry := range []string{"draft", "validate_draft"} {
 		t.Run(entry, func(t *testing.T) {
-			s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
+			s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 				return "", "", false, sentinel
-			}}
+			}}}
 			existing := &Draft{Revision: 1, ContentHash: "h", Skill: GeneratedSkill{Name: "x", Body: "old"}}
 			e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true, Draft: existing}}
 			r := &StepResult{Message: "ok", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "new"}}
@@ -306,9 +306,9 @@ func TestProposalValidateDraftErrorLeavesDraftUnchanged(t *testing.T) {
 func TestNudgePrefersACopiedMarkerOverMissingNodes(t *testing.T) {
 	prior := &Draft{Revision: 1, ContentHash: "prior-hash", Skill: GeneratedSkill{Name: "x", Body: "old", AllowedTools: "Read"}}
 	zero := 0.0
-	s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
+	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "new-hash", "{}", false, nil
-	}}
+	}}}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
 		Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero, Draft: prior,
 		DiagramFingerprint: "fp", DiagramDescription: "請款流程", DiagramDescriptionConfirmed: true, DiagramConfirmed: true, DiagramInterpretation: &DiagramInterpretation{Nodes: []string{"核准請款"}},
@@ -329,9 +329,9 @@ func TestNudgePrefersACopiedMarkerOverMissingNodes(t *testing.T) {
 func TestNudgePrefersANewToolOverACopiedMarker(t *testing.T) {
 	prior := &Draft{Revision: 1, ContentHash: "prior-hash", Skill: GeneratedSkill{Name: "x", Body: "old", AllowedTools: "Read"}}
 	zero := 0.0
-	s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
+	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "new-hash", "{}", false, nil
-	}}
+	}}}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
 		Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero, Draft: prior,
 		EvaluationText: feedback.EvaluationText(attackObservation),
@@ -350,9 +350,9 @@ func TestNudgePrefersANewToolOverACopiedMarker(t *testing.T) {
 
 func TestNudgeNamesMissingDiagramNodes(t *testing.T) {
 	zero := 0.0
-	s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
+	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "new-hash", "{}", false, nil
-	}}
+	}}}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
 		Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero,
 		DiagramFingerprint: "fp", DiagramDescription: "付款流程", DiagramDescriptionConfirmed: true, DiagramConfirmed: true, DiagramInterpretation: &DiagramInterpretation{Nodes: []string{"寄出付款通知"}},
@@ -373,9 +373,9 @@ func TestNudgeNamesTheEvaluationOnlyWhenItMentionsTheNewTool(t *testing.T) {
 	prior := &Draft{Revision: 1, ContentHash: "prior-hash", Skill: GeneratedSkill{Name: "x", Body: "old", AllowedTools: "Read"}}
 	zero := 0.0
 	build := func(evaluation string) (*Service, *envelope, *StepResult) {
-		s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
+		s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 			return "new-hash", "{}", false, nil
-		}}
+		}}}
 		e := &envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
 			Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero, Draft: prior,
 			EvaluationText: evaluation,
@@ -408,9 +408,9 @@ func TestNudgeNamesTheEvaluationOnlyWhenItMentionsTheNewTool(t *testing.T) {
 func TestHandBackPrefersTheUnchangedSentenceOverMissingNodes(t *testing.T) {
 	ran := &Draft{Revision: 1, ContentHash: "same-hash"}
 	candidate := &Candidate{SkillID: "keep-me"}
-	s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
+	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "same-hash", "{}", false, nil
-	}}
+	}}}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
 		Brief: "b", BriefConfirmed: true, Draft: ran, RunUnmet: true, Candidate: candidate, Nudges: MaxNudges,
 		DiagramFingerprint: "fp", DiagramDescription: "請款流程", DiagramDescriptionConfirmed: true, DiagramConfirmed: true, DiagramInterpretation: &DiagramInterpretation{Nodes: []string{"核准請款"}},
@@ -432,9 +432,9 @@ func TestHandBackPrefersTheUnchangedSentenceOverMissingNodes(t *testing.T) {
 
 func TestHandBackPrefersMissingNodesOverACopiedMarker(t *testing.T) {
 	prior := &Draft{Revision: 1, ContentHash: "old-hash", Skill: GeneratedSkill{Name: "x", Body: "old", AllowedTools: "Read"}}
-	s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
+	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "new-hash", "{}", false, nil
-	}}
+	}}}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
 		Brief: "b", BriefConfirmed: true, Nudges: MaxNudges, Draft: prior,
 		DiagramFingerprint: "fp", DiagramDescription: "請款流程", DiagramDescriptionConfirmed: true, DiagramConfirmed: true, DiagramInterpretation: &DiagramInterpretation{Nodes: []string{"核准請款"}},
@@ -454,9 +454,9 @@ func TestHandBackPrefersMissingNodesOverACopiedMarker(t *testing.T) {
 
 func TestHandBackPrefersACopiedMarkerOverANewTool(t *testing.T) {
 	prior := &Draft{Revision: 1, ContentHash: "old-hash", Skill: GeneratedSkill{Name: "x", Body: "old", AllowedTools: "Read"}}
-	s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
+	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "new-hash", "{}", false, nil
-	}}
+	}}}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
 		Brief: "b", BriefConfirmed: true, Nudges: MaxNudges, Draft: prior,
 		EvaluationText: feedback.EvaluationText(attackObservation),
@@ -475,9 +475,9 @@ func TestHandBackPrefersACopiedMarkerOverANewTool(t *testing.T) {
 
 func TestHandBackReportsANewToolWhenNothingElseApplies(t *testing.T) {
 	prior := &Draft{Revision: 1, ContentHash: "old-hash", Skill: GeneratedSkill{Name: "x", Body: "old", AllowedTools: "Read"}}
-	s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
+	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "new-hash", "{}", false, nil
-	}}
+	}}}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
 		Brief: "b", BriefConfirmed: true, Nudges: MaxNudges, Draft: prior,
 		EvaluationText: "the output was missing a totals column",
@@ -496,9 +496,9 @@ func TestHandBackReportsANewToolWhenNothingElseApplies(t *testing.T) {
 
 func TestDraftOutcomeCopiesEnvelopePreviousDraftRegardlessOfHashChange(t *testing.T) {
 	sentinel := &Draft{Revision: 1, ContentHash: "sentinel"}
-	s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
+	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "new-hash", "ok", false, nil
-	}}
+	}}}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}, PreviousDraft: sentinel}
 	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "body"}}
 	_, _, err := s.proposal(context.Background(), 3, &e, r, nil)
@@ -513,9 +513,9 @@ func TestDraftOutcomeCopiesEnvelopePreviousDraftRegardlessOfHashChange(t *testin
 func TestDraftOutcomeClearsCandidateAndRunUnmetWhenTheHashChanges(t *testing.T) {
 	prior := &Draft{Revision: 1, ContentHash: "old-hash"}
 	candidate := &Candidate{SkillID: "s1"}
-	s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
+	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "new-hash", "ok", false, nil
-	}}
+	}}}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true, Draft: prior, Candidate: candidate, RunUnmet: true}}
 	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "changed body"}}
 	_, _, err := s.proposal(context.Background(), 5, &e, r, nil)
@@ -528,9 +528,9 @@ func TestDraftOutcomeClearsCandidateAndRunUnmetWhenTheHashChanges(t *testing.T) 
 }
 
 func TestDraftOutcomeStoresTheRevisionHashReportAndBlockedFlag(t *testing.T) {
-	s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
+	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "hash-xyz", "the finding text", true, nil
-	}}
+	}}}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}}
 	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "body"}}
 	_, _, err := s.proposal(context.Background(), 42, &e, r, nil)
@@ -545,9 +545,9 @@ func TestDraftOutcomeStoresTheRevisionHashReportAndBlockedFlag(t *testing.T) {
 
 func TestDraftOutcomeKeepsDuplicatesOnARenameOnlyChange(t *testing.T) {
 	prior := &Draft{Revision: 1, ContentHash: "h1", Skill: GeneratedSkill{Name: "Old Name", Description: "same desc", Body: "same body"}}
-	s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
+	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "h2", "ok", false, nil
-	}}
+	}}}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
 		Brief: "b", BriefConfirmed: true, Draft: prior,
 		Duplicates: []Reference{{SkillID: "dup"}}, PendingMaterialize: "pm", DuplicateAcknowledged: true,
@@ -564,9 +564,9 @@ func TestDraftOutcomeKeepsDuplicatesOnARenameOnlyChange(t *testing.T) {
 
 func TestDraftOutcomeClearsDuplicatesOnAnyOtherChange(t *testing.T) {
 	prior := &Draft{Revision: 1, ContentHash: "h1", Skill: GeneratedSkill{Name: "Old Name", Description: "same desc", Body: "same body"}}
-	s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
+	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "h2", "ok", false, nil
-	}}
+	}}}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
 		Brief: "b", BriefConfirmed: true, Draft: prior,
 		Duplicates: []Reference{{SkillID: "dup"}}, PendingMaterialize: "pm", DuplicateAcknowledged: true,
@@ -776,9 +776,9 @@ func assertHashChangeRecordsPreviousDraft(t *testing.T, e *envelope, prior *Draf
 
 func TestValidateDraftRecordsThePreviousDraftWhenTheHashChanges(t *testing.T) {
 	prior := &Draft{Revision: 3, ContentHash: "old-hash", Skill: GeneratedSkill{Name: "x", Body: "old body", AllowedTools: "Read"}}
-	s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
+	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "new-hash", "report text", false, nil
-	}}
+	}}}
 	candidate := &Candidate{SkillID: "s1"}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true, Draft: prior, Candidate: candidate, RunUnmet: true}}
 	r := &StepResult{Message: "revised", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "validate_draft"}, Draft: &GeneratedSkill{Name: "y", Body: "new body", AllowedTools: "Read"}}
@@ -796,9 +796,9 @@ func TestValidateDraftRecordsThePreviousDraftWhenTheHashChanges(t *testing.T) {
 
 func TestValidateDraftDoesNotShortCircuitWhenTheStoredDraftIsBlocked(t *testing.T) {
 	blockedDraft := &Draft{Revision: 2, ContentHash: "same-hash", Skill: GeneratedSkill{Name: "x", Body: "body", AllowedTools: "Read"}, Blocked: true}
-	s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
+	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "same-hash", "now passes", false, nil
-	}}
+	}}}
 	candidate := &Candidate{SkillID: "keep-me"}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true, Draft: blockedDraft, Candidate: candidate, RunUnmet: true}}
 	r := &StepResult{Message: "retry", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "validate_draft"}, Draft: &GeneratedSkill{Name: "z", Body: "body", AllowedTools: "Read"}}
@@ -822,9 +822,9 @@ func TestValidateDraftDoesNotShortCircuitWhenTheStoredDraftIsBlocked(t *testing.
 
 func TestValidateDraftKeepsDuplicatesOnARenameOnlyChange(t *testing.T) {
 	prior := &Draft{Revision: 1, ContentHash: "h1", Skill: GeneratedSkill{Name: "Old Name", Description: "same desc", Body: "same body"}}
-	s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
+	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "h2", "ok", false, nil
-	}}
+	}}}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
 		Brief: "b", BriefConfirmed: true, Draft: prior,
 		Duplicates: []Reference{{SkillID: "dup"}}, PendingMaterialize: "pm", DuplicateAcknowledged: true,
@@ -841,9 +841,9 @@ func TestValidateDraftKeepsDuplicatesOnARenameOnlyChange(t *testing.T) {
 
 func TestValidateDraftClearsDuplicatesOnAnyOtherChange(t *testing.T) {
 	prior := &Draft{Revision: 1, ContentHash: "h1", Skill: GeneratedSkill{Name: "Old Name", Description: "same desc", Body: "same body"}}
-	s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
+	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "h2", "ok", false, nil
-	}}
+	}}}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
 		Brief: "b", BriefConfirmed: true, Draft: prior,
 		Duplicates: []Reference{{SkillID: "dup"}}, PendingMaterialize: "pm", DuplicateAcknowledged: true,

@@ -301,10 +301,10 @@ func draftFollowsConfirmation(p Snapshot, r *StepResult) bool {
 
 func (s *Service) acceptDraft(ctx context.Context, revision int64, e *envelope, r *StepResult) (State, bool, error) {
 	p := &e.Snapshot
-	if !draftFollowsConfirmation(*p, r) || s.ValidateDraft == nil {
+	if !draftFollowsConfirmation(*p, r) || s.Drafts.Validate == nil {
 		return "", false, rejectedReply("delivers a draft that does not follow the confirmed brief")
 	}
-	hash, report, blocked, err := s.ValidateDraft(ctx, *r.Draft)
+	hash, report, blocked, err := s.Drafts.Validate(ctx, *r.Draft)
 	if err != nil {
 		return "", false, err
 	}

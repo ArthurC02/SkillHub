@@ -20,10 +20,10 @@ func fundedSession(p Snapshot) envelope {
 }
 
 func countingValidator(calls *int, blocked bool) *Service {
-	return &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
+	return &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		*calls++
 		return "hash", "report", blocked, nil
-	}}
+	}}}
 }
 
 func lastMessage(p Snapshot) string {
@@ -235,10 +235,10 @@ func TestADraftThatReplacesAnotherKeepsTheReplacedOneAsPrevious(t *testing.T) {
 
 func TestAskingToValidateWithoutADraftValidatesTheStoredOne(t *testing.T) {
 	var seen string
-	s := &Service{ValidateDraft: func(_ context.Context, d GeneratedSkill) (string, string, bool, error) {
+	s := &Service{Drafts: DraftRules{Validate: func(_ context.Context, d GeneratedSkill) (string, string, bool, error) {
 		seen = d.Body
 		return "h", "report", false, nil
-	}}
+	}}}
 	e := fundedSession(Snapshot{Brief: "task", BriefConfirmed: true, Draft: &Draft{ContentHash: "old", Skill: GeneratedSkill{Body: "stored body"}}})
 	if _, _, err := s.proposal(context.Background(), 4, &e, asValidation(&StepResult{Message: "ok"}), nil); err != nil || seen != "stored body" {
 		t.Fatalf("validated %q, err %v; want the stored draft", seen, err)

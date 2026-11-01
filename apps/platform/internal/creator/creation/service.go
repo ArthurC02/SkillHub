@@ -294,10 +294,10 @@ type Service struct {
 
 	Adopt func(context.Context, pgx.Tx, identity.Workspace, string) (Candidate, error)
 
-	Mask          func(string) string
-	ValidateDraft func(context.Context, GeneratedSkill) (string, string, bool, error)
-	Materialize   func(context.Context, identity.Workspace, GeneratedSkill, Provenance, func(context.Context, pgx.Tx, Candidate) error) error
-	ReadRun       func(context.Context, identity.Workspace, string, Candidate) (string, error)
+	Mask        func(string) string
+	Drafts      DraftRules
+	Materialize func(context.Context, identity.Workspace, GeneratedSkill, Provenance, func(context.Context, pgx.Tx, Candidate) error) error
+	ReadRun     func(context.Context, identity.Workspace, string, Candidate) (string, error)
 
 	CreateAcceptanceTestCase func(ctx context.Context, tx pgx.Tx, ws identity.Workspace, skillID, name, prompt string, criteria []string) (string, error)
 	IssueKey                 func(context.Context, string, string, float64, time.Duration) (string, error)
@@ -306,6 +306,11 @@ type Service struct {
 	HandOff func(context.Context, JobArgs, *Diagram) error
 
 	Billing BillingHooks
+}
+
+type DraftRules struct {
+	Validate        func(context.Context, GeneratedSkill) (string, string, bool, error)
+	OfferedMCPTools func(context.Context) ([]MCPTool, error)
 }
 
 func digest(v any) string {

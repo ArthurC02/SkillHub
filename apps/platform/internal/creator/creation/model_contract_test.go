@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -66,6 +67,7 @@ func aStepRequest() StepRequest {
 		Draft:                &GeneratedSkill{Name: "summary", Files: []GeneratedFile{{Path: "a.py", Content: "x"}}},
 		DraftValidation:      &DraftValidation{ContentHash: "hash", Blocked: true, Report: "blocked"},
 		AllowedTools:         []string{"search_catalog"},
+		MCPTools:             []MCPTool{{Reference: "mcp__calendar__create_event", Purpose: "建立行事曆事件", Parameters: "title, start"}},
 		TimeoutSeconds:       60,
 		MaxOutputTokens:      2048,
 		GatewayKey:           "a-key",
@@ -170,6 +172,14 @@ func assertDraftValidationOnTheWire(t *testing.T, sent llmclient.CreationStepReq
 	}
 }
 
+func assertMCPToolsOnTheWire(t *testing.T, sent llmclient.CreationStepRequest) {
+	t.Helper()
+	want := []llmclient.CreationMCPTool{{Reference: "mcp__calendar__create_event", Purpose: "建立行事曆事件", Parameters: "title, start"}}
+	if !reflect.DeepEqual(sent.MCPTools, want) {
+		t.Errorf("MCP tools on the wire = %+v, want %+v", sent.MCPTools, want)
+	}
+}
+
 func assertLimitsOnTheWire(t *testing.T, sent llmclient.CreationStepRequest) {
 	t.Helper()
 	if len(sent.AllowedTools) != 1 || sent.TimeoutSeconds != 60 || sent.MaxOutputTokens != 2048 {
@@ -191,6 +201,7 @@ func TestTheStepAdapterCarriesTheWholeRequestOntoTheWire(t *testing.T) {
 	assertReferencesOnTheWire(t, sent)
 	assertDraftOnTheWire(t, sent)
 	assertDraftValidationOnTheWire(t, sent)
+	assertMCPToolsOnTheWire(t, sent)
 	assertLimitsOnTheWire(t, sent)
 }
 

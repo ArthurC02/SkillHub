@@ -124,6 +124,10 @@ func (s *Service) Step(ctx context.Context, a JobArgs, diagram *Diagram) error {
 	if err != nil {
 		return err
 	}
+	mcpTools, err := s.Drafts.offeredMCPTools(ctx)
+	if err != nil {
+		return err
+	}
 	started, err := s.startAttempt(ctx, a, diagram, fetched)
 	if err != nil || started == nil {
 		return err
@@ -134,6 +138,7 @@ func (s *Service) Step(ctx context.Context, a JobArgs, diagram *Diagram) error {
 	defer cancel()
 	watching := s.cancelWhenSessionMoves(callCtx, cancel, a)
 	req := s.stepRequest(a, started.revision, e, diagram)
+	req.MCPTools = mcpTools
 	response, usage, callErr := s.callModel(callCtx, a, e, req, callDeadline)
 	cancel()
 	<-watching

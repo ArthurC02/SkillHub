@@ -356,9 +356,9 @@ func TestADiagramAttemptMustComeBackWithAnUnderstanding(t *testing.T) {
 }
 
 func TestAUsableResponseIsJudgedAtTheNextRevision(t *testing.T) {
-	s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
+	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "h", "{}", false, nil
-	}}
+	}}}
 	e := &envelope{Deadline: time.Now().Add(time.Hour), Limits: testLimits(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1}}
 	response := &StepResult{Outcome: "draft", Message: "draft", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "body"}}
 	state, next, err := s.attemptOutcome(context.Background(), liveRow(6), e, stepCall{reply: response})

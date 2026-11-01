@@ -32,7 +32,7 @@ func TestTheCreationDraftCheckReachesTheSessionHashReportAndVerdictInPlace(t *te
 			wireCreationReads(s, versions, nil)
 
 			want, wantErr := versions.ValidateCreationDraft(context.Background(), wiring.GeneratedSkillForIngest(c.draft))
-			hash, report, blocked, err := s.ValidateDraft(context.Background(), c.draft)
+			hash, report, blocked, err := s.Drafts.Validate(context.Background(), c.draft)
 			if err != nil || wantErr != nil {
 				t.Fatalf("err = %v, admission err = %v; want neither", err, wantErr)
 			}

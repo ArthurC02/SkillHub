@@ -44,10 +44,10 @@ func TestInvalidCostsNeverBecomeCredit(t *testing.T) {
 }
 func TestChangedConfirmedBriefCannotProduceDraft(t *testing.T) {
 	calls := 0
-	s := Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
+	s := Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		calls++
 		return "hash", "ok", false, nil
-	}}
+	}}}
 	e := envelope{Snapshot: Snapshot{Brief: "confirmed", BriefConfirmed: true}, Limits: testLimits()}
 	state, next, err := s.proposal(context.Background(), 3, &e, &StepResult{Outcome: "draft", Message: "proposal", Brief: "different", Draft: &GeneratedSkill{Body: "body"}}, nil)
 	if err != nil || next || state != "waiting_confirmation" || e.Snapshot.BriefConfirmed || e.Snapshot.Draft != nil || calls != 0 {
@@ -110,13 +110,13 @@ func TestDiagramInterpretationRequiresConfirmedDescriptionAndEveryAnswer(t *test
 func TestValidateToolKeepsNewDraftAndRequiresConfirmation(t *testing.T) {
 	for _, confirmedBrief := range []bool{false, true} {
 		calls := 0
-		s := Service{ValidateDraft: func(_ context.Context, draft GeneratedSkill) (string, string, bool, error) {
+		s := Service{Drafts: DraftRules{Validate: func(_ context.Context, draft GeneratedSkill) (string, string, bool, error) {
 			calls++
 			if draft.Body != "newly proposed body" {
 				t.Error("validated stale content")
 			}
 			return "new-hash", "actual finding", true, nil
-		}}
+		}}}
 		e := envelope{Snapshot: Snapshot{Brief: "task", BriefConfirmed: confirmedBrief}, Limits: testLimits()}
 		state, next, err := s.proposal(context.Background(), 3, &e, &StepResult{
 			Outcome: "tool_intent", Message: "validate", Brief: "task", ToolIntent: &ToolIntent{Kind: "validate_draft"},
@@ -334,9 +334,9 @@ func assertNudgesExhaustedStoresTheDraft(t *testing.T, s *Service, e *envelope, 
 }
 
 func TestProposalNudgesAnUnchangedDraftAfterAnUnmetRun(t *testing.T) {
-	s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
+	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "same-hash", "{}", false, nil
-	}}
+	}}}
 	zero := 0.0
 	ran := &Draft{Revision: 3, ContentHash: "same-hash"}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero, Draft: ran, RunUnmet: true}}
@@ -346,7 +346,7 @@ func TestProposalNudgesAnUnchangedDraftAfterAnUnmetRun(t *testing.T) {
 	}
 	assertNudgesExhaustedStoresTheDraft(t, s, &e, r)
 
-	s.ValidateDraft = func(context.Context, GeneratedSkill) (string, string, bool, error) {
+	s.Drafts.Validate = func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "new-hash", "{}", false, nil
 	}
 	e.Snapshot.Nudges = 0
@@ -357,9 +357,9 @@ func TestProposalNudgesAnUnchangedDraftAfterAnUnmetRun(t *testing.T) {
 }
 
 func TestProposalNudgesADraftThatSkipsDiagramNodes(t *testing.T) {
-	s := &Service{ValidateDraft: func(_ context.Context, d GeneratedSkill) (string, string, bool, error) {
+	s := &Service{Drafts: DraftRules{Validate: func(_ context.Context, d GeneratedSkill) (string, string, bool, error) {
 		return "h-" + d.Body, "{}", false, nil
-	}}
+	}}}
 	zero := 0.0
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, DiagramDescription: "報帳流程", DiagramDescriptionConfirmed: true, DiagramConfirmed: true, DiagramFingerprint: "fp", DiagramInterpretation: &DiagramInterpretation{Nodes: []string{"收到報帳申請", "送經理簽核", "寄出付款通知"}}, BudgetUSD: 1, SpentUSD: &zero}}
 	half := &StepResult{Outcome: "draft", Message: "草稿", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "1. 收到報帳申請\n2. 送經理簽核"}}
@@ -403,9 +403,9 @@ func assertBlockedValidationIsCounted(t *testing.T, s *Service, e *envelope, i i
 }
 
 func TestProposalStopsARepeatedBlockedValidation(t *testing.T) {
-	s := &Service{ValidateDraft: func(_ context.Context, d GeneratedSkill) (string, string, bool, error) {
+	s := &Service{Drafts: DraftRules{Validate: func(_ context.Context, d GeneratedSkill) (string, string, bool, error) {
 		return "h-" + d.Body, "套件結構無法通過驗證：a second SKILL.md", true, nil
-	}}
+	}}}
 	zero := 0.0
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
 	for i, body := range []string{"one", "two"} {
@@ -420,7 +420,7 @@ func TestProposalStopsARepeatedBlockedValidation(t *testing.T) {
 		t.Fatalf("the person was not told: %+v", last)
 	}
 
-	s.ValidateDraft = func(_ context.Context, d GeneratedSkill) (string, string, bool, error) {
+	s.Drafts.Validate = func(_ context.Context, d GeneratedSkill) (string, string, bool, error) {
 		return "h-" + d.Body, "another", true, nil
 	}
 	state, _, err = s.proposal(context.Background(), 5, &e, r, nil)
@@ -441,9 +441,9 @@ func TestProposalIgnoresADiagramInterpretationWhenNoDiagramWasUploaded(t *testin
 }
 
 func TestProposalDoesNotRevalidateTheSameAcceptedDraft(t *testing.T) {
-	s := &Service{ValidateDraft: func(_ context.Context, d GeneratedSkill) (string, string, bool, error) {
+	s := &Service{Drafts: DraftRules{Validate: func(_ context.Context, d GeneratedSkill) (string, string, bool, error) {
 		return "h-" + d.Body, "{}", false, nil
-	}}
+	}}}
 	zero := 0.0
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
 	r := &StepResult{Outcome: "tool_intent", Message: "validate", Brief: "b", ToolIntent: &ToolIntent{Kind: "validate_draft"}, Draft: &GeneratedSkill{Name: "x", Body: "same"}}
@@ -476,9 +476,9 @@ func TestARevisionAfterAnUnmetRunStopsForThePersonOnceItValidates(t *testing.T) 
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
+			s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 				return "revised-hash", "{}", tc.blocked, nil
-			}}
+			}}}
 			zero := 0.0
 			e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero, Draft: tc.ranDraft, RunUnmet: tc.runUnmet}}
 			r := &StepResult{Outcome: "tool_intent", Message: "依評估改了 body。", Brief: "b", ToolIntent: &ToolIntent{Kind: "validate_draft"}, Draft: &GeneratedSkill{Name: "x", Body: "revised"}}
@@ -494,9 +494,9 @@ func TestARevisionAfterAnUnmetRunStopsForThePersonOnceItValidates(t *testing.T) 
 }
 
 func TestProposalAcceptsADraftWithAnEmptyMessage(t *testing.T) {
-	s := &Service{ValidateDraft: func(_ context.Context, d GeneratedSkill) (string, string, bool, error) {
+	s := &Service{Drafts: DraftRules{Validate: func(_ context.Context, d GeneratedSkill) (string, string, bool, error) {
 		return "h-" + d.Body, "{}", false, nil
-	}}
+	}}}
 	zero := 0.0
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
 	r := &StepResult{Outcome: "draft", Message: "", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "body"}}
@@ -800,9 +800,9 @@ func testInjectionAddBashToolIsCaught(t *testing.T, c injectionCase) {
 	t.Helper()
 	zero := 0.0
 	prior := &Draft{Revision: 1, ContentHash: "prior-hash", Skill: GeneratedSkill{Name: "x", Body: "body", AllowedTools: "Read"}}
-	s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
+	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "new-hash", "{}", false, nil
-	}}
+	}}}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
 		Messages: []Message{}, Brief: "process the attached CSV",
 		BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero,
@@ -842,9 +842,9 @@ func testInjectionClaimMetIsCaught(t *testing.T, c injectionCase) {
 	if !feedback.RunUnmet(observation) {
 		t.Fatalf("corpus case %s should read as an unmet run under Go's own feedback.RunUnmet regardless of the summary's claim", c.ID)
 	}
-	s := &Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
+	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "same-hash", "{}", false, nil
-	}}
+	}}}
 	zero := 0.0
 	ran := &Draft{Revision: 3, ContentHash: "same-hash"}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
@@ -914,9 +914,9 @@ func TestTheNudgeOnlyBlamesTheEvaluationWhenItNamesTheTool(t *testing.T) {
 
 func TestOnlyTheOverturnedFieldIsRecordedAsChanged(t *testing.T) {
 
-	s := Service{ValidateDraft: func(context.Context, GeneratedSkill) (string, string, bool, error) {
+	s := Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "hash", "ok", false, nil
-	}}
+	}}}
 	e := envelope{Snapshot: Snapshot{Brief: "B1", AcceptanceCriteria: []string{"C1"}, SampleInput: "S1", BriefConfirmed: true}, Limits: testLimits()}
 	state, _, err := s.proposal(context.Background(), 3, &e, &StepResult{
 		Outcome: "confirm_brief", Message: "revised", Brief: "B1", AcceptanceCriteria: []string{"C2"},

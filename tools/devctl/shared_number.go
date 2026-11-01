@@ -37,6 +37,7 @@ var sharedNumberRoster = []string{
 	"creationMaxDiagramBytes",
 	"creationMaxDiagramItemRunes",
 	"creationMaxDiagramItems",
+	"creationMaxMCPTools",
 	"creationMaxSampleInputRunes",
 	"creationMaxSearchRewriteChars",
 	"creationMaxSearchRewrites",

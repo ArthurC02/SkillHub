@@ -2349,6 +2349,12 @@ components:
           items:
             type: string
             enum: [search_catalog, search_knowledge, validate_draft, fetch_url]
+        mcp_tools:
+          type: array
+          maxItems: 64  # one-number: creationMaxMCPTools
+          items:
+            $ref: '#/components/schemas/CreationMCPTool'
+          description: The MCP tools the operator currently offers. A draft may declare only these references in allowed_tools; Go refuses any other mcp__ name.
         timeout_seconds:
           type: integer
           minimum: 1
@@ -2531,6 +2537,21 @@ components:
           type: string
           maxLength: 4000
           description: The JSON-encoded input for the tool.
+    CreationMCPTool:
+      type: object
+      additionalProperties: false
+      required: [reference, purpose, parameters]
+      properties:
+        reference:
+          type: string
+          minLength: 1
+          maxLength: 135
+        purpose:
+          type: string
+          maxLength: 500
+        parameters:
+          type: string
+          maxLength: 1000
     CreationDraftValidation:
       type: object
       additionalProperties: false

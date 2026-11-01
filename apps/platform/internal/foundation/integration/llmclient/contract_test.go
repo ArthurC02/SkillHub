@@ -25,6 +25,7 @@ var wireTypes = map[string]reflect.Type{
 	"CreationDiagramDecomposition":  reflect.TypeOf(DiagramDecomposition{}),
 	"CreationDiagramInterpretation": reflect.TypeOf(DiagramInterpretation{}),
 	"CreationDiagramUncertainty":    reflect.TypeOf(DiagramUncertainty{}),
+	"CreationMCPTool":               reflect.TypeOf(CreationMCPTool{}),
 	"CreationMessage":               reflect.TypeOf(CreationMessage{}),
 	"CreationStepRequest":           reflect.TypeOf(CreationStepRequest{}),
 	"CreationStepResponse":          reflect.TypeOf(CreationStepResponse{}),

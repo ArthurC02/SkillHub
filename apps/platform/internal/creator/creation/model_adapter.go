@@ -39,6 +39,7 @@ func (a stepOverHTTP) CreationStep(ctx context.Context, req StepRequest) (*StepR
 		Draft:                       wireSkill(req.Draft),
 		DraftValidation:             wireValidation(req.DraftValidation),
 		AllowedTools:                req.AllowedTools,
+		MCPTools:                    wireMCPTools(req.MCPTools),
 		TimeoutSeconds:              req.TimeoutSeconds,
 		MaxOutputTokens:             req.MaxOutputTokens,
 		GatewayKey:                  req.GatewayKey,
@@ -123,6 +124,14 @@ func wireReferences(refs []ReferenceSkill) []llmclient.GenerateReference {
 	out := make([]llmclient.GenerateReference, 0, len(refs))
 	for _, r := range refs {
 		out = append(out, llmclient.GenerateReference{Name: r.Name, SkillMD: r.SkillMD})
+	}
+	return out
+}
+
+func wireMCPTools(tools []MCPTool) []llmclient.CreationMCPTool {
+	var out []llmclient.CreationMCPTool
+	for _, t := range tools {
+		out = append(out, llmclient.CreationMCPTool{Reference: t.Reference, Purpose: t.Purpose, Parameters: t.Parameters})
 	}
 	return out
 }

@@ -56,6 +56,12 @@ type DraftValidation struct {
 	Report      string
 }
 
+type MCPTool struct {
+	Reference  string
+	Purpose    string
+	Parameters string
+}
+
 type ChallengeCase struct {
 	Name     string   `json:"name"`
 	Prompt   string   `json:"prompt"`
@@ -87,6 +93,7 @@ type StepRequest struct {
 	Draft                       *GeneratedSkill
 	DraftValidation             *DraftValidation
 	AllowedTools                []string
+	MCPTools                    []MCPTool
 	TimeoutSeconds              int
 	MaxOutputTokens             int
 	GatewayKey                  string

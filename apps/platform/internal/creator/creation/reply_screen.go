@@ -1,6 +1,8 @@
 package creation
 
 import (
+	"context"
+	"fmt"
 	"slices"
 	"strings"
 )
@@ -23,6 +25,19 @@ var screenReasons = []string{
 func offeredTools(s *Service, e envelope) []string {
 	p := e.Snapshot
 	return allowedTools(p.ToolCalls, e.Limits.MaxToolCalls, toolAvailability{fetch: s.Fetch != nil, knowledge: s.SearchKnowledge != nil, searchLeft: p.SearchRounds < MaxSearchRounds})
+}
+
+const maxOfferedMCPTools = 64 // one-number: creationMaxMCPTools
+
+func (r DraftRules) offeredMCPTools(ctx context.Context) ([]MCPTool, error) {
+	if r.OfferedMCPTools == nil {
+		return nil, nil
+	}
+	tools, err := r.OfferedMCPTools(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("creation: read the offered MCP tools: %w", err)
+	}
+	return tools[:min(len(tools), maxOfferedMCPTools)], nil
 }
 
 func screenReply(e envelope, r *StepResult, allowed []string) {

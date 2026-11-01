@@ -3,11 +3,13 @@ package wiring
 import (
 	"context"
 	"errors"
+	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission/mcptools"
 	catalog "github.com/ArthurC02/skillhub/apps/platform/internal/skill/discovery"
 )
 
@@ -21,6 +23,15 @@ func TestCreationRedactsSecretsWithTheTraceMasker(t *testing.T) {
 	}
 	if got := s.Mask("pasted: " + secret); strings.Contains(got, secret) {
 		t.Errorf("Mask left the private key header in place: %q", got)
+	}
+}
+
+func TestCreationSeesEachListedMCPToolByTheNameADraftMustDeclare(t *testing.T) {
+	got := creationMCPTools([]mcptools.Tool{{Server: "calendar", Tool: "create_event", Purpose: "建立事件", Parameters: "title, start", ServerURL: "https://cal.example"}})
+
+	want := []creation.MCPTool{{Reference: "mcp__calendar__create_event", Purpose: "建立事件", Parameters: "title, start"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("creation tools = %+v, want %+v", got, want)
 	}
 }
 
