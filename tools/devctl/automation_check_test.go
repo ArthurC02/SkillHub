@@ -44,6 +44,7 @@ func TestDocumentCheckerRosterIsComplete(t *testing.T) {
 		"wiring-interactions",
 		"vocabulary-synonyms",
 		"contract-length-units",
+		"python-ratchet",
 	}
 	got := make([]string, 0, len(want))
 	for _, checker := range documentCheckers() {

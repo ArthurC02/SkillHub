@@ -195,6 +195,7 @@ func documentCheckers() []namedChecker {
 		{"transaction-callbacks", transactionCallbackProblems},
 		{"vocabulary-synonyms", vocabularySynonymProblems},
 		{"contract-length-units", contractLengthUnitProblems},
+		{"python-ratchet", pythonRatchetProblems},
 	}
 }
 

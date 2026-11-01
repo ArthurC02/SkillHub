@@ -144,6 +144,10 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 
 **撞到紅燈時的用法**：每一行是 `FAIL <名字>: <問題>`。在 `documentCheckers()` 找到那個名字對應的函式，讀它的實作與測試；它為什麼存在、抓到過什麼，看那個檔的 `git log`。下面的散文只保留有故事的幾條（`capability-table`、`one-number`、`milestone-tally`、`backlog-tally`、`baseline-tally`、`doc-identifier`、`doc-prose`）。
 
+### `tools/` 不再新增 Python
+
+`python-ratchet`：`tools/` 下現有的 `.py` 逐一列在 `tools/python-ratchet.txt`，清單只准變短。新工具一律寫進 Go 的 `tools/devctl`（或要單檔散布時用 Rust）；多出一個不在清單上的 `.py` 就 FAIL，刪掉一個 `.py` 也要同批把那一行拿掉，免得它長回來。`node_modules`、`.venv`、`__pycache__`、`target`、`dist` 不算。
+
 ### 新增一個 `.env.example` 變數，要同批說出它擋什麼
 
 `capability-table`（`05` R-36）。促成它的那個變數是
