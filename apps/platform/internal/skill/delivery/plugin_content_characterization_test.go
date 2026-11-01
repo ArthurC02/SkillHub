@@ -71,7 +71,7 @@ func TestAPluginZipHoldsOnlyItsManifestAndTheMembersFilesUnderSkills(t *testing.
 		got = append(got, name)
 	}
 	sort.Strings(got)
-	want := []string{"plugin.json", "skills/tidy-csv/SKILL.md", "skills/tidy-csv/references/guide.md"}
+	want := []string{".claude-plugin/plugin.json", "plugin.json", "skills/tidy-csv/SKILL.md", "skills/tidy-csv/references/guide.md"}
 	if len(got) != len(want) {
 		t.Fatalf("plugin zip files = %v, want exactly %v", got, want)
 	}
@@ -89,5 +89,13 @@ func TestAPluginMemberSkillMDIsCopiedByteForByte(t *testing.T) {
 
 	if !ok || string(got) != memberSkillMD {
 		t.Errorf("the member SKILL.md = %q (present %v), want the source bytes %q", got, ok, memberSkillMD)
+	}
+}
+
+func TestAPluginZipCarriesTheSameManifestWhereClaudeCodeLooksForIt(t *testing.T) {
+	entries := zipEntries(t, pluginOfOneMember(t, nil).Zip)
+	root, claude := entries["plugin.json"], entries[".claude-plugin/plugin.json"]
+	if len(root) == 0 || !bytes.Equal(claude, root) {
+		t.Fatalf(".claude-plugin/plugin.json = %q, want it byte-identical to plugin.json = %q", claude, root)
 	}
 }

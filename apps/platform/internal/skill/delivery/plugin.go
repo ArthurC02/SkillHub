@@ -16,8 +16,9 @@ import (
 )
 
 const (
-	pluginManifestFile = "plugin.json"
-	pluginSkillsDir    = "skills/"
+	pluginManifestFile       = "plugin.json"
+	claudePluginManifestFile = ".claude-plugin/plugin.json"
+	pluginSkillsDir          = "skills/"
 )
 
 type PluginMember struct {
@@ -88,7 +89,8 @@ func (s *Service) PlanPlugin(ctx context.Context, source identity.Workspace, spe
 	if err != nil {
 		return nil, err
 	}
-	files := []exportFile{{path: pluginManifestFile, data: append(manifest, '\n')}}
+	manifest = append(manifest, '\n')
+	files := []exportFile{{path: pluginManifestFile, data: manifest}, {path: claudePluginManifestFile, data: manifest}}
 	for _, member := range spec.Members {
 		memberFiles, err := s.exportPluginMember(ctx, source, member, p)
 		if err != nil {

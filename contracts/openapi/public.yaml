@@ -1717,7 +1717,8 @@ paths:
       operationId: exportBundle
       summary: Build a Bundle Version into one Agent Plugin zip in the caller's downloads (PACK-018)
       description: |
-        Each member goes under skills/<its manifest name>/ beside a plugin.json;
+        Each member goes under skills/<its manifest name>/ beside a plugin.json,
+        copied byte for byte to .claude-plugin/plugin.json for Claude Code;
         the zip is read back to confirm it is a Plugin with every member.
         Trust is the worst member's: the first member the download gate
         refuses is named in the refusal, and nothing is built.

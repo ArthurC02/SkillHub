@@ -121,7 +121,7 @@ func TestAPluginMemberIsFiledUnderTheNameItsOwnManifestDeclares(t *testing.T) {
 	}
 	var skillFiles int
 	for _, f := range zr.File {
-		if f.Name == pluginManifestFile {
+		if f.Name == pluginManifestFile || f.Name == claudePluginManifestFile {
 			continue
 		}
 		skillFiles++

@@ -252,3 +252,20 @@ func TestDiscoverRecordsUnknownManifestFieldsWithoutRefusingThem(t *testing.T) {
 	}
 	t.Error("the unknown fields were ignored silently; the specification requires reporting them")
 }
+
+func TestAnExportedPluginIsReadFromItsRootManifestAndItsClaudeCodeCopyIsIgnored(t *testing.T) {
+	t.Parallel()
+	d := Discover(tree(map[string]string{
+		"plugin.json":                  conformingManifest("csv-kit"),
+		".claude-plugin/plugin.json":   `{"name":"not-what-the-root-says","hooks":{"on":"start"}}`,
+		"skills/tidy-csv/SKILL.md":     "---\nname: tidy-csv\ndescription: Tidies CSV files.\n---\n",
+		".claude-plugin/skills/x/note": "x",
+	}))
+
+	if d.Shape != ShapePlugin || d.Plugin == nil || d.Plugin.Name != "csv-kit" {
+		t.Fatalf("shape=%q plugin=%+v, want the plugin named by the root plugin.json", d.Shape, d.Plugin)
+	}
+	if strings.Join(d.Skills, ",") != "skills/tidy-csv" || d.Blocked {
+		t.Fatalf("skills=%v blocked=%v, want only skills/tidy-csv and nothing blocked", d.Skills, d.Blocked)
+	}
+}
