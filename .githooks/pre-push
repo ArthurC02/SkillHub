@@ -7,24 +7,31 @@ test -n "$DOMAIN_MEMORY_GIT_TIMEOUT" || DOMAIN_MEMORY_GIT_TIMEOUT=$(git config -
 export DOMAIN_MEMORY_GIT_TIMEOUT
 refs=$(cat)
 tool_for_hook() {
-  tool=$(git config --get domain-memory.executable) || {
+  configured=$(git config --get domain-memory.executable) && tool=$configured || {
     test -z "$engine" || case "$(uname -s)-$(uname -m)" in
       Linux-x86_64) tool="$engine/bin/linux-x86_64/domain-memory" ;;
       Darwin-*) tool="$engine/bin/macos-universal/domain-memory" ;;
       MINGW*-x86_64|MSYS*-x86_64|CYGWIN*-x86_64) tool="$engine/bin/windows-x86_64/domain-memory.exe" ;;
       *) tool="$engine/target/release/domain-memory" ;;
     esac
-    if ! { test -n "$tool" && test -x "$tool"; }; then
-      found=$(command -v domain-memory) && tool=$found
-    fi
   }
+  if ! { test -n "$tool" && test -x "$tool"; }; then
+    found=$(command -v domain-memory) && {
+      test -z "$configured" ||
+        echo "domain-memory pre-push: $configured, named by git config domain-memory.executable, is not in this worktree; running $found, $("$found" --version 2>/dev/null)" >&2
+      tool=$found
+    }
+  fi
   test -n "$tool" && test -x "$tool" && return 0
   hint=$(git config --get domain-memory.install-hint) || if test -n "$engine"; then
     hint="build one with cargo build --release --manifest-path $engine/Cargo.toml"
   else
     hint="install it on PATH with curl -fsSL https://github.com/ArthurC02/Domain-Memory-PlugIn/releases/latest/download/install.sh | sh, or set git config domain-memory.executable to it"
   fi
-  echo "domain-memory pre-push: no Domain Memory executable${tool:+ at $tool}; $hint" >&2
+  where=${tool:+ at $tool}
+  test -z "$configured" ||
+    where=" at $configured, which git config domain-memory.executable names from this worktree's top"
+  echo "domain-memory pre-push: no Domain Memory executable$where; $hint" >&2
   return 1
 }
 tool=''
