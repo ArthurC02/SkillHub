@@ -27,7 +27,7 @@ export async function serveStatic(route: Route, url?: string): Promise<void> {
   );
 }
 
-const TRANSIENT_NAVIGATION_FAILURE = "net::ERR_NO_BUFFER_SPACE";
+const TRANSIENT_NAVIGATION_FAILURES = ["net::ERR_NO_BUFFER_SPACE", "net::ERR_ADDRESS_IN_USE"];
 
 export function retryTransientNavigation(page: Pick<Page, "goto">): void {
   const goto = page.goto.bind(page);
@@ -36,7 +36,9 @@ export function retryTransientNavigation(page: Pick<Page, "goto">): void {
       try {
         return await goto(url, options);
       } catch (error) {
-        const transient = String(error).includes(TRANSIENT_NAVIGATION_FAILURE);
+        const transient = TRANSIENT_NAVIGATION_FAILURES.some((code) =>
+          String(error).includes(code),
+        );
         if (!transient || attempt >= STATIC_ATTEMPTS) throw error;
       }
       await new Promise((resolve) => setTimeout(resolve, STATIC_RETRY_DELAY_MS));

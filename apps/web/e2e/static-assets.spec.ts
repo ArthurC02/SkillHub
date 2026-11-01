@@ -171,6 +171,12 @@ test("a navigation that keeps failing for lack of buffer space is refused after 
   expect(calls).toHaveLength(3);
 });
 
+test("a navigation the runner fails for want of a free local port lands on the next attempt", async () => {
+  const { page, calls } = navigatorFailing(["net::ERR_ADDRESS_IN_USE"]);
+  await page.goto("/workspace/runs");
+  expect(calls).toEqual(["/workspace/runs", "/workspace/runs"]);
+});
+
 test("a navigation that fails for any other reason is not retried", async () => {
   const { page, calls } = navigatorFailing(["net::ERR_CONNECTION_REFUSED"]);
   await expect(page.goto("/workspace/runs")).rejects.toThrow("net::ERR_CONNECTION_REFUSED");
