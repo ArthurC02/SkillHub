@@ -371,17 +371,6 @@ jobs:
       - name: Sync the creation service's interpreter (Go-to-Python test)
         working-directory: apps/llm
         run: uv sync --frozen
-      - uses: ./.github/actions/golangci-lint
-      - name: golangci-lint (an exclusion that matches nothing fails)
-        run: |
-          set -o pipefail
-          golangci-lint run 2>&1 | tee "$RUNNER_TEMP/golangci-lint.log"
-          if grep -F "Skipped 0 issues by rules" "$RUNNER_TEMP/golangci-lint.log"; then
-            echo "::error file=apps/platform/.golangci.yml::an exclusion rule matches nothing; delete it"
-            exit 1
-          fi
-      - run: golangci-lint fmt --diff
-      - run: go vet ./...
       - name: Check database-only immutability constraints
         env:
           PSQL: docker run --rm -i --network host docker.io/pgvector/pgvector:pg18@sha256:2358fcba361ed2233a5ed81b5fe4ca779ccb304120ce531a3bf51c0ed7e2bc11 psql
@@ -400,6 +389,34 @@ jobs:
       - name: Platform tests
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Platform tests' go test -count=1 ./...
       - run: go build ./...
+
+  platform-lint:
+    needs: changes
+    if: needs.changes.outputs.platform == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/platform
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: apps/platform/go.mod
+          cache-dependency-path: apps/platform/go.sum
+      - uses: ./.github/actions/golangci-lint
+      - name: golangci-lint (an exclusion that matches nothing fails)
+        run: |
+          set -o pipefail
+          golangci-lint run 2>&1 | tee "$RUNNER_TEMP/golangci-lint.log"
+          if grep -F "Skipped 0 issues by rules" "$RUNNER_TEMP/golangci-lint.log"; then
+            echo "::error file=apps/platform/.golangci.yml::an exclusion rule matches nothing; delete it"
+            exit 1
+          fi
+      - run: golangci-lint fmt --diff
+      - run: go vet ./...
 
   platform-race:
     needs: changes
@@ -929,7 +946,7 @@ jobs:
           [ "$status" = 1 ] && grep -q 'SKILLHUB_SANDBOX_TOKEN is required' <<<"$output"
 
   images-push:
-    needs: [images, images-postgres-sandboxd, web, web-browser, platform, platform-race, llm, sandbox, devctl, contracts-drift, dependency-audit]
+    needs: [images, images-postgres-sandboxd, web, web-browser, platform, platform-lint, platform-race, llm, sandbox, devctl, contracts-drift, dependency-audit]
     if: ${{ !failure() && !cancelled() && needs.images.result == 'success' && needs.images-postgres-sandboxd.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15

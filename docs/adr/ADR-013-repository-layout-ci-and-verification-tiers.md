@@ -46,7 +46,7 @@ CI（GitHub Actions）在對主線的 PR 與推送到主線時觸發，PR 上所
 | Job | Path filter | 內容 |
 | --- | --- | --- |
 | `web` | `apps/web/**`、`packages/api-client-ts/**` | install → lint → typecheck → test → build |
-| `platform` | `apps/platform/**`、`db/**`、`contracts/**` | lint → `go test ./...` → `go build ./...` |
+| `platform` | `apps/platform/**`、`db/**`、`contracts/**` | `go test ./...` → `go build ./...`；lint、格式與 `go vet` 在並行的 `platform-lint` job |
 | `llm` | `apps/llm/**`、`packages/api-stub-py/**`、`contracts/**` | 依賴同步 → lint → 測試 |
 | `contracts-drift` | 無 filter，每次都跑 | 重跑 codegen 與 `sqlc generate`，`git diff --exit-code`；有差異即失敗 |
 | `images` | 同上三者 | 建置 `apps/web`、`apps/platform`、`apps/llm` 三個產品程式的容器 Image，並在推送前先跑一次 stack smoke test |
