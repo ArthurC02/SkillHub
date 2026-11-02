@@ -86,6 +86,7 @@ const ROLE_SELECTORS: Record<string, string> = {
   checkbox: "input[type=checkbox], [role=checkbox]",
   combobox: "select, [role=combobox]",
   dialog: "dialog, [role=dialog], [role=alertdialog]",
+  group: "fieldset, [role=group]",
   heading: "h1, h2, h3, h4, h5, h6, [role=heading]",
   link: "a[href], [role=link]",
   list: "ul, ol, [role=list]",
@@ -145,6 +146,27 @@ function textMatches(actual: string, expected: TextQuery, exact: boolean): boole
   return exact ? actual === expected : actual.toLowerCase().includes(expected.toLowerCase());
 }
 
+type RoleQuery = { name?: TextQuery; exact?: boolean };
+
+function byRole(scope: ParentNode, role: string, options: RoleQuery): Element[] {
+  const selector = ROLE_SELECTORS[role];
+  if (!selector) throw new Error(`no selector for role ${role}`);
+  return [...scope.querySelectorAll(selector)].filter(
+    (element) =>
+      options.name === undefined ||
+      textMatches(accessibleName(element), options.name, options.exact ?? false),
+  );
+}
+
+function byText(scope: ParentNode, text: TextQuery, { exact = false }: { exact?: boolean }) {
+  const hits = [...scope.querySelectorAll("*")].filter((element) =>
+    textMatches(collapse(element.textContent), text, exact),
+  );
+  return hits.filter(
+    (element) => !hits.some((other) => other !== element && element.contains(other)),
+  );
+}
+
 export class Locator {
   private readonly resolve: () => Element[];
 
@@ -178,6 +200,14 @@ export class Locator {
     return new Locator(() =>
       this.all().flatMap((element) => [...element.querySelectorAll(selector)]),
     );
+  }
+
+  getByRole(role: string, options: RoleQuery = {}): Locator {
+    return new Locator(() => this.all().flatMap((element) => byRole(element, role, options)));
+  }
+
+  getByText(text: TextQuery, options: { exact?: boolean } = {}): Locator {
+    return new Locator(() => this.all().flatMap((element) => byText(element, text, options)));
   }
 
   element(): HTMLElement {
@@ -303,27 +333,16 @@ function domQueries(scope: () => HTMLElement | undefined) {
   const query = (selector: string) => () => [...(scope()?.querySelectorAll(selector) ?? [])];
   return {
     locator: (selector: string) => new Locator(query(selector)),
-    getByRole(role: string, options: { name?: TextQuery; exact?: boolean } = {}) {
-      const selector = ROLE_SELECTORS[role];
-      if (!selector) throw new Error(`no selector for role ${role}`);
-      return new Locator(() =>
-        query(selector)().filter(
-          (element) =>
-            options.name === undefined ||
-            textMatches(accessibleName(element), options.name, options.exact ?? false),
-        ),
-      );
-    },
-    getByText(text: TextQuery, { exact = false }: { exact?: boolean } = {}) {
-      return new Locator(() => {
-        const hits = query("*")().filter((element) =>
-          textMatches(collapse(element.textContent), text, exact),
-        );
-        return hits.filter(
-          (element) => !hits.some((other) => other !== element && element.contains(other)),
-        );
-      });
-    },
+    getByRole: (role: string, options: RoleQuery = {}) =>
+      new Locator(() => {
+        const host = scope();
+        return host ? byRole(host, role, options) : [];
+      }),
+    getByText: (text: TextQuery, options: { exact?: boolean } = {}) =>
+      new Locator(() => {
+        const host = scope();
+        return host ? byText(host, text, options) : [];
+      }),
     getByLabel(text: TextQuery, { exact = false }: { exact?: boolean } = {}) {
       return new Locator(() =>
         query("input, textarea, select, [role=textbox], [role=combobox]")().filter((element) =>
