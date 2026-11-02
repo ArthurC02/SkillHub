@@ -38,9 +38,13 @@ function matches(matcher: Matcher, url: URL): boolean {
   return globToRegExp(matcher).test(href);
 }
 
+const BODILESS_STATUSES = new Set([204, 205, 304]);
+
 function jsonResponse(reply: Exclude<Reply, "network-error">): Response {
-  return new Response(JSON.stringify(reply.json ?? {}), {
-    status: reply.status ?? 200,
+  const status = reply.status ?? 200;
+  if (BODILESS_STATUSES.has(status)) return new Response(null, { status });
+  return new Response(reply.json === undefined ? "{}" : JSON.stringify(reply.json), {
+    status,
     headers: { "Content-Type": "application/json" },
   });
 }
