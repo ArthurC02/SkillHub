@@ -287,7 +287,7 @@ func committedCommentProblems(root, rangeSpec string) ([]string, error) {
 
 func formatterFor(root, file string) (formatter, bool) {
 	switch {
-	case strings.HasSuffix(file, extGo) && (strings.HasPrefix(file, dirAppsPlatform+"/") || strings.HasPrefix(file, dirAppsSandbox+"/")):
+	case strings.HasSuffix(file, extGo) && (strings.HasPrefix(file, dirAppsPlatform+"/") || strings.HasPrefix(file, dirAppsSandbox+"/") || strings.HasPrefix(file, dirToolsDevctl+"/")):
 		return formatter{name: "gofmt", cmd: "gofmt", fix: "gofmt -w " + file}, true
 	case strings.HasPrefix(file, dirAppsWeb+"/"):
 		prettier := filepath.Join(root, "apps", "web", "node_modules", "prettier", "bin", "prettier.cjs")

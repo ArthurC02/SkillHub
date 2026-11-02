@@ -121,7 +121,7 @@ func TestImagePublicationWaitsForNativeBrowserChecks(t *testing.T) {
 	for _, name := range strings.Split(line, ",") {
 		dependencies[strings.TrimSpace(name)] = true
 	}
-	expected := []string{"images", "images-postgres-sandboxd", "web","web-browser", "platform", "platform-race", "llm", "sandbox", "devctl", "contracts-drift", "dependency-audit"}
+	expected := []string{"images", "images-postgres-sandboxd", "web", "web-browser", "platform", "platform-race", "llm", "sandbox", "devctl", "contracts-drift", "dependency-audit"}
 	for _, name := range expected {
 		if !dependencies[name] {
 			t.Errorf("image publication must wait for %s", name)

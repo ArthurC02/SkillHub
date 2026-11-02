@@ -104,7 +104,8 @@ func TestFormatterFollowsWhatCIFormatChecks(t *testing.T) {
 	cases := map[string]string{
 		"apps/platform/internal/x.go": "gofmt",
 		"apps/sandbox/cmd/x.go":       "gofmt",
-		"tools/devctl/x.go":           "",
+		"tools/devctl/x.go":           "gofmt",
+		"tools/codegen/go/x.go":       "",
 		"apps/web/src/App.tsx":        "prettier",
 		"apps/web/index.html":         "prettier",
 		"apps/llm/src/app.py":         "ruff",

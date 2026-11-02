@@ -28,6 +28,7 @@ const (
 	dirAppsPlatform = "apps/platform"
 	dirAppsSandbox  = "apps/sandbox"
 	dirAppsLLM      = "apps/llm"
+	dirToolsDevctl  = "tools/devctl"
 	dirAPIClientTS  = "packages/api-client-ts"
 	platformCmdDir  = "cmd"
 
