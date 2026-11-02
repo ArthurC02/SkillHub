@@ -31,12 +31,8 @@ async function comparisonCandidates(page: Page, surface: "catalog" | "search") {
   });
 }
 
-async function toggleFromKeyboard(page: Page, pick: Locator, checked: boolean) {
-  await pick.focus();
-  await page.keyboard.press("Space");
-  await expect(pick).toBeChecked({ checked });
-  await expect(pick).toBeFocused();
-  const hit = await pick.evaluate((element) => {
+function coverage(pick: Locator) {
+  return pick.evaluate((element) => {
     const rect = element.getBoundingClientRect();
     const top = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
     return {
@@ -46,7 +42,38 @@ async function toggleFromKeyboard(page: Page, pick: Locator, checked: boolean) {
       viewport: { width: window.innerWidth, height: window.innerHeight, scrollY: window.scrollY },
     };
   });
+}
+
+async function toggleFromKeyboard(page: Page, pick: Locator, checked: boolean) {
+  await pick.focus();
+  await page.keyboard.press("Space");
+  await expect(pick).toBeChecked({ checked });
+  await expect(pick).toBeFocused();
+  const hit = await coverage(pick);
   expect(hit.uncovered, JSON.stringify(hit)).toBe(true);
+}
+
+for (const [where, offset] of [
+  ["above the viewport", -20],
+  ["under the sticky header", 40],
+] as const) {
+  test(`a comparison control toggled from ${where} is revealed below the sticky header`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await comparisonCandidates(page, "catalog");
+    await page.goto("/");
+    const pick = page.locator(".search-results").getByRole("checkbox").nth(1);
+    await expect(pick).toBeVisible();
+    await pick.evaluate((element, offset) => {
+      scrollTo(0, element.getBoundingClientRect().top + scrollY - offset);
+      (element as HTMLElement).focus({ preventScroll: true });
+    }, offset);
+    await page.keyboard.press("Space");
+    await expect(pick).toBeChecked();
+    await expect(page).toHaveURL(/compare=/);
+    await expect.poll(async () => (await coverage(pick)).uncovered).toBe(true);
+  });
 }
 
 for (const surface of ["catalog", "search"] as const) {

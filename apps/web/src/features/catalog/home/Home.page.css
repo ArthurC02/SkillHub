@@ -85,3 +85,7 @@
     padding: 16px 12px;
   }
 }
+
+.home .search-results input[type="checkbox"] {
+  scroll-margin-top: var(--app-header-clearance, 0px);
+}
