@@ -173,48 +173,33 @@ jobs:
           - os: ubuntu-latest
             browser: chromium
             shard: 1
-            total: 3
-            weights: "28:39:33"
+            total: 2
+            weights: "52:48"
           - os: ubuntu-latest
             browser: chromium
             shard: 2
-            total: 3
-            weights: "28:39:33"
-          - os: ubuntu-latest
-            browser: chromium
-            shard: 3
-            total: 3
-            weights: "28:39:33"
+            total: 2
+            weights: "52:48"
           - os: ubuntu-latest
             browser: firefox
             shard: 1
-            total: 3
-            weights: "25:28:47"
+            total: 2
+            weights: "50:50"
           - os: ubuntu-latest
             browser: firefox
             shard: 2
-            total: 3
-            weights: "25:28:47"
-          - os: ubuntu-latest
-            browser: firefox
-            shard: 3
-            total: 3
-            weights: "25:28:47"
+            total: 2
+            weights: "50:50"
           - os: ubuntu-latest
             browser: webkit
             shard: 1
-            total: 3
-            weights: "25:31:44"
+            total: 2
+            weights: "42:58"
           - os: ubuntu-latest
             browser: webkit
             shard: 2
-            total: 3
-            weights: "25:31:44"
-          - os: ubuntu-latest
-            browser: webkit
-            shard: 3
-            total: 3
-            weights: "25:31:44"
+            total: 2
+            weights: "42:58"
           - os: windows-latest
             browser: chromium
             shard: 1

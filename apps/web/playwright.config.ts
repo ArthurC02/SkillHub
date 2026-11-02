@@ -25,7 +25,7 @@ export default defineConfig({
     { name: "webkit", use: { ...devices["Desktop Safari"] } },
   ],
   webServer: {
-    command: `npm run build && npm run preview -- --host 127.0.0.1 --port ${port} --strictPort`,
+    command: `npx vite build && npm run preview -- --host 127.0.0.1 --port ${port} --strictPort`,
     env: { VITE_API_BASE_URL: "" },
     url: `http://127.0.0.1:${port}`,
     reuseExistingServer: !process.env.CI,
