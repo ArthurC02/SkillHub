@@ -36,9 +36,9 @@ func TestBrowserShardsRetainEverySupportedEnvironment(t *testing.T) {
 	job := browserWorkflowJob(t, "web-browser-shards")
 	for environment, total := range map[string]int{
 		"ubuntu-latest\n            browser: chromium":  3,
-		"ubuntu-latest\n            browser: firefox":   4,
-		"ubuntu-latest\n            browser: webkit":    4,
-		"windows-latest\n            browser: chromium": 3,
+		"ubuntu-latest\n            browser: firefox":   3,
+		"ubuntu-latest\n            browser: webkit":    3,
+		"windows-latest\n            browser: chromium": 2,
 	} {
 		for shard := 1; shard <= total; shard++ {
 			row := "- os: " + environment + "\n            shard: " + strconv.Itoa(shard) + "\n            total: " + strconv.Itoa(total) + "\n"
@@ -47,8 +47,8 @@ func TestBrowserShardsRetainEverySupportedEnvironment(t *testing.T) {
 			}
 		}
 	}
-	if strings.Count(job, "- os:") != 14 {
-		t.Error("browser matrix must contain exactly fourteen shards")
+	if strings.Count(job, "- os:") != 11 {
+		t.Error("browser matrix must contain exactly eleven shards")
 	}
 	for _, required := range []string{
 		"fail-fast: false",

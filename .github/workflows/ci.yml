@@ -188,26 +188,32 @@ jobs:
             browser: firefox
             shard: 1
             total: 3
+            weights: "25:28:47"
           - os: ubuntu-latest
             browser: firefox
             shard: 2
             total: 3
+            weights: "25:28:47"
           - os: ubuntu-latest
             browser: firefox
             shard: 3
             total: 3
+            weights: "25:28:47"
           - os: ubuntu-latest
             browser: webkit
             shard: 1
             total: 3
+            weights: "25:31:44"
           - os: ubuntu-latest
             browser: webkit
             shard: 2
             total: 3
+            weights: "25:31:44"
           - os: ubuntu-latest
             browser: webkit
             shard: 3
             total: 3
+            weights: "25:31:44"
           - os: windows-latest
             browser: chromium
             shard: 1
