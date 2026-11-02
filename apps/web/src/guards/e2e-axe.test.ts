@@ -4,12 +4,7 @@ import { expect, test } from "vitest";
 
 const e2e = join(import.meta.dirname, "..", "..", "e2e");
 
-const READS_PASSES = new Set([
-  "audit-cell-layout.spec.ts",
-  "comparison-id-validation.spec.ts",
-  "comparison-response-recovery.spec.ts",
-  "rendered.spec.ts",
-]);
+const READS_PASSES = new Set(["audit-cell-layout.spec.ts", "rendered.spec.ts"]);
 
 test("e2e specs reach axe through the project-scoped wrapper unless they read its passes", () => {
   const raw = readdirSync(e2e)

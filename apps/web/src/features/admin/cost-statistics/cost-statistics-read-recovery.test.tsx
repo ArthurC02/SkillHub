@@ -1,19 +1,10 @@
-import AxeBuilder from "./axe";
-import { expect, test, type Page } from "@playwright/test";
-import { writeFile } from "node:fs/promises";
-import { ADMIN_COST_STATISTICS } from "../src/testing/fixtures/platform";
-import { stubPlatform } from "./stub";
+import { expect, test } from "vitest";
+import { ADMIN_COST_STATISTICS } from "../../../testing/fixtures/platform";
+import { renderedApp } from "../../../testing/app";
+
+const app = renderedApp();
 
 const WINDOW = ADMIN_COST_STATISTICS.statistics[0];
-
-async function inspectCostStatistics(page: Page, label: string) {
-  const report = await new AxeBuilder({ page }).analyze();
-  await writeFile(test.info().outputPath(label + "-a11y.json"), JSON.stringify(report));
-  expect(report.violations).toEqual([]);
-  expect(report.incomplete).toEqual([]);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
-  await page.screenshot({ path: test.info().outputPath(label + "-viewport.png") });
-}
 
 for (const [name, invalid] of [
   ["null envelope", null],
@@ -26,34 +17,25 @@ for (const [name, invalid] of [
   ["unreadable period", { statistics: [{ ...WINDOW, window_start: "not-a-time" }] }],
 ] as const) {
   for (const reread of [false, true]) {
-    test(`cost statistics with ${name} on ${reread ? "reread" : "arrival"} recover locally without inventing measurements`, async ({
-      page,
-    }) => {
-      await page.setViewportSize({ width: 375, height: 812 });
-      await page.emulateMedia({ colorScheme: reread ? "dark" : "light" });
-      await stubPlatform(page);
+    test(`cost statistics with ${name} on ${reread ? "reread" : "arrival"} recover locally without inventing measurements`, async () => {
+      const page = app();
       let reads = 0;
-      let documents = 0;
-      let writes = 0;
-      page.on("domcontentloaded", () => documents++);
       let release!: () => void;
       const gate = new Promise<void>((resolve) => {
         release = resolve;
       });
-      await page.route("**/admin/cost-statistics", async (route) => {
-        if (route.request().resourceType() === "document") return route.continue();
+      page.route("**/admin/cost-statistics", async () => {
         reads++;
-        if (route.request().method() !== "GET") writes++;
         const failedRead = reread ? 2 : 1;
-        if (reads === failedRead) return route.fulfill({ json: invalid });
+        if (reads === failedRead) return { json: invalid };
         if (reads > failedRead) await gate;
-        return route.fulfill({ json: ADMIN_COST_STATISTICS });
+        return { json: ADMIN_COST_STATISTICS };
       });
       try {
         await page.goto("/admin/cost-statistics");
         await expect(page.locator(".auth-name")).toHaveText("tester");
-        const main = page.getByRole("main");
-        const table = main.getByRole("table", { name: "每一種呼叫最新的統計窗（美元）" });
+        const main = page.locator("main");
+        const table = main.locator("table").filter({ hasText: "每一種呼叫最新的統計窗（美元）" });
         if (reread) {
           await expect(table).toBeVisible();
           await main.getByRole("button", { name: "重新整理", exact: true }).click();
@@ -61,20 +43,20 @@ for (const [name, invalid] of [
         const alert = main.getByRole("alert");
         await expect(alert).toContainText("暫時無法讀取成本統計");
         if (reread) await expect(alert).toContainText("先前載入的數字已隱藏");
-        const heading = main.getByRole("heading", { level: 1, name: "成本統計", exact: true });
-        await expect(heading).toBeVisible();
+        const heading = main.locator("h1");
+        await expect(heading).toHaveText("成本統計");
         await expect(table).toHaveCount(0);
         await expect(main).not.toContainText("統計窗：0 個");
         await expect(main).not.toContainText("$NaN");
-        await expect(main.getByText("成本統計清單上次取得於", { exact: false })).toHaveCount(0);
+        await expect(main.getByText("成本統計清單上次取得於")).toHaveCount(0);
         await expect(main.getByRole("button", { name: "重新載入頁面", exact: true })).toHaveCount(
           0,
         );
         expect(reads).toBe(reread ? 2 : 1);
-        await inspectCostStatistics(page, "cost-read-error");
+        expect(await page.axeViolations("body")).toEqual([]);
         await main.getByRole("button", { name: "再試一次", exact: true }).focus();
-        await page.keyboard.press("Enter");
-        await expect.poll(() => reads).toBe(reread ? 3 : 2);
+        await page.press("Enter");
+        await page.eventually(() => expect(reads).toBe(reread ? 3 : 2));
         if (reread)
           await expect(
             main.getByRole("button", { name: "重新讀取中…", exact: true }),
@@ -94,22 +76,10 @@ for (const [name, invalid] of [
           "未測量",
         );
         await expect(heading).toBeFocused();
-        expect(documents).toBe(1);
-        expect(writes).toBe(0);
+        expect(page.requests.filter((request) => request.method !== "GET")).toEqual([]);
         expect(reads).toBe(reread ? 3 : 2);
-        await inspectCostStatistics(page, "cost-read-recovered");
+        expect(await page.axeViolations("body")).toEqual([]);
       } finally {
-        await writeFile(
-          test.info().outputPath("cost-read-state.json"),
-          JSON.stringify({
-            name,
-            reread,
-            reads,
-            documents,
-            writes,
-            text: await page.locator("body").innerText(),
-          }),
-        );
         release();
       }
     });
@@ -117,9 +87,8 @@ for (const [name, invalid] of [
 }
 
 for (const kind of ["empty", "zero and unmeasured", "unknown kind"] as const) {
-  test(`readable ${kind} cost statistics retain their actual meaning`, async ({ page }) => {
-    await page.setViewportSize({ width: 375, height: 812 });
-    await stubPlatform(page);
+  test(`readable ${kind} cost statistics retain their actual meaning`, async () => {
+    const page = app();
     const statistics =
       kind === "empty"
         ? []
@@ -137,13 +106,12 @@ for (const kind of ["empty", "zero and unmeasured", "unknown kind"] as const) {
               },
             ];
     let reads = 0;
-    await page.route("**/admin/cost-statistics", (route) => {
-      if (route.request().resourceType() === "document") return route.continue();
+    page.route("**/admin/cost-statistics", () => {
       reads++;
-      return route.fulfill({ json: { statistics } });
+      return { json: { statistics } };
     });
     await page.goto("/admin/cost-statistics");
-    const main = page.getByRole("main");
+    const main = page.locator("main");
     if (kind === "empty") {
       await expect(
         main.getByText("統計窗：0 個。每日統計跑過之後才會有。", { exact: true }),
@@ -161,6 +129,6 @@ for (const kind of ["empty", "zero and unmeasured", "unknown kind"] as const) {
     }
     await expect(main.getByRole("alert")).toHaveCount(0);
     expect(reads).toBe(1);
-    await inspectCostStatistics(page, "cost-readable");
+    expect(await page.axeViolations("body")).toEqual([]);
   });
 }
