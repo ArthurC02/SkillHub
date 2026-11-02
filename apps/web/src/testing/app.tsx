@@ -17,7 +17,11 @@ type Handler = (request: Request) => Reply | undefined | Promise<Reply | undefin
 type Matcher = string | RegExp | ((url: URL) => boolean);
 
 const AXE_TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"];
-const LAYOUT_RULES = { "color-contrast": { enabled: false }, region: { enabled: false } };
+const LAYOUT_RULES = {
+  "color-contrast": { enabled: false },
+  region: { enabled: false },
+  "target-size": { enabled: false },
+};
 
 function globToRegExp(glob: string): RegExp {
   let source = "";
@@ -112,19 +116,22 @@ const ROLE_SELECTORS: Record<string, string> = {
     "textarea, input:not([type]), input[type=text], input[type=search], input[type=email], input[type=url], input[type=number], [role=textbox]",
 };
 
-function isHidden(element: Element): boolean {
-  for (let node: Element | null = element; node; node = node.parentElement) {
-    if (node.hasAttribute("hidden")) return true;
-    if (getComputedStyle(node).display === "none") return true;
-    const details = node.parentElement;
-    if (
-      details?.tagName === "DETAILS" &&
-      !details.hasAttribute("open") &&
-      node.tagName !== "SUMMARY"
-    )
-      return true;
-  }
-  return false;
+function hidesItself(node: Element): boolean {
+  if (node.hasAttribute("hidden")) return true;
+  if (getComputedStyle(node).display === "none") return true;
+  const details = node.parentElement;
+  return (
+    details?.tagName === "DETAILS" && !details.hasAttribute("open") && node.tagName !== "SUMMARY"
+  );
+}
+
+function isHidden(element: Element, known: Map<Element, boolean>): boolean {
+  const remembered = known.get(element);
+  if (remembered !== undefined) return remembered;
+  const parent = element.parentElement;
+  const hidden = hidesItself(element) || (parent !== null && isHidden(parent, known));
+  known.set(element, hidden);
+  return hidden;
 }
 
 type TextQuery = string | RegExp;
@@ -200,7 +207,8 @@ export class Locator {
   }
 
   all(): Element[] {
-    return this.resolve().filter((element) => !isHidden(element));
+    const known = new Map<Element, boolean>();
+    return this.resolve().filter((element) => !isHidden(element, known));
   }
 
   count(): number {

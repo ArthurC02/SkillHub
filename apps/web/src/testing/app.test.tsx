@@ -13,6 +13,32 @@ function later(build: () => void) {
 
 const byId = (id: string) => new Locator(() => [...document.querySelectorAll(`#${id}`)]);
 
+test("a locator keeps exactly the elements a reader could reach", () => {
+  document.body.innerHTML = `
+    <p class="probe" id="plain"></p>
+    <p class="probe" id="own-hidden" hidden></p>
+    <div hidden><p class="probe" id="ancestor-hidden"></p></div>
+    <p class="probe" id="own-none" style="display: none"></p>
+    <div style="display: none"><div><p class="probe" id="ancestor-none"></p></div></div>
+    <details>
+      <summary class="probe" id="closed-summary"><span class="probe" id="in-closed-summary"></span></summary>
+      <p class="probe" id="closed-content"></p>
+      <div><p class="probe" id="deep-closed-content"></p></div>
+    </details>
+    <details open><p class="probe" id="open-content"></p></details>
+    <div><span class="probe" id="hidden-sibling" hidden></span><span class="probe" id="visible-sibling"></span></div>
+    <div><p class="probe" id="under-visited-parent"></p></div>`;
+  const probes = new Locator(() => [...document.querySelectorAll(".probe")]);
+  expect(probes.all().map((element) => element.id)).toEqual([
+    "plain",
+    "closed-summary",
+    "in-closed-summary",
+    "open-content",
+    "visible-sibling",
+    "under-visited-parent",
+  ]);
+});
+
 test("fill waits for an input that renders after the call", async () => {
   later(() => {
     const input = document.createElement("input");

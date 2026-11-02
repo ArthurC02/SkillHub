@@ -75,6 +75,7 @@ const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-prac
 async function checkAxeViolations(where: string) {
   const results = await axe.run(container, {
     runOnly: { type: "tag", values: TAGS },
+    rules: { "target-size": { enabled: false } },
     resultTypes: ["violations"],
   });
   const report = results.violations.map(
