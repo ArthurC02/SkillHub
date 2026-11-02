@@ -148,6 +148,16 @@ function textMatches(actual: string, expected: TextQuery, exact: boolean): boole
 
 type RoleQuery = { name?: TextQuery; exact?: boolean };
 
+function isDisabledElement(element: Element): boolean {
+  return element.hasAttribute("disabled") || element.getAttribute("aria-disabled") === "true";
+}
+
+function byLabel(scope: ParentNode, text: TextQuery, { exact = false }: { exact?: boolean }) {
+  return [
+    ...scope.querySelectorAll("input, textarea, select, [role=textbox], [role=combobox]"),
+  ].filter((element) => textMatches(accessibleName(element), text, exact));
+}
+
 function byRole(scope: ParentNode, role: string, options: RoleQuery): Element[] {
   const selector = ROLE_SELECTORS[role];
   if (!selector) throw new Error(`no selector for role ${role}`);
@@ -210,6 +220,10 @@ export class Locator {
     return new Locator(() => this.all().flatMap((element) => byText(element, text, options)));
   }
 
+  getByLabel(text: TextQuery, options: { exact?: boolean } = {}): Locator {
+    return new Locator(() => this.all().flatMap((element) => byLabel(element, text, options)));
+  }
+
   element(): HTMLElement {
     const found = this.all();
     if (found.length !== 1) throw new Error(`expected exactly one element, found ${found.length}`);
@@ -230,14 +244,32 @@ export class Locator {
     return (this.element() as HTMLInputElement).value;
   }
 
+  private async actionable({ enabled }: { enabled: boolean }): Promise<HTMLElement> {
+    let found: Element[] = [];
+    const ready = () => {
+      found = this.all();
+      if (found.length !== 1) return false;
+      return !enabled || !isDisabledElement(found[0]);
+    };
+    await pollUntil(
+      ready,
+      () =>
+        found.length === 1
+          ? "the element stayed disabled"
+          : `expected exactly one element, found ${found.length}`,
+      DEFAULT_WAIT_MS,
+    );
+    return found[0] as HTMLElement;
+  }
+
   async press(key: string): Promise<void> {
-    await this.focus();
-    await pressOn(this.element(), key);
+    const element = await this.actionable({ enabled: false });
+    await act(async () => element.focus());
+    await pressOn(element, key);
   }
 
   isDisabled(): boolean {
-    const element = this.element();
-    return element.hasAttribute("disabled") || element.getAttribute("aria-disabled") === "true";
+    return isDisabledElement(this.element());
   }
 
   isFocused(): boolean {
@@ -246,7 +278,7 @@ export class Locator {
   }
 
   async click(): Promise<void> {
-    const element = this.element();
+    const element = await this.actionable({ enabled: true });
     await act(async () => {
       element.focus();
       element.click();
@@ -254,12 +286,13 @@ export class Locator {
   }
 
   async focus(): Promise<void> {
-    const element = this.element();
+    const element = await this.actionable({ enabled: false });
     await act(async () => element.focus());
   }
 
   async fill(value: string): Promise<void> {
-    const element = this.element() as HTMLInputElement | HTMLTextAreaElement;
+    const element = (await this.actionable({ enabled: true })) as
+      HTMLInputElement | HTMLTextAreaElement;
     const prototype = Object.getPrototypeOf(element) as object;
     const setter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
     await act(async () => {
@@ -271,12 +304,12 @@ export class Locator {
   }
 
   async check(): Promise<void> {
-    const element = this.element() as HTMLInputElement;
+    const element = (await this.actionable({ enabled: true })) as HTMLInputElement;
     if (!element.checked) await this.click();
   }
 
   async select(value: string): Promise<void> {
-    const element = this.element() as HTMLSelectElement;
+    const element = (await this.actionable({ enabled: true })) as HTMLSelectElement;
     await act(async () => {
       element.value = value;
       element.dispatchEvent(new Event("change", { bubbles: true }));
@@ -343,13 +376,11 @@ function domQueries(scope: () => HTMLElement | undefined) {
         const host = scope();
         return host ? byText(host, text, options) : [];
       }),
-    getByLabel(text: TextQuery, { exact = false }: { exact?: boolean } = {}) {
-      return new Locator(() =>
-        query("input, textarea, select, [role=textbox], [role=combobox]")().filter((element) =>
-          textMatches(accessibleName(element), text, exact),
-        ),
-      );
-    },
+    getByLabel: (text: TextQuery, options: { exact?: boolean } = {}) =>
+      new Locator(() => {
+        const host = scope();
+        return host ? byLabel(host, text, options) : [];
+      }),
   };
 }
 
