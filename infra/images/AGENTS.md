@@ -11,7 +11,7 @@
 | 重產 `constraints.txt`／`package-lock.json` | README.md〈重新產生依賴鎖檔〉 | `devctl dep-audit`、I-05 |
 | 推送一個升了 `IMAGE_VERSION` 的 commit | 先問負責人：推送會發佈新的映像標籤，標籤不可收回 | `skillhub-guards` 的推送閘門（負責人輸入 `/guard-allow` 放行一次） |
 | 讓部署改跑新版本 | README.md〈已發佈的 digest 與孤兒清單〉：預設映像在 `apps/sandbox/cmd/sandboxd/main.go`，四項實測通過才移動 | UPGRADES.md 對應那一節要有四項實測輸出 |
-| 改服務映像（`platform/`、`web/`、`llm/`、`sandboxd/`、`postgres/`、`devtools/`） | README.md〈服務映像〉 | CI 的 `images` job |
+| 改服務映像（`platform/`、`web/`、`llm/`、`sandboxd/`、`postgres/`、`devtools/`） | README.md〈服務映像〉 | CI 的 `images` job（`postgres/`、`sandboxd/` 是 `images-postgres-sandboxd`） |
 
 `run.test.mjs` 不會被複製進映像，改它不觸發 I-05。四項實測會呼叫付費模型，子代理不跑（根 `AGENTS.md`〈開發自動化〉第 2 條）。
 

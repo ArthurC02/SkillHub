@@ -50,7 +50,8 @@ CI（GitHub Actions）在對主線的 PR 與推送到主線時觸發，PR 上所
 | `llm` | `apps/llm/**`、`packages/api-stub-py/**`、`contracts/**` | 依賴同步 → lint → 測試 |
 | `contracts-drift` | 無 filter，每次都跑 | 重跑 codegen 與 `sqlc generate`，`git diff --exit-code`；有差異即失敗 |
 | `images` | 同上三者 | 建置 `apps/web`、`apps/platform`、`apps/llm` 三個產品程式的容器 Image，並在推送前先跑一次 stack smoke test |
-| `images-push` | 依賴 `images` 與其餘 required job 全綠 | 只在推送到主線時執行，把 `images` 建好的 Image 以 commit SHA 為 tag 推送至 registry |
+| `images-postgres-sandboxd` | 同 `images` | 與 `images` 並行：建置 postgres 映像並跑備份還原演練、建置 sandboxd 映像並確認沒有權杖時拒絕啟動 |
+| `images-push` | 依賴兩個映像 job 與其餘 required job 全綠 | 只在推送到主線時執行，把 `images` 建好的 Image 以 commit SHA 為 tag 推送至 registry |
 
 `contracts-drift` 刻意不做 path filter：drift 也可能來自有人直接手改產物，那種變更不會觸碰 `contracts/`；這個 job 成本低，全跑最省事。`images` 在 PR 上照樣建置與 smoke test，讓 PR 就能發現映像建置壞掉；只有推送 registry 的 `images-push` 留到推送主線才跑。Image tag 用 commit SHA 而非浮動標籤，讓部署與回滾都指向明確版本。只改 `docs/**` 的 PR 只會觸發 `contracts-drift`。`apps/sandbox` 的 Runtime Image 不在這個 job 裡：它走 [ADR-004](./ADR-004-sandbox-isolation-and-execution-security.md) 的獨立映像掃描與發佈管線，發佈節奏與這裡的三個控制平面服務不同。Path filter 是手寫的，新增頂層目錄時必須同步更新，否則會有「該跑卻沒跑」的靜默漏洞；這是選擇原生工具而非跨語言依賴圖工具已知的代價。
 
