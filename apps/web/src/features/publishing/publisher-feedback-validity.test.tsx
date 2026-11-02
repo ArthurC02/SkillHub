@@ -44,7 +44,7 @@ for (const owner of owners) {
           await page.goto(owner.url);
           const section = page.getByRole("region", { name: owner.region, exact: true });
           const input = section.locator("input");
-          await page.eventually(() => expect(input.count()).toBe(1));
+          await expect(input).toHaveCount(1);
           await input.fill("submitted-name");
           await input.press("Enter");
           await page.eventually(() => {
@@ -76,7 +76,7 @@ for (const owner of owners) {
           expect(posts).toEqual([{ name: "submitted-name" }]);
           await page.eventually(() => expect(reads).toBe(2));
           expect(errors).toEqual([]);
-          expect(page.getByText("這一頁暫時無法顯示", { exact: false }).count()).toBe(0);
+          await expect(page.getByText("這一頁暫時無法顯示", { exact: false })).toHaveCount(0);
           expect(await page.axeViolations("main")).toEqual([]);
         } finally {
           releasePost();

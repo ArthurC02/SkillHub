@@ -82,7 +82,7 @@ for (const source of ["url", "zip"] as const) {
     }));
     await page.goto("/workspace/import");
     const submit = page.getByRole("button", { name: "開始匯入", exact: true });
-    await page.eventually(() => expect(submit.isDisabled()).toBe(false));
+    await expect(submit).toBeEnabled();
     if (source === "url")
       await page.getByLabel("URL", { exact: true }).fill("https://github.com/example/skill");
     else {
@@ -90,9 +90,7 @@ for (const source of ["url", "zip"] as const) {
       await chooseZipWithoutNativeValidation(page, "skills.zip", "zip bytes");
     }
     await submit.click();
-    await page.eventually(() =>
-      expect(page.getByRole("status").filter({ hasText: "匯入完成" }).count()).toBe(1),
-    );
+    await expect(page.getByRole("status").filter({ hasText: "匯入完成" })).toHaveCount(1);
     const outcomes = page.locator("main section > ul > li").filter({ hasText: "靜態檢查：" });
     await page.eventually(() => {
       expect(page.getByRole("heading", { name: "進來的小工具（3）", exact: true }).count()).toBe(1);
@@ -104,9 +102,9 @@ for (const source of ["url", "zip"] as const) {
       [2, "skills/with-info", "靜態檢查：阻擋錯誤 0／警告 0／資訊 1"],
     ] as const) {
       const outcome = outcomes.nth(index);
-      expect(outcome.locator("p.risk-counts").text()).toBe(summary);
+      await expect(outcome.locator("p.risk-counts")).toHaveText(summary);
       expect(outcome.locator("p.risk-counts").element().closest("details")).toBeNull();
-      expect(outcome.locator("h3").text()).toBe(name);
+      await expect(outcome.locator("h3")).toHaveText(name);
       expect(outcome.locator("details").attribute("open")).toBeNull();
       await outcome.locator("summary").filter({ hasText: "靜態檢查結果" }).click();
     }

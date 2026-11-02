@@ -103,7 +103,7 @@ for (const mode of [
         await more.focus();
         await page.press("Enter");
         await readStarted;
-        await page.eventually(() => expect(more.isDisabled()).toBe(true));
+        await expect(more).toBeDisabled();
         if (moved) await movedTarget.focus();
         release();
         if (mode === "more-overlap") {
@@ -125,7 +125,7 @@ for (const mode of [
           if (mode !== "disjoint") expect(reason.count()).toBe(0);
         });
         if (moved && mode !== "more-overlap") {
-          await page.eventually(() => expect(movedTarget.isFocused()).toBe(true));
+          await expect(movedTarget).toBeFocused();
           if (mode === "case-equivalent")
             expect((summary.element().parentElement as HTMLDetailsElement).open).toBe(true);
         } else {
@@ -133,13 +133,13 @@ for (const mode of [
           const destination = page.getByRole("button", {
             name: new RegExp(`試跑紀錄 ID ${nextId}$`),
           });
-          await page.eventually(() => expect(destination.isFocused()).toBe(true));
+          await expect(destination).toBeFocused();
         }
-        expect(field.value()).toBe("分頁時保留的比較 ID");
+        await expect(field).toHaveValue("分頁時保留的比較 ID");
         expect(offsets).toEqual(mode === "more-overlap" ? [0, 50, 100] : [0, 50]);
         expect(writes()).toEqual([]);
         expect(comparisons()).toEqual([]);
-        expect(page.getByRole("alert").count()).toBe(0);
+        await expect(page.getByRole("alert")).toHaveCount(0);
         expect(await page.axeViolations("body")).toEqual([]);
       } finally {
         release();

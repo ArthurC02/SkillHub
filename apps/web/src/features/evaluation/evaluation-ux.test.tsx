@@ -45,7 +45,7 @@ test("a criterion reveals executed check nodes without replacing its final verdi
     expect(page.locator(".verdict").text()).toBe("任務判定：未符合");
     expect(reveal.count()).toBe(1);
   });
-  expect(page.getByText("找不到 email 欄位").count()).toBe(0);
+  await expect(page.getByText("找不到 email 欄位")).toHaveCount(0);
   await reveal.click();
   await page.eventually(() => {
     expect(page.getByText("前置檢查未通過，後續評審未執行").count()).toBe(1);
@@ -111,18 +111,14 @@ test("a failed evaluation reread hides cached verdicts and recovers in place", a
   try {
     await page.goto(`/runs/${RUN}`);
     const verdict = page.locator("#run-decision .verdict");
-    await page.eventually(() => expect(verdict.text()).toBe("任務判定：符合"));
+    await expect(verdict).toHaveText("任務判定：符合");
     await page.getByLabel("評估版本").select("eval-1");
-    await page.eventually(() =>
-      expect(page.getByText("歷史判定", { exact: true }).count()).toBe(1),
-    );
+    await expect(page.getByText("歷史判定", { exact: true })).toHaveCount(1);
     await page.getByRole("button", { name: "回到目前的判定" }).click();
-    await page.eventually(() =>
-      expect(page.locator("#run-decision [role=alert]").text()).toContain("暫時無法讀取評估結果"),
-    );
-    expect(verdict.count()).toBe(0);
-    expect(page.locator("#feedback-comment").count()).toBe(0);
-    expect(page.getByRole("button", { name: /建立新版本/ }).count()).toBe(0);
+    await expect(page.locator("#run-decision [role=alert]")).toContainText("暫時無法讀取評估結果");
+    await expect(verdict).toHaveCount(0);
+    await expect(page.locator("#feedback-comment")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /建立新版本/ })).toHaveCount(0);
     await page.getByRole("button", { name: "再試一次" }).focus();
     await page.press("Enter");
     await page.eventually(() => {
@@ -154,11 +150,9 @@ test("an unavailable historical evaluation always offers the current verdict", a
     json: { error: "service unavailable" },
   }));
   await page.goto(`/runs/${RUN}?evaluation=eval-gone&events=0,100`);
-  await page.eventually(() =>
-    expect(page.getByRole("alert").filter({ hasText: "這份歷史評估" }).count()).toBeGreaterThan(0),
-  );
-  expect(page.getByText("未評估", { exact: true }).count()).toBe(0);
-  expect(page.getByLabel("評估版本").count()).toBe(0);
+  await expect(page.getByRole("alert").filter({ hasText: "這份歷史評估" })).toBeVisible();
+  await expect(page.getByText("未評估", { exact: true })).toHaveCount(0);
+  await expect(page.getByLabel("評估版本")).toHaveCount(0);
   const current = page.getByRole("button", { name: "回到目前的判定" });
   await current.focus();
   await page.press("Enter");
@@ -195,9 +189,9 @@ test("suggestions from another evaluation cannot be accepted before a matching r
   const accept = page.getByRole("button", { name: "接受", exact: true });
   try {
     await page.goto(`/runs/${RUN}`);
-    await page.eventually(() => expect(mismatch.count()).toBeGreaterThan(0));
-    expect(accept.count()).toBe(0);
-    expect(page.getByRole("button", { name: /建立新版本/ }).count()).toBe(0);
+    await expect(mismatch).toBeVisible();
+    await expect(accept).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /建立新版本/ })).toHaveCount(0);
     await page.getByRole("button", { name: "重新讀取改善建議" }).click();
     await page.eventually(() => {
       expect(reads).toBe(2);
@@ -236,7 +230,7 @@ test("editing feedback clears the last submission confirmation", async () => {
   });
   await page.goto(`/runs/${RUN}`);
   const comment = page.locator("#feedback-comment");
-  await page.eventually(() => expect(comment.count()).toBe(1));
+  await expect(comment).toHaveCount(1);
   await comment.fill("reviewer note");
   await page.getByRole("button", { name: "有幫助", exact: true }).click();
   try {
@@ -249,9 +243,9 @@ test("editing feedback clears the last submission confirmation", async () => {
     finishWrite();
   }
   const confirmation = page.getByText("已送出回饋。", { exact: true });
-  await page.eventually(() => expect(confirmation.count()).toBe(1));
+  await expect(confirmation).toHaveCount(1);
   await comment.fill("new unsent note");
-  await page.eventually(() => expect(confirmation.count()).toBe(0));
+  await expect(confirmation).toHaveCount(0);
   expect(bodies).toHaveLength(1);
 });
 
@@ -311,8 +305,8 @@ for (const scope of ["workspace", "platform"] as const) {
         ).toBe(1);
         expect(page.getByRole("heading", { name: "現有的評分器" }).count()).toBe(1);
       });
-      expect(page.locator("#grader-create-name").count()).toBe(0);
-      expect(instructions.count()).toBe(0);
+      await expect(page.locator("#grader-create-name")).toHaveCount(0);
+      await expect(instructions).toHaveCount(0);
       await page.getByText(`修改「${grader.name}」的評分指示`, { exact: true }).click();
       await instructions.fill("必須友善且簡短");
       await reason.fill("clarifies the expected tone");
@@ -332,9 +326,9 @@ for (const scope of ["workspace", "platform"] as const) {
       expect(result.isFocused()).toBe(true);
       expect(page.getByRole("alert").text()).toContain("暫時無法讀取評分器");
     });
-    expect(instructions.count()).toBe(0);
+    await expect(instructions).toHaveCount(0);
     expect(document.querySelector(".grader-list")?.getAttribute("inert")).toBe("");
-    expect(save.count()).toBe(0);
+    await expect(save).toHaveCount(0);
     unavailable = false;
     await page.getByRole("button", { name: "再試一次" }).focus();
     await page.press("Enter");
@@ -353,7 +347,7 @@ for (const scope of ["workspace", "platform"] as const) {
       expect(reason.value()).toBe("");
     });
     await reason.fill("new unsent reason");
-    await page.eventually(() => expect(result.count()).toBe(0));
+    await expect(result).toHaveCount(0);
     expect(bodies).toHaveLength(1);
     expect(await page.axeViolations("main")).toEqual([]);
   });

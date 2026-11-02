@@ -143,11 +143,7 @@ async function prepare(page: App, scope: Scope, operation: Operation, state: Wri
   else await page.getByText(`修改「${scope.grader.name}」的評分指示`, { exact: true }).click();
   await fillDraft(page, scope, operation, FIRST);
   const inputs = fields(page, scope, operation);
-  await page.eventually(() =>
-    expect(inputs.button(operation === "create" ? "新增評分器" : "存成新版本").isDisabled()).toBe(
-      false,
-    ),
-  );
+  await expect(inputs.button(operation === "create" ? "新增評分器" : "存成新版本")).toBeEnabled();
   await inputs.reason.press("Enter");
 }
 
@@ -234,7 +230,7 @@ for (const scope of SCOPES) {
           expect(await page.axeViolations("main")).toEqual([]);
           blocked = false;
           release();
-          await page.eventually(() => expect(page.locator(".auth-name").text()).toBe("tester"));
+          await expect(page.locator(".auth-name")).toHaveText("tester");
           await resend.click();
           await page.eventually(() => {
             expect(page.locator("#grader-result").text()).toContain(

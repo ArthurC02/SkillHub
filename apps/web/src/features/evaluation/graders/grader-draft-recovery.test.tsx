@@ -40,7 +40,7 @@ for (const scope of scopes) {
       });
       await page.goto(scope.url);
       const summary = page.getByText(`修改「${scope.grader.name}」的評分指示`, { exact: true });
-      await page.eventually(() => expect(summary.count()).toBe(1));
+      await expect(summary).toHaveCount(1);
       await summary.click();
       const instructionsSelector = `#grader-${scope.grader.id}-instructions`;
       const reasonSelector = `#grader-${scope.grader.id}-reason`;
@@ -50,16 +50,11 @@ for (const scope of scopes) {
       await reason.fill("未送出的修改原因");
       failing = true;
       await page.getByRole("button", { name: "重新整理", exact: true }).click();
-      if (status === 401)
-        await page.eventually(() =>
-          expect(page.getByText("評分器需要登入。").count()).toBeGreaterThan(0),
-        );
+      if (status === 401) await expect(page.getByText("評分器需要登入。")).toBeVisible();
       else
-        await page.eventually(() =>
-          expect(
-            page.getByRole("alert").filter({ hasText: "暫時無法讀取評分器" }).count(),
-          ).toBeGreaterThan(0),
-        );
+        await expect(
+          page.getByRole("alert").filter({ hasText: "暫時無法讀取評分器" }),
+        ).toBeVisible();
       if ([401, 403, 404].includes(status)) {
         expect(present(instructionsSelector)).toBe(0);
         expect(present(reasonSelector)).toBe(0);
@@ -71,7 +66,7 @@ for (const scope of scopes) {
       expect(present(instructionsSelector)).toBe(1);
       expect(list?.hasAttribute("hidden")).toBe(true);
       expect(list?.getAttribute("inert")).toBe("");
-      expect(page.getByRole("button", { name: "存成新版本", exact: true }).count()).toBe(0);
+      await expect(page.getByRole("button", { name: "存成新版本", exact: true })).toHaveCount(0);
       expect(writes).toBe(0);
       failing = false;
       await page.getByRole("button", { name: "再試一次", exact: true }).focus();

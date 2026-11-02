@@ -97,7 +97,7 @@ for (const form of forms) {
           if (mode === "pristine" || (mode === "partial" && index > 0)) continue;
           const value = mode === "cleared" ? "" : form.owned[index];
           await field.fill(value);
-          await page.eventually(() => expect(field.value()).toBe(value));
+          await expect(field).toHaveValue(value);
         }
         if (form.name === "rubric" && mode === "cleared") {
           await page.locator("#rubric-weight-c1").fill("");
@@ -132,7 +132,7 @@ for (const form of forms) {
         });
         if (mode !== "saved") {
           await second.getByRole("button", { name: "確認", exact: true }).click();
-          await page.eventually(() => expect(second.text()).toContain("狀態：已確認"));
+          await expect(second).toContainText("狀態：已確認");
         }
         await page.eventually(() => {
           for (let index = 0; index < form.selectors.length; index++) {
@@ -157,7 +157,7 @@ for (const form of forms) {
         );
         const field = page.locator(form.selectors[0]);
         await field.click();
-        expect(field.isFocused()).toBe(true);
+        await expect(field).toBeFocused();
         expect(await page.axeViolations(`section[aria-label="${form.panel}"]`)).toEqual([]);
       } finally {
         release();

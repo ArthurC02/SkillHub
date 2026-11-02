@@ -24,9 +24,7 @@ for (const response of ["lost", "server-error"]) {
     });
     await page.goto("/workspace/account");
     const main = page.locator("main");
-    await page.eventually(() =>
-      expect(main.getByText("tester@example.com", { exact: true }).count()).toBe(1),
-    );
+    await expect(main.getByText("tester@example.com", { exact: true })).toHaveCount(1);
     await page.getByRole("button", { name: "登出", exact: true }).click();
     await page.eventually(() => {
       expect(main.locator(".account-profile").count()).toBe(0);
@@ -56,12 +54,10 @@ for (const action of ["logout", "login"]) {
       await page.goto("/workspace/account");
       const controls = page.locator("[data-auth-controls]");
       if (action === "logout") {
-        await page.eventually(() =>
-          expect(controls.getByRole("button", { name: "登出", exact: true }).count()).toBe(1),
-        );
+        await expect(controls.getByRole("button", { name: "登出", exact: true })).toHaveCount(1);
         await controls.getByRole("button", { name: "登出", exact: true }).click();
       } else {
-        await page.eventually(() => expect(controls.getByRole("textbox").count()).toBe(1));
+        await expect(controls.getByRole("textbox")).toHaveCount(1);
         await controls.getByRole("textbox").fill("second");
         await controls.getByRole("button", { name: "登入", exact: true }).click();
       }

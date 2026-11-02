@@ -42,17 +42,13 @@ test("an offline version upload withholds cached limits and preserves the file",
   const page = app();
   page.route("**/skills/import/limits", () => ({ json: RULES }));
   await page.goto(`/skills/${SKILL}/versions/${VERSION}`);
-  await page.eventually(() => expect(page.getByText(/平台限制：zip 最大 6.0 MB/).count()).toBe(1));
+  await expect(page.getByText(/平台限制：zip 最大 6.0 MB/)).toHaveCount(1);
   await page.getByRole("link", { name: "Skill Hub", exact: true }).click();
-  await page.eventually(() =>
-    expect(page.getByRole("heading", { name: UPLOAD_HEADING, exact: true }).count()).toBe(0),
-  );
+  await expect(page.getByRole("heading", { name: UPLOAD_HEADING, exact: true })).toHaveCount(0);
   try {
     await page.setOffline(true);
     await page.goBack();
-    await page.eventually(() =>
-      expect(page.getByText("等待連線以讀取上傳限制…", { exact: true }).count()).toBe(1),
-    );
+    await expect(page.getByText("等待連線以讀取上傳限制…", { exact: true })).toHaveCount(1);
     await chooseZip(page, "offline.zip", "offline draft");
     const submit = page.getByRole("button", { name: SUBMIT, exact: true });
     await page.eventually(() => {
@@ -95,13 +91,13 @@ for (const fault of ["server", "unreadable limits"] as const) {
         });
         fail = true;
         await page.getByRole("link", { name: "Skill Hub", exact: true }).click();
-        await page.eventually(() =>
-          expect(page.getByRole("heading", { name: UPLOAD_HEADING, exact: true }).count()).toBe(0),
+        await expect(page.getByRole("heading", { name: UPLOAD_HEADING, exact: true })).toHaveCount(
+          0,
         );
         await page.goBack();
         await page.eventually(() => expect(reads).toBe(2));
       }
-      await page.eventually(() => expect(section.count()).toBe(1));
+      await expect(section).toHaveCount(1);
       await chooseZip(page, "draft.zip", "retained draft");
       await page.eventually(() => {
         expect(section.getByRole("alert").text()).toContain("暫時無法讀取上傳限制");

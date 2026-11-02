@@ -45,7 +45,7 @@ for (const { phase, failure } of scenarios) {
       const prompt = page.getByLabel("User Prompt", { exact: true });
       const alert = index.getByRole("alert");
       if (phase !== "initial") {
-        await page.eventually(() => expect(rows.count()).toBe(phase === "next" ? 50 : 1));
+        await expect(rows).toHaveCount(phase === "next" ? 50 : 1);
         await name.fill("kept new test-case name");
         await prompt.fill("kept new test-case prompt");
         await index

@@ -117,7 +117,7 @@ async function goThroughPolicyAndBack(page: App) {
 async function expectPausedButtons(page: App, region: Locator, surface: Surface, stage: Stage) {
   const buttons = region.locator("button");
   if (stage === "initial retry") {
-    await page.eventually(() => expect(buttons.count()).toBe(0));
+    await expect(buttons).toHaveCount(0);
     return;
   }
   const action = lastOf(buttons);
@@ -149,7 +149,7 @@ async function openCursorRead(page: App, surface: Surface, stage: Stage) {
   const firstPage = stage === "initial retry" || stage === "cached retry";
   await page.goto(surface.url);
   if (stage === "cached retry") {
-    await page.eventually(() => expect(rows.count()).toBe(1));
+    await expect(rows).toHaveCount(1);
     await goThroughPolicyAndBack(page);
   }
   if (firstPage) {
@@ -208,7 +208,7 @@ for (const surface of surfaces) {
           if (moved) await navigation.focus();
           if (moved || firstPage) expect(await page.axeViolations("body")).toEqual([]);
           await page.setOffline(false);
-          await page.eventually(() => expect(rows.count()).toBe(completedRows));
+          await expect(rows).toHaveCount(completedRows);
           resumed = true;
           await page.eventually(() => {
             expect(waiting.count()).toBe(0);
@@ -230,7 +230,7 @@ for (const surface of surfaces) {
         } finally {
           if (!resumed) {
             await page.setOffline(false);
-            if (requested) await page.eventually(() => expect(rows.count()).toBe(completedRows));
+            if (requested) await expect(rows).toHaveCount(completedRows);
           }
         }
       });
@@ -251,7 +251,7 @@ test("a cached credit balance failure waits for connectivity and keeps recovery 
   const retry = balance.locator("button").filter({ hasText: "再試一次" });
   try {
     await page.goto("/workspace/account");
-    await page.eventually(() => expect(balance.text()).toContain("目前餘額"));
+    await expect(balance).toContainText("目前餘額");
     await goThroughPolicyAndBack(page);
     await page.eventually(() => {
       expect(balance.locator("[role=alert]").count()).toBe(1);

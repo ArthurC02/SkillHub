@@ -38,28 +38,28 @@ for (const [owner, endpoint, sentence] of [
         `/skills/${SKILL}/test-cases/${TEST_CASE}/runs/new?version=${VERSION}&against=${RUN}`,
       );
       const main = () => page.locator("main");
-      await page.eventually(() => expect(page.getByRole("alert").text()).toContain(sentence));
+      await expect(page.getByRole("alert")).toContainText(sentence);
       expect(reads).toBe(1);
       const retry = page.getByRole("button", { name: "再試一次", exact: true });
-      expect(retry.count()).toBe(1);
+      await expect(retry).toHaveCount(1);
       await retry.focus();
       await page.press("Enter");
       await page.eventually(() => expect(reads).toBe(2));
       const heading = page.getByRole("heading", { name: "執行前權限確認", exact: true });
-      await page.eventually(() => expect(heading.isFocused()).toBe(true));
-      expect(page.getByRole("button", { name: "再試一次", exact: true }).count()).toBe(0);
+      await expect(heading).toBeFocused();
+      await expect(page.getByRole("button", { name: "再試一次", exact: true })).toHaveCount(0);
       expect(writes()).toEqual([]);
       release();
-      await page.eventually(() => expect(page.getByRole("alert").count()).toBe(0));
+      await expect(page.getByRole("alert")).toHaveCount(0);
       const context = main().locator(".preflight-context");
       await page.eventually(() => {
         expect(context.text()).toContain("PDF Summariser");
         expect(context.text()).toContain("去重複列");
       });
-      expect(page.getByLabel("小工具 Version", { exact: true }).value()).toBe(VERSION);
+      await expect(page.getByLabel("小工具 Version", { exact: true })).toHaveValue(VERSION);
       const start = page.getByRole("button", { name: "我確認以上權限,開始試跑", exact: true });
-      await page.eventually(() => expect(start.isDisabled()).toBe(false));
-      expect(heading.isFocused()).toBe(true);
+      await expect(start).toBeEnabled();
+      await expect(heading).toBeFocused();
       expect(reads).toBe(2);
       expect(writes()).toEqual([]);
       const search = new URLSearchParams(page.search());

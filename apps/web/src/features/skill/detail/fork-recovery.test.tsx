@@ -78,18 +78,15 @@ for (const [status, message] of [
       };
     });
     await page.goto(`/skills/${SKILL}`);
-    await page.eventually(() => expect(page.locator(".auth-name").text()).toBe("tester"));
+    await expect(page.locator(".auth-name")).toHaveText("tester");
     await page.getByRole("button", { name: CREATE_FORK, exact: true }).click();
-    await page.eventually(() =>
-      expect(
-        page
-          .getByRole(status === 401 ? "status" : "alert")
-          .filter({ hasText: message })
-          .count(),
-      ).toBeGreaterThan(0),
-    );
-    expect(page.locator("main").text()).not.toContain("尚未確認是否已複製");
-    expect(page.getByRole("link", { name: "另開資產庫確認複製結果", exact: true }).count()).toBe(0);
+    await expect(
+      page.getByRole(status === 401 ? "status" : "alert").filter({ hasText: message }),
+    ).toBeVisible();
+    await expect(page.locator("main")).not.toContainText("尚未確認是否已複製");
+    await expect(
+      page.getByRole("link", { name: "另開資產庫確認複製結果", exact: true }),
+    ).toHaveCount(0);
     if (status === 409)
       expect(
         page.getByRole("link", { name: "前往資產庫整理副本", exact: true }).attribute("href"),
@@ -194,7 +191,7 @@ for (const phase of ["confirmed", "pending"]) {
     const choice = page.getByLabel("這個小工具是做什麼用的", { exact: true });
     try {
       await page.goto(`/skills/${SKILL}`);
-      await page.eventually(() => expect(page.locator(".auth-name").text()).toBe("tester"));
+      await expect(page.locator(".auth-name")).toHaveText("tester");
       await page.getByRole("button", { name: CREATE_FORK, exact: true }).click();
       if (phase === "confirmed") {
         await page.eventually(() => {
@@ -216,9 +213,7 @@ for (const phase of ["confirmed", "pending"]) {
       await page.eventually(() => expect(copied).toBe(true));
       await choice.select("writing");
       await page.getByRole("button", { name: "儲存", exact: true }).click();
-      await page.eventually(() =>
-        expect(page.getByRole("heading", { name: "小工具總覽", exact: true }).count()).toBe(1),
-      );
+      await expect(page.getByRole("heading", { name: "小工具總覽", exact: true })).toHaveCount(1);
       expect(copiedBeforeCategory).toBe(true);
       await choice.select("data");
       await choice.focus();

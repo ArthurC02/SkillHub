@@ -49,9 +49,7 @@ for (const scope of [
         const instructions = page.locator(`#grader-${scope.grader.id}-instructions`);
         const reason = page.locator(`#grader-${scope.grader.id}-reason`);
         if (reread) {
-          await page.eventually(() =>
-            expect(page.locator("summary").filter({ hasText: "新增評分器" }).count()).toBe(1),
-          );
+          await expect(page.locator("summary").filter({ hasText: "新增評分器" })).toHaveCount(1);
           await page.locator("summary").filter({ hasText: "新增評分器" }).click();
           await page.locator("#grader-create-name").fill("未送出的評分器");
           await page.locator("#grader-create-instructions").fill("未送出的新指示");
@@ -98,11 +96,11 @@ for (const scope of [
           expect(page.locator("#grader-list-heading").isFocused()).toBe(true);
         });
         if (reread) {
-          expect(instructions.value()).toBe("未送出的修訂指示");
-          expect(reason.value()).toBe("未送出的修訂原因");
-          expect(page.locator("#grader-create-name").value()).toBe("未送出的評分器");
-          expect(page.locator("#grader-create-instructions").value()).toBe("未送出的新指示");
-          expect(page.locator("#grader-create-reason").value()).toBe("未送出的新增原因");
+          await expect(instructions).toHaveValue("未送出的修訂指示");
+          await expect(reason).toHaveValue("未送出的修訂原因");
+          await expect(page.locator("#grader-create-name")).toHaveValue("未送出的評分器");
+          await expect(page.locator("#grader-create-instructions")).toHaveValue("未送出的新指示");
+          await expect(page.locator("#grader-create-reason")).toHaveValue("未送出的新增原因");
         }
         expect(reads).toBe(reread ? 3 : 2);
         expect(writes()).toEqual([]);

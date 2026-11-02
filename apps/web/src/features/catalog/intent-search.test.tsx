@@ -62,9 +62,7 @@ async function correctOutput(page: App, output: string) {
   await page.getByRole("button", { name: "修正搜尋理解", exact: true }).click();
   await page.getByLabel("輸出", { exact: true }).fill(output);
   await page.getByRole("button", { name: "套用修正並搜尋" }).click();
-  await page.eventually(() =>
-    expect(page.getByText(`本次輸出需求：${output}`, { exact: true }).count()).toBe(1),
-  );
+  await expect(page.getByText(`本次輸出需求：${output}`, { exact: true })).toHaveCount(1);
 }
 
 test("corrections survive reload and separate result caches while preserving the original task", async () => {
@@ -89,7 +87,7 @@ test("corrections survive reload and separate result caches while preserving the
       limit: 20,
     },
   });
-  expect(page.getByLabel("任務描述", { exact: true }).value()).toBe("原本的請求");
+  await expect(page.getByLabel("任務描述", { exact: true })).toHaveValue("原本的請求");
   const beforeReload = requests.length;
   queryClient.clear();
   await page.goto("/policy");
@@ -109,9 +107,7 @@ test("corrections survive reload and separate result caches while preserving the
   ).toBe(true);
   expect(new URLSearchParams(page.search()).get("category")).toBe("documents");
   await page.getByRole("button", { name: "捨棄理解與篩選，以原句搜尋" }).click();
-  await page.eventually(() =>
-    expect(page.getByText("本次輸出需求：未提及", { exact: true }).count()).toBe(1),
-  );
+  await expect(page.getByText("本次輸出需求：未提及", { exact: true })).toHaveCount(1);
   expect(requests.at(-1)).toEqual({
     method: "POST",
     body: {
@@ -125,7 +121,7 @@ test("corrections survive reload and separate result caches while preserving the
   expect(new URLSearchParams(page.search()).has("category")).toBe(false);
   await page.getByLabel("任務描述", { exact: true }).fill("新的任務");
   await page.getByRole("button", { name: "搜尋", exact: true }).click();
-  await page.eventually(() => expect(page.locator("q").text()).toBe("新的任務"));
+  await expect(page.locator("q")).toHaveText("新的任務");
   expect(requests.at(-1)?.method).toBe("GET");
   expect(new URLSearchParams(page.search()).has("correction")).toBe(false);
 });
@@ -135,9 +131,7 @@ for (const correction of ["{", "7", "true", "[]", "{}", "null"]) {
     const page = app();
     const requests = stubIntentSearch(page);
     await page.goto(`/?${new URLSearchParams({ q: "原本的請求", correction })}`);
-    await page.eventually(() =>
-      expect(page.getByRole("alert").text()).toContain("無法讀取搜尋結果"),
-    );
+    await expect(page.getByRole("alert")).toContainText("無法讀取搜尋結果");
     expect(requests).toHaveLength(0);
     await page.getByLabel("任務描述", { exact: true }).fill("新的任務");
     await page.getByRole("button", { name: "搜尋", exact: true }).click();

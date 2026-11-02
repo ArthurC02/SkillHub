@@ -58,9 +58,7 @@ for (const width of [375, 1280]) {
       await page.goto("/workspace/downloads");
       const section = page.locator("#bundle-workspace");
       const button = (label: string) => section.locator("button").filter({ hasText: label });
-      await page.eventually(() =>
-        expect(section.locator(".bundle-overview-header").text()).toContain("已發佈"),
-      );
+      await expect(section.locator(".bundle-overview-header")).toContainText("已發佈");
       const form = page.getByRole("region", { name: "建立 Bundle", exact: true });
       await form.locator("summary").click();
       const bundleName = form.locator("input").nth(0);
@@ -70,18 +68,16 @@ for (const width of [375, 1280]) {
       await version.fill("1.2.3");
       await description.fill("保留未送出的 Bundle 說明");
       await button("重新整理").click();
-      await page.eventually(() =>
-        expect(section.locator("[role=alert]").text()).toContain(
-          kind === "versions" ? "暫時無法讀取Bundle 清單" : "暫時無法讀取Bundle 發佈概覽",
-        ),
+      await expect(section.locator("[role=alert]")).toContainText(
+        kind === "versions" ? "暫時無法讀取Bundle 清單" : "暫時無法讀取Bundle 發佈概覽",
       );
-      expect(section.text()).not.toContain("尚未發佈。");
-      expect(section.text()).not.toContain("已撤回");
-      expect(section.text()).not.toContain("目前還沒有 Bundle。");
-      expect(form.locator("summary").text()).not.toBe("建立第一個 Bundle");
-      expect(bundleName.value()).toBe("kept-bundle");
-      expect(version.value()).toBe("1.2.3");
-      expect(description.value()).toBe("保留未送出的 Bundle 說明");
+      await expect(section).not.toContainText("尚未發佈。");
+      await expect(section).not.toContainText("已撤回");
+      await expect(section).not.toContainText("目前還沒有 Bundle。");
+      await expect(form.locator("summary")).not.toHaveText("建立第一個 Bundle");
+      await expect(bundleName).toHaveValue("kept-bundle");
+      await expect(version).toHaveValue("1.2.3");
+      await expect(description).toHaveValue("保留未送出的 Bundle 說明");
       expect(await page.axeViolations("main")).toEqual([]);
       await button("再試一次").click();
       await page.eventually(() => {
@@ -89,9 +85,9 @@ for (const width of [375, 1280]) {
         expect(section.locator("[role=alert]").count()).toBe(0);
         expect(page.locator("#bundle-workspace-heading").isFocused()).toBe(true);
       });
-      expect(bundleName.value()).toBe("kept-bundle");
-      expect(version.value()).toBe("1.2.3");
-      expect(description.value()).toBe("保留未送出的 Bundle 說明");
+      await expect(bundleName).toHaveValue("kept-bundle");
+      await expect(version).toHaveValue("1.2.3");
+      await expect(description).toHaveValue("保留未送出的 Bundle 說明");
       expect(reads.count).toBe(3);
     });
   }

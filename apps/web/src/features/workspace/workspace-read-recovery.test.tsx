@@ -78,7 +78,7 @@ for (const status of [401, 403, 404]) {
       return { json: firstReads === 1 ? { ...ACTIVITY, next_cursor: "older-page" } : ACTIVITY };
     });
     await page.goto("/activity");
-    await page.eventually(() => expect(page.locator(ACTIVITY_ITEMS).count()).toBe(3));
+    await expect(page.locator(ACTIVITY_ITEMS)).toHaveCount(3);
     await page.getByRole("button", { name: "載入更多活動" }).click();
     if (status === 401) {
       await page.eventually(() => {
@@ -88,9 +88,7 @@ for (const status of [401, 403, 404]) {
         expect(page.getByRole("button", { name: "再試一次" }).count()).toBe(0);
       });
     } else {
-      await page.eventually(() =>
-        expect(page.getByRole("alert").text()).toContain("暫時無法讀取Workspace 活動"),
-      );
+      await expect(page.getByRole("alert")).toContainText("暫時無法讀取Workspace 活動");
     }
     await page.eventually(() => {
       expect(page.locator(".activity-list, .activity-summary").count()).toBe(0);
@@ -119,9 +117,7 @@ for (const empty of [false, true]) {
         : { json: empty && reads === 1 ? { ...ACTIVITY, items: [] } : ACTIVITY };
     });
     await page.goto("/activity");
-    await page.eventually(() =>
-      expect(page.locator("dd").filter({ hasText: "5 / 5" }).count()).toBe(1),
-    );
+    await expect(page.locator("dd").filter({ hasText: "5 / 5" })).toHaveCount(1);
     await page.getByRole("button", { name: "重新整理", exact: true }).press("Enter");
     await page.eventually(() => {
       expect(page.getByRole("alert").text()).toContain("Evaluation、Publishing");
@@ -168,7 +164,7 @@ test("an activity next-page failure retains the loaded page and retries its curs
         };
   });
   await page.goto("/activity");
-  await page.eventually(() => expect(page.locator(ACTIVITY_ITEMS).count()).toBe(3));
+  await expect(page.locator(ACTIVITY_ITEMS)).toHaveCount(3);
   await page.getByRole("button", { name: "載入更多活動" }).click();
   await page.eventually(() => {
     expect(page.getByRole("alert").text()).toContain("僅保留已載入的紀錄，尚未讀完");
@@ -263,9 +259,7 @@ async function recoverHomeOwners(page: App, summaries: ReturnType<typeof stubHom
   const { owners, reads, retried } = summaries;
   for (const [index, owner] of owners.entries()) {
     const section = homeSection(page, owner.heading);
-    await page.eventually(() =>
-      expect(section.getByRole("alert").text()).toContain(`暫時無法讀取${owner.error}`),
-    );
+    await expect(section.getByRole("alert")).toContainText(`暫時無法讀取${owner.error}`);
     retried[index] = true;
     const before = [...reads];
     try {
@@ -382,9 +376,7 @@ for (const [empty, phase] of [
       return;
     }
     await recoverHomeOwners(page, summaries);
-    await page.eventually(() =>
-      expect(page.getByText("尚待確認的創作", { exact: true }).count()).toBe(1),
-    );
+    await expect(page.getByText("尚待確認的創作", { exact: true })).toHaveCount(1);
     expect(await page.axeViolations("main")).toEqual([]);
     expect(writes(page)).toEqual([]);
   });
@@ -456,9 +448,7 @@ test("publishing reread failure hides cached releases and retries without losing
   });
   await page.goto(`/workspace/downloads?publication=${PUBLISHER}%2F${PUBLICATION}`);
   const section = page.locator("#skill-publications");
-  await page.eventually(() =>
-    expect(section.getByText("續接位置", { exact: true }).count()).toBe(1),
-  );
+  await expect(section.getByText("續接位置", { exact: true })).toHaveCount(1);
   await section.getByRole("button", { name: "重新整理", exact: true }).press("Enter");
   await page.eventually(() => {
     expect(section.getByRole("alert").text()).toContain("暫時無法讀取小工具發佈清單");

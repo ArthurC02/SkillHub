@@ -173,7 +173,7 @@ for (const source of ["url", "zip"]) {
     }));
     await page.goto("/workspace/import");
     const submit = page.getByRole("button", { name: "開始匯入", exact: true });
-    await page.eventually(() => expect(submit.isDisabled()).toBe(false));
+    await expect(submit).toBeEnabled();
     await chooseDraft(page, source, "first");
     await submit.click();
     const failure = page.getByRole("alert", { name: "匯入結果", exact: true });
@@ -187,7 +187,7 @@ for (const source of ["url", "zip"]) {
       expect(failure.text()).toContain("這個工作區沒有新增任何小工具，也沒有建立新版本");
       expect(page.locator("main .finding-list > li").count()).toBe(30);
     });
-    expect(page.getByRole("link", { name: "另開資產庫核對", exact: true }).count()).toBe(0);
+    await expect(page.getByRole("link", { name: "另開資產庫核對", exact: true })).toHaveCount(0);
     expect(importWrites(page)).toHaveLength(1);
     expect(await page.axeViolations("main")).toEqual([]);
   });
@@ -207,9 +207,9 @@ for (const source of ["url", "zip"]) {
       const requests = receiveImports(mode);
       try {
         await page.goto("/workspace/import");
-        await page.eventually(() => expect(page.locator(".auth-name").text()).toBe("tester"));
+        await expect(page.locator(".auth-name")).toHaveText("tester");
         const submit = page.getByRole("button", { name: "開始匯入", exact: true });
-        await page.eventually(() => expect(submit.isDisabled()).toBe(false));
+        await expect(submit).toBeEnabled();
         await chooseDraft(page, source, "first");
         await submit.click();
         const failure = page.getByRole("alert", { name: "匯入結果", exact: true });
@@ -217,17 +217,17 @@ for (const source of ["url", "zip"]) {
           expect(failure.text()).toContain("無法確認是否已建立小工具或新版本");
           expect(failure.isFocused()).toBe(true);
         });
-        expect(failure.text()).not.toContain("沒有新增任何小工具");
+        await expect(failure).not.toContainText("沒有新增任何小工具");
         expect(requests).toEqual(
           source === "url" ? ['{"url":"https://github.com/example/first"}'] : ["first bytes"],
         );
-        expect(submit.isDisabled()).toBe(false);
+        await expect(submit).toBeEnabled();
         await chooseDraft(page, source, "next");
         const sessionNotReady = page.getByRole("alert").filter({ hasText: SESSION_NOT_READY });
         if (mode === "submit-race") {
           session.start();
           await startCheckDuringSubmit(page);
-          await page.eventually(() => expect(sessionNotReady.isFocused()).toBe(true));
+          await expect(sessionNotReady).toBeFocused();
         } else {
           const library = page.getByRole("link", { name: "另開資產庫核對", exact: true });
           expect(library.attribute("target")).toBe("_blank");
@@ -247,7 +247,7 @@ for (const source of ["url", "zip"]) {
         await act(async () => {
           (page.locator(".import-source form").element() as HTMLFormElement).requestSubmit();
         });
-        await page.eventually(() => expect(failure.text()).toContain("匯入結果尚未確認"));
+        await expect(failure).toContainText("匯入結果尚未確認");
         expect(requests).toHaveLength(1);
         expect(await page.axeViolations("main")).toEqual([]);
         session.restore();
@@ -256,7 +256,7 @@ for (const source of ["url", "zip"]) {
           expect(submit.isDisabled()).toBe(false);
         });
         if (source === "url")
-          expect(page.getByLabel("URL", { exact: true }).value()).toBe(
+          await expect(page.getByLabel("URL", { exact: true })).toHaveValue(
             "https://github.com/example/next",
           );
         else {

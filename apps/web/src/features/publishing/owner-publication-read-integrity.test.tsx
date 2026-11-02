@@ -141,31 +141,27 @@ for (const width of [375, 1280]) {
       const section = regionOf(page, owner);
       const sectionButton = (label: string) => section.locator("button").filter({ hasText: label });
       if (scenario.phase === "refresh") {
-        await page.eventually(() =>
-          expect(section.text()).toContain(
-            owner.entry === "workspace" ? OWN_PUBLISHER.name : "狀態：已發佈",
-          ),
+        await expect(section).toContainText(
+          owner.entry === "workspace" ? OWN_PUBLISHER.name : "狀態：已發佈",
         );
         await page.locator('a[href="/policy"]').first().click();
-        await page.eventually(() =>
-          expect(page.getByRole("heading", { name: "資料保存政策", exact: true }).count()).toBe(1),
+        await expect(page.getByRole("heading", { name: "資料保存政策", exact: true })).toHaveCount(
+          1,
         );
         await page.goBack();
       }
       if (scenario.phase === "registration") {
-        await page.eventually(() => expect(section.locator(TEXT_FIELDS).count()).toBe(1));
+        await expect(section.locator(TEXT_FIELDS)).toHaveCount(1);
         await section.locator(TEXT_FIELDS).fill("kept-after-invalid-read");
         await section.locator(TEXT_FIELDS).press("Enter");
       }
-      await page.eventually(() =>
-        expect(section.locator("[role=alert]").text()).toContain(`暫時無法讀取${owner.what}`),
-      );
-      expect(section.text()).not.toContain("狀態：已發佈");
-      expect(section.text()).not.toContain("已撤回");
-      expect(section.text()).not.toContain("還沒有註冊發佈者名稱");
-      expect(section.locator("[role=textbox], input, textarea").count()).toBe(0);
-      expect(sectionButton("發佈 v2").count()).toBe(0);
-      expect(sectionButton("撤回").count()).toBe(0);
+      await expect(section.locator("[role=alert]")).toContainText(`暫時無法讀取${owner.what}`);
+      await expect(section).not.toContainText("狀態：已發佈");
+      await expect(section).not.toContainText("已撤回");
+      await expect(section).not.toContainText("還沒有註冊發佈者名稱");
+      await expect(section.locator("[role=textbox], input, textarea")).toHaveCount(0);
+      await expect(sectionButton("發佈 v2")).toHaveCount(0);
+      await expect(sectionButton("撤回")).toHaveCount(0);
       expect(await page.axeViolations("main")).toEqual([]);
       const before = { ...reads };
       await sectionButton("再試一次").click();

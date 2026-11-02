@@ -118,17 +118,17 @@ for (const [fault, decision, uncertain] of [
     });
     try {
       await page.goto(`/runs/${RUN}`);
-      await page.eventually(() => expect(page.locator(".auth-name").text()).toBe("tester"));
+      await expect(page.locator(".auth-name")).toHaveText("tester");
       const item = page.locator("li.suggestion");
       const submit = item.getByRole("button", {
         name: decision === "accepted" ? "接受" : "拒絕",
         exact: true,
       });
-      await page.eventually(() => expect(submit.count()).toBe(1));
+      await expect(submit).toHaveCount(1);
       await submit.click();
       await page.eventually(() => expect(receiver.writes).toHaveLength(1));
       const apply = page.getByRole("button", { name: /以已接受的.*項建議建立新版本/ });
-      await page.eventually(() => expect(apply.isDisabled()).toBe(true));
+      await expect(apply).toBeDisabled();
       receiver.releaseResponse();
       const alert = item.getByRole("alert");
       const prior = receiver.initialDecision === "accepted" ? "已接受" : "尚未決定";
@@ -143,15 +143,13 @@ for (const [fault, decision, uncertain] of [
       expect(reads).toBe(1);
       expect(await page.axeViolations("body")).toEqual([]);
       if (uncertain) {
-        expect(apply.isDisabled()).toBe(true);
-        expect(
-          page
-            .getByText(
-              "改善建議的決定尚未確認；請等待目前操作完成，或重新送出未確認的決定後，再建立版本。",
-              { exact: true },
-            )
-            .count(),
-        ).toBe(1);
+        await expect(apply).toBeDisabled();
+        await expect(
+          page.getByText(
+            "改善建議的決定尚未確認；請等待目前操作完成，或重新送出未確認的決定後，再建立版本。",
+            { exact: true },
+          ),
+        ).toHaveCount(1);
         expect(receiver.current().decision).toBe(decision);
         holdSession = true;
         const previous = sessionReads;
@@ -170,9 +168,7 @@ for (const [fault, decision, uncertain] of [
         expect(receiver.writes).toEqual([{ decision }]);
         holdSession = false;
         releaseSession();
-        await page.eventually(() =>
-          expect(page.locator("header").getByRole("status").count()).toBe(0),
-        );
+        await expect(page.locator("header").getByRole("status")).toHaveCount(0);
         await submit.click();
         await page.eventually(() => {
           expect(submit.attribute("aria-pressed")).toBe("true");
@@ -184,8 +180,8 @@ for (const [fault, decision, uncertain] of [
         expect(reads).toBe(2);
       } else {
         expect(receiver.current().decision).toBe(receiver.initialDecision);
-        expect(page.locator("#suggestion-decisions-note").count()).toBe(0);
-        if (receiver.initialDecision === "accepted") expect(apply.isDisabled()).toBe(false);
+        await expect(page.locator("#suggestion-decisions-note")).toHaveCount(0);
+        if (receiver.initialDecision === "accepted") await expect(apply).toBeEnabled();
       }
     } finally {
       releaseSession();

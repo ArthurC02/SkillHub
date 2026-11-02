@@ -80,15 +80,15 @@ for (const scenario of scenarios) {
         const add = page.getByRole("button", { name: /^新增(?:中…)?$/ });
         const designCheck = async (value: string) => {
           await page.getByRole("button", { name: "開始設計", exact: true }).click();
-          await page.eventually(() => expect(checkField.count()).toBe(1));
+          await expect(checkField).toHaveCount(1);
           await checkField.fill(value);
         };
-        await page.eventually(() => expect(field.value()).toBe(""));
+        await expect(field).toHaveValue("");
         await field.fill("已送出的這一條");
         if (scenario.initialCheck) {
           await designCheck(" 42 ");
         }
-        await page.eventually(() => expect(add.isDisabled()).toBe(false));
+        await expect(add).toBeEnabled();
         await add.click();
         await received;
         await page.eventually(() => {
@@ -105,15 +105,10 @@ for (const scenario of scenarios) {
         }
         release();
         if (failed)
-          await page.eventually(() =>
-            expect(page.getByRole("alert").text()).toBe(
-              "尚未確認這一條驗收條件是否已新增；條件清單已重新讀取，請先確認，再決定要不要重送，以免重複。",
-            ),
+          await expect(page.getByRole("alert")).toHaveText(
+            "尚未確認這一條驗收條件是否已新增；條件清單已重新讀取，請先確認，再決定要不要重送，以免重複。",
           );
-        else
-          await page.eventually(() =>
-            expect(page.locator("#criterion-c-added").value()).toBe("已送出的這一條"),
-          );
+        else await expect(page.locator("#criterion-c-added")).toHaveValue("已送出的這一條");
         const receipt = page.getByRole("status").filter({ hasText: "已新增驗收條件。" });
         await page.eventually(() => {
           expect(add.text()).toBe("新增");
@@ -143,7 +138,7 @@ for (const scenario of scenarios) {
           },
         ]);
         await field.click();
-        expect(field.isFocused()).toBe(true);
+        await expect(field).toBeFocused();
         expect(await page.axeViolations('section[aria-label="驗收與評分設計"]')).toEqual([]);
       } finally {
         release();

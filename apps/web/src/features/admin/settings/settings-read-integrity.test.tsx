@@ -36,7 +36,7 @@ for (const kind of ["judge", "runs"] as const) {
       const note =
         kind === "judge" ? "#admin-settings-judge-panel-note" : "#admin-settings-run-tpm-note";
       if (!initial) {
-        await page.eventually(() => expect(page.locator("main").text()).toContain(current));
+        await expect(page.locator("main")).toContainText(current);
         unavailable = true;
         await page.getByRole("button", { name: "重新整理設定", exact: true }).click();
       }
@@ -96,11 +96,9 @@ for (const kind of ["judge", "tokens"] as const) {
     const writes = () =>
       page.requests.filter((r) => WRITE_METHODS.has(r.method)).map((r) => r.url.pathname);
     await page.goto("/admin/settings");
-    await page.eventually(() =>
-      expect(
-        page.getByText(judge ? "調整評審團" : "調整每分鐘 tokens 上限", { exact: true }).count(),
-      ).toBe(1),
-    );
+    await expect(
+      page.getByText(judge ? "調整評審團" : "調整每分鐘 tokens 上限", { exact: true }),
+    ).toHaveCount(1);
     await page.getByText(judge ? "調整評審團" : "調整每分鐘 tokens 上限", { exact: true }).click();
     if (!judge) await page.locator(`#${id}-value`).fill("300000");
     await page.locator(`#${id}-note`).fill("verify the setting");

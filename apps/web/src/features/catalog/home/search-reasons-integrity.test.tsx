@@ -59,8 +59,7 @@ for (const scenario of CASES) {
       await input.fill("尚未送出的搜尋草稿");
       const selectedURL = page.pathname() + page.search();
       release();
-      if (!scenario.invalid)
-        await page.eventually(() => expect(rows.first().getByText(MODEL_REASON).count()).toBe(1));
+      if (!scenario.invalid) await expect(rows.first().getByText(MODEL_REASON)).toHaveCount(1);
       await page.eventually(() => {
         expect(rows.count()).toBe(2);
         expect(input.value()).toBe("尚未送出的搜尋草稿");
@@ -69,10 +68,10 @@ for (const scenario of CASES) {
       });
       expect(page.pathname() + page.search()).toBe(selectedURL);
       if (scenario.invalid) {
-        expect(rows.locator(".match-reason .badge-source-model").count()).toBe(0);
+        await expect(rows.locator(".match-reason .badge-source-model")).toHaveCount(0);
         await page.locator('a[href="/policy"]').first().click();
-        await page.eventually(() =>
-          expect(page.getByRole("heading", { name: "資料保存政策", exact: true }).count()).toBe(1),
+        await expect(page.getByRole("heading", { name: "資料保存政策", exact: true })).toHaveCount(
+          1,
         );
         await page.goBack();
         await page.eventually(() => expect(reasonRequests()).toHaveLength(2));

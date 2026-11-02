@@ -59,9 +59,7 @@ for (const corrected of [false, true]) {
       const original = searches().at(-1);
       const originalURL = page.pathname() + page.search();
       await page.locator('a[href="/policy"]').first().click();
-      await page.eventually(() =>
-        expect(page.getByRole("heading", { name: "資料保存政策", exact: true }).count()).toBe(1),
-      );
+      await expect(page.getByRole("heading", { name: "資料保存政策", exact: true })).toHaveCount(1);
       failing = true;
       await page.goBack();
       const scriptFilter = main.getByRole("combobox", { name: "是否包含 Script" });
@@ -101,7 +99,7 @@ test("catalog failure retries its read without resubmitting the unsubmitted sear
     return reads === 1 ? { status: 503, json: { error: "service unavailable" } } : undefined;
   });
   await page.goto("/?category=data");
-  await page.eventually(() => expect(page.getByRole("alert").text()).toContain("暫時無法讀取目錄"));
+  await expect(page.getByRole("alert")).toContainText("暫時無法讀取目錄");
   await page.getByLabel("任務描述", { exact: true }).fill("保留這段任務");
   await page.getByRole("button", { name: "再試一次", exact: true }).click();
   await page.eventually(() => {

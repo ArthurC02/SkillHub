@@ -29,7 +29,7 @@ for (const [name, invalid] of invalidResponses) {
     });
     await page.goto("/workspace/downloads");
     const overview = page.locator("#skill-publications");
-    await page.eventually(() => expect(overview.locator("li").count()).toBe(1));
+    await expect(overview.locator("li")).toHaveCount(1);
     const form = page.getByRole("region", { name: "建立 Bundle", exact: true });
     await form.locator("summary").click();
     const bundleName = page.getByLabel("名稱", { exact: true });

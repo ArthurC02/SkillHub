@@ -58,25 +58,20 @@ for (const owner of owners) {
       await page.goto(owner.url);
       const section = page.getByRole("region", { name: owner.region, exact: true });
       const identity = owner.name === "workspace publisher" ? OWN_PUBLISHER.name : "狀態：已發佈";
-      await page.eventually(() => expect(section.text()).toContain(identity));
+      await expect(section).toContainText(identity);
       await leaveAndReturn(page, () => {
         failing = true;
       });
       if (status === 401)
-        await page.eventually(() =>
-          expect(section.locator("[role=status]").text()).toContain(`${owner.what}需要登入`),
-        );
-      else
-        await page.eventually(() =>
-          expect(section.locator("[role=alert]").text()).toContain(`暫時無法讀取${owner.what}`),
-        );
-      expect(section.text()).not.toContain("狀態：已發佈");
-      expect(section.text()).not.toContain("最新 Release");
-      expect(section.text()).not.toContain(OWN_PUBLISHER.name);
+        await expect(section.locator("[role=status]")).toContainText(`${owner.what}需要登入`);
+      else await expect(section.locator("[role=alert]")).toContainText(`暫時無法讀取${owner.what}`);
+      await expect(section).not.toContainText("狀態：已發佈");
+      await expect(section).not.toContainText("最新 Release");
+      await expect(section).not.toContainText(OWN_PUBLISHER.name);
       for (const label of ["發佈 v2", "撤回", "註冊"])
-        expect(section.locator("button").filter({ hasText: label }).count()).toBe(0);
+        await expect(section.locator("button").filter({ hasText: label })).toHaveCount(0);
       if (status === 401) {
-        expect(section.locator("button").filter({ hasText: "再試一次" }).count()).toBe(0);
+        await expect(section.locator("button").filter({ hasText: "再試一次" })).toHaveCount(0);
         expect(await page.axeViolations("main")).toEqual([]);
         return;
       }
@@ -108,15 +103,15 @@ for (const owner of owners.filter((candidate) => candidate.name !== "panel publi
     await page.goto(owner.url);
     const section = page.getByRole("region", { name: owner.region, exact: true });
     const identity = owner.name === "workspace publisher" ? OWN_PUBLISHER.name : "狀態：已發佈";
-    await page.eventually(() => expect(section.text()).toContain(identity));
+    await expect(section).toContainText(identity);
     await leaveAndReturn(page, () => {
       missing = true;
     });
-    await page.eventually(() => expect(section.locator("input").count()).toBe(1));
-    expect(section.text()).not.toContain("狀態：已發佈");
-    expect(section.text()).not.toContain("最新 Release");
-    expect(section.text()).not.toContain(OWN_PUBLISHER.name);
-    expect(section.locator("button").filter({ hasText: "撤回" }).count()).toBe(0);
-    expect(section.locator("button").filter({ hasText: "再試一次" }).count()).toBe(0);
+    await expect(section.locator("input")).toHaveCount(1);
+    await expect(section).not.toContainText("狀態：已發佈");
+    await expect(section).not.toContainText("最新 Release");
+    await expect(section).not.toContainText(OWN_PUBLISHER.name);
+    await expect(section.locator("button").filter({ hasText: "撤回" })).toHaveCount(0);
+    await expect(section.locator("button").filter({ hasText: "再試一次" })).toHaveCount(0);
   });
 }

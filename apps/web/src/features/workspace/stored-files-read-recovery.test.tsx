@@ -54,16 +54,10 @@ for (const list of lists) {
       });
       await page.goto(list.url);
       const section = page.locator(list.section);
-      if (empty)
-        await page.eventually(() =>
-          expect(section.getByText(list.empty).count()).toBeGreaterThan(0),
-        );
-      else
-        await page.eventually(() => expect(section.locator(list.items).count()).toBe(list.count));
+      if (empty) await expect(section.getByText(list.empty)).toBeVisible();
+      else await expect(section.locator(list.items)).toHaveCount(list.count);
       await page.locator('a[href="/policy"]').first().click();
-      await page.eventually(() =>
-        expect(page.getByRole("heading", { name: "資料保存政策", exact: true }).count()).toBe(1),
-      );
+      await expect(page.getByRole("heading", { name: "資料保存政策", exact: true })).toHaveCount(1);
       await page.goBack();
       await page.eventually(() => {
         expect(section.getByRole("alert").text()).toContain("暫時無法讀取");
@@ -102,12 +96,10 @@ test("download history withdraws cached recipients and retries only its record r
   });
   await page.goto("/workspace/downloads");
   const disclosure = page.locator("#delivery-history details").filter({ hasText: "誰下載過" });
-  await page.eventually(() => expect(disclosure.count()).toBe(1));
+  await expect(disclosure).toHaveCount(1);
   const summary = disclosure.locator("summary");
   await summary.click();
-  await page.eventually(() =>
-    expect(disclosure.getByText("Recipient evidence").count()).toBeGreaterThan(0),
-  );
+  await expect(disclosure.getByText("Recipient evidence")).toBeVisible();
   await summary.click();
   failing = true;
   await summary.click();
@@ -118,7 +110,7 @@ test("download history withdraws cached recipients and retries only its record r
   const before = reads;
   failing = false;
   const retry = disclosure.getByRole("button", { name: "再試一次", exact: true });
-  expect(retry.count()).toBe(1);
+  await expect(retry).toHaveCount(1);
   await retry.click();
   await page.eventually(() => {
     expect(disclosure.getByText("Recipient evidence").count()).toBeGreaterThan(0);

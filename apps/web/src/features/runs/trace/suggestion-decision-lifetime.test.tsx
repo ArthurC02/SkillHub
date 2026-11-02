@@ -72,12 +72,12 @@ for (const [outcome, choice] of [
     const control = decisionOutage(page, outcome, choice);
     try {
       await page.goto(`/runs/${RUN}`);
-      await page.eventually(() => expect(page.locator(".auth-name").text()).toBe("tester"));
+      await expect(page.locator(".auth-name")).toHaveText("tester");
       const comment = page.locator("#feedback-comment");
-      await page.eventually(() => expect(comment.count()).toBe(1));
+      await expect(comment).toHaveCount(1);
       await comment.fill("保留這次判定的補充說明");
       const rows = page.locator("li.suggestion");
-      await page.eventually(() => expect(rows.count()).toBe(2));
+      await expect(rows).toHaveCount(2);
       const action = choice === "accepted" ? /接受/ : /拒絕/;
       await rows.nth(1).getByRole("button", { name: action }).click();
       await page.eventually(() => expect(control.writes).toEqual([{ id: "s2", decision: choice }]));
@@ -91,7 +91,7 @@ for (const [outcome, choice] of [
         await page.eventually(() => expect(control.delivered()).toBe(true));
       }
       await page.getByRole("button", { name: "再試一次", exact: true }).click();
-      await page.eventually(() => expect(rows.count()).toBe(2));
+      await expect(rows).toHaveCount(2);
       expect(control.reads()).toBe(3);
       expect(control.writes).toEqual([
         { id: "s2", decision: choice },
@@ -123,11 +123,11 @@ for (const [outcome, choice] of [
         });
         expect(await page.axeViolations("body")).toEqual([]);
         if (outcome === "unknown") {
-          expect(apply.isDisabled()).toBe(true);
+          await expect(apply).toBeDisabled();
           await second.getByRole("button", { name: action }).click();
         } else {
-          expect(apply.isDisabled()).toBe(false);
-          expect(page.locator("#suggestion-decisions-note").count()).toBe(0);
+          await expect(apply).toBeEnabled();
+          await expect(page.locator("#suggestion-decisions-note")).toHaveCount(0);
         }
       }
       if (outcome !== "refused") {
@@ -143,7 +143,7 @@ for (const [outcome, choice] of [
           expect(page.locator("#suggestion-decisions-note").count()).toBe(0);
         });
       }
-      expect(comment.value()).toBe("保留這次判定的補充說明");
+      await expect(comment).toHaveValue("保留這次判定的補充說明");
       expect(control.writes).toHaveLength(outcome === "unknown" ? 3 : 2);
     } finally {
       control.release();

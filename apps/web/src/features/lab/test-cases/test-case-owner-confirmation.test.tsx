@@ -9,9 +9,7 @@ const EMPTY_TEST_CASES = { test_cases: [], total: 0, limit: 50, truncated: false
 
 async function leaveAndReturn(page: ReturnType<typeof app>, beforeReturn: () => Promise<void>) {
   await page.locator('a[href="/policy"]').first().click();
-  await page.eventually(() =>
-    expect(page.getByRole("heading", { name: "資料保存政策", exact: true }).count()).toBe(1),
-  );
+  await expect(page.getByRole("heading", { name: "資料保存政策", exact: true })).toHaveCount(1);
   await beforeReturn();
   await page.goBack();
 }
@@ -38,7 +36,7 @@ for (const offline of [false, true]) {
       const create = editor.getByRole("button", { name: "建立", exact: true });
       try {
         await page.goto(`/lab/test-cases?skill=${SKILL}&version=${VERSION}`);
-        await page.eventually(() => expect(missing.count()).toBe(1));
+        await expect(missing).toHaveCount(1);
         await leaveAndReturn(page, () => page.setOffline(offline));
         await page.eventually(() => {
           if (!offline) expect(reads).toBe(2);
@@ -54,7 +52,7 @@ for (const offline of [false, true]) {
         });
         await name.fill("ownership draft");
         await prompt.fill("keep this task");
-        expect(create.isDisabled()).toBe(true);
+        await expect(create).toBeDisabled();
         expect(await page.axeViolations("body")).toEqual([]);
         await page.setOffline(false);
         await page.eventually(() => expect(reads).toBe(2));
@@ -102,9 +100,9 @@ test("a paused test-case cached owner retry keeps its draft and waits before con
   const prompt = editor.getByLabel("User Prompt", { exact: true });
   try {
     await page.goto(`/lab/test-cases?skill=${SKILL}&version=${VERSION}`);
-    await page.eventually(() => expect(missing.count()).toBe(1));
+    await expect(missing).toHaveCount(1);
     await leaveAndReturn(page, async () => {});
-    await page.eventually(() => expect(editor.getByRole("alert").count()).toBe(1));
+    await expect(editor.getByRole("alert")).toHaveCount(1);
     await name.fill("retry draft");
     await prompt.fill("keep retry task");
     await page.setOffline(true);

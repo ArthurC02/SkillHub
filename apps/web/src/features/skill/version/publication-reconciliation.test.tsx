@@ -165,12 +165,12 @@ for (const scenario of scenarios) {
     try {
       await page.goto(`/skills/${SKILL}/versions/${VERSION}`);
       if (scenario.action === "first") {
-        await page.eventually(() => expect(nameInput.count()).toBe(1));
+        await expect(nameInput).toHaveCount(1);
         const described = nameInput.attribute("aria-describedby");
-        expect(page.locator(`#${described}`).text()).toBe(NAME_NOTE);
-        expect(page.getByText(NAME_NOTE, { exact: true }).count()).toBe(1);
+        await expect(page.locator(`#${described}`)).toHaveText(NAME_NOTE);
+        await expect(page.getByText(NAME_NOTE, { exact: true })).toHaveCount(1);
         await nameInput.fill("chosen-name");
-      } else await page.eventually(() => expect(section.text()).toContain("已列入 Catalog"));
+      } else await expect(section).toContainText("已列入 Catalog");
       await attestation.check();
       await page.eventually(() =>
         expect((attestation.element() as HTMLInputElement).checked).toBe(true),

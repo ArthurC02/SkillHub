@@ -33,9 +33,9 @@ test("a failed preview refresh withdraws packaging permission and retries the se
   });
   await page.goto(packagePage);
   const build = page.getByRole("button", { name: "建立下載套件", exact: true });
-  await page.eventually(() => expect(build.isDisabled()).toBe(false));
+  await expect(build).toBeEnabled();
   await page.getByRole("checkbox", { name: INCLUDE_TESTS, exact: true }).check();
-  await page.eventually(() => expect(build.isDisabled()).toBe(false));
+  await expect(build).toBeEnabled();
   await build.click();
   try {
     await page.eventually(() => {
@@ -63,7 +63,7 @@ test("a failed preview refresh withdraws packaging permission and retries the se
   expect(builds).toBe(1);
   failing = false;
   const retry = page.getByRole("button", { name: "再試一次", exact: true });
-  await page.eventually(() => expect(retry.count()).toBe(1));
+  await expect(retry).toHaveCount(1);
   await retry.click();
   await page.eventually(() => {
     expect(build.isDisabled()).toBe(false);
@@ -95,12 +95,12 @@ test("target refresh failure cannot expose cached choices or authorize a package
   });
   await page.goto(packagePage);
   const build = page.getByRole("button", { name: "建立下載套件", exact: true });
-  await page.eventually(() => expect(build.isDisabled()).toBe(false));
+  await expect(build).toBeEnabled();
   const choice = page.getByRole("radio", { name: new RegExp(TARGETS.targets[1].display_name) });
   await choice.check();
-  await page.eventually(() => expect(build.isDisabled()).toBe(false));
+  await expect(build).toBeEnabled();
   await page.getByRole("checkbox", { name: INCLUDE_TESTS, exact: true }).check();
-  await page.eventually(() => expect(build.isDisabled()).toBe(false));
+  await expect(build).toBeEnabled();
   const beforeRefresh = previewReads;
   failing = true;
   await page.getByRole("button", { name: "重新整理", exact: true }).click();
@@ -134,7 +134,7 @@ test("target refresh failure cannot expose cached choices or authorize a package
   const before = reads;
   failing = false;
   const retry = page.getByRole("button", { name: "再試一次", exact: true });
-  await page.eventually(() => expect(retry.count()).toBe(1));
+  await expect(retry).toHaveCount(1);
   await retry.click();
   await page.eventually(() => {
     expect(page.locator(".packaging-targets").count()).toBe(1);
@@ -160,9 +160,9 @@ test("a removed target requires an explicit replacement before authorizing anoth
   }));
   await page.goto(packagePage);
   const build = page.getByRole("button", { name: "建立下載套件", exact: true });
-  await page.eventually(() => expect(build.isDisabled()).toBe(false));
+  await expect(build).toBeEnabled();
   await page.getByRole("radio", { name: new RegExp(TARGETS.targets[1].display_name) }).check();
-  await page.eventually(() => expect(build.isDisabled()).toBe(false));
+  await expect(build).toBeEnabled();
   await page.getByRole("checkbox", { name: INCLUDE_TESTS, exact: true }).check();
   removed = true;
   await page.getByRole("button", { name: "重新整理", exact: true }).click();

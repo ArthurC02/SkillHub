@@ -40,15 +40,15 @@ for (const { name, body } of [
       const cleanup = page.locator("#run-trace .badge-row").filter({ hasText: "清理狀態" });
       const verdict = page.locator("#run-decision .verdict");
       await page.goto(`/runs/${RUN}${phase === "compare" ? "/compare" : ""}`);
-      await page.eventually(() => expect(page.locator(".auth-name").text()).toBe("tester"));
+      await expect(page.locator(".auth-name")).toHaveText("tester");
       if (phase === "compare") {
-        await page.eventually(() => expect(nav.count()).toBe(1));
+        await expect(nav).toHaveCount(1);
         await nav.getByRole("link", { name: "總覽", exact: true }).click();
-        await page.eventually(() => expect(page.locator("h1").text()).not.toBe("試跑比較"));
+        await expect(page.locator("h1")).not.toHaveText("試跑比較");
         control.readable = false;
         await page.goBack();
       } else if (phase === "applied") {
-        await page.eventually(() => expect(apply.isDisabled()).toBe(false));
+        await expect(apply).toBeEnabled();
         page.route(`**/skills/${SKILL}/versions/from-suggestions`, () => ({
           status: 201,
           json: {
@@ -62,7 +62,7 @@ for (const { name, body } of [
           },
         }));
         await apply.click();
-        await page.eventually(() => expect(rerun.count()).toBe(1));
+        await expect(rerun).toHaveCount(1);
         control.readable = false;
         await page.getByRole("button", { name: "進階模式", exact: true }).click();
         await page.getByRole("button", { name: "一般模式", exact: true }).click();
@@ -93,7 +93,7 @@ for (const { name, body } of [
       expect(await page.axeViolations("main")).toEqual([]);
       const retry = page.getByRole("button", { name: "再試一次", exact: true });
       await retry.focus();
-      expect(retry.isFocused()).toBe(true);
+      await expect(retry).toBeFocused();
       control.readable = true;
       await page.press("Enter");
       await page.eventually(() => {

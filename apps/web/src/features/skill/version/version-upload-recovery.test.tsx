@@ -50,7 +50,7 @@ async function chooseZip(page: App, name: string, content: string) {
 
 async function openUpload(page: App) {
   await page.goto(`/skills/${SKILL}/versions/${VERSION}`);
-  await page.eventually(() => expect(page.locator(".auth-name").text()).toBe("tester"));
+  await expect(page.locator(".auth-name")).toHaveText("tester");
   await chooseZip(page, FIRST_FILE, "first bytes");
   return page.getByLabel("小工具 zip", { exact: true });
 }
@@ -115,7 +115,7 @@ for (const source of ["skill", "versions"]) {
       await chooseZip(page, "next.zip", "next bytes");
       await input.focus();
       const submit = page.getByRole("button", { name: SUBMIT, exact: true });
-      expect(submit.isDisabled()).toBe(true);
+      await expect(submit).toBeDisabled();
       await submitDirectly(page);
       release();
       await page.eventually(() => {

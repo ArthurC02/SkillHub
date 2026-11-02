@@ -66,8 +66,8 @@ for (const failure of ["server", "network", "malformed"]) {
         expect(rules.locator("[role=alert]").text()).toBe("無法讀取匯入限制。請重新讀取後再送出。");
         expect(page.locator(".auth-name").text()).toBe("tester");
       });
-      expect(rules.text()).not.toContain("來源限");
-      expect(rules.locator("[role=status]").count()).toBe(0);
+      await expect(rules).not.toContainText("來源限");
+      await expect(rules.locator("[role=status]")).toHaveCount(0);
       if (source === "url")
         await page.getByRole("textbox", { name: "URL", exact: true }).fill(draft);
       else {
@@ -97,7 +97,7 @@ for (const failure of ["server", "network", "malformed"]) {
         expect(submit.isDisabled()).toBe(false);
       });
       if (source === "url")
-        expect(page.getByRole("textbox", { name: "URL", exact: true }).value()).toBe(draft);
+        await expect(page.getByRole("textbox", { name: "URL", exact: true })).toHaveValue(draft);
       else
         expect(
           (page.getByLabel("小工具 zip", { exact: true }).element() as HTMLInputElement).files?.[0]
@@ -105,9 +105,7 @@ for (const failure of ["server", "network", "malformed"]) {
         ).toBe("private.zip");
       expect(writes()).toBe(0);
       await submit.click();
-      await page.eventually(() =>
-        expect(page.getByRole("status").filter({ hasText: "匯入完成" }).count()).toBe(1),
-      );
+      await expect(page.getByRole("status").filter({ hasText: "匯入完成" })).toHaveCount(1);
       expect(writes()).toBe(1);
     });
   }
@@ -139,17 +137,15 @@ test("pending import limits keep an editable draft without submitting it", async
     const input = page.getByRole("textbox", { name: "URL", exact: true });
     await input.fill(draft);
     const submit = page.getByRole("button", { name: "開始匯入", exact: true });
-    expect(submit.isDisabled()).toBe(true);
+    await expect(submit).toBeDisabled();
     await submitForm(page);
     expect(writes()).toBe(0);
     release();
-    await page.eventually(() => expect(submit.isDisabled()).toBe(false));
-    expect(input.value()).toBe(draft);
+    await expect(submit).toBeEnabled();
+    await expect(input).toHaveValue(draft);
     expect(writes()).toBe(0);
     await submit.click();
-    await page.eventually(() =>
-      expect(page.getByRole("status").filter({ hasText: "匯入完成" }).count()).toBe(1),
-    );
+    await expect(page.getByRole("status").filter({ hasText: "匯入完成" })).toHaveCount(1);
     expect(writes()).toBe(1);
   } finally {
     release();
@@ -161,7 +157,7 @@ test("an offline return withholds cached import limits until the paused read res
   const writes = countWrites(page, "url");
   await page.goto("/workspace/import");
   const rules = page.getByRole("region", { name: "匯入前檢查", exact: true });
-  await page.eventually(() => expect(rules.text()).toContain("zip 最大 10 MB"));
+  await expect(rules).toContainText("zip 最大 10 MB");
   await page.getByRole("link", { name: "Skill Hub", exact: true }).click();
   await page.eventually(() => {
     expect(page.getByRole("heading", { name: "匯入小工具", exact: true }).count()).toBe(0);
@@ -177,7 +173,7 @@ test("an offline return withholds cached import limits until the paused read res
     const input = page.getByRole("textbox", { name: "URL", exact: true });
     await input.fill(draft);
     const submit = page.getByRole("button", { name: "開始匯入", exact: true });
-    expect(submit.isDisabled()).toBe(true);
+    await expect(submit).toBeDisabled();
     expect(writes()).toBe(0);
     await page.setOffline(false);
     await page.eventually(() => {
@@ -185,12 +181,10 @@ test("an offline return withholds cached import limits until the paused read res
       expect(page.locator(".auth-name").text()).toBe("tester");
       expect(submit.isDisabled()).toBe(false);
     });
-    expect(input.value()).toBe(draft);
+    await expect(input).toHaveValue(draft);
     expect(writes()).toBe(0);
     await submit.click();
-    await page.eventually(() =>
-      expect(page.getByRole("status").filter({ hasText: "匯入完成" }).count()).toBe(1),
-    );
+    await expect(page.getByRole("status").filter({ hasText: "匯入完成" })).toHaveCount(1);
     expect(writes()).toBe(1);
   } finally {
     await page.setOffline(false);

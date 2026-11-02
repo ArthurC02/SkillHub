@@ -99,9 +99,7 @@ for (const transport of Object.keys(START_REPLIES)) {
     expect(await page.axeViolations("body")).toEqual([]);
     if (transport !== "valid") {
       await main.getByRole("link", { name: "查看試跑紀錄", exact: true }).click();
-      await page.eventually(() =>
-        expect(page.getByRole("heading", { name: "試跑活動", exact: true }).count()).toBe(1),
-      );
+      await expect(page.getByRole("heading", { name: "試跑活動", exact: true })).toHaveCount(1);
       expect(starts()).toHaveLength(1);
       expect(confirms()).toHaveLength(1);
     }
@@ -160,8 +158,8 @@ for (const blockedSession of [false, true]) {
     if (blockedSession) {
       checking = true;
       document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
-      await page.eventually(() =>
-        expect(page.getByRole("button", { name: "重新確認登入狀態", exact: true }).count()).toBe(1),
+      await expect(page.getByRole("button", { name: "重新確認登入狀態", exact: true })).toHaveCount(
+        1,
       );
     }
     await page.getByRole("button", { name: START_BUTTON, exact: true }).click();
@@ -173,14 +171,11 @@ for (const blockedSession of [false, true]) {
         );
         expect(main.getByRole("alert").isFocused()).toBe(true);
       });
-    } else
-      await page.eventually(() =>
-        expect(main.getByRole("alert").text()).toContain("這個帳號還沒有封測邀請"),
-      );
-    expect(main.getByRole("link", { name: "查看試跑紀錄", exact: true }).count()).toBe(0);
-    expect(main.getByRole("button", { name: "核對後仍要再次開始試跑", exact: true }).count()).toBe(
-      0,
-    );
+    } else await expect(main.getByRole("alert")).toContainText("這個帳號還沒有封測邀請");
+    await expect(main.getByRole("link", { name: "查看試跑紀錄", exact: true })).toHaveCount(0);
+    await expect(
+      main.getByRole("button", { name: "核對後仍要再次開始試跑", exact: true }),
+    ).toHaveCount(0);
     expect(writes()).toHaveLength(blockedSession ? 0 : 1);
   });
 }

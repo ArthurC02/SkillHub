@@ -65,7 +65,7 @@ test("run context failure hides cached source navigation and retries that owner 
   });
   await page.goto(`/runs/${RUN}`);
   const source = page.getByRole("navigation", { name: "這次試跑的來源", exact: true });
-  await page.eventually(() => expect(source.count()).toBe(1));
+  await expect(source).toHaveCount(1);
   await leaveAndReturn(page, () => {
     failing = true;
   });

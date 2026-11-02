@@ -71,16 +71,14 @@ for (const empty of [false, true]) {
       }
     });
     await page.locator('a[href="/policy"]').first().click();
-    await page.eventually(() =>
-      expect(page.getByRole("heading", { name: "資料保存政策", exact: true }).count()).toBe(1),
-    );
+    await expect(page.getByRole("heading", { name: "資料保存政策", exact: true })).toHaveCount(1);
     fail = true;
     await page.goBack();
-    await page.eventually(() => expect(page.getByRole("alert").count()).toBe(2));
+    await expect(page.getByRole("alert")).toHaveCount(2);
     for (const [index, owner] of owners.entries()) {
       const section = page.locator(`section[aria-labelledby=${owner.heading}]`);
-      expect(page.locator(owner.rows).count()).toBe(0);
-      expect(page.getByText(owner.absent).count()).toBe(0);
+      await expect(page.locator(owner.rows)).toHaveCount(0);
+      await expect(page.getByText(owner.absent)).toHaveCount(0);
       retrying[index] = true;
       const before = [...reads];
       await section.locator("button").filter({ hasText: "再試一次" }).focus();
@@ -113,19 +111,15 @@ test("test-case context stops using stale names and versions and retries without
   await page.goto(`/lab/test-cases/${TEST_CASE}?version=${VERSION}`);
   const context = page.locator("[data-role=test-case-context]");
   const alerts = page.locator("[data-role=test-case-context] [role=alert]");
-  await page.eventually(() =>
-    expect(page.getByText("由這個網址選定", { exact: true }).count()).toBeGreaterThan(0),
-  );
+  await expect(page.getByText("由這個網址選定", { exact: true })).toBeVisible();
   await page.locator('a[href="/policy"]').first().click();
-  await page.eventually(() =>
-    expect(page.getByRole("heading", { name: "資料保存政策", exact: true }).count()).toBe(1),
-  );
+  await expect(page.getByRole("heading", { name: "資料保存政策", exact: true })).toHaveCount(1);
   await page.goBack();
-  await page.eventually(() => expect(alerts.count()).toBe(2));
-  expect(page.getByText("由這個網址選定", { exact: true }).count()).toBe(0);
-  expect(context.locator("a").filter({ hasText: "PDF Summariser" }).count()).toBe(0);
-  expect(context.text()).toContain("名稱讀取失敗");
-  expect(context.text()).toContain("Version 資訊讀取失敗");
+  await expect(alerts).toHaveCount(2);
+  await expect(page.getByText("由這個網址選定", { exact: true })).toHaveCount(0);
+  await expect(context.locator("a").filter({ hasText: "PDF Summariser" })).toHaveCount(0);
+  await expect(context).toContainText("名稱讀取失敗");
+  await expect(context).toContainText("Version 資訊讀取失敗");
   const prompt = page.locator(".test-case-design textarea").first();
   await prompt.fill("保持這段尚未儲存的任務提示");
   for (let index = 0; index < 2; index += 1) {
@@ -135,8 +129,8 @@ test("test-case context stops using stale names and versions and retries without
       expect(page.locator("#test-case-context-title").isFocused()).toBe(true);
     });
   }
-  expect(prompt.value()).toBe("保持這段尚未儲存的任務提示");
-  expect(page.getByText("由這個網址選定", { exact: true }).count()).toBeGreaterThan(0);
+  await expect(prompt).toHaveValue("保持這段尚未儲存的任務提示");
+  await expect(page.getByText("由這個網址選定", { exact: true })).toBeVisible();
   expect(reads).toEqual([3, 3]);
   expect(new URLSearchParams(page.search()).get("version")).toBe(VERSION);
 });

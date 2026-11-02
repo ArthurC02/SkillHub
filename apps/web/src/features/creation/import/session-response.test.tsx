@@ -57,7 +57,7 @@ for (const [name, reply] of [
           expect(submit.isDisabled()).toBe(false);
         });
       } else {
-        await page.eventually(() => expect(retry.count()).toBe(1));
+        await expect(retry).toHaveCount(1);
       }
       await input.fill("https://github.com/example/unsent");
       if (phase !== "initial") {
@@ -89,7 +89,7 @@ for (const [name, reply] of [
         (page.locator(".import-source form").element() as HTMLFormElement).requestSubmit();
       });
       expect(imports).toEqual([]);
-      expect(input.value()).toBe("https://github.com/example/unsent");
+      await expect(input).toHaveValue("https://github.com/example/unsent");
       expect(page.requests.filter((r) => r.url.pathname === "/auth/logout")).toHaveLength(
         phase === "failed logout" ? 1 : 0,
       );
@@ -105,9 +105,7 @@ for (const [name, reply] of [
       });
       expect(imports).toEqual([]);
       await submit.click();
-      await page.eventually(() =>
-        expect(page.getByRole("status").filter({ hasText: "匯入完成" }).count()).toBe(1),
-      );
+      await expect(page.getByRole("status").filter({ hasText: "匯入完成" })).toHaveCount(1);
       expect(imports).toEqual([{ url: "https://github.com/example/unsent" }]);
       expect(
         page.getByRole("link", { name: "開啟 v1 並繼續驗證", exact: true }).attribute("href"),

@@ -65,9 +65,9 @@ for (const failure of ["pending", "server", "network", "offline"]) {
     const reconfirm = page.getByRole("button", { name: "重新確認登入狀態", exact: true });
     try {
       await page.goto("/workspace/import");
-      await page.eventually(() => expect(page.locator(".auth-name").text()).toBe("tester"));
+      await expect(page.locator(".auth-name")).toHaveText("tester");
       await input.fill(draft);
-      await page.eventually(() => expect(start.isDisabled()).toBe(false));
+      await expect(start).toBeEnabled();
       checking = true;
       if (failure === "offline") await page.setOffline(true);
       document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
@@ -88,14 +88,14 @@ for (const failure of ["pending", "server", "network", "offline"]) {
         expect(input.isFocused()).toBe(true);
       });
       expect(writes()).toHaveLength(0);
-      expect(input.value()).toBe(draft);
+      await expect(input).toHaveValue(draft);
       expect(await page.axeViolations("body")).toEqual([]);
       checking = false;
       if (failure === "pending") release();
       else if (failure === "offline") await page.setOffline(false);
       else {
         await reconfirm.click();
-        await page.eventually(() => expect(page.locator("main").isFocused()).toBe(true));
+        await expect(page.locator("main")).toBeFocused();
       }
       await page.eventually(() => {
         expect(page.getByText("正在確認登入狀態…", { exact: true }).count()).toBe(0);
@@ -103,11 +103,9 @@ for (const failure of ["pending", "server", "network", "offline"]) {
         expect(reconfirm.count()).toBe(0);
       });
       expect(writes()).toHaveLength(0);
-      expect(input.value()).toBe(draft);
+      await expect(input).toHaveValue(draft);
       await start.click();
-      await page.eventually(() =>
-        expect(page.getByRole("status").filter({ hasText: "匯入完成" }).count()).toBe(1),
-      );
+      await expect(page.getByRole("status").filter({ hasText: "匯入完成" })).toHaveCount(1);
       expect(writes()).toHaveLength(1);
     } finally {
       release();

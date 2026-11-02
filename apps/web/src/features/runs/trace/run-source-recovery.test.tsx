@@ -71,7 +71,7 @@ for (const status of [403, 503]) {
         });
         if (phase === "applied") {
           await apply.click();
-          await page.eventually(() => expect(rerun.count()).toBe(1));
+          await expect(rerun).toHaveCount(1);
           expect(writes()).toHaveLength(1);
         }
         control.unavailable = true;
@@ -111,11 +111,11 @@ for (const status of [403, 503]) {
       if (phase !== "compare") {
         const reconfirm = page.getByRole("link", { name: "重新確認試跑來源", exact: true });
         expect(reconfirm.attribute("href")).toBe("#run-heading");
-        expect(page.locator("#run-heading").count()).toBe(1);
+        await expect(page.locator("#run-heading")).toHaveCount(1);
       }
       const retry = page.getByRole("button", { name: "再試一次", exact: true });
       await retry.focus();
-      expect(retry.isFocused()).toBe(true);
+      await expect(retry).toBeFocused();
       control.unavailable = false;
       await page.press("Enter");
       await page.eventually(() => {

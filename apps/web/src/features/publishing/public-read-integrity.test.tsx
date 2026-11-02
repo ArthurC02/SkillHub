@@ -58,7 +58,7 @@ for (const kind of ["skill", "bundle"] as const) {
       await page.goto(initial.address);
       const download = page.getByRole("button", { name: "下載", exact: true });
       if (rechecking) {
-        await page.eventually(() => expect(download.count()).toBe(1));
+        await expect(download).toHaveCount(1);
         await download.click();
       }
       const main = page.locator("main");

@@ -69,15 +69,15 @@ for (const [kind, fault, payload] of [
       });
       try {
         await page.goto(`/runs/${RUN}`);
-        await page.eventually(() => expect(page.locator(".auth-name").text()).toBe("tester"));
+        await expect(page.locator(".auth-name")).toHaveText("tester");
         const comment = page.locator("#feedback-comment");
-        await page.eventually(() => expect(comment.count()).toBe(1));
+        await expect(comment).toHaveCount(1);
         await comment.fill(DRAFT);
         if (kind === "list" && phase === "reread") {
           const accept = page
             .locator("li.suggestion")
             .getByRole("button", { name: "接受", exact: true });
-          await page.eventually(() => expect(accept.count()).toBe(1));
+          await expect(accept).toHaveCount(1);
           await accept.click();
         }
         const collapsed = page.getByRole("button", { name: "查看差異", exact: true });
@@ -88,9 +88,7 @@ for (const [kind, fault, payload] of [
           else await collapsed.click();
           await page.eventually(() => expect(expanded.attribute("aria-expanded")).toBe("true"));
           if (phase === "reread") {
-            await page.eventually(() =>
-              expect(page.locator(".diff").text()).toContain("清楚列出欄位"),
-            );
+            await expect(page.locator(".diff")).toContainText("清楚列出欄位");
             await expanded.click();
             await page.eventually(() => {
               expect(collapsed.attribute("aria-expanded")).toBe("false");
@@ -142,8 +140,8 @@ for (const [kind, fault, payload] of [
             expect(page.locator(".diff").text()).toContain("清楚列出欄位");
           });
         }
-        await page.eventually(() => expect(alert.count()).toBe(0));
-        expect(comment.value()).toBe(DRAFT);
+        await expect(alert).toHaveCount(0);
+        await expect(comment).toHaveValue(DRAFT);
         expect(reads).toBe(failAt + 1);
         expect(writes).toEqual(
           kind === "list" && phase === "reread" ? [{ decision: "accepted" }] : [],
@@ -162,9 +160,9 @@ test("a readable empty improvement list stays distinct from a failed read", asyn
   }));
   await page.goto(`/runs/${RUN}`);
   const message = page.getByText("這份評估沒有產生改善建議。", { exact: true });
-  await page.eventually(() => expect(message.count()).toBe(1));
-  expect(page.getByRole("alert").count()).toBe(0);
-  expect(page.getByRole("button", { name: "再試一次", exact: true }).count()).toBe(0);
+  await expect(message).toHaveCount(1);
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "再試一次", exact: true })).toHaveCount(0);
   await inspectRead(page);
 });
 
@@ -176,7 +174,7 @@ for (const applicable of [true, false]) {
     }));
     await page.goto(`/runs/${RUN}`);
     const open = page.getByRole("button", { name: "查看差異", exact: true });
-    await page.eventually(() => expect(open.count()).toBe(1));
+    await expect(open).toHaveCount(1);
     await open.click();
     const region = page.getByRole("region", { name: "建議差異", exact: true });
     await page.eventually(() => {
@@ -226,12 +224,12 @@ for (const outcome of ["confirmed", "refused"] as const) {
     });
     try {
       await page.goto(`/runs/${RUN}`);
-      await page.eventually(() => expect(page.locator(".auth-name").text()).toBe("tester"));
+      await expect(page.locator(".auth-name")).toHaveText("tester");
       const comment = page.locator("#feedback-comment");
-      await page.eventually(() => expect(comment.count()).toBe(1));
+      await expect(comment).toHaveCount(1);
       await comment.fill(DRAFT);
       const rows = page.locator("li.suggestion");
-      await page.eventually(() => expect(rows.count()).toBe(2));
+      await expect(rows).toHaveCount(2);
       await rows.nth(1).getByRole("button", { name: "接受", exact: true }).click();
       await page.eventually(() => expect(writes).toEqual(["s2"]));
       await rows.nth(0).getByRole("button", { name: "接受", exact: true }).click();

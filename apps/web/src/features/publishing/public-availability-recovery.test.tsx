@@ -63,7 +63,7 @@ async function publicationScenario(
   );
   await page.goto(state.url);
   const download = page.getByRole("button", { name: "下載", exact: true });
-  await page.eventually(() => expect(download.count()).toBe(1));
+  await expect(download).toHaveCount(1);
   await download.click();
   return state;
 }
@@ -121,19 +121,15 @@ for (const kind of ["skill", "bundle"] as const) {
     const page = app();
     const state = await publicationScenario(page, kind, "failure");
     try {
-      await page.eventually(() =>
-        expect(page.getByRole("status").text()).toContain("載入這個發佈物中"),
-      );
+      await expect(page.getByRole("status")).toContainText("載入這個發佈物中");
       state.release();
-      await page.eventually(() =>
-        expect(page.getByRole("alert").text()).toContain("暫時無法讀取這個發佈物"),
-      );
+      await expect(page.getByRole("alert")).toContainText("暫時無法讀取這個發佈物");
       await withoutObsoleteContent(page);
       await expectAccessible(page);
       const retry = page.getByRole("button", { name: "再試一次", exact: true });
       await retry.focus();
       await page.press("Enter");
-      await page.eventually(() => expect(page.getByRole("alert").text()).toBe("作者已撤回"));
+      await expect(page.getByRole("alert")).toHaveText("作者已撤回");
       await withoutObsoleteContent(page);
       expect(page.pathname()).toBe(state.url);
       expect(state.reads).toBe(3);
@@ -149,16 +145,14 @@ test("a paused public availability check explains the wait and resumes only the 
   const page = app();
   const state = await publicationScenario(page, "skill", "unavailable", true);
   try {
-    await page.eventually(() =>
-      expect(page.getByRole("status").text()).toContain("等待連線以讀取這個發佈物"),
-    );
+    await expect(page.getByRole("status")).toContainText("等待連線以讀取這個發佈物");
     await withoutObsoleteContent(page);
     expect(state.reads).toBe(1);
     expect(state.writes).toBe(1);
     await expectAccessible(page);
     state.release();
     await page.setOffline(false);
-    await page.eventually(() => expect(page.getByRole("alert").text()).toBe("作者已撤回"));
+    await expect(page.getByRole("alert")).toHaveText("作者已撤回");
     await withoutObsoleteContent(page);
     expect(state.reads).toBe(2);
     expect(state.writes).toBe(1);
@@ -173,9 +167,7 @@ test("a newly available public address retains its rejected acquisition outcome"
   const page = app();
   const state = await publicationScenario(page, "skill", "available");
   try {
-    await page.eventually(() =>
-      expect(page.getByRole("status").text()).toContain("載入這個發佈物中"),
-    );
+    await expect(page.getByRole("status")).toContainText("載入這個發佈物中");
     await withoutObsoleteContent(page);
     await expectAccessible(page);
     state.release();
@@ -198,9 +190,7 @@ test("an availability check preserves focus moved to the page header", async () 
   const page = app();
   const state = await publicationScenario(page, "skill", "unavailable");
   try {
-    await page.eventually(() =>
-      expect(page.getByRole("status").text()).toContain("載入這個發佈物中"),
-    );
+    await expect(page.getByRole("status")).toContainText("載入這個發佈物中");
     const search = page.locator(SEARCH);
     await search.fill("PDF");
     await expectAccessible(page);
@@ -210,9 +200,9 @@ test("an availability check preserves focus moved to the page header", async () 
       expect(search.isFocused()).toBe(true);
     });
     await search.fill("PDF tools");
-    expect(search.value()).toBe("PDF tools");
-    expect(page.getByRole("button", { name: "下載", exact: true }).count()).toBe(0);
-    expect(page.locator(".publication-trust").count()).toBe(0);
+    await expect(search).toHaveValue("PDF tools");
+    await expect(page.getByRole("button", { name: "下載", exact: true })).toHaveCount(0);
+    await expect(page.locator(".publication-trust")).toHaveCount(0);
     expect(state.reads).toBe(2);
     expect(state.writes).toBe(1);
     await expectAccessible(page);
@@ -226,9 +216,7 @@ for (const kind of ["skill", "bundle"] as const) {
     const page = app();
     const state = await publicationScenario(page, kind, "available");
     try {
-      await page.eventually(() =>
-        expect(page.getByRole("status").text()).toContain("載入這個發佈物中"),
-      );
+      await expect(page.getByRole("status")).toContainText("載入這個發佈物中");
       const search = page.locator(SEARCH);
       await search.fill("PDF");
       await expectAccessible(page);
@@ -246,8 +234,8 @@ for (const kind of ["skill", "bundle"] as const) {
         expect(search.isFocused()).toBe(true);
       });
       await search.fill("PDF tools");
-      expect(search.value()).toBe("PDF tools");
-      expect(page.getByRole("button", { name: "下載", exact: true }).isDisabled()).toBe(false);
+      await expect(search).toHaveValue("PDF tools");
+      await expect(page.getByRole("button", { name: "下載", exact: true })).toBeEnabled();
       expect(state.reads).toBe(2);
       expect(state.writes).toBe(1);
       await expectAccessible(page);

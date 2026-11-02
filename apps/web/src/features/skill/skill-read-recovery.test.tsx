@@ -16,11 +16,9 @@ for (const status of [403, 503]) {
         : { json: platformResponse(request.url.pathname + request.url.search).body };
     });
     await page.goto(`/skills/${SKILL}/files`);
-    await page.eventually(() => expect(page.locator(".skill-files-context").count()).toBe(1));
+    await expect(page.locator(".skill-files-context")).toHaveCount(1);
     await page.locator('a[href="/policy"]').first().click();
-    await page.eventually(() =>
-      expect(page.getByRole("heading", { name: "資料保存政策", exact: true }).count()).toBe(1),
-    );
+    await expect(page.getByRole("heading", { name: "資料保存政策", exact: true })).toHaveCount(1);
     failing = true;
     await page.goBack();
     await page.eventually(() => {
@@ -35,7 +33,7 @@ for (const status of [403, 503]) {
     const before = reads;
     failing = false;
     const retry = page.getByRole("button", { name: "再試一次", exact: true });
-    await page.eventually(() => expect(retry.count()).toBe(1));
+    await expect(retry).toHaveCount(1);
     await retry.click();
     await page.eventually(() => {
       expect(page.locator(".skill-files-context").count()).toBe(1);
@@ -56,7 +54,7 @@ for (const status of [403, 503]) {
     });
     await page.goto(`/skills/${SKILL}/package?version=${selectedVersion}`);
     const disclosure = page.getByText("換一個版本打包，或看這個版本的識別碼", { exact: true });
-    await page.eventually(() => expect(disclosure.count()).toBe(1));
+    await expect(disclosure).toHaveCount(1);
     await disclosure.click();
     const picker = page.getByLabel("小工具 Version", { exact: true });
     const inclusion = page.getByRole("checkbox", {
@@ -68,12 +66,10 @@ for (const status of [403, 503]) {
       expect(page.getByText("正在打包 v1").count()).toBeGreaterThan(0);
     });
     await page.locator('a[href="/policy"]').first().click();
-    await page.eventually(() =>
-      expect(page.getByRole("heading", { name: "資料保存政策", exact: true }).count()).toBe(1),
-    );
+    await expect(page.getByRole("heading", { name: "資料保存政策", exact: true })).toHaveCount(1);
     failing = true;
     await page.goBack();
-    await page.eventually(() => expect(disclosure.count()).toBe(1));
+    await expect(disclosure).toHaveCount(1);
     await disclosure.click();
     await page.eventually(() => {
       expect(page.getByRole("alert").filter({ hasText: "版本清單" }).count()).toBe(1);
@@ -87,7 +83,7 @@ for (const status of [403, 503]) {
     const before = reads;
     failing = false;
     const retry = page.getByRole("button", { name: "再試一次", exact: true });
-    await page.eventually(() => expect(retry.count()).toBe(1));
+    await expect(retry).toHaveCount(1);
     await retry.click();
     await page.eventually(() => {
       expect(picker.isDisabled()).toBe(false);

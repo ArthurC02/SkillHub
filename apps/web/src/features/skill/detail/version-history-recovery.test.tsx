@@ -111,7 +111,7 @@ for (const mode of ["pending", "offline"] as const) {
       await page.goto(`/skills/${SKILL}`);
       const history = page.getByRole("region", { name: "版本", exact: true });
       const heading = page.getByRole("heading", { name: "版本", exact: true });
-      await page.eventually(() => expect(history.text()).toContain("共 2 版，最新 v2"));
+      await expect(history).toContainText("共 2 版，最新 v2");
       checking = true;
       if (mode === "offline") await page.setOffline(true);
       await history.getByRole("button", { name: "重新整理", exact: true }).click();

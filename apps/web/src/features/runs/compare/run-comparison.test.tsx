@@ -39,13 +39,11 @@ test("populated run results keep identity, sources, output and task verdict visi
   const page = app();
   await page.goto(`/runs/${RUN}`);
   const identityText = page.getByText(`試跑紀錄 ID：${RUN}`, { exact: true });
-  await page.eventually(() =>
-    expect(page.getByRole("heading", { name: "試跑結果", exact: true }).count()).toBe(1),
-  );
-  expect(identityText.count()).toBe(0);
+  await expect(page.getByRole("heading", { name: "試跑結果", exact: true })).toHaveCount(1);
+  await expect(identityText).toHaveCount(0);
   const identity = page.getByText("試跑識別碼", { exact: true });
   await identity.click();
-  await page.eventually(() => expect(identityText.count()).toBe(1));
+  await expect(identityText).toHaveCount(1);
   const source = page.getByRole("navigation", { name: "這次試跑的來源" });
   await page.eventually(() => {
     expect(source.locator("a").filter({ hasText: "來源小工具" }).attribute("href")).toBe(
@@ -97,7 +95,7 @@ test("candidate runs expose their immutable Versions before comparison on a phon
     expect(olderRun.count()).toBe(1);
   });
   await olderRun.focus();
-  expect(olderRun.isFocused()).toBe(true);
+  await expect(olderRun).toBeFocused();
   await olderRun.click();
   await page.eventually(() => expect(page.search()).toMatch(new RegExp(`against=${OTHER_RUN}$`)));
 });

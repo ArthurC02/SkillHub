@@ -162,7 +162,7 @@ for (const outcome of OUTCOMES) {
     );
     try {
       await page.goto(`/skills/${SKILL}/versions/${VERSION}`);
-      await page.eventually(() => expect(page.locator(".auth-name").text()).toBe("tester"));
+      await expect(page.locator(".auth-name")).toHaveText("tester");
       await chooseZip(page, "first.zip", "first bytes");
       await page.getByRole("button", { name: SUBMIT, exact: true }).click();
       const failure = page.getByRole("alert", { name: "上傳新版本結果", exact: true });
@@ -199,9 +199,7 @@ for (const outcome of OUTCOMES) {
       session.start();
       await visibilityChange();
       await session.pending;
-      await page.eventually(() =>
-        expect(page.getByText("正在確認登入狀態…", { exact: true }).count()).toBe(1),
-      );
+      await expect(page.getByText("正在確認登入狀態…", { exact: true })).toHaveCount(1);
       await submitUploadForm(page);
       await page.eventually(() => {
         expect(failure.text()).toContain("無法確認這份檔案是否已存成新版本");
@@ -249,7 +247,7 @@ test("an identity check starting in the submit turn preserves the preceding unkn
   );
   try {
     await page.goto(`/skills/${SKILL}/versions/${VERSION}`);
-    await page.eventually(() => expect(page.locator(".auth-name").text()).toBe("tester"));
+    await expect(page.locator(".auth-name")).toHaveText("tester");
     await chooseZip(page, "first.zip", "first");
     await page.getByRole("button", { name: SUBMIT, exact: true }).click();
     const failure = page.getByRole("alert", { name: "上傳新版本結果", exact: true });
@@ -284,7 +282,7 @@ test("an identity check starting in the submit turn preserves the preceding unkn
     expect(posts).toBe(1);
     expect(await page.axeViolations("main")).toEqual([]);
     session.restore();
-    await page.eventually(() => expect(resend.isDisabled()).toBe(false));
+    await expect(resend).toBeEnabled();
     expect(posts).toBe(1);
     await resend.click();
     await page.eventually(() => {
@@ -332,7 +330,7 @@ for (const refusal of [
       },
     );
     await page.goto(`/skills/${SKILL}/versions/${VERSION}`);
-    await page.eventually(() => expect(page.locator(".auth-name").text()).toBe("tester"));
+    await expect(page.locator(".auth-name")).toHaveText("tester");
     await chooseZip(page, "rejected.zip", "rejected bytes");
     await page.getByRole("button", { name: SUBMIT, exact: true }).click();
     const failure = page.getByRole("alert", { name: "上傳新版本結果", exact: true });

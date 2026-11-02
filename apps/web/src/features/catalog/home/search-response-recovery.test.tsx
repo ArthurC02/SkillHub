@@ -62,9 +62,7 @@ for (const mode of ["catalog", "search", "corrected"] as const) {
       const originalRequest = calls[0];
       expect(originalRequest.method).toBe(mode === "corrected" ? "POST" : "GET");
       await page.locator('a[href="/policy"]').first().click();
-      await page.eventually(() =>
-        expect(page.getByRole("heading", { name: "資料保存政策", exact: true }).count()).toBe(1),
-      );
+      await expect(page.getByRole("heading", { name: "資料保存政策", exact: true })).toHaveCount(1);
       phase = "failed";
       await page.goBack();
       await page.eventually(() => expect(calls).toHaveLength(2));
@@ -85,16 +83,12 @@ for (const mode of ["catalog", "search", "corrected"] as const) {
       await page.setOffline(true);
       try {
         await main.getByRole("button", { name: "再試一次", exact: true }).click();
-        await page.eventually(() =>
-          expect(
-            main
-              .getByText(
-                `等待連線以讀取${mode === "catalog" ? "目錄" : "搜尋結果"}；恢復連線後會繼續讀取。`,
-                { exact: true },
-              )
-              .count(),
-          ).toBe(1),
-        );
+        await expect(
+          main.getByText(
+            `等待連線以讀取${mode === "catalog" ? "目錄" : "搜尋結果"}；恢復連線後會繼續讀取。`,
+            { exact: true },
+          ),
+        ).toHaveCount(1);
         expect(calls).toHaveLength(2);
       } finally {
         await page.setOffline(false);

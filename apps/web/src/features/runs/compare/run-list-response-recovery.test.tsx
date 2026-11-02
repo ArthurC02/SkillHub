@@ -44,16 +44,14 @@ for (const fault of ["missing-run-id", "null-verdict"] as const) {
       });
       try {
         await page.goto(`/runs/${RUN}/compare`);
-        await page.eventually(() =>
-          expect(page.getByText("直接輸入試跑紀錄 ID", { exact: true }).count()).toBe(1),
-        );
+        await expect(page.getByText("直接輸入試跑紀錄 ID", { exact: true })).toHaveCount(1);
         await page.getByText("直接輸入試跑紀錄 ID", { exact: true }).click();
         const draft = page.getByLabel("要比較的另一個試跑紀錄 ID");
         await draft.fill("清單恢復前保留的比較 ID");
         const rows = page.locator("main .download-list > .download-item");
         const loadMore = page.getByRole("button", { name: "載入更早的試跑紀錄", exact: true });
         if (continuation) {
-          await page.eventually(() => expect(rows.count()).toBe(1));
+          await expect(rows).toHaveCount(1);
           await loadMore.click();
         }
         await page.eventually(() => expect(offsets).toEqual(continuation ? [0, 50] : [0]));
@@ -78,7 +76,7 @@ for (const fault of ["missing-run-id", "null-verdict"] as const) {
         expect(await page.axeViolations("body")).toEqual([]);
         corrupt = false;
         const retry = page.locator("main button").filter({ hasText: "再試一次" });
-        expect(retry.count()).toBe(1);
+        await expect(retry).toHaveCount(1);
         await retry.focus();
         await page.press("Enter");
         await page.eventually(() => {
@@ -89,7 +87,7 @@ for (const fault of ["missing-run-id", "null-verdict"] as const) {
         });
         if (continuation) {
           await loadMore.click();
-          await page.eventually(() => expect(rows.count()).toBe(2));
+          await expect(rows).toHaveCount(2);
         }
         expect(offsets).toEqual(continuation ? [0, 50, 0, 50] : [0, 0]);
         expect(await page.axeViolations("body")).toEqual([]);
@@ -144,7 +142,7 @@ for (const target of [
     expect(await page.axeViolations("body")).toEqual([]);
     corrupt = false;
     const retry = page.locator("main button").filter({ hasText: "再試一次" });
-    expect(retry.count()).toBe(1);
+    await expect(retry).toHaveCount(1);
     await retry.focus();
     await page.press("Enter");
     await page.eventually(() => {

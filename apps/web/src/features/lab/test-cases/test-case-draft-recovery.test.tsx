@@ -47,7 +47,7 @@ for (const status of [503, 408, 429, 0]) {
     const prompt = page.getByLabel("User Prompt", { exact: true });
     const facts = page.getByLabel("使用者知道的事", { exact: true });
     const rubric = page.getByLabel("Rubric 版本", { exact: true });
-    await page.eventually(() => expect(name.count()).toBe(1));
+    await expect(name).toHaveCount(1);
     await name.fill("未儲存的新名稱");
     await prompt.fill("未儲存的任務提示");
     await facts.fill("未儲存的情境事實");
@@ -85,7 +85,7 @@ for (const status of [401, 403, 404]) {
     criterionReadFailure(page, status);
     await page.goto(`/lab/test-cases/${TEST_CASE}`);
     const name = page.getByLabel("名稱", { exact: true });
-    await page.eventually(() => expect(name.count()).toBe(1));
+    await expect(name).toHaveCount(1);
     await name.fill("不能保留的保護內容");
     await page.getByLabel("新增驗收條件", { exact: true }).fill("新條件");
     await page.getByRole("button", { name: "新增", exact: true }).click();

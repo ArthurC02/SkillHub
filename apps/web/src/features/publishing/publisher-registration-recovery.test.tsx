@@ -50,7 +50,7 @@ for (const owner of owners) {
           const input = section.locator("input");
           const form = section.locator("form.publisher-form");
           const alert = section.locator("[role=alert]");
-          await page.eventually(() => expect(input.count()).toBe(1));
+          await expect(input).toHaveCount(1);
           await input.fill("kept-namespace");
           await input.press("Enter");
           await page.eventually(() => {
@@ -85,7 +85,7 @@ for (const owner of owners) {
               );
             });
           }
-          await page.eventually(() => expect(heading.isFocused()).toBe(true));
+          await expect(heading).toBeFocused();
           expect(posts).toEqual([{ name: "kept-namespace" }]);
           expect(reads).toBe(outcome === "read-error" ? 3 : 2);
           expect(errors).toEqual([]);

@@ -43,11 +43,11 @@ async function open(scope: (typeof SCOPES)[number]) {
   });
   await page.goto(scope.url);
   const summary = page.getByText(`修改「${scope.grader.name}」的評分指示`, { exact: true });
-  await page.eventually(() => expect(summary.count()).toBe(1));
+  await expect(summary).toHaveCount(1);
   await summary.click();
   const instructions = page.locator(`#grader-${scope.grader.id}-instructions`);
   const reason = page.locator(`#grader-${scope.grader.id}-reason`);
-  await page.eventually(() => expect(instructions.count()).toBe(1));
+  await expect(instructions).toHaveCount(1);
   return {
     page,
     instructions,
@@ -83,11 +83,11 @@ for (const scope of SCOPES) {
       await editor.instructions.fill("我還沒有送出的評分指示");
       await editor.reason.fill("我還沒有送出的變更原因");
       await editor.refresh();
-      expect(editor.instructions.value()).toBe("我還沒有送出的評分指示");
-      expect(editor.reason.value()).toBe("我還沒有送出的變更原因");
-      expect(
-        editor.page.getByRole("button", { name: "存成新版本", exact: true }).isDisabled(),
-      ).toBe(false);
+      await expect(editor.instructions).toHaveValue("我還沒有送出的評分指示");
+      await expect(editor.reason).toHaveValue("我還沒有送出的變更原因");
+      await expect(
+        editor.page.getByRole("button", { name: "存成新版本", exact: true }),
+      ).toBeEnabled();
       expect(editor.posts).toEqual([]);
       expect(await editor.page.axeViolations(".grader-list")).toEqual([]);
     });

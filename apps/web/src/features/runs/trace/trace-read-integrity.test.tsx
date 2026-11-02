@@ -60,7 +60,7 @@ for (const { name, mode, body } of [
     expect(await page.axeViolations("main")).toEqual([]);
     const retry = trace.getByRole("button", { name: "再試一次", exact: true });
     await retry.focus();
-    expect(retry.isFocused()).toBe(true);
+    await expect(retry).toBeFocused();
     healthy = true;
     await page.press("Enter");
     await page.eventually(() => {

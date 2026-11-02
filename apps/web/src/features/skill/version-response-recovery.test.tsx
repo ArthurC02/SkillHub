@@ -37,7 +37,7 @@ for (const [name, body] of [
       const history = page.getByRole("region", { name: "版本", exact: true });
       const heading = page.locator("#version-history-heading");
       if (cached) {
-        await page.eventually(() => expect(history.text()).toContain("共 2 版，最新 v2"));
+        await expect(history).toContainText("共 2 版，最新 v2");
         await history.getByRole("button", { name: "重新整理", exact: true }).click();
       }
       await page.eventually(() => {
@@ -114,9 +114,7 @@ test("an incomplete embedded version list preserves the Bundle draft and recover
   });
   await page.goto(`/workspace/downloads?bundleVersion=${VERSION}`);
   const section = page.locator("#bundle-workspace");
-  await page.eventually(() =>
-    expect(section.getByRole("alert").text()).toContain("可加入 Bundle 的版本"),
-  );
+  await expect(section.getByRole("alert")).toContainText("可加入 Bundle 的版本");
   const form = section.locator(".bundle-form");
   await form.getByLabel("名稱", { exact: true }).fill("draft-bundle");
   await form.getByLabel("說明", { exact: true }).fill("保留這段說明");
