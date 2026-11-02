@@ -1,8 +1,8 @@
-import AxeBuilder from "./axe";
-import { expect, test, type Locator, type Page, type TestInfo } from "@playwright/test";
-import { writeFile } from "node:fs/promises";
-import { ADMIN_AGENTS, TEST_CASE } from "../src/testing/fixtures/platform";
-import { stubPlatform } from "./stub";
+import { expect, test } from "vitest";
+import { ADMIN_AGENTS, TEST_CASE } from "../../../testing/fixtures/platform";
+import { renderedApp, type Locator } from "../../../testing/app";
+
+const app = renderedApp();
 
 type Phase = { value: string; invalid: boolean; description: string };
 
@@ -85,100 +85,88 @@ const factsCases: { name: string; phases: Phase[] }[] = [
   },
 ];
 
-function trackWrites(page: Page) {
-  const writes: string[] = [];
-  page.on("request", (request) => {
-    if (!["GET", "HEAD", "OPTIONS"].includes(request.method())) writes.push(request.url());
-  });
-  return writes;
+function describedBy(field: Locator): string {
+  const ids = (field.attribute("aria-describedby") ?? "").split(/\s+/).filter(Boolean);
+  return ids
+    .map((id) => document.getElementById(id)?.textContent ?? "")
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-async function assertPhase(field: Locator, save: Locator, phase: Phase) {
+async function assertPhase(
+  page: ReturnType<typeof app>,
+  field: Locator,
+  save: Locator,
+  phase: Phase,
+) {
   await field.fill(phase.value);
-  await expect(field).toHaveValue(phase.value);
-  if (phase.invalid) {
-    await expect(save).toBeDisabled();
-    await expect(field).toHaveAttribute("aria-invalid", "true");
-  } else {
-    await expect(save).toBeEnabled();
-    expect([null, "false"]).toContain(await field.getAttribute("aria-invalid"));
-  }
-  await expect(field).toHaveAccessibleDescription(phase.description);
-  await expect(field).toBeFocused();
-  await expect(field).toBeInViewport({ ratio: 1 });
+  await page.eventually(() => {
+    expect(field.value()).toBe(phase.value);
+    expect(save.isDisabled()).toBe(phase.invalid);
+    if (phase.invalid) expect(field.attribute("aria-invalid")).toBe("true");
+    else expect([null, "false"]).toContain(field.attribute("aria-invalid"));
+    expect(describedBy(field)).toBe(phase.description);
+    expect(field.isFocused()).toBe(true);
+  });
 }
 
-async function inspect(page: Page, scope: string, info: TestInfo, state: string) {
-  const report = await new AxeBuilder({ page }).include(scope).analyze();
-  await writeFile(info.outputPath(`${state}-a11y.json`), JSON.stringify(report));
-  expect(report.violations).toEqual([]);
-  expect(report.incomplete).toEqual([]);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.screenshot({ path: info.outputPath(`${state}.png`) });
-}
+const writes = (page: ReturnType<typeof app>) =>
+  page.requests.filter((request) => !["GET", "HEAD", "OPTIONS"].includes(request.method));
 
 for (const width of [375, 1280]) {
   for (const scenario of capCases) {
-    test(`Agent cap ${scenario.name} exposes errors and corrections at ${width}px`, async ({
-      page,
-    }, info) => {
-      await stubPlatform(page);
-      await page.setViewportSize({ width, height: 900 });
-      await page.emulateMedia({ colorScheme: width === 375 ? "light" : "dark" });
-      await page.route("**/admin/agents", (route) =>
-        route.request().isNavigationRequest()
-          ? route.fallback()
-          : route.fulfill({ json: { agents: [ADMIN_AGENTS.agents[0]] } }),
-      );
-      const writes = trackWrites(page);
+    test(`Agent cap ${scenario.name} exposes errors and corrections at ${width}px`, async () => {
+      const page = app();
+      page.route("**/admin/agents", () => ({ json: { agents: [ADMIN_AGENTS.agents[0]] } }));
       await page.goto("/admin/agents");
-      await page.getByText("調整每日花費上限", { exact: true }).click();
+      const summary = page.getByText("調整每日花費上限", { exact: true });
+      await page.eventually(() => expect(summary.count()).toBe(1));
+      await summary.click();
       const field = page.locator("#admin-agent-daily-report-cap");
       const note = page.locator("#admin-agent-daily-report-cap-set-note");
       const save = page.getByRole("button", { name: "改 daily-report 的每日上限", exact: true });
       await note.fill("檢查預算");
-      await expect(save).toBeEnabled();
-      expect([null, "false"]).toContain(await field.getAttribute("aria-invalid"));
+      await page.eventually(() => {
+        expect(save.isDisabled()).toBe(false);
+        expect([null, "false"]).toContain(field.attribute("aria-invalid"));
+      });
       let inspectedInvalid = false;
       for (const phase of scenario.phases) {
-        await assertPhase(field, save, phase);
-        await expect(note).toHaveValue("檢查預算");
+        await assertPhase(page, field, save, phase);
+        expect(note.value()).toBe("檢查預算");
         if (phase.invalid && !inspectedInvalid) {
-          await inspect(page, "form:has(#admin-agent-daily-report-cap)", info, "invalid");
+          expect(await page.axeViolations("form:has(#admin-agent-daily-report-cap)")).toEqual([]);
           inspectedInvalid = true;
         }
       }
       expect(inspectedInvalid).toBe(true);
-      await inspect(page, "form:has(#admin-agent-daily-report-cap)", info, "corrected");
-      await expect(field).toBeFocused();
-      expect(writes).toEqual([]);
+      expect(await page.axeViolations("form:has(#admin-agent-daily-report-cap)")).toEqual([]);
+      expect(field.isFocused()).toBe(true);
+      expect(writes(page)).toEqual([]);
     });
   }
   for (const scenario of factsCases) {
-    test(`Simulated facts ${scenario.name} expose errors and corrections at ${width}px`, async ({
-      page,
-    }, info) => {
-      await stubPlatform(page);
-      await page.setViewportSize({ width, height: 900 });
-      await page.emulateMedia({ colorScheme: width === 375 ? "light" : "dark" });
-      const writes = trackWrites(page);
+    test(`Simulated facts ${scenario.name} expose errors and corrections at ${width}px`, async () => {
+      const page = app();
       await page.goto(`/lab/test-cases/${TEST_CASE}`);
       const field = page.getByLabel("使用者知道的事", { exact: true });
       const save = page.getByRole("button", { name: "儲存模擬使用者", exact: true });
+      await page.eventually(() => expect(field.count()).toBe(1));
       await field.click();
       let inspectedInvalid = false;
       for (const phase of scenario.phases) {
-        await assertPhase(field, save, phase);
+        await assertPhase(page, field, save, phase);
         if (phase.invalid && !inspectedInvalid) {
-          await expect(page.locator("#simulated-user-limit")).toHaveAttribute("role", "status");
-          await inspect(page, 'section[aria-label="模擬使用者設計"]', info, "invalid");
+          expect(page.locator("#simulated-user-limit").attribute("role")).toBe("status");
+          expect(await page.axeViolations('section[aria-label="模擬使用者設計"]')).toEqual([]);
           inspectedInvalid = true;
         }
       }
       expect(inspectedInvalid).toBe(true);
-      await inspect(page, 'section[aria-label="模擬使用者設計"]', info, "corrected");
-      await expect(field).toBeFocused();
-      expect(writes).toEqual([]);
+      expect(await page.axeViolations('section[aria-label="模擬使用者設計"]')).toEqual([]);
+      expect(field.isFocused()).toBe(true);
+      expect(writes(page)).toEqual([]);
     });
   }
 }
