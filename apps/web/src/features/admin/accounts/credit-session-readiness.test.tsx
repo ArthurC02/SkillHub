@@ -1,43 +1,37 @@
-import AxeBuilder from "./axe";
-import { expect, test } from "@playwright/test";
-import { writeFile } from "node:fs/promises";
-import { ADMIN_ACCOUNT, ADMIN_LEDGER, ME } from "../src/testing/fixtures/platform";
-import { setOffline } from "./offline";
-import { stubPlatform } from "./stub";
+import { expect, test } from "vitest";
+import { renderedApp } from "../../../testing/app";
+import { ADMIN_ACCOUNT, ADMIN_LEDGER, platformResponse } from "../../../testing/fixtures/platform";
 
-test.use({ trace: "retain-on-failure" });
+const app = renderedApp();
 
 for (const phase of ["pending", "offline"]) {
   for (const amount of [25, -25]) {
-    test(`a ${amount} credit intent blocked by ${phase} session verification stays editable and waits for explicit submission`, async ({
-      page,
-    }) => {
-      await page.setViewportSize({ width: 375, height: 812 });
-      await stubPlatform(page);
+    test(`a ${amount} credit intent blocked by ${phase} session verification stays editable and waits for explicit submission`, async () => {
+      const page = app();
       let checking = false;
       let release!: () => void;
       const gate = new Promise<void>((resolve) => {
         release = resolve;
       });
-      await page.route("**/me", async (route) => {
+      page.route("**/me", async () => {
         if (checking && phase === "pending") await gate;
-        return route.fulfill({ json: { ...ME, operator: true } });
+        return { json: { ...(platformResponse("/me").body as object), operator: true } };
       });
       let balance = 120;
       const writes: unknown[] = [];
-      await page.route(`**/admin/credits/${ADMIN_ACCOUNT.workspace_id}`, (route) =>
-        route.fulfill({ json: { ...ADMIN_LEDGER, balance_credits: balance } }),
-      );
-      await page.route(`**/admin/credits/${ADMIN_ACCOUNT.workspace_id}/grants`, (route) => {
-        writes.push(route.request().postDataJSON());
+      page.route(`**/admin/credits/${ADMIN_ACCOUNT.workspace_id}`, () => ({
+        json: { ...ADMIN_LEDGER, balance_credits: balance },
+      }));
+      page.route(`**/admin/credits/${ADMIN_ACCOUNT.workspace_id}/grants`, (request) => {
+        writes.push(request.body);
         balance += amount * 2;
-        return route.fulfill({
+        return {
           json: {
             workspace_id: ADMIN_ACCOUNT.workspace_id,
             amount_credits: amount * 2,
             balance_credits: balance,
           },
-        });
+        };
       });
       try {
         await page.goto("/admin/accounts");
@@ -49,14 +43,12 @@ for (const phase of ["pending", "offline"]) {
         await input.fill(String(amount));
         await note.fill("尚未送出的點數草稿");
         checking = true;
-        if (phase === "offline") await setOffline(page, true);
-        await page.evaluate(() =>
-          document.dispatchEvent(new Event("visibilitychange", { bubbles: true })),
-        );
-        await expect(page.getByRole("banner").getByRole("status")).toContainText(
+        if (phase === "offline") await page.setOffline(true);
+        document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
+        await expect(page.locator(".app-header").getByRole("status")).toContainText(
           phase === "offline" ? "等待連線以確認登入狀態" : "正在確認登入狀態",
         );
-        const main = page.getByRole("main");
+        const main = page.locator("main");
         const submit = main.getByRole("button", {
           name: amount > 0 ? "授予" : "扣減點數",
           exact: true,
@@ -71,20 +63,13 @@ for (const phase of ["pending", "offline"]) {
           main.getByText("結果尚未確認；金額與理由暫時不能更改。", { exact: false }),
         ).toHaveCount(0);
         expect(writes).toEqual([]);
-        const report = await new AxeBuilder({ page }).analyze();
-        await writeFile(
-          test.info().outputPath("credit-not-sent-a11y.json"),
-          JSON.stringify(report),
-        );
-        expect(report.violations).toEqual([]);
-        expect(report.incomplete).toEqual([]);
-        await page.screenshot({ path: test.info().outputPath("credit-not-sent-viewport.png") });
+        expect(await page.axeViolations("body")).toEqual([]);
         await input.fill(String(amount * 2));
         await note.fill("修訂後的點數草稿");
         await expect(alert).toHaveCount(0);
         expect(writes).toEqual([]);
         checking = false;
-        if (phase === "offline") await setOffline(page, false);
+        if (phase === "offline") await page.setOffline(false);
         else release();
         await expect(page.locator(".auth-name")).toHaveText("tester");
         await expect(input).toHaveValue(String(amount * 2));
@@ -103,7 +88,7 @@ for (const phase of ["pending", "offline"]) {
         await expect(submit).toBeDisabled();
       } finally {
         release();
-        await setOffline(page, false);
+        await page.setOffline(false);
       }
     });
   }

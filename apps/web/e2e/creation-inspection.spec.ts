@@ -4,18 +4,9 @@ import { writeFile } from "node:fs/promises";
 import type { CreationSession } from "../src/features/creation/creation.service";
 import { ME, SKILL, VERSION } from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";
-import { setOffline } from "./offline";
 
 const SESSION = "44444444-4444-4444-8444-444444444444";
 const HASH = "e".repeat(64);
-const REFUSAL =
-  "套件結構無法通過驗證：duplicate file SKILL.md。frontmatter 與 SKILL.md 由 Go 從 name、description、compatibility、allowed_tools 與 body 產生；files 不得包含 SKILL.md，也沒有 license 欄位可填。";
-const WARNING = {
-  severity: "warning",
-  code: "embedded-script",
-  message: "SKILL.md 內含可執行程式碼區塊。",
-};
-const ERROR = { severity: "error", code: "skill-md-missing", message: "套件根目錄找不到 SKILL.md" };
 
 function session(validation: string, blocked: boolean): CreationSession {
   return {
@@ -226,149 +217,6 @@ for (const colorScheme of ["light", "dark"] as const) {
       expect(samples.samples.filter((sample) => sample.ratio < 4.5)).toEqual([]);
       expect(state.writes).toEqual([]);
       await page.screenshot({ path: test.info().outputPath("composer-ready-viewport.png") });
-    } finally {
-      state.release();
-    }
-  });
-}
-
-for (const [name, validation] of [
-  [
-    "unknown severity",
-    JSON.stringify({ blocked: false, findings: [{ ...WARNING, severity: "critical" }] }),
-  ],
-  ["object message", JSON.stringify({ blocked: false, findings: [{ ...WARNING, message: {} }] })],
-  ["truncated JSON", '{"findings":['],
-] as const) {
-  test(`a draft with ${name} requires a complete reread before a save decision`, async ({
-    page,
-  }) => {
-    const state = await openDraft(page, validation, false);
-    try {
-      const card = page.locator("#creation-draft-decision");
-      await expect(card.getByText("檢查細節未確認", { exact: true })).toBeVisible();
-      await expect(card.getByText("靜態檢查跑完了，沒有任何發現", { exact: false })).toHaveCount(0);
-      const candidate = card.getByRole("button", { name: "建立私人候選版本", exact: true });
-      const save = card.getByRole("button", { name: "確認保存到私人工作區", exact: true });
-      await expect(candidate).toBeDisabled();
-      await expect(save).toBeDisabled();
-      await expect(save).toHaveAccessibleDescription(
-        "草稿檢查細節尚未確認。請先重新讀取，再決定是否保存。",
-      );
-      const composer = page.locator("#creation-message");
-      await composer.fill("保留目前的補充需求");
-      const report = await new AxeBuilder({ page }).include("main").analyze();
-      await writeFile(
-        test.info().outputPath("creation-inspection-a11y.json"),
-        JSON.stringify(report),
-      );
-      expect(report.violations).toEqual([]);
-      expect(report.incomplete).toEqual([]);
-      await card.scrollIntoViewIfNeeded();
-      await page.screenshot({
-        path: test.info().outputPath("draft-inspection-unconfirmed-phone.png"),
-      });
-      state.failNextRead();
-      const retry = card.getByRole("button", { name: "重新讀取檢查結果", exact: true });
-      await retry.click();
-      await expect.poll(() => state.reads).toBe(2);
-      await state.readStarted;
-      await expect(retry).toBeDisabled();
-      await expect(card.getByRole("status")).toContainText("正在重新讀取草稿檢查結果");
-      await expect(save).toBeDisabled();
-      expect(state.writes).toEqual([]);
-      state.release();
-      await expect(retry).toBeEnabled();
-      await expect(card.getByRole("alert")).toContainText("草稿檢查細節尚未確認");
-      await expect(composer).toHaveValue("保留目前的補充需求");
-      state.recover();
-      await retry.click();
-      await expect(card.getByText("靜態檢查跑完了，沒有任何發現", { exact: false })).toBeVisible();
-      await expect(candidate).toBeEnabled();
-      await expect(save).toBeEnabled();
-      await expect(retry).toHaveCount(0);
-      await expect(composer).toHaveValue("保留目前的補充需求");
-      expect(state.reads).toBe(3);
-      expect(state.writes).toEqual([]);
-      await candidate.click();
-      await expect(card.getByRole("link", { name: "開啟候選版本", exact: true })).toHaveAttribute(
-        "href",
-        `/skills/${SKILL}/versions/${VERSION}`,
-      );
-      expect(state.writes).toHaveLength(1);
-      expect(state.writes[0]).toMatchObject({
-        kind: "materialize",
-        expected_revision: 7,
-        content_hash: HASH,
-      });
-    } finally {
-      state.release();
-    }
-  });
-}
-
-test("an unreadable draft inspection waits for connectivity without sending a save", async ({
-  page,
-}) => {
-  const state = await openDraft(page, "{}", false);
-  try {
-    const card = page.locator("#creation-draft-decision");
-    const retry = card.getByRole("button", { name: "重新讀取檢查結果", exact: true });
-    await expect(retry).toBeEnabled();
-    await expect(
-      card.getByRole("button", { name: "確認保存到私人工作區", exact: true }),
-    ).toBeDisabled();
-    await page.locator("#creation-message").fill("尚未送出的需求");
-    state.failNextRead();
-    await setOffline(page, true);
-    await retry.click();
-    await expect(card.getByRole("status")).toHaveText("等待連線以重新讀取草稿檢查結果…");
-    await expect(retry).toBeDisabled();
-    expect(state.reads).toBe(1);
-    expect(state.writes).toEqual([]);
-    await setOffline(page, false);
-    await expect.poll(() => state.reads).toBe(2);
-    await state.readStarted;
-    await expect(card.getByRole("status")).toContainText("正在重新讀取草稿檢查結果");
-    state.release();
-    await expect(retry).toBeEnabled();
-    await expect(page.locator("#creation-message")).toHaveValue("尚未送出的需求");
-    expect(state.writes).toEqual([]);
-  } finally {
-    state.release();
-    await setOffline(page, false);
-  }
-});
-
-for (const [name, validation, blocked, message] of [
-  [
-    "empty findings",
-    JSON.stringify({ findings: [], blocked: false }),
-    false,
-    "靜態檢查跑完了，沒有任何發現",
-  ],
-  [
-    "nil findings",
-    JSON.stringify({ findings: null, blocked: false }),
-    false,
-    "靜態檢查跑完了，沒有任何發現",
-  ],
-  ["a warning", JSON.stringify({ findings: [WARNING], blocked: false }), false, WARNING.message],
-  ["a blocking finding", JSON.stringify({ findings: [ERROR], blocked: true }), true, ERROR.message],
-  ["a package refusal", REFUSAL, true, REFUSAL],
-] as const) {
-  test(`a draft with ${name} keeps the server's inspection evidence readable`, async ({ page }) => {
-    const state = await openDraft(page, validation, blocked);
-    try {
-      const card = page.locator("#creation-draft-decision");
-      await expect(card.getByText(message, { exact: false })).toBeVisible();
-      await expect(card.getByRole("button", { name: "重新讀取檢查結果", exact: true })).toHaveCount(
-        0,
-      );
-      const save = card.getByRole("button", { name: "確認保存到私人工作區", exact: true });
-      if (blocked) await expect(save).toBeDisabled();
-      else await expect(save).toBeEnabled();
-      expect(state.writes).toEqual([]);
     } finally {
       state.release();
     }

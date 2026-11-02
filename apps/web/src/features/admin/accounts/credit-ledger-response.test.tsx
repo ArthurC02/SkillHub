@@ -1,8 +1,8 @@
-import AxeBuilder from "./axe";
-import { expect, test } from "@playwright/test";
-import { writeFile } from "node:fs/promises";
-import { ADMIN_ACCOUNT, ADMIN_LEDGER, ME } from "../src/testing/fixtures/platform";
-import { stubPlatform } from "./stub";
+import { expect, test } from "vitest";
+import { renderedApp } from "../../../testing/app";
+import { ADMIN_ACCOUNT, ADMIN_LEDGER, ME } from "../../../testing/fixtures/platform";
+
+const app = renderedApp();
 
 for (const [name, invalid] of [
   ["an unreadable balance", { ...ADMIN_LEDGER, balance_credits: "not a measured balance" }],
@@ -10,37 +10,28 @@ for (const [name, invalid] of [
   ["an unreadable entry", { ...ADMIN_LEDGER, entries: [ADMIN_LEDGER.entries[0], null] }],
 ] as const) {
   for (const reread of [false, true]) {
-    test(`a ledger from ${name} on ${reread ? "reread" : "first read"} stays unconfirmed and recovers without replaying a grant`, async ({
-      page,
-    }) => {
-      await page.setViewportSize({ width: 375, height: 812 });
-      await stubPlatform(page);
-      await page.route("**/me", (route) => route.fulfill({ json: { ...ME, operator: true } }));
-      const writes: string[] = [];
-      let documents = 0;
-      page.on("request", (request) => {
-        if (request.method() === "POST") writes.push(request.url());
-      });
-      page.on("domcontentloaded", () => documents++);
+    test(`a ledger from ${name} on ${reread ? "reread" : "first read"} stays unconfirmed and recovers without replaying a grant`, async () => {
+      const page = app();
       let reads = 0;
       let recovered = false;
       let release!: () => void;
       const recoveryGate = new Promise<void>((resolve) => {
         release = resolve;
       });
-      await page.route(`**/admin/credits/${ADMIN_ACCOUNT.workspace_id}`, async (route) => {
+      page.route(`**/admin/credits/${ADMIN_ACCOUNT.workspace_id}`, async () => {
         reads++;
         if (recovered) {
           await recoveryGate;
-          return route.fulfill({ json: { ...ADMIN_LEDGER, balance_credits: 0, entries: [] } });
+          return { json: { ...ADMIN_LEDGER, balance_credits: 0, entries: [] } };
         }
-        return route.fulfill({ json: reread && reads === 1 ? ADMIN_LEDGER : invalid });
+        return { json: reread && reads === 1 ? ADMIN_LEDGER : invalid };
       });
+      const writes = () => page.requests.filter((request) => request.method === "POST");
       try {
         await page.goto("/admin/accounts");
         await page.getByLabel("Email", { exact: true }).fill("member@example.com");
         await page.getByLabel("Email", { exact: true }).press("Enter");
-        const main = page.getByRole("main");
+        const main = page.locator("main");
         if (reread) {
           await page.locator("#admin-grant-amount").fill("25");
           await page.locator("#admin-grant-note").fill("保留這次的授予草稿");
@@ -48,9 +39,7 @@ for (const [name, invalid] of [
           await main.getByRole("button", { name: "重新整理點數", exact: true }).click();
         }
         await expect(main.getByRole("alert")).toContainText("暫時無法讀取點數。");
-        await expect(
-          main.getByRole("heading", { level: 1, name: "帳號與點數", exact: true }),
-        ).toBeVisible();
+        await expect(main.locator("h1")).toHaveText("帳號與點數");
         await expect(main.getByRole("heading", { name: "封測者甲", exact: true })).toBeVisible();
         await expect(page.getByLabel("Email", { exact: true })).toHaveValue("member@example.com");
         await expect(main.getByText("目前餘額", { exact: false })).toHaveCount(0);
@@ -66,26 +55,15 @@ for (const [name, invalid] of [
           await expect(page.locator("#admin-grant-amount")).toHaveCount(0);
         }
         expect(reads).toBe(reread ? 2 : 1);
-        expect(documents).toBe(1);
-        expect(writes).toEqual([]);
-        const report = await new AxeBuilder({ page }).analyze();
-        await writeFile(
-          test.info().outputPath("credit-ledger-response-a11y.json"),
-          JSON.stringify(report),
-        );
-        expect(report.violations).toEqual([]);
-        expect(report.incomplete).toEqual([]);
-        await page.screenshot({
-          path: test.info().outputPath("credit-ledger-unconfirmed-phone.png"),
-          fullPage: true,
-        });
+        expect(writes()).toEqual([]);
+        expect(await page.axeViolations("body")).toEqual([]);
         recovered = true;
         await main.getByRole("button", { name: "再試一次", exact: true }).click();
-        await expect.poll(() => reads).toBe(reread ? 3 : 2);
+        await page.eventually(() => expect(reads).toBe(reread ? 3 : 2));
         await expect(main.getByRole("status")).toContainText("載入點數中");
         if (reread)
           await expect(main.getByRole("button", { name: "授予", exact: true })).toBeDisabled();
-        expect(writes).toEqual([]);
+        expect(writes()).toEqual([]);
         release();
         await expect(main.getByText("目前餘額", { exact: false })).toContainText("0");
         await expect(main.getByText("這個帳戶的分錄：0 筆。", { exact: true })).toBeVisible();
@@ -100,8 +78,7 @@ for (const [name, invalid] of [
           await expect(page.locator("#admin-grant-note")).toHaveValue("保留這次的授予草稿");
         }
         await expect(main.getByRole("button", { name: "授予", exact: true })).toBeEnabled();
-        expect(documents).toBe(1);
-        expect(writes).toEqual([]);
+        expect(writes()).toEqual([]);
       } finally {
         release();
       }

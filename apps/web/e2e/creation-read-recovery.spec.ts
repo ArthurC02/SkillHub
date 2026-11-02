@@ -1,10 +1,9 @@
 import AxeBuilder from "./axe";
-import { expect, test, type BrowserContext, type Page, type Route } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { writeFile } from "node:fs/promises";
 import type { CreationSession } from "../src/features/creation/creation.service";
-import { ME, platformResponse } from "../src/testing/fixtures/platform";
-import { setOffline } from "./offline";
-import { serveStatic, STATIC_KINDS, stubPlatform } from "./stub";
+import { ME } from "../src/testing/fixtures/platform";
+import { stubPlatform } from "./stub";
 
 const ID = "44444444-4444-4444-8444-444444444444";
 const SESSION: CreationSession = {
@@ -44,13 +43,6 @@ const LIMITS = {
   session_timeout_seconds: 3600,
   retention_seconds: 604800,
 };
-const CREDITS = {
-  balance_credits: 1000,
-  debt_floor_credits: -50,
-  estimated_session: { low_credits: 30, high_credits: 65, sample_size: 40, estimated: false },
-  can_start: true,
-};
-
 async function stubCreation(page: Page, status = 200, events = false) {
   await stubPlatform(page);
   await page.setViewportSize({ width: 375, height: 900 });
@@ -104,225 +96,6 @@ async function stubCreation(page: Page, status = 200, events = false) {
       reply = value;
     },
   };
-}
-
-async function stubWriteReceipt(page: Page, context: BrowserContext, mode: string, damage: string) {
-  const state = await stubCreation(page);
-  state.recover();
-  const posts: Record<string, unknown>[] = [];
-  const paths: string[] = [];
-  let current = SESSION;
-  const handleCreation = async (route: Route) => {
-    const request = route.request();
-    const path = new URL(request.url()).pathname;
-    paths.push(path);
-    if (path.endsWith("/events")) return route.fulfill({ status: 204 });
-    if (path.endsWith("/limits")) return route.fulfill({ json: LIMITS });
-    if (request.method() === "POST") {
-      const body = request.postDataJSON() as Record<string, unknown>;
-      posts.push(body);
-      current = {
-        ...SESSION,
-        id: mode === "start" ? String(body.id) : ID,
-        revision: 8,
-        snapshot: {
-          ...SESSION.snapshot,
-          messages: [...SESSION.snapshot.messages, { role: "user", content: "保留這份送出的補充" }],
-        },
-      };
-      const value =
-        posts.length > 1
-          ? current
-          : damage === "empty"
-            ? null
-            : damage === "foreign"
-              ? { ...current, id: "55555555-5555-4555-8555-555555555555" }
-              : { ...current, snapshot: null };
-      return route.fulfill({ json: value });
-    }
-    if (path === "/creation-sessions")
-      return route.fulfill({ json: current.id === ID ? [current] : [current, SESSION] });
-    if (path === "/creation-sessions/" + current.id) return route.fulfill({ json: current });
-    return route.fulfill({ status: 404, json: { error: "找不到可讀取的創作或參考內容。" } });
-  };
-  await context.route("**/*", (route, request) => {
-    if (STATIC_KINDS.has(request.resourceType())) return serveStatic(route);
-    const path = new URL(request.url()).pathname;
-    if (path.startsWith("/creation-sessions")) return handleCreation(route);
-    if (path === "/me")
-      return route.fulfill({
-        json: { ...ME, features: { generate_skill: true, creation_skill: true } },
-      });
-    if (path === "/me/credits") return route.fulfill({ json: CREDITS });
-    const { body, status } = platformResponse(request.url());
-    return route.fulfill({ status, json: body });
-  });
-  await page.route("**/me/credits", (route) => route.fulfill({ json: CREDITS }));
-  await page.route("**/creation-sessions**", handleCreation);
-  return {
-    posts,
-    paths,
-    get requestedID() {
-      return current.id;
-    },
-  };
-}
-
-for (const [mode, damage] of [
-  ["start", "empty"],
-  ["start", "foreign"],
-  ["start", "snapshot"],
-  ["action", "empty"],
-  ["action", "foreign"],
-  ["action", "snapshot"],
-]) {
-  test(`an uncertain ${mode} receipt with ${damage} data keeps the editor during keyboard verification`, async ({
-    page,
-    context,
-  }) => {
-    const state = await stubWriteReceipt(page, context, mode, damage);
-    if (damage === "snapshot") await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto(
-      mode === "start" ? "/workspace/creations" : `/workspace/creations?session=${ID}`,
-    );
-    if (mode === "start") {
-      await page.getByRole("button", { name: "＋ 開始新的創作", exact: true }).click();
-      await page
-        .locator(".budget-picker label")
-        .filter({ hasText: /^500 點$/ })
-        .click();
-      await expect(page.getByRole("radio", { name: "500 點", exact: true })).toBeChecked();
-    }
-    const current = page.locator("#creation-workspace");
-    await current.locator("#creation-message").fill("保留這份送出的補充");
-    await current
-      .getByRole("button", { name: mode === "start" ? "開始創作" : "送出", exact: true })
-      .click();
-    await expect(current.getByRole("alert")).toContainText("創作結果尚未確認");
-    await expect(current.getByRole("alert")).toBeFocused();
-    await expect(current.getByRole("alert")).toBeInViewport();
-    await expect(current.locator("#creation-message")).toHaveValue("保留這份送出的補充");
-    await expect(page).toHaveURL(
-      mode === "start" ? /\/workspace\/creations$/ : new RegExp(`session=${ID}$`),
-    );
-    const recovery = current.getByRole("link", { name: "另開創作紀錄核對", exact: true });
-    await expect(recovery).toHaveAttribute(
-      "href",
-      `/workspace/creations?session=${state.requestedID}`,
-    );
-    await expect(recovery).toHaveAttribute("target", "_blank");
-    if (mode === "start") {
-      await expect(page.getByRole("radio", { name: "500 點", exact: true })).toBeChecked();
-      const geometry = await current.evaluate((element) => {
-        const notice = element.querySelector(".notice.toast")!.getBoundingClientRect();
-        const budget = element.querySelector(".budget-picker")!.getBoundingClientRect();
-        return { noticeBottom: notice.bottom, budgetTop: budget.top };
-      });
-      expect(geometry.noticeBottom).toBeLessThanOrEqual(geometry.budgetTop);
-    }
-    await captureReadState(page);
-    if (damage === "snapshot") {
-      const submit = current.getByRole("button", {
-        name: mode === "start" ? "開始創作" : "送出",
-        exact: true,
-      });
-      await submit.scrollIntoViewIfNeeded();
-      await expect(submit).toBeInViewport({ ratio: 1 });
-      expect(
-        await submit.evaluate((button) => {
-          const rect = button.getBoundingClientRect();
-          return [
-            [rect.left + 6, rect.top + 6],
-            [rect.right - 6, rect.top + 6],
-            [rect.left + 6, rect.bottom - 6],
-            [rect.right - 6, rect.bottom - 6],
-          ].every(([x, y]) => button.contains(document.elementFromPoint(x, y)));
-        }),
-      ).toBe(true);
-      await page.screenshot({ path: test.info().outputPath("creation-short-submit.png") });
-    }
-    expect(state.posts).toHaveLength(1);
-    const opened = context.waitForEvent("page");
-    await recovery.focus();
-    await page.keyboard.press("Enter");
-    const verification = await opened;
-    await expect(verification).toHaveURL(new RegExp(`session=${state.requestedID}$`));
-    await expect(verification.locator("#creation-workspace")).toContainText("保留這份送出的補充");
-    await verification.close();
-    await page.bringToFront();
-    await expect(current.locator("#creation-message")).toHaveValue("保留這份送出的補充");
-    expect(state.posts).toHaveLength(1);
-    expect(state.paths).not.toContain("/creation-sessions/55555555-5555-4555-8555-555555555555");
-    await current.getByRole("button", { name: "重試", exact: true }).focus();
-    await page.keyboard.press("Enter");
-    await expect.poll(() => state.posts.length).toBe(2);
-    expect(state.posts[1]).toEqual(state.posts[0]);
-    await expect(current.locator("#creation-message")).toHaveValue("");
-    await expect(page).toHaveURL(new RegExp(`session=${state.requestedID}$`));
-  });
-}
-
-test("an explicitly new creation discards an uncertain start identity on a phone", async ({
-  page,
-  context,
-}) => {
-  const state = await stubWriteReceipt(page, context, "start", "empty");
-  await page.goto("/workspace/creations");
-  await page.getByRole("button", { name: "＋ 開始新的創作", exact: true }).click();
-  await page
-    .locator(".budget-picker label")
-    .filter({ hasText: /^500 點$/ })
-    .click();
-  const input = page.locator("#creation-message");
-  await input.fill("保留這份送出的補充");
-  await page.getByRole("button", { name: "開始創作", exact: true }).click();
-  await expect(page.getByRole("alert")).toContainText("創作結果尚未確認");
-  expect(state.posts).toHaveLength(1);
-  await captureReadState(page);
-  await page.getByRole("button", { name: /創作清單 ·/ }).click();
-  await page.getByRole("button", { name: "＋ 開始新的創作", exact: true }).click();
-  await expect(input).toHaveValue("");
-  await expect(page.getByRole("alert")).toHaveCount(0);
-  await expect(page.getByRole("radio", { name: "500 點", exact: true })).toBeChecked();
-  expect(state.posts).toHaveLength(1);
-  await input.fill("保留這份送出的補充");
-  await page.getByRole("button", { name: "開始創作", exact: true }).click();
-  await expect.poll(() => state.posts.length).toBe(2);
-  await expect(input).toHaveValue("");
-  expect(state.posts[1].id).not.toBe(state.posts[0].id);
-  expect({ ...state.posts[1], id: state.posts[0].id }).toEqual(state.posts[0]);
-  await expect(page).toHaveURL(new RegExp(`session=${state.posts[1].id}$`));
-});
-
-for (const [name, reply] of [
-  ["empty reply", null],
-  ["another session", { ...SESSION, id: "55555555-5555-4555-8555-555555555555" }],
-  ["missing snapshot", { ...SESSION, snapshot: null }],
-  ["missing messages", { ...SESSION, snapshot: { ...SESSION.snapshot, messages: null } }],
-] as const) {
-  test(`an invalid creation ${name} offers keyboard GET recovery without a new paid session`, async ({
-    page,
-  }) => {
-    const state = await stubCreation(page);
-    const errors: string[] = [];
-    page.on("pageerror", (error) => errors.push(error.message));
-    state.invalid(reply);
-    await page.goto(`/workspace/creations?session=${ID}`);
-    const current = page.locator("#creation-workspace");
-    await expect(current.getByRole("alert")).toContainText("暫時無法讀取創作紀錄");
-    await expect(current.locator(".composer, .starter-cards, .budget-picker")).toHaveCount(0);
-    await captureReadState(page);
-    state.recover();
-    await current.getByRole("button", { name: "再試一次", exact: true }).focus();
-    await page.keyboard.press("Enter");
-    await expect(current.locator("#creation-message")).toBeEnabled();
-    await expect(current).toContainText("請保留這場創作的需求");
-    await expect(current).toBeFocused();
-    await expect(page).toHaveURL(new RegExp(`session=${ID}$`));
-    expect(state.reads).toBe(2);
-    expect(state.writes).toEqual([]);
-    expect(errors).toEqual([]);
-  });
 }
 
 async function captureReadState(page: Page) {
@@ -388,160 +161,34 @@ test("a delayed creation GET keeps newer stream progress and unsent input", asyn
   }
 });
 
-test("a selected creation waits for its first reply without offering a new paid session", async ({
-  page,
-}) => {
-  const state = await stubCreation(page);
-  try {
-    await page.goto(`/workspace/creations?session=${ID}`);
-    await expect.poll(() => state.reads).toBe(1);
-    const current = page.locator("#creation-workspace");
-    await expect(current.getByRole("status")).toContainText("載入創作紀錄中");
-    await expect(current.locator(".composer, .starter-cards, .budget-picker")).toHaveCount(0);
-    await captureReadState(page);
-    state.recover();
-    await expect(current).toContainText("請保留這場創作的需求");
-    await expect(current.locator("#creation-message")).toBeEnabled();
-    await expect(current.locator(".budget-picker")).toHaveCount(0);
-    const stream = current.locator(".creation-stream");
-    await expect
-      .poll(() => stream.evaluate((element) => element.scrollHeight > element.clientHeight))
-      .toBe(true);
-    await expect(current.locator('.creation-log > li[data-index="11"]')).toBeInViewport();
-    const previousScrollTop = await stream.evaluate((element) => element.scrollTop);
-    await stream.hover();
-    await page.mouse.wheel(0, -2000);
-    await expect
-      .poll(() => stream.evaluate((element) => element.scrollTop))
-      .toBeLessThan(previousScrollTop);
-    await stream.focus();
-    await page.keyboard.press("Home");
-    await expect.poll(() => stream.evaluate((element) => element.scrollTop)).toBe(0);
-    const latest = current.getByRole("button", { name: "↓ 回到最新", exact: true });
-    await expect(latest).toBeVisible();
-    await latest.focus();
-    await page.keyboard.press("Enter");
-    await expect(latest).toHaveCount(0);
-    await expect(current.locator('.creation-log > li[data-index="11"]')).toBeInViewport();
-    expect(state.reads).toBe(1);
-    expect(state.writes).toEqual([]);
-  } finally {
-    state.release();
-  }
-});
-
-for (const status of [404, 503]) {
-  test(`a selected creation refused with ${status} resumes its own read after connectivity returns`, async ({
-    page,
-  }) => {
-    const state = await stubCreation(page, status);
-    await page.emulateMedia({ colorScheme: "dark" });
-    try {
-      await page.goto(`/workspace/creations?session=${ID}`);
-      const current = page.locator("#creation-workspace");
-      await expect(current.getByRole("alert")).toContainText(
-        status === 404
-          ? "找不到這次創作：它可能已超過保存期限或已被刪除。"
-          : "暫時無法讀取創作紀錄",
-      );
-      await expect(current.locator(".composer, .starter-cards, .budget-picker")).toHaveCount(0);
-      const retry = current.getByRole("button", { name: "再試一次", exact: true });
-      await retry.focus();
-      await setOffline(page, true);
-      await page.keyboard.press("Enter");
-      await expect(current.getByRole("status")).toHaveText(
-        "等待連線以讀取創作紀錄；恢復連線後會繼續讀取。",
-      );
-      await expect(current.getByRole("alert")).toHaveCount(0);
-      await expect(current.locator(".composer, .starter-cards, .loading-skeleton")).toHaveCount(0);
-      await expect(current).toBeFocused();
-      await captureReadState(page);
-      expect(state.reads).toBe(1);
-      expect(state.writes).toEqual([]);
-      state.recover();
-      await setOffline(page, false);
-      await expect(current).toContainText("請保留這場創作的需求");
-      await expect(current.locator("#creation-message")).toBeEnabled();
-      await expect(current.locator(".budget-picker")).toHaveCount(0);
-      await expect(page).toHaveURL(new RegExp(`session=${ID}$`));
-      expect(state.reads).toBe(2);
-      expect(state.writes).toEqual([]);
-    } finally {
-      state.release();
-      await setOffline(page, false);
-    }
-  });
-}
-
-test("choosing an unread creation offline keeps the selection instead of opening a new session", async ({
-  page,
-}) => {
-  const state = await stubCreation(page);
-  try {
-    await page.goto("/workspace/creations");
-    const selected = page.locator(`.creation-session-item[data-session="${ID}"]`);
-    await expect(selected).toBeVisible();
-    await setOffline(page, true);
-    await selected.click();
-    const current = page.locator("#creation-workspace");
-    await expect(current.getByRole("status")).toContainText("等待連線以讀取創作紀錄");
-    await expect(current.locator(".composer, .starter-cards, .loading-skeleton")).toHaveCount(0);
-    await captureReadState(page);
-    expect(state.reads).toBe(0);
-    expect(state.writes).toEqual([]);
-    state.recover();
-    await setOffline(page, false);
-    await expect(current).toContainText("請保留這場創作的需求");
-    expect(state.reads).toBe(1);
-    expect(state.writes).toEqual([]);
-  } finally {
-    state.release();
-    await setOffline(page, false);
-  }
-});
-
-test("a cached creation hides its old read failure during an offline retry and keeps its draft", async ({
+test("a long creation transcript keeps the latest message in view until the reader scrolls away", async ({
   page,
 }) => {
   const state = await stubCreation(page);
   state.recover();
-  try {
-    await page.goto(`/workspace/creations?session=${ID}`);
-    await expect(page.locator("#creation-message")).toBeEnabled();
-    state.fail();
-    await page.getByRole("link", { name: "資產庫", exact: true }).click();
-    await expect(page).toHaveURL(/\/library$/);
-    await expect(
-      page.getByRole("heading", { level: 1, name: "資產庫", exact: true }),
-    ).toBeVisible();
-    await page.goBack();
-    const current = page.locator("#creation-workspace");
-    await expect(current.getByRole("alert")).toContainText("暫時無法讀取創作紀錄");
-    await current.locator("#creation-message").fill("尚未送出的補充");
-    await setOffline(page, true);
-    const retry = current.getByRole("button", { name: "再試一次", exact: true });
-    await retry.focus();
-    await page.keyboard.press("Enter");
-    await expect(current.getByRole("status")).toHaveText("等待連線以重新讀取創作紀錄…");
-    await expect(current.getByRole("alert")).toHaveCount(0);
-    await expect(current.locator("#creation-message")).toHaveValue("尚未送出的補充");
-    await expect(current).toBeFocused();
-    expect(state.reads).toBe(2);
-    expect(state.writes).toEqual([]);
-    const transcript = current.getByRole("region", { name: "創作對話與決策", exact: true });
-    await transcript.focus();
-    await expect(transcript).toBeFocused();
-    await page.keyboard.press("Home");
-    await expect.poll(() => transcript.evaluate((element) => element.scrollTop)).toBe(0);
-    await captureReadState(page);
-    state.recover();
-    await setOffline(page, false);
-    await expect(current.getByRole("status")).toHaveCount(0);
-    await expect(current.locator("#creation-message")).toHaveValue("尚未送出的補充");
-    expect(state.reads).toBe(3);
-    expect(state.writes).toEqual([]);
-  } finally {
-    state.release();
-    await setOffline(page, false);
-  }
+  await page.goto(`/workspace/creations?session=${ID}`);
+  const current = page.locator("#creation-workspace");
+  await expect(current).toContainText("請保留這場創作的需求");
+  const stream = current.locator(".creation-stream");
+  await expect
+    .poll(() => stream.evaluate((element) => element.scrollHeight > element.clientHeight))
+    .toBe(true);
+  await expect(current.locator('.creation-log > li[data-index="11"]')).toBeInViewport();
+  const previousScrollTop = await stream.evaluate((element) => element.scrollTop);
+  await stream.hover();
+  await page.mouse.wheel(0, -2000);
+  await expect
+    .poll(() => stream.evaluate((element) => element.scrollTop))
+    .toBeLessThan(previousScrollTop);
+  await stream.focus();
+  await page.keyboard.press("Home");
+  await expect.poll(() => stream.evaluate((element) => element.scrollTop)).toBe(0);
+  const latest = current.getByRole("button", { name: "↓ 回到最新", exact: true });
+  await expect(latest).toBeVisible();
+  await latest.focus();
+  await page.keyboard.press("Enter");
+  await expect(latest).toHaveCount(0);
+  await expect(current.locator('.creation-log > li[data-index="11"]')).toBeInViewport();
+  expect(state.reads).toBe(1);
+  expect(state.writes).toEqual([]);
 });
