@@ -122,7 +122,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        include:
+          - { os: ubuntu-latest, shard: 1, shards: 2 }
+          - { os: ubuntu-latest, shard: 2, shards: 2 }
+          - { os: windows-latest, shard: 1, shards: 3 }
+          - { os: windows-latest, shard: 2, shards: 3 }
+          - { os: windows-latest, shard: 3, shards: 3 }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     defaults:
@@ -141,20 +146,20 @@ jobs:
             packages/api-client-ts/package-lock.json
       - run: npm ci --no-audit
         working-directory: packages/api-client-ts
-      - if: runner.os == 'Linux'
+      - if: runner.os == 'Linux' && matrix.shard == 1
         run: npm run typecheck
         working-directory: packages/api-client-ts
       - run: npm run build
         working-directory: packages/api-client-ts
       - run: npm ci --no-audit
-      - if: runner.os == 'Linux'
+      - if: runner.os == 'Linux' && matrix.shard == 1
         run: npm run format:check
-      - if: runner.os == 'Linux'
+      - if: runner.os == 'Linux' && matrix.shard == 1
         run: npm run lint
-      - if: runner.os == 'Linux'
+      - if: runner.os == 'Linux' && matrix.shard == 1
         run: npm run typecheck
-      - run: npm test
-      - if: runner.os == 'Linux'
+      - run: npm test -- --shard=${{ matrix.shard }}/${{ matrix.shards }}
+      - if: runner.os == 'Linux' && matrix.shard == 1
         run: npm run build
 
   web-browser-shards:
