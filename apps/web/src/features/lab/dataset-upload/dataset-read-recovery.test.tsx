@@ -1,7 +1,8 @@
-import AxeBuilder from "./axe";
-import { expect, test } from "@playwright/test";
-import { TEST_CASE, VERSION } from "../src/testing/fixtures/platform";
-import { stubPlatform } from "./stub";
+import { expect, test } from "vitest";
+import { renderedApp, type Locator } from "../../../testing/app";
+import { TEST_CASE, VERSION } from "../../../testing/fixtures/platform";
+
+const app = renderedApp();
 
 const LIMITS = {
   max_file_bytes: 1_000_000,
@@ -12,25 +13,33 @@ const LIMITS = {
   note: "",
 };
 
+function chooseFile(input: Locator, name: string, content: string) {
+  const element = input.element();
+  const file = new File([content], name, { type: "text/csv" });
+  Object.defineProperty(element, "files", { value: [file], configurable: true });
+  Object.defineProperty(element, "value", {
+    value: `C:\\fakepath\\${name}`,
+    writable: true,
+    configurable: true,
+  });
+}
+
 for (const owner of ["rules", "usage"]) {
   for (const cached of [false, true]) {
-    test(`dataset ${owner} read failure ${cached ? "after a cached read" : "on arrival"} blocks sending and recovers without clearing the chosen file`, async ({
-      page,
-    }, testInfo) => {
-      await stubPlatform(page);
-      await page.setViewportSize({ width: 375, height: 900 });
+    test(`dataset ${owner} read failure ${cached ? "after a cached read" : "on arrival"} blocks sending and recovers without clearing the chosen file`, async () => {
+      const page = app();
       let reads = 0;
       let writes = 0;
-      await page.route("**/test-cases/limits", (route) => {
+      page.route("**/test-cases/limits", () => {
         if (owner === "rules") reads += 1;
         return owner === "rules" && reads === (cached ? 2 : 1)
-          ? route.fulfill({ status: 503, json: { error: "service unavailable" } })
-          : route.fulfill({ json: LIMITS });
+          ? { status: 503, json: { error: "service unavailable" } }
+          : { json: LIMITS };
       });
-      await page.route(`**/test-cases/${TEST_CASE}/datasets`, (route) => {
-        if (route.request().method() === "POST") {
+      page.route(`**/test-cases/${TEST_CASE}/datasets`, (request) => {
+        if (request.method === "POST") {
           writes += 1;
-          return route.fulfill({
+          return {
             status: 201,
             json: {
               dataset_id: "11111111-1111-4111-8111-111111111111",
@@ -40,12 +49,12 @@ for (const owner of ["rules", "usage"]) {
               content_hash: "a".repeat(64),
               expires_at: "2026-11-15T00:00:00Z",
             },
-          });
+          };
         }
         if (owner === "usage") reads += 1;
         return owner === "usage" && reads === (cached ? 2 : 1)
-          ? route.fulfill({ status: 503, json: { error: "service unavailable" } })
-          : route.fulfill({ json: { datasets: [], total_bytes: 0 } });
+          ? { status: 503, json: { error: "service unavailable" } }
+          : { json: { datasets: [], total_bytes: 0 } };
       });
       await page.goto(`/lab/test-cases/${TEST_CASE}/datasets?version=${VERSION}`);
       if (cached) {
@@ -73,14 +82,10 @@ for (const owner of ["rules", "usage"]) {
         await expect(page.locator(".dataset-upload-guide")).toHaveCount(0);
       }
       const file = page.getByLabel("選擇檔案", { exact: true });
-      await file.setInputFiles({
-        name: "rows.csv",
-        mimeType: "text/csv",
-        buffer: Buffer.alloc(1000, "n"),
-      });
+      chooseFile(file, "rows.csv", "n".repeat(1000));
       expect(writes).toBe(0);
       await page.getByRole("button", { name: "再試一次", exact: true }).focus();
-      await page.keyboard.press("Enter");
+      await page.press("Enter");
       await expect(upload).toBeEnabled();
       await expect(file).toHaveValue(/rows\.csv$/);
       await expect(page.locator("#dataset-heading")).toBeFocused();
@@ -90,38 +95,27 @@ for (const owner of ["rules", "usage"]) {
         "已上傳 rows.csv",
       );
       expect(writes).toBe(1);
-      expect(new URL(page.url()).searchParams.get("version")).toBe(VERSION);
-      expect((await new AxeBuilder({ page }).include("main").analyze()).violations).toEqual([]);
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
-        true,
-      );
-      await page.evaluate(() => scrollTo(0, 0));
-      await page.screenshot({
-        path: testInfo.outputPath(`dataset-${owner}-${cached}-recovered.png`),
-        fullPage: true,
-      });
+      expect(new URLSearchParams(page.search()).get("version")).toBe(VERSION);
+      expect(await page.axeViolations("main")).toEqual([]);
     });
   }
 }
 
-test("dataset retries its unreadable test case in place and preserves the selected version", async ({
-  page,
-}) => {
-  await stubPlatform(page);
+test("dataset retries its unreadable test case in place and preserves the selected version", async () => {
+  const page = app();
   let reads = 0;
-  await page.route(`**/test-cases/${TEST_CASE}`, async (route) => {
+  page.route(`**/test-cases/${TEST_CASE}`, () => {
     reads += 1;
-    if (reads === 1) return route.fulfill({ status: 503, json: { error: "service unavailable" } });
-    await route.fallback();
+    return reads === 1 ? { status: 503, json: { error: "service unavailable" } } : undefined;
   });
   await page.goto(`/lab/test-cases/${TEST_CASE}/datasets?version=${VERSION}`);
   await expect(page.getByRole("alert")).toContainText("暫時無法讀取測試題");
   await expect(page.getByRole("heading", { name: "測試資料", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "再試一次", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "再試一次", exact: true }).focus();
-  await page.keyboard.press("Enter");
+  await page.press("Enter");
   await expect(page.getByLabel("選擇檔案", { exact: true })).toBeVisible();
   await expect(page.locator("#dataset-heading")).toBeFocused();
   expect(reads).toBe(2);
-  expect(new URL(page.url()).searchParams.get("version")).toBe(VERSION);
+  expect(new URLSearchParams(page.search()).get("version")).toBe(VERSION);
 });

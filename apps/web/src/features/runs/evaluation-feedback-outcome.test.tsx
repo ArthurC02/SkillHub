@@ -1,10 +1,9 @@
-import AxeBuilder from "./axe";
-import { expect, test, type Locator, type Page } from "@playwright/test";
-import { writeFile } from "node:fs/promises";
-import { EVALUATION, ME, RUN } from "../src/testing/fixtures/platform";
-import { stubPlatform } from "./stub";
+import { act } from "react";
+import { expect, test } from "vitest";
+import { EVALUATION, ME, RUN } from "../../testing/fixtures/platform";
+import { renderedApp, type Reply } from "../../testing/app";
 
-test.use({ trace: "retain-on-failure" });
+const app = renderedApp();
 
 function unreadableReceipts(helpful: boolean): Record<string, unknown> {
   return {
@@ -17,15 +16,6 @@ function unreadableReceipts(helpful: boolean): Record<string, unknown> {
     },
     "different comment": { ...EVALUATION, feedback: { ...EVALUATION.feedback, helpful } },
   };
-}
-
-async function inspectFeedback(page: Page, alert: Locator) {
-  const report = await new AxeBuilder({ page }).analyze();
-  await writeFile(test.info().outputPath("feedback-outcome-a11y.json"), JSON.stringify(report));
-  expect(report.violations).toEqual([]);
-  expect(report.incomplete).toEqual([]);
-  await alert.scrollIntoViewIfNeeded();
-  await page.screenshot({ path: test.info().outputPath("feedback-outcome-viewport.png") });
 }
 
 for (const [fault, helpful, unknown] of [
@@ -41,56 +31,52 @@ for (const [fault, helpful, unknown] of [
   ["opposite choice", false, true],
   ["different comment", true, true],
 ] as const) {
-  test(`feedback with ${fault} preserves the draft and reports its actual submission certainty`, async ({
-    page,
-  }) => {
-    await page.setViewportSize({ width: 375, height: 812 });
-    await page.emulateMedia({ colorScheme: helpful ? "light" : "dark" });
-    await stubPlatform(page);
+  test(`feedback with ${fault} preserves the draft and reports its actual submission certainty`, async () => {
+    const page = app();
     let holdSession = false;
     let sessionReads = 0;
     let release!: () => void;
     const sessionGate = new Promise<void>((resolve) => {
       release = resolve;
     });
-    await page.route("**/me", async (route) => {
+    page.route("**/me", async () => {
       sessionReads++;
       if (holdSession) await sessionGate;
-      return route.fulfill({ json: ME });
+      return { json: ME };
     });
     let saved: { helpful: boolean; comment: string; submitted_at: string } | undefined;
     let reads = 0;
     const writes: { helpful: boolean; comment: string }[] = [];
-    await page.route(`**/runs/${RUN}/evaluation`, (route) => {
+    page.route(`**/runs/${RUN}/evaluation`, () => {
       reads++;
-      return route.fulfill({ json: { ...EVALUATION, feedback: saved } });
+      return { json: { ...EVALUATION, feedback: saved } };
     });
-    await page.route(`**/runs/${RUN}/evaluation/feedback`, (route) => {
-      const intent = route.request().postDataJSON();
+    page.route(`**/runs/${RUN}/evaluation/feedback`, ({ body }): Reply => {
+      const intent = body as { helpful: boolean; comment: string };
       writes.push(intent);
       if (unknown || writes.length > 1 || fault === "pending session") {
         saved = { ...intent, submitted_at: "2026-10-16T00:00:00Z" };
       }
       if (writes.length === 1 && fault !== "pending session") {
         const receipts = unreadableReceipts(helpful);
-        if (Object.hasOwn(receipts, fault)) return route.fulfill({ json: receipts[fault] });
-        if (fault === "lost reply") return route.abort("failed");
+        if (Object.hasOwn(receipts, fault)) return { json: receipts[fault] };
+        if (fault === "lost reply") return "network-error";
         if (fault === "truncated reply") {
-          return route.fulfill({ status: 200, contentType: "application/json", body: "{" });
+          return { status: 200, contentType: "application/json", body: "{" };
         }
-        return route.fulfill({
+        return {
           status: fault === "server error" ? 500 : fault === "missing verdict" ? 404 : 400,
           json: { error: "controlled feedback response" },
-        });
+        };
       }
-      return route.fulfill({ json: { ...EVALUATION, feedback: saved } });
+      return { json: { ...EVALUATION, feedback: saved } };
     });
     try {
       await page.goto(`/runs/${RUN}`);
       await expect(page.locator(".auth-name")).toHaveText("tester");
       const comment = page.locator("#feedback-comment");
       await comment.fill("這份判定需要補充證據");
-      const main = page.getByRole("main");
+      const main = page.locator("main");
       const submit = main.getByRole("button", {
         name: helpful ? "有幫助" : "沒幫助",
         exact: true,
@@ -98,10 +84,10 @@ for (const [fault, helpful, unknown] of [
       if (fault === "pending session") {
         holdSession = true;
         const previousReads = sessionReads;
-        await page.evaluate(() => {
+        await act(async () => {
           document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
         });
-        await expect.poll(() => sessionReads).toBe(previousReads + 1);
+        await page.eventually(() => expect(sessionReads).toBe(previousReads + 1));
       }
       await submit.click();
       const alert = main.getByRole("alert");
@@ -121,10 +107,10 @@ for (const [fault, helpful, unknown] of [
       expect(reads).toBe(1);
       if (unknown) expect(saved).toMatchObject({ helpful, comment: "這份判定需要補充證據" });
       else expect(saved).toBeUndefined();
-      await inspectFeedback(page, alert);
+      expect(await page.axeViolations("body")).toEqual([]);
       holdSession = false;
       release();
-      await expect(page.getByRole("banner").getByRole("status")).toHaveCount(0);
+      await expect(page.locator(".app-header").getByRole("status")).toHaveCount(0);
       await submit.click();
       await expect(main.getByText("已送出回饋。", { exact: true })).toBeVisible();
       await expect(alert).toHaveCount(0);

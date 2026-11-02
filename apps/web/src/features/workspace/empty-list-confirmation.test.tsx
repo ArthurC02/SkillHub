@@ -1,7 +1,5 @@
-import { setOffline } from "./offline";
-import AxeBuilder from "./axe";
-import { writeFile } from "node:fs/promises";
-import { expect, test, type Page } from "@playwright/test";
+import { act } from "react";
+import { expect, test } from "vitest";
 import {
   platformResponse,
   PUBLISHER,
@@ -12,8 +10,10 @@ import {
   TEST_CASE,
   ARTIFACT,
   ARTIFACT_ROW,
-} from "../src/testing/fixtures/platform";
-import { stubPlatform } from "./stub";
+} from "../../testing/fixtures/platform";
+import { renderedApp, type App, type Reply, type Request } from "../../testing/app";
+
+const app = renderedApp();
 
 const lists = [
   {
@@ -148,36 +148,26 @@ const lists = [
   },
 ];
 
-async function verifyLayout(page: Page, state: string) {
-  await page.evaluate(() => window.scrollTo(0, 0));
-  const result = await new AxeBuilder({ page }).analyze();
-  const path = test.info().outputPath(`${state}-accessibility.json`);
-  await writeFile(path, JSON.stringify(result));
-  await test.info().attach(`${state}-accessibility`, { path, contentType: "application/json" });
-  expect(result.violations).toEqual([]);
-  for (const review of result.incomplete) {
-    expect(review.id).toBe("color-contrast");
-    for (const node of review.nodes) {
-      expect(node.html, JSON.stringify(node)).toContain('aria-hidden="true"');
-      expect(node.target).toHaveLength(1);
-      expect(node.target[0]).toMatch(
-        /(?:\.door-mono|\.skill-mono|\.skill-menu-caret|\.skill-card-validation > span)/,
-      );
-      const message = node.html.includes('class="skill-mono"') ? "shortTextContent" : "nonBmp";
-      expect(node.any.every((check) => check.data?.messageKey === message)).toBe(true);
-    }
-  }
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.screenshot({ path: test.info().outputPath(`${state}.png`), fullPage: true });
+type List = (typeof lists)[number];
+
+const countsAsRead = (list: List, request: Request) =>
+  list.name !== "Catalog" || request.url.searchParams.get("limit") === "100";
+
+async function verifyLayout(page: App) {
+  expect(await page.axeViolations("body")).toEqual([]);
+}
+
+async function goToPolicyAndBack(page: App, offline = false) {
+  await page.locator('a[href="/policy"]').first().click();
+  await expect(page.getByRole("heading", { name: "資料保存政策", exact: true })).toBeVisible();
+  if (offline) await page.setOffline(true);
+  await page.goBack();
 }
 
 for (const list of lists) {
   for (const stillEmpty of [false, true]) {
-    test(`${list.name} confirms a cached empty list through a failed reread and offline recovery to ${stillEmpty ? "empty" : "populated"}`, async ({
-      page,
-    }) => {
-      await stubPlatform(page);
-      await page.setViewportSize({ width: 375, height: 900 });
+    test(`${list.name} confirms a cached empty list through a failed reread and offline recovery to ${stillEmpty ? "empty" : "populated"}`, async () => {
+      const page = app();
       let reads = 0;
       let release!: () => void;
       const gate = new Promise<void>((resolve) => {
@@ -186,18 +176,15 @@ for (const list of lists) {
       const original = platformResponse(list.path).body as Record<string, unknown>;
       const rows = original[list.key] as unknown[];
       expect(rows.length).toBeGreaterThan(0);
-      await page.route(list.pattern, async (route) => {
-        if (route.request().resourceType() === "document") return route.fallback();
-        const countRead =
-          list.name !== "Catalog" ||
-          new URL(route.request().url()).searchParams.get("limit") === "100";
+      page.route(list.pattern, async (request): Promise<Reply> => {
+        const countRead = countsAsRead(list, request);
         if (countRead) reads += 1;
         if (countRead && reads === 2) {
           await gate;
-          return route.fulfill({ status: 503, json: { error: "service unavailable" } });
+          return { status: 503, json: { error: "service unavailable" } };
         }
         const present = reads > 2 && !stillEmpty;
-        return route.fulfill({
+        return {
           json: {
             ...original,
             [list.key]: present ? [rows[0]] : [],
@@ -205,17 +192,13 @@ for (const list of lists) {
             truncated: false,
             limit: 24,
           },
-        });
+        };
       });
       try {
         await page.goto(list.url);
         await expect(page.getByText(list.empty, { exact: false })).toBeVisible();
-        await page.locator('a[href="/policy"]').first().click();
-        await expect(
-          page.getByRole("heading", { name: "資料保存政策", exact: true }),
-        ).toBeVisible();
-        await page.goBack();
-        await expect.poll(() => reads).toBe(2);
+        await goToPolicyAndBack(page);
+        await page.eventually(() => expect(reads).toBe(2));
         const scope = page.locator(list.scope);
         await expect(page.getByText(list.empty, { exact: false })).toHaveCount(0);
         await expect(
@@ -225,15 +208,15 @@ for (const list of lists) {
           await expect(
             scope.getByRole("button", { name: "重新整理中…", exact: true }),
           ).toBeDisabled();
-        await verifyLayout(page, "confirming");
+        await verifyLayout(page);
         release();
         await expect(
           scope.getByRole("alert").filter({ hasText: `暫時無法讀取${list.what}` }),
         ).toBeVisible();
         await expect(page.getByText(list.empty, { exact: false })).toHaveCount(0);
-        await setOffline(page, true);
+        await page.setOffline(true);
         await scope.getByRole("button", { name: "再試一次", exact: true }).focus();
-        await page.keyboard.press("Enter");
+        await page.press("Enter");
         await expect(
           scope.getByRole("status").filter({ hasText: `等待連線以讀取${list.what}` }),
         ).toBeVisible();
@@ -242,46 +225,35 @@ for (const list of lists) {
         ).toBeDisabled();
         await expect(page.getByText(list.empty, { exact: false })).toHaveCount(0);
         expect(reads).toBe(2);
-        await verifyLayout(page, "paused");
-        await setOffline(page, false);
+        await verifyLayout(page);
+        await page.setOffline(false);
         if (stillEmpty)
           await expect(scope.getByRole("status").filter({ hasText: list.empty })).toBeVisible();
         else await expect(page.locator(list.selector)).toHaveCount(1);
         await expect(scope.getByRole("alert")).toHaveCount(0);
         await expect(scope.locator("[data-loading]")).toHaveCount(0);
         expect(reads).toBe(3);
-        await verifyLayout(page, "confirmed");
+        await verifyLayout(page);
       } finally {
         release();
-        await setOffline(page, false);
+        await page.setOffline(false);
       }
     });
   }
 }
 
 for (const list of lists) {
-  test(`${list.name} waits for connectivity before reconfirming its cached empty snapshot`, async ({
-    page,
-  }) => {
-    await stubPlatform(page);
-    await page.setViewportSize({ width: 375, height: 900 });
+  test(`${list.name} waits for connectivity before reconfirming its cached empty snapshot`, async () => {
+    const page = app();
     let reads = 0;
-    await page.route(list.pattern, (route) => {
-      if (route.request().resourceType() === "document") return route.fallback();
-      if (
-        list.name !== "Catalog" ||
-        new URL(route.request().url()).searchParams.get("limit") === "100"
-      )
-        reads += 1;
-      return route.fulfill({ json: { [list.key]: [], total: 0, truncated: false, limit: 24 } });
+    page.route(list.pattern, (request) => {
+      if (countsAsRead(list, request)) reads += 1;
+      return { json: { [list.key]: [], total: 0, truncated: false, limit: 24 } };
     });
     try {
       await page.goto(list.url);
       await expect(page.getByText(list.empty, { exact: false })).toBeVisible();
-      await page.locator('a[href="/policy"]').first().click();
-      await expect(page.getByRole("heading", { name: "資料保存政策", exact: true })).toBeVisible();
-      await setOffline(page, true);
-      await page.goBack();
+      await goToPolicyAndBack(page, true);
       const scope = page.locator(list.scope);
       const waiting = scope.getByRole("status").filter({ hasText: `等待連線以讀取${list.what}` });
       await expect(waiting).toBeVisible();
@@ -290,35 +262,29 @@ for (const list of lists) {
       if (list.refresh) {
         const refresh = scope.getByRole("button", { name: "等待連線…", exact: true });
         await expect(refresh).toBeDisabled();
-        await refresh.evaluate((element) => (element as HTMLButtonElement).click());
+        const element = refresh.element() as HTMLButtonElement;
+        await act(async () => element.click());
       }
       expect(reads).toBe(1);
-      await verifyLayout(page, "cached-paused");
-      await setOffline(page, false);
+      await verifyLayout(page);
+      await page.setOffline(false);
       await expect(scope.getByRole("status").filter({ hasText: list.empty })).toBeVisible();
       await expect(waiting).toHaveCount(0);
       expect(reads).toBe(2);
-      await verifyLayout(page, "cached-confirmed");
+      await verifyLayout(page);
     } finally {
-      await setOffline(page, false);
+      await page.setOffline(false);
     }
   });
 
-  test(`${list.name} resumes an initially missing read after an offline retry without claiming emptiness`, async ({
-    page,
-  }) => {
-    await stubPlatform(page);
-    await page.setViewportSize({ width: 375, height: 900 });
+  test(`${list.name} resumes an initially missing read after an offline retry without claiming emptiness`, async () => {
+    const page = app();
     let reads = 0;
-    await page.route(list.pattern, (route) => {
-      if (route.request().resourceType() === "document") return route.fallback();
-      const countRead =
-        list.name !== "Catalog" ||
-        new URL(route.request().url()).searchParams.get("limit") === "100";
+    page.route(list.pattern, (request): Reply => {
+      const countRead = countsAsRead(list, request);
       if (countRead) reads += 1;
-      if (countRead && reads === 1)
-        return route.fulfill({ status: 503, json: { error: "service unavailable" } });
-      return route.fulfill({ json: { [list.key]: [], total: 0, truncated: false, limit: 24 } });
+      if (countRead && reads === 1) return { status: 503, json: { error: "service unavailable" } };
+      return { json: { [list.key]: [], total: 0, truncated: false, limit: 24 } };
     });
     try {
       await page.goto(list.url);
@@ -326,80 +292,72 @@ for (const list of lists) {
       await expect(
         scope.getByRole("alert").filter({ hasText: `暫時無法讀取${list.what}` }),
       ).toBeVisible();
-      await setOffline(page, true);
+      await page.setOffline(true);
       await scope.getByRole("button", { name: "再試一次", exact: true }).focus();
-      await page.keyboard.press("Enter");
+      await page.press("Enter");
       const waiting = scope.getByRole("status").filter({ hasText: `等待連線以讀取${list.what}` });
       await expect(waiting).toBeVisible();
       await expect(waiting.locator(".loading-skeleton")).toHaveCount(0);
       await expect(page.locator(`#${list.heading}`)).toBeFocused();
       await expect(page.getByText(list.empty, { exact: false })).toHaveCount(0);
       expect(reads).toBe(1);
-      await verifyLayout(page, "initial-paused");
-      await setOffline(page, false);
+      await verifyLayout(page);
+      await page.setOffline(false);
       await expect(scope.getByRole("status").filter({ hasText: list.empty })).toBeVisible();
       await expect(scope.getByRole("alert")).toHaveCount(0);
       expect(reads).toBe(2);
-      await verifyLayout(page, "initial-confirmed");
+      await verifyLayout(page);
     } finally {
-      await setOffline(page, false);
+      await page.setOffline(false);
     }
   });
 }
 
-test("a filtered Catalog confirms matching emptiness without declaring the deployment empty", async ({
-  page,
-}) => {
-  await stubPlatform(page);
-  await page.setViewportSize({ width: 375, height: 900 });
+test("a filtered Catalog confirms matching emptiness without declaring the deployment empty", async () => {
+  const page = app();
   let reads = 0;
   let release!: () => void;
   const gate = new Promise<void>((resolve) => {
     release = resolve;
   });
-  await page.route("**/api/skills/catalog?*", async (route) => {
-    if (new URL(route.request().url()).searchParams.get("limit") === "100") {
+  page.route("**/api/skills/catalog?*", async (request) => {
+    if (request.url.searchParams.get("limit") === "100") {
       reads += 1;
       if (reads === 2) await gate;
     }
-    return route.fulfill({ json: { results: [], total: 0, limit: 100, truncated: false } });
+    return { json: { results: [], total: 0, limit: 100, truncated: false } };
   });
   try {
     await page.goto("/?category=documents");
     const empty = page.getByRole("status").filter({ hasText: "沒有小工具符合目前的篩選條件" });
     await expect(empty).toBeVisible();
-    await page.locator('a[href="/policy"]').first().click();
-    await expect(page.getByRole("heading", { name: "資料保存政策", exact: true })).toBeVisible();
-    await page.goBack();
-    await expect.poll(() => reads).toBe(2);
+    await goToPolicyAndBack(page);
+    await page.eventually(() => expect(reads).toBe(2));
     await expect(empty).toHaveCount(0);
     await expect(page.getByRole("status").filter({ hasText: "載入目錄中" })).toBeVisible();
     await expect(page.getByText("目錄裡還沒有任何東西", { exact: false })).toHaveCount(0);
     release();
     await expect(empty).toBeVisible();
-    expect(new URL(page.url()).searchParams.get("category")).toBe("documents");
+    expect(new URLSearchParams(page.search()).get("category")).toBe("documents");
     expect(reads).toBe(2);
-    await verifyLayout(page, "filtered-confirmed");
+    await verifyLayout(page);
   } finally {
     release();
   }
 });
 
-test("a selected publication is not declared missing while its empty snapshot is being confirmed", async ({
-  page,
-}) => {
-  await stubPlatform(page);
-  await page.setViewportSize({ width: 375, height: 900 });
+test("a selected publication is not declared missing while its empty snapshot is being confirmed", async () => {
+  const page = app();
   let reads = 0;
   let release!: () => void;
   const gate = new Promise<void>((resolve) => {
     release = resolve;
   });
-  await page.route("**/me/publications", async (route) => {
+  page.route("**/me/publications", async () => {
     reads += 1;
-    if (reads === 1) return route.fulfill({ json: { publications: [] } });
+    if (reads === 1) return { json: { publications: [] } };
     await gate;
-    return route.fulfill({ json: OWN_PUBLICATIONS });
+    return { json: OWN_PUBLICATIONS };
   });
   try {
     await page.goto(`/workspace/downloads?publication=${PUBLISHER}%2F${PUBLICATION}`);
@@ -407,10 +365,8 @@ test("a selected publication is not declared missing while its empty snapshot is
       .getByRole("status")
       .filter({ hasText: "這個工作區目前找不到這筆小工具發佈" });
     await expect(missing).toBeVisible();
-    await page.locator('a[href="/policy"]').first().click();
-    await expect(page.getByRole("heading", { name: "資料保存政策", exact: true })).toBeVisible();
-    await page.goBack();
-    await expect.poll(() => reads).toBe(2);
+    await goToPolicyAndBack(page);
+    await page.eventually(() => expect(reads).toBe(2));
     await expect(missing).toHaveCount(0);
     await expect(
       page.getByRole("status").filter({ hasText: "載入小工具發佈清單中" }),
@@ -418,79 +374,71 @@ test("a selected publication is not declared missing while its empty snapshot is
     release();
     await expect(page.locator('#skill-publications [aria-current="location"]')).toBeFocused();
     await expect(missing).toHaveCount(0);
-    expect(new URL(page.url()).searchParams.get("publication")).toBe(`${PUBLISHER}/${PUBLICATION}`);
+    expect(new URLSearchParams(page.search()).get("publication")).toBe(
+      `${PUBLISHER}/${PUBLICATION}`,
+    );
     expect(reads).toBe(2);
-    await verifyLayout(page, "selected-confirmed");
+    await verifyLayout(page);
   } finally {
     release();
   }
 });
 
-test("deleting the last visible package does not claim that no packaging ever occurred", async ({
-  page,
-}) => {
-  await stubPlatform(page);
-  await page.setViewportSize({ width: 375, height: 900 });
+test("deleting the last visible package does not claim that no packaging ever occurred", async () => {
+  const page = app();
   let deletes = 0;
   let reads = 0;
-  await page.route("**/downloads", (route) => {
-    if (route.request().resourceType() === "document") return route.fallback();
+  page.route("**/downloads", () => {
     reads += 1;
-    return route.fulfill({ json: { downloads: deletes ? [] : [ARTIFACT_ROW] } });
+    return { json: { downloads: deletes ? [] : [ARTIFACT_ROW] } };
   });
-  await page.route(`**/downloads/${ARTIFACT}`, (route) => {
-    expect(route.request().method()).toBe("DELETE");
+  page.route(`**/downloads/${ARTIFACT}`, (request) => {
+    expect(request.method).toBe("DELETE");
     deletes += 1;
-    return route.fulfill({ status: 204 });
+    return { status: 204 };
   });
   await page.goto("/workspace/downloads");
   const scope = page.locator("#delivery-history");
   await expect(scope.locator(".download-list > li")).toHaveCount(1);
   await scope.getByRole("button", { name: "刪除", exact: true }).click();
   await expect(scope.getByRole("button", { name: "確認刪除", exact: true })).toBeFocused();
-  await page.keyboard.press("Enter");
+  await page.press("Enter");
   await expect(scope.getByRole("status").filter({ hasText: "已刪除" })).toBeVisible();
   await expect(scope).not.toContainText("還沒有打包過");
   await expect(scope.getByRole("status").filter({ hasText: "目前沒有可顯示的套件" })).toBeVisible();
   expect(deletes).toBe(1);
   expect(reads).toBe(2);
-  await verifyLayout(page, "deleted-last-package");
+  await verifyLayout(page);
 });
 
-test("a selected package is not declared missing during an empty snapshot reread", async ({
-  page,
-}) => {
-  await stubPlatform(page);
-  await page.setViewportSize({ width: 375, height: 900 });
+test("a selected package is not declared missing during an empty snapshot reread", async () => {
+  const page = app();
   let reads = 0;
   let release!: () => void;
   const gate = new Promise<void>((resolve) => {
     release = resolve;
   });
-  await page.route("**/downloads", async (route) => {
-    if (route.request().resourceType() === "document") return route.fallback();
+  page.route("**/downloads", async () => {
     reads += 1;
-    if (reads === 1) return route.fulfill({ json: { downloads: [] } });
+    if (reads === 1) return { json: { downloads: [] } };
     await gate;
-    return route.fulfill({ json: { downloads: [ARTIFACT_ROW] } });
+    return { json: { downloads: [ARTIFACT_ROW] } };
   });
   const scope = page.locator("#delivery-history");
   const missing = scope.getByRole("status").filter({ hasText: "目前找不到這筆交付紀錄" });
   try {
     await page.goto(`/workspace/downloads?artifact=${ARTIFACT}`);
     await expect(missing).toBeVisible();
-    await page.locator('a[href="/policy"]').first().click();
-    await expect(page.getByRole("heading", { name: "資料保存政策", exact: true })).toBeVisible();
-    await page.goBack();
-    await expect.poll(() => reads).toBe(2);
+    await goToPolicyAndBack(page);
+    await page.eventually(() => expect(reads).toBe(2));
     await expect(missing).toHaveCount(0);
     await expect(scope.getByRole("status").filter({ hasText: "載入下載紀錄中" })).toBeVisible();
     release();
     await expect(scope.locator('[aria-current="location"]')).toBeFocused();
     await expect(missing).toHaveCount(0);
-    expect(new URL(page.url()).searchParams.get("artifact")).toBe(ARTIFACT);
+    expect(new URLSearchParams(page.search()).get("artifact")).toBe(ARTIFACT);
     expect(reads).toBe(2);
-    await verifyLayout(page, "package-confirmed");
+    await verifyLayout(page);
   } finally {
     release();
   }

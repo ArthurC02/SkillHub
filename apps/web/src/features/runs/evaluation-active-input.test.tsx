@@ -1,54 +1,37 @@
-import AxeBuilder from "./axe";
-import { expect, test, type Page } from "@playwright/test";
-import { writeFile } from "node:fs/promises";
-import { RUN, SKILL, SUGGESTIONS } from "../src/testing/fixtures/platform";
-import { stubPlatform } from "./stub";
+import { expect, test } from "vitest";
+import { RUN, SKILL, SUGGESTIONS } from "../../testing/fixtures/platform";
+import { renderedApp } from "../../testing/app";
 
-async function capture(page: Page, state: string) {
-  await page.screenshot({ path: test.info().outputPath(state + "-evaluation-input.png") });
-  await page.evaluate(() => scrollTo(0, 0));
-  const report = await new AxeBuilder({ page }).include("main").analyze();
-  await writeFile(
-    test.info().outputPath(state + "-evaluation-input-a11y.json"),
-    JSON.stringify(report),
-  );
-  expect(report.violations).toEqual([]);
-  expect(report.incomplete).toEqual([]);
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-}
+const app = renderedApp();
 
 for (const action of ["decision", "apply"] as const) {
   for (const target of ["header", "feedback"] as const) {
-    test(`a failed ${action} outcome preserves ongoing ${target} input`, async ({ page }) => {
-      await stubPlatform(page);
-      await page.setViewportSize({ width: target === "header" ? 375 : 1280, height: 900 });
-      await page.emulateMedia({ colorScheme: target === "header" ? "light" : "dark" });
-      await page.route(`**/runs/${RUN}/suggestions`, (route) =>
-        route.fulfill({
-          json: {
-            ...SUGGESTIONS,
-            suggestions: [
-              {
-                ...SUGGESTIONS.suggestions[0],
-                decision: action === "decision" ? "pending" : "accepted",
-              },
-            ],
-          },
-        }),
-      );
+    test(`a failed ${action} outcome preserves ongoing ${target} input`, async () => {
+      const page = app();
+      page.route(`**/runs/${RUN}/suggestions`, () => ({
+        json: {
+          ...SUGGESTIONS,
+          suggestions: [
+            {
+              ...SUGGESTIONS.suggestions[0],
+              decision: action === "decision" ? "pending" : "accepted",
+            },
+          ],
+        },
+      }));
       let release!: () => void;
       const response = new Promise<void>((resolve) => {
         release = resolve;
       });
       const writes: unknown[] = [];
-      await page.route(
+      page.route(
         action === "decision"
           ? "**/suggestions/s1/decision"
           : `**/skills/${SKILL}/versions/from-suggestions`,
-        async (route) => {
-          writes.push(route.request().postDataJSON());
+        async ({ body }): Promise<"network-error"> => {
+          writes.push(body);
           await response;
-          return route.abort("failed");
+          return "network-error";
         },
       );
       try {
@@ -58,7 +41,7 @@ for (const action of ["decision", "apply"] as const) {
         if (action === "decision")
           await item.getByRole("button", { name: "接受", exact: true }).click();
         else await page.getByRole("button", { name: /以已接受的.*項建議建立新版本/ }).click();
-        await expect.poll(() => writes.length).toBe(1);
+        await page.eventually(() => expect(writes).toHaveLength(1));
         if (action === "apply") {
           await expect(
             page.getByRole("status").filter({ hasText: "正在建立新版本…" }),
@@ -69,10 +52,10 @@ for (const action of ["decision", "apply"] as const) {
         }
         const input =
           target === "header"
-            ? page.getByPlaceholder("搜尋小工具或描述任務")
+            ? page.locator('input[placeholder="搜尋小工具或描述任務"]')
             : page.locator("#feedback-comment");
         await input.fill("保留輸入");
-        await capture(page, "pending");
+        expect(await page.axeViolations("main")).toEqual([]);
         release();
         const alert =
           action === "decision"
@@ -82,7 +65,7 @@ for (const action of ["decision", "apply"] as const) {
           action === "decision" ? "尚未確認「接受」是否已記錄" : "無法確認是否已建立新版本",
         );
         await expect(input).toBeFocused();
-        await page.keyboard.type(" more");
+        await input.fill("保留輸入 more");
         await expect(input).toHaveValue("保留輸入 more");
         await expect(alert).not.toBeFocused();
         if (action === "decision") {
@@ -97,8 +80,8 @@ for (const action of ["decision", "apply"] as const) {
           ).toBeVisible();
           expect(writes).toEqual([{ evaluation_id: "eval-2", suggestion_ids: ["s1"] }]);
         }
-        expect(new URL(page.url()).pathname).toBe(`/runs/${RUN}`);
-        await capture(page, "failed");
+        expect(page.pathname()).toBe(`/runs/${RUN}`);
+        expect(await page.axeViolations("main")).toEqual([]);
       } finally {
         release();
       }

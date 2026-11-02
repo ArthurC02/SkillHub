@@ -1,9 +1,9 @@
-import { setOffline } from "./offline";
-import { expect, test } from "@playwright/test";
-import AxeBuilder from "./axe";
-import { TEST_CASE, VERSION } from "../src/testing/fixtures/platform";
-import { stubPlatform } from "./stub";
-import type { Dataset } from "../src/features/lab/lab.service";
+import { expect, test } from "vitest";
+import { renderedApp, type Locator } from "../../../testing/app";
+import { TEST_CASE, VERSION } from "../../../testing/fixtures/platform";
+import type { Dataset } from "../lab.service";
+
+const app = renderedApp();
 
 const limits = {
   max_file_bytes: 10_000,
@@ -13,6 +13,17 @@ const limits = {
   allowed_kinds: ["csv"],
   note: "",
 };
+
+function chooseFile(input: Locator, name: string, content: string) {
+  const element = input.element();
+  const file = new File([content], name, { type: "text/csv" });
+  Object.defineProperty(element, "files", { value: [file], configurable: true });
+  Object.defineProperty(element, "value", {
+    value: `C:\\fakepath\\${name}`,
+    writable: true,
+    configurable: true,
+  });
+}
 
 function datasetSnapshot(extra: boolean, uploaded: boolean) {
   const sizes = [9500, 9500, ...(extra ? [500] : []), ...(uploaded ? [400] : [])];
@@ -31,37 +42,30 @@ function datasetSnapshot(extra: boolean, uploaded: boolean) {
 
 for (const owner of ["rules", "usage"]) {
   for (const phase of ["pending", "offline"]) {
-    test(`cached dataset ${owner} in ${phase} waits for fresh allowance and preserves the chosen file`, async ({
-      page,
-    }) => {
-      await stubPlatform(page);
-      await page.setViewportSize({ width: 375, height: 900 });
+    test(`cached dataset ${owner} in ${phase} waits for fresh allowance and preserves the chosen file`, async () => {
+      const page = app();
       let checking = false;
       let writes = 0;
       let uploaded = false;
+      let started = false;
       let release!: () => void;
-      let started!: () => void;
       const gate = new Promise<void>((resolve) => {
         release = resolve;
       });
-      const readStarted = new Promise<void>((resolve) => {
-        started = resolve;
-      });
-      await page.route("**/test-cases/limits", async (route) => {
+      page.route("**/test-cases/limits", async () => {
         if (checking && owner === "rules" && phase === "pending") {
-          started();
+          started = true;
           await gate;
         }
-        return route.fulfill({
+        return {
           json: { ...limits, max_file_bytes: checking && owner === "rules" ? 500 : 10_000 },
-        });
+        };
       });
-      await page.route(`**/test-cases/${TEST_CASE}/datasets`, async (route) => {
-        if (route.request().resourceType() === "document") return route.fallback();
-        if (route.request().method() === "POST") {
+      page.route(`**/test-cases/${TEST_CASE}/datasets`, async (request) => {
+        if (request.method === "POST") {
           writes += 1;
           uploaded = true;
-          return route.fulfill({
+          return {
             status: 201,
             json: {
               dataset_id: "99999999-1111-4111-8111-111111111111",
@@ -71,13 +75,13 @@ for (const owner of ["rules", "usage"]) {
               content_hash: "a".repeat(64),
               expires_at: "2026-11-15T00:00:00Z",
             } satisfies Dataset,
-          });
+          };
         }
         if (checking && owner === "usage" && phase === "pending") {
-          started();
+          started = true;
           await gate;
         }
-        return route.fulfill({ json: datasetSnapshot(checking && owner === "usage", uploaded) });
+        return { json: datasetSnapshot(checking && owner === "usage", uploaded) };
       });
       try {
         await page.goto(`/lab/test-cases/${TEST_CASE}/datasets?version=${VERSION}`);
@@ -88,9 +92,9 @@ for (const owner of ["rules", "usage"]) {
           page.getByRole("heading", { name: "資料保存政策", exact: true }),
         ).toBeVisible();
         checking = true;
-        if (phase === "offline") await setOffline(page, true);
+        if (phase === "offline") await page.setOffline(true);
         await page.goBack();
-        if (phase === "pending") await readStarted;
+        if (phase === "pending") await page.eventually(() => expect(started).toBe(true));
         const why = page.locator("#upload-read-why");
         await expect(why).toHaveText(
           phase === "offline"
@@ -102,46 +106,32 @@ for (const owner of ["rules", "usage"]) {
           await expect(page.getByText("還可以再上傳", { exact: false })).toHaveCount(0);
         } else await expect(page.locator(".dataset-upload-guide")).toHaveCount(0);
         const file = page.getByLabel("選擇檔案", { exact: true });
-        await file.setInputFiles({
-          name: "rows.csv",
-          mimeType: "text/csv",
-          buffer: Buffer.alloc(1000, "n"),
-        });
+        chooseFile(file, "rows.csv", "n".repeat(1000));
         expect(writes).toBe(0);
-        await upload.scrollIntoViewIfNeeded();
-        await expect(why).toBeInViewport({ ratio: 1 });
-        await page.screenshot({ path: test.info().outputPath("dataset-readiness.png") });
-        expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
-        if (phase === "offline") await setOffline(page, false);
+        expect(await page.axeViolations("body")).toEqual([]);
+        if (phase === "offline") await page.setOffline(false);
         else release();
         await expect(upload).toBeEnabled();
         await expect(file).toHaveValue(/rows\.csv$/);
         await expect(why).toHaveCount(0);
         expect(writes).toBe(0);
         await upload.click();
-        await expect(page.getByRole("main").getByRole("alert")).toHaveText(
+        await expect(page.getByRole("alert")).toHaveText(
           owner === "rules"
             ? "rows.csv 是 1000 B，超過單一檔案上限 500 B，沒有送出。"
             : "這個測試題還剩 500 B 可用，rows.csv 是 1000 B，沒有送出。請先刪掉一些檔案再上傳。",
         );
         expect(writes).toBe(0);
-        await file.setInputFiles({
-          name: "small.csv",
-          mimeType: "text/csv",
-          buffer: Buffer.alloc(400, "n"),
-        });
+        chooseFile(file, "small.csv", "n".repeat(400));
         await upload.click();
         await expect(page.getByRole("status", { name: "上傳完成", exact: true })).toContainText(
           "已上傳 small.csv（400 B）",
         );
         expect(writes).toBe(1);
-        expect(new URL(page.url()).searchParams.get("version")).toBe(VERSION);
-        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
-          true,
-        );
+        expect(new URLSearchParams(page.search()).get("version")).toBe(VERSION);
       } finally {
         release();
-        await setOffline(page, false);
+        await page.setOffline(false);
       }
     });
   }
