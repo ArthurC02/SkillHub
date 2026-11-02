@@ -10,22 +10,21 @@ seed="$(ls "$here"/upgrade_seed_*.sql)"
 baseline="$(basename "$seed" .sql)"
 baseline="${baseline#upgrade_seed_}"
 
-apply() {
-  "${psql_cmd[@]}" "$url" -v ON_ERROR_STOP=1 --single-transaction -q <"$1" >/dev/null ||
-    { echo "::error file=$1::$(basename "$1") failed on a database that already holds data"; exit 1; }
-}
-
+files=()
 upgraded=0
 for migration in "$here"/../migrations/*.sql; do
   number="$(basename "$migration")"
   number="${number%%_*}"
-  apply "$migration"
+  files+=("$migration")
   if [[ "$number" > "$baseline" ]]; then
     upgraded=$((upgraded + 1))
   elif [[ "$number" == "$baseline" ]]; then
-    apply "$seed"
+    files+=("$seed")
   fi
 done
+
+bash "$here/../../tools/ci/apply-sql.sh" "${files[@]}" -- "${psql_cmd[@]}" "$url" ||
+  { echo "upgrade with data: the file named above failed on a database that already holds data" >&2; exit 1; }
 
 if ((upgraded == 0)); then
   echo "::error file=$seed::no migration follows the seed's baseline $baseline, so nothing was upgraded with data"

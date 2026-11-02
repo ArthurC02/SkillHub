@@ -58,9 +58,8 @@ for _ in $(seq 1 60); do
 done
 [ "$(psql_exec -c 'SELECT 1' 2>/dev/null)" = 1 ] || fail "postgres did not start"
 
-for migration in "$ROOT"/db/migrations/*.sql; do
-  psql_exec --single-transaction <"$migration" >/dev/null || fail "migration $(basename "$migration") failed"
-done
+bash "$ROOT/tools/ci/apply-sql.sh" "$ROOT"/db/migrations/*.sql -- docker exec -i "$PG" psql -U skillhub -d skillhub ||
+  fail "the migrations did not apply"
 
 psql_exec -c "INSERT INTO users (email, display_name) SELECT 'before-' || g || '@drill', 'before' FROM generate_series(1, 3) g" >/dev/null
 docker exec "$PG" skillhub-backup >/dev/null 2>&1 || fail "skillhub-backup failed"

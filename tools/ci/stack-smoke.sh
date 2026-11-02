@@ -97,11 +97,7 @@ docker run -d --name smoke-pg --network "$NET" \
 wait_for "Postgres" 60 docker exec -e PGPASSWORD=skillhub smoke-pg psql -h 127.0.0.1 -U skillhub -d skillhub -tAc "select 1"
 
 echo "--- Schema (db/migrations, in order)"
-# `-1` runs each file as one batch/transaction; at least one migration takes a
-# table lock that requires it.
-for f in "$REPO_ROOT"/db/migrations/*.sql; do
-	docker exec -i smoke-pg psql -q -1 -v ON_ERROR_STOP=1 -U skillhub -d skillhub <"$f" >/dev/null
-done
+bash "$REPO_ROOT/tools/ci/apply-sql.sh" "$REPO_ROOT"/db/migrations/*.sql -- docker exec -i smoke-pg psql -U skillhub -d skillhub
 
 echo "--- Object store"
 docker run -d --name smoke-s3 --network "$NET" \

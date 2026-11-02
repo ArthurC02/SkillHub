@@ -375,9 +375,7 @@ jobs:
         env:
           PSQL: docker run --rm -i --network host docker.io/pgvector/pgvector:pg18@sha256:2358fcba361ed2233a5ed81b5fe4ca779ccb304120ce531a3bf51c0ed7e2bc11 psql
         run: |
-          for migration in "$GITHUB_WORKSPACE"/db/migrations/*.sql; do
-            $PSQL "$SKILLHUB_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 --single-transaction -q <"$migration"
-          done
+          bash "$GITHUB_WORKSPACE/tools/ci/apply-sql.sh" "$GITHUB_WORKSPACE"/db/migrations/*.sql -- $PSQL "$SKILLHUB_TEST_DATABASE_URL"
           $PSQL "$SKILLHUB_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 --single-transaction <"$GITHUB_WORKSPACE/db/tests/immutability_test.sql"
       - name: Apply new migrations to a database that already holds data
         env:
