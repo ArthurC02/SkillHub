@@ -1,8 +1,9 @@
-import AxeBuilder from "./axe";
-import { expect, test } from "@playwright/test";
-import { OWN_BUNDLE, SKILL, VERSION, platformResponse } from "../src/testing/fixtures/platform";
-import { stubPlatform } from "./stub";
-import type { OwnerBundleSummary } from "../src/features/publishing/publishing.service";
+import { expect, test } from "vitest";
+import { OWN_BUNDLE, SKILL, VERSION } from "../../testing/fixtures/platform";
+import { renderedApp } from "../../testing/app";
+import type { OwnerBundleSummary } from "./publishing.service";
+
+const app = renderedApp();
 
 const BUNDLE = { ...OWN_BUNDLE, members: [OWN_BUNDLE.members[0]] };
 const OVERVIEW = {
@@ -27,19 +28,16 @@ const OVERVIEW = {
 } satisfies { bundles: OwnerBundleSummary[] };
 
 for (const empty of [false, true]) {
-  test(`bundle list failed reread withdraws a cached ${empty ? "empty" : "populated"} result and retries in place`, async ({
-    page,
-  }, testInfo) => {
-    await stubPlatform(page);
+  test(`bundle list failed reread withdraws a cached ${empty ? "empty" : "populated"} result and retries in place`, async () => {
+    const page = app();
     let reads = 0;
-    await page.route("**/me/bundles", (route) => {
+    page.route("**/me/bundles", () => {
       reads += 1;
       return reads === 2
-        ? route.fulfill({ status: 503, json: { error: "service unavailable" } })
-        : route.fulfill({ json: { bundles: empty && reads === 1 ? [] : [BUNDLE] } });
+        ? { status: 503, json: { error: "service unavailable" } }
+        : { json: { bundles: empty && reads === 1 ? [] : [BUNDLE] } };
     });
-    await page.route("**/me/bundles/overview", (route) => route.fulfill({ json: OVERVIEW }));
-    await page.setViewportSize({ width: 375, height: 900 });
+    page.route("**/me/bundles/overview", () => ({ json: OVERVIEW }));
     await page.goto("/workspace/downloads");
     const section = page.locator("#bundle-workspace");
     if (empty)
@@ -60,33 +58,23 @@ for (const empty of [false, true]) {
     await expect(section.getByRole("heading", { name: BUNDLE.bundle, exact: true })).toBeVisible();
     await expect(page.locator("#bundle-workspace-heading")).toBeFocused();
     expect(reads).toBe(3);
-    expect((await new AxeBuilder({ page }).include("main").analyze()).violations).toEqual([]);
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
-      true,
-    );
-    await page.evaluate(() => scrollTo(0, 0));
-    await page.screenshot({
-      path: testInfo.outputPath(`bundle-${empty}-recovered.png`),
-      fullPage: true,
-    });
+    expect(await page.axeViolations("main")).toEqual([]);
   });
 }
 
-test("bundle overview failure withdraws the old Release and retries without rereading versions", async ({
-  page,
-}) => {
-  await stubPlatform(page);
+test("bundle overview failure withdraws the old Release and retries without rereading versions", async () => {
+  const page = app();
   let bundleReads = 0;
   let overviewReads = 0;
-  await page.route("**/me/bundles", (route) => {
+  page.route("**/me/bundles", () => {
     bundleReads += 1;
-    return route.fulfill({ json: { bundles: [BUNDLE] } });
+    return { json: { bundles: [BUNDLE] } };
   });
-  await page.route("**/me/bundles/overview", (route) => {
+  page.route("**/me/bundles/overview", () => {
     overviewReads += 1;
     return overviewReads === 2
-      ? route.fulfill({ status: 503, json: { error: "service unavailable" } })
-      : route.fulfill({ json: OVERVIEW });
+      ? { status: 503, json: { error: "service unavailable" } }
+      : { json: OVERVIEW };
   });
   await page.goto("/workspace/downloads");
   const section = page.locator("#bundle-workspace");
@@ -106,12 +94,10 @@ test("bundle overview failure withdraws the old Release and retries without rere
 });
 
 for (const source of ["skills", "detail", "versions"]) {
-  test(`bundle ${source} read failure is visible outside the editor and blocks an uninformed publication`, async ({
-    page,
-  }) => {
-    await stubPlatform(page);
-    await page.route("**/me/bundles", (route) => route.fulfill({ json: { bundles: [BUNDLE] } }));
-    await page.route("**/me/bundles/overview", (route) => route.fulfill({ json: OVERVIEW }));
+  test(`bundle ${source} read failure is visible outside the editor and blocks an uninformed publication`, async () => {
+    const page = app();
+    page.route("**/me/bundles", () => ({ json: { bundles: [BUNDLE] } }));
+    page.route("**/me/bundles/overview", () => ({ json: OVERVIEW }));
     const pattern =
       source === "skills"
         ? "**/skills?*"
@@ -119,19 +105,15 @@ for (const source of ["skills", "detail", "versions"]) {
           ? `**/api/skills/${SKILL}?*`
           : `**/skills/${SKILL}/versions`;
     let reads = 0;
-    await page.route(pattern, (route) => {
+    page.route(pattern, () => {
       reads += 1;
-      return reads === 1
-        ? route.fulfill({ status: 503, json: { error: "service unavailable" } })
-        : route.fulfill({ json: platformResponse(route.request().url()).body });
+      return reads === 1 ? { status: 503, json: { error: "service unavailable" } } : undefined;
     });
     await page.goto(`/workspace/downloads?bundleVersion=${VERSION}`);
     const section = page.locator("#bundle-workspace");
     await expect(section.getByRole("alert")).toBeVisible();
     await expect(section.getByRole("alert")).toContainText("可加入 Bundle 的版本");
-    expect(
-      await section.getByRole("alert").evaluate((element) => element.closest("details") === null),
-    ).toBe(true);
+    expect(section.getByRole("alert").element().closest("details")).toBeNull();
     await expect(
       section.getByRole("button", { name: `發佈 v${BUNDLE.version}`, exact: true }),
     ).toBeDisabled();

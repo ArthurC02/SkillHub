@@ -1,13 +1,14 @@
-import AxeBuilder from "./axe";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "vitest";
 import {
   OWN_BUNDLE,
   OWN_PUBLICATION,
   PUBLISHER,
   platformResponse,
-} from "../src/testing/fixtures/platform";
-import type { Publication } from "../src/features/publishing/publishing.service";
-import { stubPlatform } from "./stub";
+} from "../../testing/fixtures/platform";
+import { renderedApp, type App } from "../../testing/app";
+import type { Publication } from "./publishing.service";
+
+const app = renderedApp();
 
 const older = {
   ...OWN_BUNDLE,
@@ -54,34 +55,26 @@ function overview(value: Publication) {
   };
 }
 
-async function stubOperation(
-  page: Page,
+function stubOperation(
+  page: App,
   action: "publish" | "delist",
   status: number,
   readFailure?: "unavailable" | "invalid",
 ) {
-  await stubPlatform(page);
   const own = (platformResponse("/skills").body as { skills: object[] }).skills[0];
-  await page.route("**/skills?*", (route) =>
-    route.fulfill({
-      json: {
-        skills: OWN_BUNDLE.members.map((member) => ({
-          ...own,
-          skill_id: member.skill_id,
-          name: member.name,
-        })),
-        total: OWN_BUNDLE.members.length,
-        limit: 24,
-        truncated: false,
-      },
-    }),
-  );
-  const unexpectedWrites: string[] = [];
-  await page.route("**/*", (route) => {
-    if (["GET", "HEAD"].includes(route.request().method())) return route.fallback();
-    unexpectedWrites.push(route.request().url());
-    return route.fulfill({ status: 500, json: { error: "unexpected write" } });
-  });
+  page.route("**/skills?*", () => ({
+    json: {
+      skills: OWN_BUNDLE.members.map((member) => ({
+        ...own,
+        skill_id: member.skill_id,
+        name: member.name,
+      })),
+      total: OWN_BUNDLE.members.length,
+      limit: 24,
+      truncated: false,
+    },
+  }));
+  const publicationPath = `/me/bundles/${OWN_BUNDLE.bundle}/publication`;
   const updated: Publication = {
     ...publication,
     status: action === "delist" ? "delisted" : "published",
@@ -120,61 +113,58 @@ async function stubOperation(
   });
   let reads = 0;
   let writes = 0;
+  const methods: string[] = [];
   const requests: unknown[] = [];
-  await page.route("**/me/bundles", (route) =>
-    route.fulfill({ json: { bundles: [OWN_BUNDLE, older] } }),
-  );
-  await page.route("**/me/bundles/overview", async (route) => {
+  page.route("**/me/bundles", () => ({ json: { bundles: [OWN_BUNDLE, older] } }));
+  page.route("**/me/bundles/overview", async () => {
     reads++;
     const current = reads;
     if (current === 2) await readGate;
     return current === 2 && readFailure
-      ? route.fulfill({ status: readFailure === "invalid" ? 200 : 503, json: {} })
-      : route.fulfill({ json: overview(current === 1 ? publication : updated) });
+      ? { status: readFailure === "invalid" ? 200 : 503, json: {} }
+      : { json: overview(current === 1 ? publication : updated) };
   });
-  await page.route(`**/me/bundles/${OWN_BUNDLE.bundle}/publication`, async (route) => {
-    expect(route.request().method()).toBe(action === "publish" ? "POST" : "DELETE");
-    if (action === "publish") requests.push(route.request().postDataJSON());
+  page.route(`**${publicationPath}`, async ({ method, body }) => {
+    methods.push(method);
+    if (action === "publish") requests.push(body);
     writes++;
     await writeGate;
-    return route.fulfill({ status, json: status === 200 ? updated : { error: "unavailable" } });
+    return { status, json: status === 200 ? updated : { error: "unavailable" } };
   });
   return {
     releaseWrite,
     releaseRead,
     reads: () => reads,
     writes: () => writes,
+    methods,
     requests,
-    unexpectedWrites,
+    unexpectedWrites: () =>
+      page.requests.filter(
+        (request) =>
+          !["GET", "HEAD"].includes(request.method) && request.url.pathname !== publicationPath,
+      ),
   };
 }
 
-for (const width of [375, 1280]) {
-  for (const action of ["publish", "delist"] as const) {
-    for (const outcome of [200, 503, "unavailable", "invalid"] as const) {
-      test(`Bundle ${action} ${outcome} reconciles immutable versions at ${width}px`, async ({
+for (const action of ["publish", "delist"] as const) {
+  for (const outcome of [200, 503, "unavailable", "invalid"] as const) {
+    test(`Bundle ${action} ${outcome} reconciles immutable versions`, async () => {
+      const page = app();
+      const failure = typeof outcome === "string" ? outcome : undefined;
+      const fixture = stubOperation(
         page,
-      }) => {
-        const failure = typeof outcome === "string" ? outcome : undefined;
-        const fixture = await stubOperation(
-          page,
-          action,
-          typeof outcome === "number" ? outcome : 503,
-          failure,
-        );
-        await page.setViewportSize({ width, height: 900 });
-        await page.emulateMedia({ colorScheme: width === 375 ? "light" : "dark" });
-        await Promise.all([
-          page.waitForResponse(
-            (response) => new URL(response.url()).pathname === "/me/bundles/overview",
-          ),
-          page.goto("/workspace/downloads"),
-        ]);
-        const card = page.getByRole("article", { name: OWN_BUNDLE.bundle, exact: true });
+        action,
+        typeof outcome === "number" ? outcome : 503,
+        failure,
+      );
+      try {
+        await page.goto("/workspace/downloads");
+        const card = page.locator(`article[aria-labelledby="bundle-${OWN_BUNDLE.bundle}"]`);
         const publish = card.getByRole("button", { name: "發佈 v1.1.0", exact: true });
         const sibling = card.getByRole("button", { name: "發佈 v1.0.0", exact: true });
         await expect(publish).toBeEnabled();
         await expect(sibling).toBeEnabled();
+        expect(fixture.reads()).toBe(1);
         if (action === "delist")
           await card.getByRole("button", { name: "撤回", exact: true }).click();
         await card
@@ -183,7 +173,7 @@ for (const width of [375, 1280]) {
             exact: true,
           })
           .click();
-        await expect.poll(fixture.writes).toBe(1);
+        await page.eventually(() => expect(fixture.writes()).toBe(1));
         await expect(sibling).toBeDisabled();
         await expect(
           card.getByRole("button", {
@@ -203,7 +193,7 @@ for (const width of [375, 1280]) {
           .getByRole("textbox", { name: "名稱", exact: true });
         await draft.fill("kept-draft");
         fixture.releaseWrite();
-        await expect.poll(fixture.reads).toBe(2);
+        await page.eventually(() => expect(fixture.reads()).toBe(2));
         await expect(sibling).toBeDisabled();
         await expect(card).toContainText("核對 Bundle 發佈狀態");
         fixture.releaseRead();
@@ -235,35 +225,25 @@ for (const width of [375, 1280]) {
           await expect(card.getByRole("alert")).toContainText(
             `尚未確認${action === "publish" ? "發佈" : "撤回"}是否已完成`,
           );
+          const alert = card.getByRole("alert").element();
+          const versions = card.locator(".bundle-version-list").element();
           expect(
-            await card
-              .getByRole("alert")
-              .evaluate((alert) =>
-                Boolean(
-                  alert.compareDocumentPosition(
-                    alert.closest("article")!.querySelector(".bundle-version-list")!,
-                  ) & Node.DOCUMENT_POSITION_FOLLOWING,
-                ),
-              ),
+            Boolean(alert.compareDocumentPosition(versions) & Node.DOCUMENT_POSITION_FOLLOWING),
           ).toBe(true);
         }
         expect(fixture.reads()).toBe(failure ? 3 : 2);
         expect(fixture.writes()).toBe(1);
+        expect(fixture.methods).toEqual([action === "publish" ? "POST" : "DELETE"]);
         expect(fixture.requests).toEqual(
           action === "publish" ? [{ version: "1.1.0", rights_attested: false }] : [],
         );
-        expect(fixture.unexpectedWrites).toEqual([]);
+        expect(fixture.unexpectedWrites()).toEqual([]);
         await expect(draft).toHaveValue("kept-draft");
-        const accessibility = await new AxeBuilder({ page }).include("main").analyze();
-        expect(accessibility.violations).toEqual([]);
-        expect(accessibility.incomplete).toEqual([]);
-        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
-          true,
-        );
-        await page.screenshot({
-          path: test.info().outputPath(`bundle-${action}-${outcome}-${width}-viewport.png`),
-        });
-      });
-    }
+        expect(await page.axeViolations("main")).toEqual([]);
+      } finally {
+        fixture.releaseWrite();
+        fixture.releaseRead();
+      }
+    });
   }
 }

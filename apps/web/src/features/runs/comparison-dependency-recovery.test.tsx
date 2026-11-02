@@ -1,0 +1,89 @@
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { RUN, SKILL } from "../../testing/fixtures/platform";
+import { renderedApp } from "../../testing/app";
+
+const app = renderedApp();
+const scrollIntoView = HTMLElement.prototype.scrollIntoView;
+
+beforeEach(() => {
+  HTMLElement.prototype.scrollIntoView = vi.fn();
+});
+
+afterEach(() => {
+  if (scrollIntoView) HTMLElement.prototype.scrollIntoView = scrollIntoView;
+  else delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView;
+});
+
+for (const dependency of ["self", "candidates", "versions"] as const) {
+  for (const moved of [false, true]) {
+    test(`comparison ${dependency} retry explains paused reads and ${moved ? "preserves moved focus" : "retains decision context"}`, async () => {
+      const page = app();
+      const pattern =
+        dependency === "self"
+          ? `**/runs/${RUN}`
+          : dependency === "candidates"
+            ? "**/runs?*"
+            : `**/skills/${SKILL}/versions`;
+      const what =
+        dependency === "self"
+          ? "目前這次試跑"
+          : dependency === "candidates"
+            ? "可比較的試跑紀錄"
+            : "候選試跑紀錄的 Version 編號";
+      const reads: string[] = [];
+      const writes = () => page.requests.filter((request) => request.method !== "GET");
+      const comparisonReads = () =>
+        page.requests.filter((request) => request.url.pathname.endsWith("/comparison"));
+      page.route(pattern, ({ url }) => {
+        reads.push(url.href);
+        return reads.length === 1
+          ? { status: 503, json: { error: "service unavailable" } }
+          : undefined;
+      });
+      try {
+        await page.goto(`/runs/${RUN}/compare`);
+        const main = page.locator("main");
+        await expect(main.getByRole("alert")).toContainText(`暫時無法讀取${what}`);
+        await page.getByText("直接輸入試跑紀錄 ID", { exact: true }).click();
+        const field = page.getByLabel("要比較的另一個試跑紀錄 ID");
+        await field.fill("尚未送出的比較 ID");
+        const retry = main.getByRole("button", { name: "再試一次", exact: true });
+        const heading = page.locator("#run-comparison-heading");
+        const destination = page
+          .getByRole("navigation", { name: "主要導覽" })
+          .getByRole("link", { name: "工作台", exact: true });
+        await page.setOffline(true);
+        await retry.focus();
+        await retry.press("Enter");
+        await expect(
+          main
+            .getByRole("status")
+            .filter({ hasText: `等待連線以讀取${what}；恢復連線後會繼續讀取。` }),
+        ).toBeVisible();
+        await expect(main.getByRole("alert")).toHaveCount(0);
+        await expect(retry).toHaveCount(0);
+        await expect(heading).toBeFocused();
+        await expect(field).toHaveValue("尚未送出的比較 ID");
+        expect(reads).toHaveLength(1);
+        if (moved) await destination.focus();
+        expect(await page.axeViolations("body")).toEqual([]);
+        await page.setOffline(false);
+        await expect(
+          main.getByRole("button", { name: /^與這一次比較（建立於 .+）：v2，/ }),
+        ).toBeVisible();
+        await expect(main.getByRole("status").filter({ hasText: "等待連線以讀取" })).toHaveCount(0);
+        await expect(main.getByRole("alert")).toHaveCount(0);
+        await expect(field).toHaveValue("尚未送出的比較 ID");
+        if (moved) await expect(destination).toBeFocused();
+        else await expect(heading).toBeFocused();
+        expect(reads).toHaveLength(2);
+        expect(reads[0]).toBe(reads[1]);
+        expect(comparisonReads()).toEqual([]);
+        expect(writes()).toEqual([]);
+        expect(await page.axeViolations("body")).toEqual([]);
+      } finally {
+        await page.setOffline(false);
+      }
+    });
+  }
+}
