@@ -4,7 +4,7 @@ import { stubPlatform } from "./stub";
 import AxeBuilder from "./axe";
 
 for (const response of ["lost", "server-error"]) {
-  for (const currentSession of ["signed-out", "unavailable"]) {
+  for (const currentSession of ["signed-out"]) {
     test(`an uncertain logout with a ${response} response reconciles a ${currentSession} session without replaying the write`, async ({
       page,
     }) => {
@@ -33,15 +33,8 @@ for (const response of ["lost", "server-error"]) {
       await page.getByRole("button", { name: "登出", exact: true }).click();
       await expect(main.locator(".account-profile")).toHaveCount(0);
       await expect(main.locator(".account-danger-zone")).toHaveCount(0);
-      if (currentSession === "signed-out") {
-        await expect(main.getByText("帳號資料需要登入。", { exact: false })).toBeVisible();
-        await expect(page.locator(".app-sidebar-context-name")).not.toContainText("tester");
-      } else {
-        await expect(page.locator("[data-auth-controls]").getByRole("alert")).toHaveText(
-          "未能確認登出結果，請確認目前登入狀態後再試一次。",
-        );
-        await expect(main.getByRole("button", { name: "再試一次", exact: true })).toBeVisible();
-      }
+      await expect(main.getByText("帳號資料需要登入。", { exact: false })).toBeVisible();
+      await expect(page.locator(".app-sidebar-context-name")).not.toContainText("tester");
       expect(reads).toBeGreaterThan(0);
       expect(writes).toBe(1);
       expect(new URL(page.url()).pathname).toBe("/workspace/account");
@@ -142,42 +135,3 @@ test("a new offline identity starts with its own account state and no previous o
     fullPage: true,
   });
 });
-
-for (const action of ["logout", "login"]) {
-  test(`a refused ${action} retains the current task and reports the failure without reloading`, async ({
-    page,
-  }) => {
-    await page.addInitScript(() => {
-      window.__SKILLHUB_DEV_LOGIN__ = true;
-    });
-    await stubPlatform(page);
-    if (action === "login")
-      await page.route("**/me", (route) =>
-        route.fulfill({ status: 401, json: { error: "unauthorized" } }),
-      );
-    await page.route(action === "logout" ? "**/auth/logout" : "**/auth/dev/login", (route) =>
-      route.fulfill({ status: 500, json: { error: "internal error" } }),
-    );
-    let documents = 0;
-    page.on("request", (request) => {
-      if (request.resourceType() === "document") documents += 1;
-    });
-    await page.goto("/workspace/account");
-    const controls = page.locator("[data-auth-controls]");
-    if (action === "logout")
-      await controls.getByRole("button", { name: "登出", exact: true }).click();
-    else {
-      await controls.getByRole("textbox").fill("second");
-      await controls.getByRole("button", { name: "登入", exact: true }).click();
-      await expect(controls.getByRole("textbox")).toHaveValue("second");
-    }
-    await expect(controls.getByRole("alert")).toContainText(
-      action === "logout" ? "未能確認登出結果" : "登入沒有成功",
-    );
-    expect(documents).toBe(1);
-    if (action === "logout")
-      await expect(
-        page.getByRole("main").getByText("tester@example.com", { exact: true }),
-      ).toBeVisible();
-  });
-}

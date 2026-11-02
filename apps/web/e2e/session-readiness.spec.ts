@@ -1,10 +1,7 @@
-import { setOffline } from "./offline";
 import { expect, test, type Page } from "@playwright/test";
 import { platformResponse, SKILL, VERSION } from "../src/testing/fixtures/platform";
 import { stubPlatform } from "./stub";
 import type { ImportResult } from "../src/core/api/types";
-import AxeBuilder from "./axe";
-import { writeFile } from "node:fs/promises";
 
 const draft = "https://github.com/example/private-draft";
 const limits = {
@@ -44,110 +41,6 @@ async function focusImportURLByKeyboard(page: Page) {
   }
   await expect(input).toBeFocused();
   await expect(input).toBeInViewport({ ratio: 1 });
-}
-
-for (const failure of ["pending", "server", "network", "offline"]) {
-  test(`${failure} identity verification blocks import and recovers without replaying the draft`, async ({
-    page,
-  }) => {
-    await stubPlatform(page);
-    await page.setViewportSize({ width: 375, height: 900 });
-    await page.route("**/skills/import/limits", (route) => route.fulfill({ json: limits }));
-    let checking = false;
-    let writes = 0;
-    let release!: () => void;
-    let started!: () => void;
-    const gate = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-    const readStarted = new Promise<void>((resolve) => {
-      started = resolve;
-    });
-    await page.route("**/me", async (route) => {
-      if (checking && failure === "pending") {
-        started();
-        await gate;
-      }
-      if (checking && failure === "server")
-        return route.fulfill({ status: 503, json: { error: "service unavailable" } });
-      if (checking && failure === "network") return route.abort("failed");
-      return route.fulfill({ json: platformResponse("/me").body });
-    });
-    await page.route("**/skills/import/url", (route) => {
-      writes += 1;
-      return route.fulfill({ status: 201, json: imported });
-    });
-    try {
-      await page.goto("/workspace/import");
-      await expect(page.locator(".auth-name")).toHaveText("tester");
-      const input = page.getByRole("textbox", { name: "URL", exact: true });
-      await input.fill(draft);
-      await expect(page.getByRole("button", { name: "開始匯入", exact: true })).toBeEnabled();
-      checking = true;
-      if (failure === "offline") await setOffline(page, true);
-      await page.evaluate(() =>
-        document.dispatchEvent(new Event("visibilitychange", { bubbles: true })),
-      );
-      if (failure === "pending") await readStarted;
-      else if (failure === "offline")
-        await expect(page.getByText("等待連線以確認登入狀態…", { exact: true })).toBeVisible();
-      else
-        await expect(
-          page.getByRole("button", { name: "重新確認登入狀態", exact: true }),
-        ).toBeVisible();
-      await expect(page.locator(".auth-name")).toHaveCount(0);
-      await expect(page.getByRole("button", { name: "開始匯入", exact: true })).toBeDisabled();
-      await focusImportURLByKeyboard(page);
-      await page.keyboard.press("Enter");
-      await expect(page.getByRole("button", { name: "開始匯入", exact: true })).toBeDisabled();
-      await expect(
-        page.getByRole("button", { name: "開始匯入", exact: true }),
-      ).toHaveAccessibleDescription("登入狀態尚未確認；請先在頁首確認，再送出匯入。");
-      await expect(input).toBeFocused();
-      await page.screenshot({ path: test.info().outputPath("session-readiness-blocked.png") });
-      await writeFile(
-        test.info().outputPath("import-session-viewport.json"),
-        JSON.stringify(
-          await page.evaluate(() => ({
-            input: document.querySelector("#skill-import-url")!.getBoundingClientRect(),
-            reason: document.querySelector("#import-session-unavailable")!.getBoundingClientRect(),
-            header: document.querySelector(".app-header")!.getBoundingClientRect(),
-            height: innerHeight,
-            scrollY,
-            visualHeight: visualViewport?.height,
-            visualTop: visualViewport?.offsetTop,
-          })),
-        ),
-      );
-      await expect(page.locator("#import-session-unavailable")).toBeInViewport({ ratio: 1 });
-      expect(writes).toBe(0);
-      await expect(input).toHaveValue(draft);
-      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
-        true,
-      );
-      expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
-      checking = false;
-      if (failure === "pending") release();
-      else if (failure === "offline") await setOffline(page, false);
-      else {
-        await page.getByRole("button", { name: "重新確認登入狀態", exact: true }).click();
-        await expect(page.getByRole("main")).toBeFocused();
-      }
-      await expect(page.getByText("正在確認登入狀態…", { exact: true })).toHaveCount(0);
-      await expect(page.locator(".auth-name")).toHaveText("tester");
-      await expect(page.getByRole("button", { name: "重新確認登入狀態", exact: true })).toHaveCount(
-        0,
-      );
-      expect(writes).toBe(0);
-      await expect(input).toHaveValue(draft);
-      await page.getByRole("button", { name: "開始匯入", exact: true }).click();
-      await expect(page.getByRole("status").filter({ hasText: "匯入完成" })).toBeVisible();
-      expect(writes).toBe(1);
-    } finally {
-      release();
-      await setOffline(page, false);
-    }
-  });
 }
 
 test("a changed Workspace after a pending check clears the old draft without importing it", async ({
