@@ -32,8 +32,8 @@ const posts = (page: App) => page.requests.filter((request) => request.method ==
 
 async function openQuestions(page: App, runId = RUN) {
   await page.goto(`/runs/${runId}`);
-  await page.eventually(() => expect(page.locator(".auth-name").text()).toBe("tester"));
-  await page.eventually(() => expect(regionOf(page).count()).toBe(1));
+  await expect(page.locator(".auth-name")).toHaveText("tester");
+  await expect(regionOf(page)).toHaveCount(1);
   return regionOf(page);
 }
 
@@ -70,16 +70,16 @@ test("switching trace detail preserves selected and typed answers without sendin
       page.getByRole("button", { name: "進階模式", exact: true }).attribute("aria-pressed"),
     ).toBe("true"),
   );
-  expect(region.count()).toBe(1);
+  await expect(region).toHaveCount(1);
   expect(region.getByRole("radio", { name: "Sheet2", exact: true }).element()).toHaveProperty(
     "checked",
     true,
   );
-  expect(answersOf(page).nth(1).value()).toBe("保留最新的一筆");
+  await expect(answersOf(page).nth(1)).toHaveValue("保留最新的一筆");
   await answersOf(page).nth(0).fill("Sheet3");
   await page.getByRole("button", { name: "一般模式", exact: true }).click();
-  await page.eventually(() => expect(answersOf(page).nth(0).value()).toBe("Sheet3"));
-  expect(answersOf(page).nth(1).value()).toBe("保留最新的一筆");
+  await expect(answersOf(page).nth(0)).toHaveValue("Sheet3");
+  await expect(answersOf(page).nth(1)).toHaveValue("保留最新的一筆");
   expect(posts(page)).toEqual([]);
 });
 
@@ -110,33 +110,31 @@ for (const mode of ["一般模式", "進階模式"]) {
       const inputs = answersOf(page);
       const submit = region.getByRole("button", { name: SUBMIT, exact: true });
       await submit.click();
-      await page.eventually(() =>
-        expect(region.getByRole("status").text()).toContain("原始問題尚未確認"),
-      );
-      expect(inputs.nth(0).value()).toBe("Sheet2");
-      expect(inputs.nth(1).value()).toBe("保留最新的一筆");
-      expect(inputs.nth(1).isDisabled()).toBe(false);
+      await expect(region.getByRole("status")).toContainText("原始問題尚未確認");
+      await expect(inputs.nth(0)).toHaveValue("Sheet2");
+      await expect(inputs.nth(1)).toHaveValue("保留最新的一筆");
+      await expect(inputs.nth(1)).toBeEnabled();
       expect(inputs.nth(1).attribute("readonly")).toBeNull();
-      expect(submit.isDisabled()).toBe(true);
-      expect(region.getByRole("alert").text()).toBe("回答未被接受。這段對話已經到回答輪數的上限。");
+      await expect(submit).toBeDisabled();
+      await expect(region.getByRole("alert")).toHaveText(
+        "回答未被接受。這段對話已經到回答輪數的上限。",
+      );
       await inputs.nth(1).fill("更新後的理由");
       const retry = region.getByRole("button", { name: "重新確認問題", exact: true });
       await retry.focus();
       await page.press("Enter");
       await page.eventually(() => expect(reads).toBe(3));
-      await page.eventually(() => expect(retry.isDisabled()).toBe(true));
-      expect(submit.isDisabled()).toBe(true);
-      await page.eventually(() =>
-        expect(page.getByRole("heading", { name: REGION, exact: true }).isFocused()).toBe(true),
-      );
+      await expect(retry).toBeDisabled();
+      await expect(submit).toBeDisabled();
+      await expect(page.getByRole("heading", { name: REGION, exact: true })).toBeFocused();
       await inputs.nth(1).fill("再補充一行");
       expect(writes).toEqual([{ answers: ["Sheet2", "保留最新的一筆"] }]);
       release();
-      await page.eventually(() => expect(submit.isDisabled()).toBe(false));
-      expect(retry.count()).toBe(0);
-      expect(inputs.nth(0).value()).toBe("Sheet2");
-      expect(inputs.nth(1).value()).toBe("再補充一行");
-      expect(inputs.nth(1).isFocused()).toBe(true);
+      await expect(submit).toBeEnabled();
+      await expect(retry).toHaveCount(0);
+      await expect(inputs.nth(0)).toHaveValue("Sheet2");
+      await expect(inputs.nth(1)).toHaveValue("再補充一行");
+      await expect(inputs.nth(1)).toBeFocused();
       expect(writes).toHaveLength(1);
       expect(page.pathname()).toBe(`/runs/${RUN}`);
       expect(await page.axeViolations("body")).toEqual([]);
@@ -162,9 +160,7 @@ test("a confirmed continuation still navigates when refreshing the original trac
   const region = await fillAnswers(page);
   await region.getByRole("button", { name: SUBMIT, exact: true }).click();
   await page.eventually(() => expect(page.pathname()).toBe(`/runs/${NEXT}`));
-  await page.eventually(() =>
-    expect(page.getByRole("heading", { name: "試跑結果", exact: true }).count()).toBeGreaterThan(0),
-  );
+  await expect(page.getByRole("heading", { name: "試跑結果", exact: true })).toBeVisible();
   expect(writes).toEqual([{ answers: ["Sheet2", "保留最新的一筆"] }]);
 });
 
@@ -187,14 +183,9 @@ for (const status of [401, 404]) {
     const region = await fillAnswers(page);
     await region.getByRole("button", { name: SUBMIT, exact: true }).click();
     if (status === 401)
-      await page.eventually(() =>
-        expect(page.getByText("執行紀錄需要登入。", { exact: false }).count()).toBeGreaterThan(0),
-      );
-    else
-      await page.eventually(() =>
-        expect(page.getByText("無法讀取執行紀錄。", { exact: true }).count()).toBeGreaterThan(0),
-      );
-    expect(region.count()).toBe(0);
+      await expect(page.getByText("執行紀錄需要登入。", { exact: false })).toBeVisible();
+    else await expect(page.getByText("無法讀取執行紀錄。", { exact: true })).toBeVisible();
+    await expect(region).toHaveCount(0);
     expect(count).toBe(1);
   });
 }
@@ -203,14 +194,12 @@ test("questions belonging to another Run never become an answer form for this Ru
   const page = app();
   page.route(`**/runs/${RUN}/trace`, () => ({ json: { ...ASKING, run_id: NEXT } }));
   await page.goto(`/runs/${RUN}`);
-  await page.eventually(() =>
-    expect(page.locator("#run-trace").getByRole("alert").text()).toBe("無法讀取執行紀錄。"),
-  );
-  expect(page.locator('#run-trace p[role="status"]').filter({ hasText: "執行狀態" }).count()).toBe(
-    0,
-  );
-  expect(page.locator("#run-decision .verdict").text()).toBe("任務判定：未符合");
-  expect(regionOf(page).count()).toBe(0);
+  await expect(page.locator("#run-trace").getByRole("alert")).toHaveText("無法讀取執行紀錄。");
+  await expect(
+    page.locator('#run-trace p[role="status"]').filter({ hasText: "執行狀態" }),
+  ).toHaveCount(0);
+  await expect(page.locator("#run-decision .verdict")).toHaveText("任務判定：未符合");
+  await expect(regionOf(page)).toHaveCount(0);
 });
 
 for (const status of ["running", "failed"]) {
@@ -219,8 +208,8 @@ for (const status of ["running", "failed"]) {
     page.route(`**/runs/${RUN}/trace`, () => ({ json: { ...ASKING, status } }));
     await page.goto(`/runs/${RUN}`);
     const statusLine = page.locator('#run-trace p[role="status"]').filter({ hasText: "執行狀態" });
-    await page.eventually(() => expect(statusLine.text()).toContain(status));
-    expect(regionOf(page).count()).toBe(0);
+    await expect(statusLine).toContainText(status);
+    await expect(regionOf(page)).toHaveCount(0);
   });
 }
 
@@ -245,22 +234,18 @@ test("a cached next Run receives a fresh answer draft rather than the previous R
     json: { run_id: NEXT, status: "queued", provider: "unassigned" },
   }));
   await openQuestions(page, NEXT);
-  expect(answersOf(page).nth(0).count()).toBe(1);
+  await expect(answersOf(page).nth(0)).toHaveCount(1);
   await page
     .getByRole("navigation", { name: "主要導覽", exact: true })
     .getByRole("link", { name: "活動", exact: true })
     .click();
-  await page.eventually(() =>
-    expect(page.getByRole("heading", { name: "活動", exact: true }).count()).toBeGreaterThan(0),
-  );
-  await page.eventually(() =>
-    expect(page.locator(`main a[href="/runs/${RUN}"]`).count()).toBeGreaterThan(0),
-  );
+  await expect(page.getByRole("heading", { name: "活動", exact: true })).toBeVisible();
+  await expect(page.locator(`main a[href="/runs/${RUN}"]`)).toBeVisible();
   await page.locator(`main a[href="/runs/${RUN}"]`).first().click();
-  await page.eventually(() => expect(regionOf(page).count()).toBe(1));
+  await expect(regionOf(page)).toHaveCount(1);
   const region = await fillAnswers(page);
   await region.getByRole("button", { name: SUBMIT, exact: true }).click();
   await page.eventually(() => expect(page.pathname()).toBe(`/runs/${NEXT}`));
-  await page.eventually(() => expect(answersOf(page).nth(0).value()).toBe(""));
-  expect(answersOf(page).nth(1).value()).toBe("");
+  await expect(answersOf(page).nth(0)).toHaveValue("");
+  await expect(answersOf(page).nth(1)).toHaveValue("");
 });

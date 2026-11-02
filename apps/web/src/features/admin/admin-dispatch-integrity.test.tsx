@@ -29,36 +29,37 @@ for (const entry of ["/admin", "/admin/dispatch"]) {
       name: home ? "重新整理狀態" : "重新整理派送狀態",
       exact: true,
     });
-    await page.eventually(() => expect(failure.count()).toBeGreaterThan(0));
+    await expect(failure).toBeVisible();
     if (home) {
-      expect(signal.text()).toBe("無法取得");
-      expect(page.locator(".admin-home-summary").count()).toBe(0);
+      await expect(signal).toHaveText("無法取得");
+      await expect(page.locator(".admin-home-summary")).toHaveCount(0);
     } else {
-      expect(signal.count()).toBe(0);
-      expect(page.locator("#admin-halt-lift-target").count()).toBe(0);
+      await expect(signal).toHaveCount(0);
+      await expect(page.locator("#admin-halt-lift-target")).toHaveCount(0);
       await page.locator("#admin-halt-declare-note").fill("保留維運判斷草稿");
     }
     current = { dispatching: true, halts: [] };
     await refresh.click();
-    await page.eventually(() => expect(signal.text()).toBe("正在派送"));
-    await page.eventually(() => expect(failure.count()).toBe(0));
+    await expect(signal).toHaveText("正在派送");
+    await expect(failure).toHaveCount(0);
     current = { dispatching: true, halts: [ADMIN_DISPATCH.halts[0], { target: "node-3" }] };
     await refresh.click();
-    await page.eventually(() => expect(failure.count()).toBeGreaterThan(0));
+    await expect(failure).toBeVisible();
     if (home) {
-      expect(signal.text()).toBe("無法取得");
-      expect(page.locator(".admin-home-summary").count()).toBe(0);
+      await expect(signal).toHaveText("無法取得");
+      await expect(page.locator(".admin-home-summary")).toHaveCount(0);
     } else {
-      expect(signal.count()).toBe(0);
-      expect(page.locator("#admin-halt-lift-target").count()).toBe(0);
-      expect(page.locator("#admin-halt-declare-note").value()).toBe("保留維運判斷草稿");
+      await expect(signal).toHaveCount(0);
+      await expect(page.locator("#admin-halt-lift-target")).toHaveCount(0);
+      await expect(page.locator("#admin-halt-declare-note")).toHaveValue("保留維運判斷草稿");
     }
     expect(await page.axeViolations("main")).toEqual([]);
     current = { dispatching: false, halts: [] };
     await refresh.click();
-    await page.eventually(() => expect(signal.text()).toBe("停止派送"));
-    await page.eventually(() => expect(failure.count()).toBe(0));
-    if (!home) expect(page.locator("#admin-halt-declare-note").value()).toBe("保留維運判斷草稿");
+    await expect(signal).toHaveText("停止派送");
+    await expect(failure).toHaveCount(0);
+    if (!home)
+      await expect(page.locator("#admin-halt-declare-note")).toHaveValue("保留維運判斷草稿");
     expect(reads).toBe(4);
     expect(writes()).toEqual([]);
   });

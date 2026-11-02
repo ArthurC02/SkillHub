@@ -26,8 +26,8 @@ test("the audit log continues on a stable cursor without repeating the first pag
   });
 
   await page.goto("/admin/audit-log");
-  await page.eventually(() => expect(page.locator("tbody tr").count()).toBe(50));
+  await expect(page.locator("tbody tr")).toHaveCount(50);
   await page.getByRole("button", { name: "載入更多" }).click();
-  await page.eventually(() => expect(page.locator("tbody tr").count()).toBe(51));
-  expect(page.getByRole("button", { name: "載入更多" }).count()).toBe(0);
+  await expect(page.locator("tbody tr")).toHaveCount(51);
+  await expect(page.getByRole("button", { name: "載入更多" })).toHaveCount(0);
 });

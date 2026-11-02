@@ -51,9 +51,7 @@ function stubAcquisition(page: App, kind: Kind, reply: unknown, status = 201) {
 
 async function openAndClick(page: App, url: string, button: string) {
   await page.goto(url);
-  await page.eventually(() =>
-    expect(page.getByRole("button", { name: button, exact: true }).count()).toBe(1),
-  );
+  await expect(page.getByRole("button", { name: button, exact: true })).toHaveCount(1);
   await page.getByRole("button", { name: button, exact: true }).click();
 }
 
@@ -69,23 +67,21 @@ for (const kind of ["skill", "public bundle", "private bundle"] as const) {
       const state = stubAcquisition(page, kind, damage === "null" ? null : incomplete);
       await openAndClick(page, state.url, state.button);
       const alert = () => page.getByRole("alert").filter({ hasText: "下載結果尚未確認" });
-      await page.eventually(() => expect(alert().isFocused()).toBe(true));
+      await expect(alert()).toBeFocused();
       expect(page.pathname() + page.search()).toBe(state.url);
-      expect(
-        page
-          .getByRole("heading", {
-            name:
-              kind === "private bundle"
-                ? "發佈與交付"
-                : kind === "skill"
-                  ? "PDF Summariser"
-                  : "pdf-toolkit",
-            exact: true,
-          })
-          .count(),
-      ).toBeGreaterThan(0);
+      await expect(
+        page.getByRole("heading", {
+          name:
+            kind === "private bundle"
+              ? "發佈與交付"
+              : kind === "skill"
+                ? "PDF Summariser"
+                : "pdf-toolkit",
+          exact: true,
+        }),
+      ).toBeVisible();
       expect(state.writes).toHaveLength(1);
-      expect(page.locator('a[href="undefined"]').count()).toBe(0);
+      await expect(page.locator('a[href="undefined"]')).toHaveCount(0);
       await expectAccessible(page);
       const recovery = page.getByRole("link", { name: "另開交付紀錄核對", exact: true });
       expect(recovery.attribute("href")).toBe("/workspace/downloads");
@@ -94,7 +90,7 @@ for (const kind of ["skill", "public bundle", "private bundle"] as const) {
       await recovery.focus();
       await page.press("Enter");
       expect(page.pathname() + page.search()).toBe(state.url);
-      expect(alert().text()).toContain("下載結果尚未確認");
+      await expect(alert()).toContainText("下載結果尚未確認");
       expect(state.writes).toHaveLength(1);
     });
   }
@@ -105,11 +101,9 @@ for (const kind of ["skill", "public bundle", "private bundle"] as const) {
     await openAndClick(page, state.url, state.button);
     const download = () =>
       page.getByRole("link", { name: "下載 " + RECEIPT.file_name, exact: true });
-    await page.eventually(() => expect(download().count()).toBe(1));
+    await expect(download()).toHaveCount(1);
     expect(download().attribute("href")).toBe(`/downloads/${ARTIFACT}/content`);
-    expect(page.getByRole("status").filter({ hasText: RECEIPT.file_name }).count()).toBeGreaterThan(
-      0,
-    );
+    await expect(page.getByRole("status").filter({ hasText: RECEIPT.file_name })).toBeVisible();
     const history = page.getByRole("link", {
       name: kind === "private bundle" ? "查看這次交付紀錄" : "在交付紀錄查看這一份",
       exact: true,
@@ -127,11 +121,9 @@ test("a foreign acquisition URL offers record verification without an unverified
     content_url: "/downloads/55555555-5555-4555-8555-555555555555/content",
   });
   await openAndClick(page, state.url, "下載");
-  await page.eventually(() =>
-    expect(page.getByRole("alert").filter({ hasText: "下載結果尚未確認" }).isFocused()).toBe(true),
-  );
-  expect(page.locator('a[href*="55555555-5555"]').count()).toBe(0);
-  expect(page.getByRole("link", { name: "另開交付紀錄核對", exact: true }).count()).toBe(1);
+  await expect(page.getByRole("alert").filter({ hasText: "下載結果尚未確認" })).toBeFocused();
+  await expect(page.locator('a[href*="55555555-5555"]')).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "另開交付紀錄核對", exact: true })).toHaveCount(1);
   expect(state.writes).toHaveLength(1);
   await expectAccessible(page);
 });
@@ -149,15 +141,10 @@ for (const [status, message, expected] of [
     const page = app();
     const state = stubAcquisition(page, "skill", { error: message }, status);
     await openAndClick(page, state.url, "下載");
-    await page.eventually(() =>
-      expect(
-        page
-          .getByRole(status === 401 ? "status" : "alert")
-          .filter({ hasText: expected })
-          .count(),
-      ).toBeGreaterThan(0),
-    );
-    expect(page.getByRole("link", { name: "另開交付紀錄核對", exact: true }).count()).toBe(0);
+    await expect(
+      page.getByRole(status === 401 ? "status" : "alert").filter({ hasText: expected }),
+    ).toBeVisible();
+    await expect(page.getByRole("link", { name: "另開交付紀錄核對", exact: true })).toHaveCount(0);
     expect(state.writes).toHaveLength(1);
     await expectAccessible(page);
   });
@@ -167,10 +154,8 @@ test("an acquisition server error retains publication context and offers verific
   const page = app();
   const state = stubAcquisition(page, "skill", { error: "internal error" }, 500);
   await openAndClick(page, state.url, "下載");
-  await page.eventually(() =>
-    expect(page.getByRole("alert").filter({ hasText: "下載結果尚未確認" }).isFocused()).toBe(true),
-  );
-  expect(page.getByRole("link", { name: "另開交付紀錄核對", exact: true }).count()).toBe(1);
+  await expect(page.getByRole("alert").filter({ hasText: "下載結果尚未確認" })).toBeFocused();
+  await expect(page.getByRole("link", { name: "另開交付紀錄核對", exact: true })).toHaveCount(1);
   expect(state.writes).toHaveLength(1);
   await expectAccessible(page);
 });

@@ -48,40 +48,34 @@ for (const [name, rejected] of [
     });
     try {
       await page.goto(`/runs/${RUN}`);
-      await page.eventually(() => expect(page.locator(".auth-name").text()).toBe("tester"));
+      await expect(page.locator(".auth-name")).toHaveText("tester");
       const region = page.getByRole("region", { name: "改善建議", exact: true });
       const apply = region.getByRole("button", {
         name: "以已接受的 1 項建議建立新版本",
         exact: true,
       });
-      await page.eventually(() => expect(apply.count()).toBe(1));
+      await expect(apply).toHaveCount(1);
       await apply.click();
       const failure = region.getByRole("alert", { name: "建立版本結果", exact: true });
-      await page.eventually(() =>
-        expect(failure.text()).toContain("沒有一項建議可以套用，所以沒有建立新版本。"),
-      );
-      expect(failure.text()).toContain("逐項拒絕原因未完整讀取");
-      expect(failure.getByRole("list").count()).toBe(0);
-      expect(failure.text()).not.toContain("undefined");
+      await expect(failure).toContainText("沒有一項建議可以套用，所以沒有建立新版本。");
+      await expect(failure).toContainText("逐項拒絕原因未完整讀取");
+      await expect(failure.getByRole("list")).toHaveCount(0);
+      await expect(failure).not.toContainText("undefined");
       await region.getByRole("button", { name: "查看差異", exact: true }).first().click();
       const diff = region.getByRole("region", { name: "建議差異", exact: true });
-      await page.eventually(() =>
-        expect(diff.getByRole("alert").text()).toContain("暫時無法讀取差異"),
-      );
+      await expect(diff.getByRole("alert")).toContainText("暫時無法讀取差異");
       const retry = diff.getByRole("button", { name: "再試一次", exact: true });
       await retry.focus();
       await page.press("Enter");
       await page.eventually(() => expect(reads).toBe(2));
-      await page.eventually(() => expect(diff.isFocused()).toBe(true));
+      await expect(diff).toBeFocused();
       expect(writes).toBe(1);
       release();
-      await page.eventually(() =>
-        expect(diff.text()).toContain("目前無法套用：目標檔案已經和建議產生當時不同"),
-      );
-      expect(diff.getByRole("alert").count()).toBe(0);
-      expect(diff.getByRole("button", { name: "再試一次", exact: true }).count()).toBe(0);
-      expect(diff.isFocused()).toBe(true);
-      expect(failure.text()).toContain("逐項拒絕原因未完整讀取");
+      await expect(diff).toContainText("目前無法套用：目標檔案已經和建議產生當時不同");
+      await expect(diff.getByRole("alert")).toHaveCount(0);
+      await expect(diff.getByRole("button", { name: "再試一次", exact: true })).toHaveCount(0);
+      await expect(diff).toBeFocused();
+      await expect(failure).toContainText("逐項拒絕原因未完整讀取");
       expect(writes).toBe(1);
       expect(reads).toBe(2);
       expect(page.pathname()).toBe(`/runs/${RUN}`);

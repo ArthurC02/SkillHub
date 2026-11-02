@@ -90,33 +90,25 @@ for (const list of lists) {
             };
       });
       await page.goto(list.url);
-      if (empty)
-        await page.eventually(() => expect(page.getByText(list.empty).count()).toBeGreaterThan(0));
-      else
-        await page.eventually(() =>
-          expect(page.locator(list.selector).count()).toBe(list.rows.length),
-        );
+      if (empty) await expect(page.getByText(list.empty)).toBeVisible();
+      else await expect(page.locator(list.selector)).toHaveCount(list.rows.length);
       await page.locator('a[href="/policy"]').first().click();
       await page.eventually(() => expect(page.pathname()).toBe("/policy"));
-      await page.eventually(() =>
-        expect(page.getByRole("heading", { name: "資料保存政策", exact: true }).count()).toBe(1),
-      );
+      await expect(page.getByRole("heading", { name: "資料保存政策", exact: true })).toHaveCount(1);
       await page.goBack();
-      await page.eventually(() => expect(page.getByRole("alert").text()).toContain("暫時無法讀取"));
-      expect(page.locator(list.selector).count()).toBe(0);
-      expect(page.getByText(list.empty).count()).toBe(0);
+      await expect(page.getByRole("alert")).toContainText("暫時無法讀取");
+      await expect(page.locator(list.selector)).toHaveCount(0);
+      await expect(page.getByText(list.empty)).toHaveCount(0);
       if (list.name === "history") {
-        expect(page.getByText("沿用最近一次試跑紀錄", { exact: true }).count()).toBe(0);
-        expect(page.getByText("最近使用的 Version 無法確認", { exact: true }).count()).toBe(1);
+        await expect(page.getByText("沿用最近一次試跑紀錄", { exact: true })).toHaveCount(0);
+        await expect(page.getByText("最近使用的 Version 無法確認", { exact: true })).toHaveCount(1);
       }
       const retry = page.getByRole("button", { name: "再試一次", exact: true });
-      expect(retry.count()).toBe(1);
+      await expect(retry).toHaveCount(1);
       await retry.focus();
       await page.press("Enter");
-      await page.eventually(() =>
-        expect(page.locator(list.selector).count()).toBe(list.rows.length),
-      );
-      await page.eventually(() => expect(page.locator(`#${list.heading}`).isFocused()).toBe(true));
+      await expect(page.locator(list.selector)).toHaveCount(list.rows.length);
+      await expect(page.locator(`#${list.heading}`)).toBeFocused();
       expect(reads).toBe(3);
       expect(await page.axeViolations("main")).toEqual([]);
     });
@@ -160,42 +152,36 @@ for (const list of lists) {
             };
       });
       await page.goto(list.url);
-      await page.eventually(() => expect(page.locator(list.selector).count()).toBe(list.pageSize));
+      await expect(page.locator(list.selector)).toHaveCount(list.pageSize);
       if (list.name === "test cases") {
         await page.getByLabel("名稱", { exact: true }).fill("未送出的測試題");
         await page.getByLabel("User Prompt", { exact: true }).fill("保留草稿內容");
       }
       await page.getByRole("button", { name: list.loadMore, exact: true }).click();
       if (status === 401) {
-        await page.eventually(() =>
-          expect(page.getByRole("status").filter({ hasText: "需要登入" }).count()).toBeGreaterThan(
-            0,
-          ),
-        );
-        expect(page.locator(list.selector).count()).toBe(0);
-        expect(page.getByRole("button", { name: "再試一次", exact: true }).count()).toBe(0);
+        await expect(page.getByRole("status").filter({ hasText: "需要登入" })).toBeVisible();
+        await expect(page.locator(list.selector)).toHaveCount(0);
+        await expect(page.getByRole("button", { name: "再試一次", exact: true })).toHaveCount(0);
         return;
       }
-      await page.eventually(() => expect(page.getByRole("alert").count()).toBeGreaterThan(0));
-      expect(page.locator(list.selector).count()).toBe(status === 503 ? list.pageSize : 0);
+      await expect(page.getByRole("alert")).toBeVisible();
+      await expect(page.locator(list.selector)).toHaveCount(status === 503 ? list.pageSize : 0);
       if (status === 503) {
-        expect(page.getByRole("alert").text()).toContain("尚未讀完");
-        expect(page.getByText("目前沒有正在執行的試跑。", { exact: true }).count()).toBe(0);
+        await expect(page.getByRole("alert")).toContainText("尚未讀完");
+        await expect(page.getByText("目前沒有正在執行的試跑。", { exact: true })).toHaveCount(0);
       }
-      expect(page.getByRole("button", { name: list.loadMore, exact: true }).count()).toBe(0);
+      await expect(page.getByRole("button", { name: list.loadMore, exact: true })).toHaveCount(0);
       await page.getByRole("button", { name: "再試一次", exact: true }).click();
-      await page.eventually(() =>
-        expect(page.locator(list.selector).count()).toBe(
-          status === 503 ? list.pageSize + 1 : list.rows.length,
-        ),
+      await expect(page.locator(list.selector)).toHaveCount(
+        status === 503 ? list.pageSize + 1 : list.rows.length,
       );
       expect(firstReads).toBe(status === 503 ? 1 : 2);
       expect(nextReads).toBe(status === 503 ? 2 : 1);
-      await page.eventually(() => expect(page.locator(`#${list.heading}`).isFocused()).toBe(true));
-      expect(page.getByRole("button", { name: list.loadMore, exact: true }).count()).toBe(0);
+      await expect(page.locator(`#${list.heading}`)).toBeFocused();
+      await expect(page.getByRole("button", { name: list.loadMore, exact: true })).toHaveCount(0);
       if (list.name === "test cases") {
-        expect(page.getByLabel("名稱", { exact: true }).value()).toBe("未送出的測試題");
-        expect(page.getByLabel("User Prompt", { exact: true }).value()).toBe("保留草稿內容");
+        await expect(page.getByLabel("名稱", { exact: true })).toHaveValue("未送出的測試題");
+        await expect(page.getByLabel("User Prompt", { exact: true })).toHaveValue("保留草稿內容");
       }
     });
   }
@@ -220,37 +206,27 @@ for (const cached of [false, true]) {
     });
     await page.goto(`/lab/test-cases?skill=${SKILL}&version=${VERSION}`);
     if (cached) {
-      await page.eventually(() =>
-        expect(page.getByText("這個小工具不在你的工作區。").count()).toBeGreaterThan(0),
-      );
+      await expect(page.getByText("這個小工具不在你的工作區。")).toBeVisible();
       await page.locator('a[href="/policy"]').first().click();
       await page.eventually(() => expect(page.pathname()).toBe("/policy"));
-      await page.eventually(() =>
-        expect(page.getByRole("heading", { name: "資料保存政策", exact: true }).count()).toBe(1),
-      );
+      await expect(page.getByRole("heading", { name: "資料保存政策", exact: true })).toHaveCount(1);
       await page.goBack();
     }
-    await page.eventually(() =>
-      expect(page.getByRole("alert").text()).toContain("暫時無法讀取你的小工具清單"),
-    );
-    expect(page.getByText("這個小工具不在你的工作區。").count()).toBe(0);
-    expect(page.locator("#create-skills-why").text()).toContain("目前無法確認可用的小工具");
+    await expect(page.getByRole("alert")).toContainText("暫時無法讀取你的小工具清單");
+    await expect(page.getByText("這個小工具不在你的工作區。")).toHaveCount(0);
+    await expect(page.locator("#create-skills-why")).toContainText("目前無法確認可用的小工具");
     await page.getByLabel("名稱", { exact: true }).fill("未送出的測試題");
     await page.getByLabel("User Prompt", { exact: true }).fill("保留草稿內容");
-    expect(page.getByRole("button", { name: "建立", exact: true }).isDisabled()).toBe(true);
+    await expect(page.getByRole("button", { name: "建立", exact: true })).toBeDisabled();
     await page.locator("#tc-name").press("Enter");
     expect(writes).toBe(0);
     await page.getByRole("button", { name: "再試一次", exact: true }).click();
-    await page.eventually(() => expect(page.getByRole("alert").count()).toBe(0));
-    expect(page.getByLabel("名稱", { exact: true }).value()).toBe("未送出的測試題");
-    expect(page.getByLabel("User Prompt", { exact: true }).value()).toBe("保留草稿內容");
-    expect(page.getByLabel("小工具", { exact: true }).value()).toBe(SKILL);
-    await page.eventually(() =>
-      expect(page.getByRole("button", { name: "建立", exact: true }).isDisabled()).toBe(false),
-    );
-    await page.eventually(() =>
-      expect(page.locator("#create-test-case-heading").isFocused()).toBe(true),
-    );
+    await expect(page.getByRole("alert")).toHaveCount(0);
+    await expect(page.getByLabel("名稱", { exact: true })).toHaveValue("未送出的測試題");
+    await expect(page.getByLabel("User Prompt", { exact: true })).toHaveValue("保留草稿內容");
+    await expect(page.getByLabel("小工具", { exact: true })).toHaveValue(SKILL);
+    await expect(page.getByRole("button", { name: "建立", exact: true })).toBeEnabled();
+    await expect(page.locator("#create-test-case-heading")).toBeFocused();
     expect(new URLSearchParams(page.search()).get("version")).toBe(VERSION);
     expect(writes).toBe(0);
   });

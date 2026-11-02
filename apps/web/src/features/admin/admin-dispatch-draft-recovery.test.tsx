@@ -58,20 +58,20 @@ for (const target of ["pool", "node-2"]) {
         document.querySelectorAll('section[aria-labelledby="admin-dispatch-lift"]');
       const refresh = page.getByRole("button", { name: "重新整理派送狀態", exact: true });
       const confirm = page.getByRole("button", { name: "確認恢復派送", exact: true });
-      await page.eventually(() => expect(select.count()).toBe(1));
+      await expect(select).toHaveCount(1);
       await select.select(target);
       await note.fill(NOTE);
       await page.getByRole("button", { name: "恢復派送", exact: true }).click();
-      await page.eventually(() => expect(confirm.count()).toBe(1));
-      expect(confirm.isDisabled()).toBe(false);
+      await expect(confirm).toHaveCount(1);
+      await expect(confirm).toBeEnabled();
       readMode = outcome;
       held = new Promise<void>((resolve) => {
         finishRead = resolve;
       });
       await refresh.click();
       try {
-        await page.eventually(() => expect(select.isDisabled()).toBe(true));
-        await page.eventually(() => expect(confirm.isDisabled()).toBe(true));
+        await expect(select).toBeDisabled();
+        await expect(confirm).toBeDisabled();
         const describedBy = select.attribute("aria-describedby") ?? "";
         expect(document.getElementById(describedBy)?.textContent).toBe(
           "正在重新讀取派送狀態，完成後才能恢復派送。",
@@ -82,40 +82,38 @@ for (const target of ["pool", "node-2"]) {
         finishRead();
         held = undefined;
       }
-      await page.eventually(() =>
-        expect(page.getByRole("alert").text()).toContain("暫時無法讀取派送狀態"),
-      );
+      await expect(page.getByRole("alert")).toContainText("暫時無法讀取派送狀態");
       expect(section()).toHaveLength(1);
-      expect(page.locator('section[aria-labelledby="admin-dispatch-lift"]').count()).toBe(0);
-      expect(
-        page.getByText("原本的欄位先保留，狀態恢復後再核對。", { exact: false }).count(),
-      ).toBeGreaterThan(0);
-      expect(select.count()).toBe(0);
+      await expect(page.locator('section[aria-labelledby="admin-dispatch-lift"]')).toHaveCount(0);
+      await expect(
+        page.getByText("原本的欄位先保留，狀態恢復後再核對。", { exact: false }),
+      ).toBeVisible();
+      await expect(select).toHaveCount(0);
       expect((document.getElementById("admin-halt-lift-target") as HTMLSelectElement).value).toBe(
         target,
       );
       expect((document.getElementById("admin-halt-lift-note") as HTMLTextAreaElement).value).toBe(
         NOTE,
       );
-      expect(confirm.count()).toBe(0);
+      await expect(confirm).toHaveCount(0);
       readMode = "valid";
       await refresh.click();
-      await page.eventually(() => expect(select.count()).toBe(1));
-      expect(select.value()).toBe(target);
-      expect(note.value()).toBe(NOTE);
-      await page.eventually(() => expect(confirm.isDisabled()).toBe(false));
+      await expect(select).toHaveCount(1);
+      await expect(select).toHaveValue(target);
+      await expect(note).toHaveValue(NOTE);
+      await expect(confirm).toBeEnabled();
       expect(writes()).toEqual([]);
       await confirm.click();
       const result = page.locator("#admin-dispatch-lift-result");
-      await page.eventually(() => expect(result.text()).toContain("已不在生效中的煞車清單"));
-      expect(result.isFocused()).toBe(true);
-      expect(select.value()).toBe("");
-      expect(select.locator(`option[value="${target}"]`).count()).toBe(0);
-      expect(
-        select.locator(`option[value="${target === "pool" ? "node-2" : "pool"}"]`).count(),
-      ).toBe(1);
-      expect(note.value()).toBe("");
-      expect(page.getByRole("button", { name: "恢復派送", exact: true }).isDisabled()).toBe(true);
+      await expect(result).toContainText("已不在生效中的煞車清單");
+      await expect(result).toBeFocused();
+      await expect(select).toHaveValue("");
+      await expect(select.locator(`option[value="${target}"]`)).toHaveCount(0);
+      await expect(
+        select.locator(`option[value="${target === "pool" ? "node-2" : "pool"}"]`),
+      ).toHaveCount(1);
+      await expect(note).toHaveValue("");
+      await expect(page.getByRole("button", { name: "恢復派送", exact: true })).toBeDisabled();
       expect(bodies).toEqual([
         target === "pool" ? { note: NOTE } : { note: NOTE, provider: "node-2" },
       ]);

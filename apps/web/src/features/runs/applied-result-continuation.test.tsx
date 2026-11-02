@@ -53,8 +53,8 @@ for (const hasTestCase of [true, false]) {
           name: "以已接受的 1 項建議建立新版本",
           exact: true,
         });
-        await page.eventually(() => expect(apply.count()).toBe(1));
-        await page.eventually(() => expect(apply.isDisabled()).toBe(false));
+        await expect(apply).toHaveCount(1);
+        await expect(apply).toBeEnabled();
         await apply.focus();
         await apply.click();
         await page.eventually(() => expect(writes).toHaveLength(1));
@@ -65,18 +65,14 @@ for (const hasTestCase of [true, false]) {
           name: hasTestCase ? "以新版本重跑這個測試題" : "開啟剛建立的版本",
           exact: true,
         });
-        await page.eventually(() =>
-          expect(
-            page
-              .getByRole("button", { name: "以已接受的 0 項建議建立新版本", exact: true })
-              .isDisabled(),
-          ).toBe(true),
-        );
+        await expect(
+          page.getByRole("button", { name: "以已接受的 0 項建議建立新版本", exact: true }),
+        ).toBeDisabled();
         if (leavesForm) {
-          await page.eventually(() => expect(search.isFocused()).toBe(true));
-          expect(search.value()).toBe("保留目前搜尋草稿");
+          await expect(search).toBeFocused();
+          await expect(search).toHaveValue("保留目前搜尋草稿");
         } else {
-          await page.eventually(() => expect(continuation.isFocused()).toBe(true));
+          await expect(continuation).toBeFocused();
         }
         expect(writes).toEqual([{ evaluation_id: "eval-2", suggestion_ids: ["s1"] }]);
         const section = document.querySelector('section[aria-labelledby="suggestions-heading"]');

@@ -49,34 +49,26 @@ for (const outcome of outcomes) {
       });
       try {
         await page.goto("/admin/accounts");
-        await page.eventually(() =>
-          expect(page.getByLabel("Email", { exact: true }).count()).toBe(1),
-        );
+        await expect(page.getByLabel("Email", { exact: true })).toHaveCount(1);
         await page.getByLabel("Email", { exact: true }).fill("member@example.com");
         await page.getByLabel("Email", { exact: true }).press("Enter");
-        await page.eventually(() =>
-          expect(page.getByRole("heading", { name: "封測者甲" }).count()).toBeGreaterThan(0),
-        );
+        await expect(page.getByRole("heading", { name: "封測者甲" })).toBeVisible();
         await page.locator("#admin-grant-amount").fill("50");
         await page.locator("#admin-grant-note").fill("checked operator grant");
         await page.getByRole("button", { name: "授予", exact: true }).click();
         await received;
-        await page.eventually(() =>
-          expect(page.getByRole("button", { name: "送出中…", exact: true }).isDisabled()).toBe(
-            true,
-          ),
-        );
+        await expect(page.getByRole("button", { name: "送出中…", exact: true })).toBeDisabled();
         const search = page.locator('header input[type="search"]');
         if (owner === "header search") await search.fill("下一個任務");
         release();
         const result = page.locator('[role=group][aria-label="操作結果"]');
         const feedback = result.locator(outcome.status === 200 ? "[role=status]" : "[role=alert]");
-        await page.eventually(() => expect(feedback.text()).toBe(outcome.message));
+        await expect(feedback).toHaveText(outcome.message);
         if (owner === "header search") {
-          await page.eventually(() => expect(search.isFocused()).toBe(true));
-          expect(search.value()).toBe("下一個任務");
-          expect(result.isFocused()).toBe(false);
-        } else await page.eventually(() => expect(result.isFocused()).toBe(true));
+          await expect(search).toBeFocused();
+          await expect(search).toHaveValue("下一個任務");
+          await expect(result).not.toBeFocused();
+        } else await expect(result).toBeFocused();
         expect(writes).toHaveLength(1);
         expect(writes[0]).toMatchObject({ amount_credits: 50, reason: "checked operator grant" });
         expect(await page.axeViolations("form:has(#admin-grant-note)")).toEqual([]);

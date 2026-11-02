@@ -53,8 +53,8 @@ for (const state of ["paused", "fetching"]) {
       const more = section.getByRole("button", { name: "載入更多小工具", exact: true });
       const nameField = form.getByRole("textbox", { name: "名稱", exact: true });
       try {
-        await page.eventually(() => expect(member.value()).toBe(VERSION));
-        await page.eventually(() => expect(create.isDisabled()).toBe(false));
+        await expect(member).toHaveValue(VERSION);
+        await expect(create).toBeEnabled();
         await nameField.fill("kept-bundle");
         await form
           .getByRole("textbox", { name: "版本（semver，例如 1.0.0）", exact: true })
@@ -63,33 +63,33 @@ for (const state of ["paused", "fetching"]) {
         if (state === "paused") await page.setOffline(true);
         await more.click();
         const status = section.locator("#bundle-members-read-status");
-        await page.eventually(() => expect(create.isDisabled()).toBe(true));
-        expect(member.isDisabled()).toBe(true);
-        if (state === "paused") expect(more.isDisabled()).toBe(true);
+        await expect(create).toBeDisabled();
+        await expect(member).toBeDisabled();
+        if (state === "paused") await expect(more).toBeDisabled();
         const expected = state === "paused" ? "等待連線" : "載入可加入 Bundle 的版本中";
-        await page.eventually(() => expect(status.text()).toContain(expected));
+        await expect(status).toContainText(expected);
         expect(describedText(member.element())).toContain(expected);
-        expect(section.text()).not.toContain("還沒有可以選的小工具");
+        await expect(section).not.toContainText("還沒有可以選的小工具");
         expect(await page.axeViolations("#bundle-workspace")).toEqual([]);
         if (focus === "edited field") await nameField.fill("continued-bundle");
         await page.setOffline(false);
         finish();
-        await page.eventually(() => expect(create.isDisabled()).toBe(false));
-        await page.eventually(() => expect(member.isDisabled()).toBe(false));
-        expect(member.value()).toBe(VERSION);
-        expect(nameField.value()).toBe(
+        await expect(create).toBeEnabled();
+        await expect(member).toBeEnabled();
+        await expect(member).toHaveValue(VERSION);
+        await expect(nameField).toHaveValue(
           focus === "edited field" ? "continued-bundle" : "kept-bundle",
         );
-        expect(form.getByRole("textbox", { name: "說明", exact: true }).value()).toBe(
+        await expect(form.getByRole("textbox", { name: "說明", exact: true })).toHaveValue(
           "保留這段描述",
         );
-        await page.eventually(() => expect(status.count()).toBe(0));
-        expect(more.count()).toBe(0);
+        await expect(status).toHaveCount(0);
+        await expect(more).toHaveCount(0);
         const focused =
           focus === "edited field"
             ? nameField
             : form.locator("#bundle-member-a0000000-0000-4000-8000-000000000024");
-        await page.eventually(() => expect(focused.isFocused()).toBe(true));
+        await expect(focused).toBeFocused();
         expect(offsets).toEqual([0, 24]);
         expect(writes()).toEqual([]);
         expect(await page.axeViolations("#bundle-workspace")).toEqual([]);

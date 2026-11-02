@@ -27,38 +27,32 @@ for (const phase of ["initial", "refresh"]) {
       });
       await page.goto("/admin/rosters");
       if (phase === "refresh") {
-        await page.eventually(() =>
-          expect(page.getByText("目前 1 位。", { exact: true }).count()).toBeGreaterThan(0),
-        );
-        expect(page.getByText("provider|invited-user", { exact: true }).count()).toBeGreaterThan(0);
+        await expect(page.getByText("目前 1 位。", { exact: true })).toBeVisible();
+        await expect(page.getByText("provider|invited-user", { exact: true })).toBeVisible();
         current = malformed;
         await page.getByRole("button", { name: "重新整理", exact: true }).click();
       }
       const failure = page.getByRole("alert").filter({ hasText: "暫時無法讀取名冊" });
-      await page.eventually(() => expect(failure.count()).toBeGreaterThan(0));
-      expect(failure.text()).toContain(
+      await expect(failure).toBeVisible();
+      await expect(failure).toContainText(
         phase === "initial" ? "請稍後再試。" : "先前載入的名冊已隱藏。",
       );
-      expect(page.getByRole("heading", { name: "封測准入", exact: true }).count()).toBe(0);
-      expect(page.getByRole("heading", { name: "operator 名冊", exact: true }).count()).toBe(0);
-      expect(page.getByText("每一個登入的帳號都算受邀", { exact: false }).count()).toBe(0);
-      expect(page.getByText("provider|invited-user", { exact: true }).count()).toBe(0);
-      expect(page.getByText("目前 0 位。", { exact: true }).count()).toBe(0);
+      await expect(page.getByRole("heading", { name: "封測准入", exact: true })).toHaveCount(0);
+      await expect(page.getByRole("heading", { name: "operator 名冊", exact: true })).toHaveCount(
+        0,
+      );
+      await expect(page.getByText("每一個登入的帳號都算受邀", { exact: false })).toHaveCount(0);
+      await expect(page.getByText("provider|invited-user", { exact: true })).toHaveCount(0);
+      await expect(page.getByText("目前 0 位。", { exact: true })).toHaveCount(0);
       expect(await page.axeViolations("main")).toEqual([]);
       current = { operator_user_ids: [], beta_allowlist: [] };
       const retry = page.getByRole("button", { name: "再試一次", exact: true });
       await retry.focus();
-      expect(retry.isFocused()).toBe(true);
+      await expect(retry).toBeFocused();
       await retry.press("Enter");
-      await page.eventually(() =>
-        expect(
-          page.getByText("每一個登入的帳號都算受邀", { exact: false }).count(),
-        ).toBeGreaterThan(0),
-      );
-      await page.eventually(() =>
-        expect(page.getByText("目前 0 位。", { exact: true }).count()).toBeGreaterThan(0),
-      );
-      await page.eventually(() => expect(failure.count()).toBe(0));
+      await expect(page.getByText("每一個登入的帳號都算受邀", { exact: false })).toBeVisible();
+      await expect(page.getByText("目前 0 位。", { exact: true })).toBeVisible();
+      await expect(failure).toHaveCount(0);
       expect(reads).toBe(phase === "initial" ? 2 : 3);
       expect(writes()).toEqual([]);
     });

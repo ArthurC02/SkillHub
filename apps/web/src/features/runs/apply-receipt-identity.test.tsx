@@ -68,49 +68,45 @@ for (const mode of [
       };
     });
     await page.goto(`/runs/${RUN}`);
-    await page.eventually(() => expect(page.locator(".auth-name").text()).toBe("tester"));
+    await expect(page.locator(".auth-name")).toHaveText("tester");
     const apply = page.getByRole("button", { name: /以已接受的.*項建議建立新版本/ });
-    await page.eventually(() => expect(apply.count()).toBe(1));
+    await expect(apply).toHaveCount(1);
     await apply.click();
     const region = page.getByRole("region", { name: "改善建議", exact: true });
     if (mode === "partial" || mode === "uppercase identifiers") {
-      await page.eventually(() =>
-        expect(region.getByRole("status").text()).toContain("已建立新版本 #3"),
-      );
+      await expect(region.getByRole("status")).toContainText("已建立新版本 #3");
       expect(
         region.getByRole("link", { name: "開啟剛建立的版本", exact: true }).attribute("href"),
       ).toBe(`/skills/${SKILL}/versions/${VERSION}`);
-      expect(region.getByRole("alert").count()).toBe(0);
-      expect(region.getByText("已建成版本的建議不能撤回", { exact: true }).count()).toBe(1);
+      await expect(region.getByRole("alert")).toHaveCount(0);
+      await expect(region.getByText("已建成版本的建議不能撤回", { exact: true })).toHaveCount(1);
       if (mode === "partial") {
-        expect(region.text()).toContain("以下建議沒有被套用");
-        expect(region.text()).toContain(REJECTION.message);
-        expect(region.text()).toContain("目標檔案已經和建議產生當時不同");
+        await expect(region).toContainText("以下建議沒有被套用");
+        await expect(region).toContainText(REJECTION.message);
+        await expect(region).toContainText("目標檔案已經和建議產生當時不同");
       }
     } else {
       const alert = region.getByRole("alert", { name: "建立版本結果", exact: true });
-      await page.eventually(() =>
-        expect(alert.text()).toContain(
-          "無法確認是否已建立新版本。請先核對版本清單與建議套用狀態，再決定是否重試。",
-        ),
+      await expect(alert).toContainText(
+        "無法確認是否已建立新版本。請先核對版本清單與建議套用狀態，再決定是否重試。",
       );
-      expect(alert.isFocused()).toBe(true);
+      await expect(alert).toBeFocused();
       await page.eventually(() => expect(reads).toBe(2));
-      expect(region.getByText(/^已建立新版本/).count()).toBe(0);
-      expect(region.getByRole("link", { name: "開啟剛建立的版本", exact: true }).count()).toBe(0);
-      expect(
-        region.getByRole("link", { name: "以新版本重跑這個測試題", exact: true }).count(),
-      ).toBe(0);
-      expect(region.getByText("已建成版本的建議不能撤回", { exact: true }).count()).toBe(0);
+      await expect(region.getByText(/^已建立新版本/)).toHaveCount(0);
+      await expect(region.getByRole("link", { name: "開啟剛建立的版本", exact: true })).toHaveCount(
+        0,
+      );
+      await expect(
+        region.getByRole("link", { name: "以新版本重跑這個測試題", exact: true }),
+      ).toHaveCount(0);
+      await expect(region.getByText("已建成版本的建議不能撤回", { exact: true })).toHaveCount(0);
       const retry = region.getByRole("button", { name: "重新確認建議套用狀態", exact: true });
       await retry.focus();
       await page.press("Enter");
       await page.eventually(() => expect(reads).toBe(3));
-      await page.eventually(() => expect(retry.isDisabled()).toBe(false));
-      await page.eventually(() =>
-        expect(page.locator("#suggestions-heading").isFocused()).toBe(true),
-      );
-      expect(alert.text()).toContain("無法確認是否已建立新版本");
+      await expect(retry).toBeEnabled();
+      await expect(page.locator("#suggestions-heading")).toBeFocused();
+      await expect(alert).toContainText("無法確認是否已建立新版本");
       expect(
         region.getByRole("link", { name: "核對小工具版本", exact: true }).attribute("href"),
       ).toBe(`/skills/${SKILL}`);

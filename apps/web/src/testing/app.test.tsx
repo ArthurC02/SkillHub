@@ -88,6 +88,12 @@ test("toHaveAttribute and toHaveAccessibleDescription read one element", async (
   await expect(byId("apply")).not.toHaveAttribute("disabled");
 });
 
+test("toContainText matches case as written, like Playwright", async () => {
+  document.body.innerHTML = "<p id='mode'>Draft saved</p>";
+  await expect(byId("mode")).toContainText("Draft");
+  await expect(byId("mode")).not.toContainText("draft");
+});
+
 test("Space toggles a checkbox and Enter toggles a summary's details", async () => {
   const box = document.createElement("input");
   box.type = "checkbox";

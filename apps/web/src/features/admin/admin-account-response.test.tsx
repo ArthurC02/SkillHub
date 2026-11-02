@@ -7,7 +7,7 @@ const app = renderedApp();
 async function openLookup(page: App, draft = "Member+Ops@Example.com") {
   page.route("**/me", () => ({ json: { ...ME, operator: true } }));
   await page.goto("/admin/accounts");
-  await page.eventually(() => expect(page.getByLabel("Email", { exact: true }).count()).toBe(1));
+  await expect(page.getByLabel("Email", { exact: true })).toHaveCount(1);
   if (draft) await page.getByLabel("Email", { exact: true }).fill(draft);
   const writes = () => page.requests.filter((request) => request.method === "POST");
   return { writes };
@@ -43,18 +43,14 @@ for (const previous of ["", "previous@example.com"]) {
           json: { ...ME, operator: true, display_name: "updated tester" },
         }));
         document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
-        await page.eventually(() =>
-          expect(page.locator(".auth-name").text()).toBe("updated tester"),
-        );
+        await expect(page.locator(".auth-name")).toHaveText("updated tester");
       }
-      expect(input.value()).toBe(email);
+      await expect(input).toHaveValue(email);
       await page.getByRole("button", { name: "查詢", exact: true }).click();
       await page.eventually(() => expect(submissions.submitted).toEqual([email]));
       await page.eventually(() => expect(reads).toEqual([email]));
-      await page.eventually(() =>
-        expect(page.getByRole("heading", { name: "封測者甲", exact: true }).count()).toBe(1),
-      );
-      expect(input.value()).toBe(email);
+      await expect(page.getByRole("heading", { name: "封測者甲", exact: true })).toHaveCount(1);
+      await expect(input).toHaveValue(email);
       expect(page.pathname()).toBe("/admin/accounts");
       expect(page.search()).toBe("");
       expect(state.writes()).toEqual([]);
@@ -81,21 +77,19 @@ for (const [name, body] of [
       const submitLookup = () => page.getByLabel("Email", { exact: true }).press("Enter");
       await submitLookup();
       if (reread) {
-        await page.eventually(() => expect(lookupHeading().count()).toBe(1));
+        await expect(lookupHeading()).toHaveCount(1);
         await expect(page.locator("#admin-grant-amount")).toHaveCount(1);
         await submitLookup();
       }
-      await page.eventually(() =>
-        expect(page.locator("main [role=alert]").text()).toContain("暫時無法讀取帳號。"),
-      );
-      expect(page.getByRole("heading", { name: "帳號與點數", exact: true }).count()).toBe(1);
-      expect(page.getByLabel("Email", { exact: true }).value()).toBe("Member+Ops@Example.com");
-      expect(lookupHeading().count()).toBe(0);
-      expect(page.locator("#admin-grant-amount").count()).toBe(0);
-      expect(
-        page.getByText("目前不可通過；請確認封測名單或部署設定。", { exact: true }).count(),
-      ).toBe(0);
-      expect(page.getByText("沒有申請", { exact: true }).count()).toBe(0);
+      await expect(page.locator("main [role=alert]")).toContainText("暫時無法讀取帳號。");
+      await expect(page.getByRole("heading", { name: "帳號與點數", exact: true })).toHaveCount(1);
+      await expect(page.getByLabel("Email", { exact: true })).toHaveValue("Member+Ops@Example.com");
+      await expect(lookupHeading()).toHaveCount(0);
+      await expect(page.locator("#admin-grant-amount")).toHaveCount(0);
+      await expect(
+        page.getByText("目前不可通過；請確認封測名單或部署設定。", { exact: true }),
+      ).toHaveCount(0);
+      await expect(page.getByText("沒有申請", { exact: true })).toHaveCount(0);
       expect(reads).toBe(reread ? 2 : 1);
       expect(state.writes()).toEqual([]);
       expect(
@@ -104,9 +98,9 @@ for (const [name, body] of [
       expect(await page.axeViolations("body")).toEqual([]);
       recover = true;
       await page.getByRole("button", { name: "再試一次", exact: true }).click();
-      await page.eventually(() => expect(lookupHeading().count()).toBe(1));
-      await page.eventually(() => expect(page.locator("main [role=alert]").count()).toBe(0));
-      expect(page.getByLabel("Email", { exact: true }).value()).toBe("Member+Ops@Example.com");
+      await expect(lookupHeading()).toHaveCount(1);
+      await expect(page.locator("main [role=alert]")).toHaveCount(0);
+      await expect(page.getByLabel("Email", { exact: true })).toHaveValue("Member+Ops@Example.com");
       expect(reads).toBe(reread ? 3 : 2);
       expect(state.writes()).toEqual([]);
     });
@@ -128,28 +122,24 @@ test("an offline account reread hides the previous grant target until a fresh re
   });
   try {
     await page.getByLabel("Email", { exact: true }).press("Enter");
-    await page.eventually(() => expect(page.locator("#admin-grant-amount").count()).toBe(1));
+    await expect(page.locator("#admin-grant-amount")).toHaveCount(1);
     await page.locator("#admin-grant-amount").fill("25");
     await page.locator("#admin-grant-note").fill("draft for previous observation");
     await page.setOffline(true);
     await page.getByRole("button", { name: "查詢", exact: true }).click();
-    await page.eventually(() =>
-      expect(page.locator("main [role=status]").text()).toContain("等待連線以讀取帳號"),
-    );
-    expect(page.locator("#admin-grant-amount").count()).toBe(0);
-    expect(page.getByLabel("Email", { exact: true }).value()).toBe("Member+Ops@Example.com");
+    await expect(page.locator("main [role=status]")).toContainText("等待連線以讀取帳號");
+    await expect(page.locator("#admin-grant-amount")).toHaveCount(0);
+    await expect(page.getByLabel("Email", { exact: true })).toHaveValue("Member+Ops@Example.com");
     expect(reads).toBe(1);
     expect(state.writes()).toEqual([]);
     await page.setOffline(false);
     await page.eventually(() => expect(reads).toBe(2));
-    await page.eventually(() =>
-      expect(page.locator("main [role=status]").text()).toContain("載入帳號中"),
-    );
-    expect(page.locator("#admin-grant-amount").count()).toBe(0);
+    await expect(page.locator("main [role=status]")).toContainText("載入帳號中");
+    await expect(page.locator("#admin-grant-amount")).toHaveCount(0);
     release();
-    await page.eventually(() => expect(page.locator("#admin-grant-amount").count()).toBe(1));
-    expect(page.locator("#admin-grant-amount").value()).toBe("");
-    expect(page.locator("#admin-grant-note").value()).toBe("");
+    await expect(page.locator("#admin-grant-amount")).toHaveCount(1);
+    await expect(page.locator("#admin-grant-amount")).toHaveValue("");
+    await expect(page.locator("#admin-grant-note")).toHaveValue("");
     expect(state.writes()).toEqual([]);
   } finally {
     release();

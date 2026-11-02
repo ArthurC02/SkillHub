@@ -61,9 +61,8 @@ for (const mode of ["retry", "populated", "empty", "next-page", "next-page-retry
     const writes = () => page.requests.filter((request) => request.method !== "GET");
     try {
       await page.goto("/activity");
-      if (mode === "retry")
-        await page.eventually(() => expect(page.locator("main [role=alert]").count()).toBe(1));
-      else if (mode === "empty") await page.eventually(() => expect(empty().count()).toBe(1));
+      if (mode === "retry") await expect(page.locator("main [role=alert]")).toHaveCount(1);
+      else if (mode === "empty") await expect(empty()).toHaveCount(1);
       else await page.eventually(() => expect(rows()).toBe(3));
       if (mode === "next-page-retry") {
         await page.getByRole("button", { name: "載入更多活動", exact: true }).click();
@@ -76,45 +75,37 @@ for (const mode of ["retry", "populated", "empty", "next-page", "next-page-retry
       });
       await action.focus();
       await page.press("Enter");
-      await page.eventually(() => expect(waiting().text()).toContain("恢復連線後會繼續讀取。"));
+      await expect(waiting()).toContainText("恢復連線後會繼續讀取。");
       expect(navigator.onLine).toBe(false);
-      expect(page.locator("main .loading-skeleton").count()).toBe(0);
+      await expect(page.locator("main .loading-skeleton")).toHaveCount(0);
       if (mode === "next-page-retry") {
         await page.eventually(() => expect(alertText()).toContain("僅保留已載入的紀錄，尚未讀完"));
-        expect(page.getByRole("button", { name: "重新讀取中…", exact: true }).isDisabled()).toBe(
-          true,
-        );
-      } else expect(page.locator("main [role=alert]").count()).toBe(0);
-      expect(empty().count()).toBe(0);
+        await expect(page.getByRole("button", { name: "重新讀取中…", exact: true })).toBeDisabled();
+      } else await expect(page.locator("main [role=alert]")).toHaveCount(0);
+      await expect(empty()).toHaveCount(0);
       expect(rows()).toBe(mode === "retry" || mode === "empty" ? 0 : 3);
       const buttons = page.getByRole("button", { name: "等待連線…", exact: true });
-      expect(buttons.count()).toBe(retry ? 0 : pagination ? 2 : 1);
+      await expect(buttons).toHaveCount(retry ? 0 : pagination ? 2 : 1);
       for (let index = 0; index < buttons.count(); index += 1)
-        expect(buttons.nth(index).isDisabled()).toBe(true);
+        await expect(buttons.nth(index)).toBeDisabled();
       if (mode === "retry" || mode === "empty")
-        expect(page.locator("main .activity-summary").count()).toBe(0);
+        await expect(page.locator("main .activity-summary")).toHaveCount(0);
       const before = mode === "next-page-retry" ? [null, "older-page"] : [null];
       expect(cursors).toEqual(before);
       expect(writes()).toEqual([]);
       expect(await page.axeViolations("body")).toEqual([]);
       await page.setOffline(false);
       await page.eventually(() => expect(cursors.length).toBe(before.length + 1));
-      expect(empty().count()).toBe(0);
+      await expect(empty()).toHaveCount(0);
       if (mode === "empty")
-        await page.eventually(() =>
-          expect(page.locator("main [data-loading]").text()).toContain("載入Workspace 活動中…"),
-        );
+        await expect(page.locator("main [data-loading]")).toContainText("載入Workspace 活動中…");
       if (pagination) expect(rows()).toBe(3);
       release();
       await page.eventually(() => expect(rows()).toBe(pagination ? 4 : 3));
-      await page.eventually(() => expect(waiting().count()).toBe(0));
-      await page.eventually(() =>
-        expect(page.getByRole("button", { name: "重新整理", exact: true }).isDisabled()).toBe(
-          false,
-        ),
-      );
-      expect(page.getByRole("button", { name: "載入更多活動", exact: true }).count()).toBe(0);
-      expect(page.getByText("已載入全部活動", { exact: true }).count()).toBe(1);
+      await expect(waiting()).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "重新整理", exact: true })).toBeEnabled();
+      await expect(page.getByRole("button", { name: "載入更多活動", exact: true })).toHaveCount(0);
+      await expect(page.getByText("已載入全部活動", { exact: true })).toHaveCount(1);
       expect(cursors).toEqual([...before, pagination ? "older-page" : null]);
       expect(writes()).toEqual([]);
       expect(await page.axeViolations("body")).toEqual([]);

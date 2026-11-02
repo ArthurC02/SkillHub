@@ -586,7 +586,7 @@ const LOCATOR_MATCHERS: Record<string, (...args: never[]) => Check> = {
     actual: `${locator.count()} visible elements`,
   }),
   toContainText: (text: TextQuery) => (locator) => ({
-    pass: textMatches(textOf(locator), text, false),
+    pass: text instanceof RegExp ? text.test(textOf(locator)) : textOf(locator).includes(text),
     actual: JSON.stringify(textOf(locator)),
   }),
   toHaveText: (text: TextQuery) => (locator) => ({

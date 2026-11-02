@@ -67,10 +67,10 @@ async function openIntent(page: App, amount: number, state: IntentState) {
     };
   });
   await page.goto("/admin/accounts");
-  await page.eventually(() => expect(page.getByLabel("Email", { exact: true }).count()).toBe(1));
+  await expect(page.getByLabel("Email", { exact: true })).toHaveCount(1);
   await page.getByLabel("Email", { exact: true }).fill("member@example.com");
   await page.getByLabel("Email", { exact: true }).press("Enter");
-  await page.eventually(() => expect(page.locator("#admin-grant-amount").count()).toBe(1));
+  await expect(page.locator("#admin-grant-amount")).toHaveCount(1);
   await page.locator("#admin-grant-amount").fill(String(amount));
   await page.locator("#admin-grant-note").fill(reason);
   return {
@@ -109,39 +109,33 @@ for (const [failure, amount, state] of [
       });
       if (state === "uncertain") {
         await submit.click();
-        await page.eventually(() =>
-          expect(main.getByRole("alert").text()).toContain("無法確認操作是否完成"),
-        );
+        await expect(main.getByRole("alert")).toContainText("無法確認操作是否完成");
       }
       control.setReply(failure);
       refreshSession();
-      await page.eventually(() =>
-        expect(main.getByRole("alert").text()).toContain("暫時無法讀取後台"),
-      );
-      expect(input.count()).toBe(0);
-      expect(main.getByRole("heading", { name: "封測者甲", exact: true }).count()).toBe(0);
+      await expect(main.getByRole("alert")).toContainText("暫時無法讀取後台");
+      await expect(input).toHaveCount(0);
+      await expect(main.getByRole("heading", { name: "封測者甲", exact: true })).toHaveCount(0);
       expect(control.writes).toHaveLength(state === "uncertain" ? 1 : 0);
       expect(await page.axeViolations("body")).toEqual([]);
       control.setReply("ready");
       await main.getByRole("button", { name: "再試一次", exact: true }).click();
       const heading = main.locator("h1").filter({ hasText: "帳號與點數" });
-      await page.eventually(() => expect(heading.isFocused()).toBe(true));
-      expect(input.value()).toBe(String(amount));
-      expect(note.value()).toBe(reason);
+      await expect(heading).toBeFocused();
+      await expect(input).toHaveValue(String(amount));
+      await expect(note).toHaveValue(reason);
       if (state === "uncertain") {
         expect(input.attribute("readonly")).toBe("");
-        expect(main.getByRole("alert").text()).toContain("無法確認操作是否完成");
+        await expect(main.getByRole("alert")).toContainText("無法確認操作是否完成");
       } else {
         expect(input.attribute("readonly")).toBeNull();
-        expect(main.getByRole("alert").count()).toBe(0);
+        await expect(main.getByRole("alert")).toHaveCount(0);
       }
       expect(control.reloads()).toBe(0);
       expect(control.writes).toHaveLength(state === "uncertain" ? 1 : 0);
       expect(await page.axeViolations("body")).toEqual([]);
       await submit.click();
-      await page.eventually(() =>
-        expect(main.getByRole("status").text()).toContain(`餘額現在是 ${120 + amount} 點`),
-      );
+      await expect(main.getByRole("status")).toContainText(`餘額現在是 ${120 + amount} 點`);
       expect(control.writes).toHaveLength(state === "uncertain" ? 2 : 1);
       if (state === "uncertain") expect(control.writes[1]).toEqual(control.writes[0]);
       expect(control.writes[0]).toMatchObject({ amount_credits: amount, reason });
@@ -160,22 +154,18 @@ test("a completed grant while the session is unavailable keeps its receipt", asy
     await page.eventually(() => expect(control.writes.length).toBe(1));
     control.setReply("server");
     refreshSession();
-    await page.eventually(() =>
-      expect(main.getByRole("alert").text()).toContain("暫時無法讀取後台"),
-    );
-    expect(page.locator("#admin-grant-amount").count()).toBe(0);
+    await expect(main.getByRole("alert")).toContainText("暫時無法讀取後台");
+    await expect(page.locator("#admin-grant-amount")).toHaveCount(0);
     control.release();
     await page.eventually(() => expect(control.delivered).toBe(true));
     control.setReply("ready");
     await main.getByRole("button", { name: "再試一次", exact: true }).click();
     const heading = main.locator("h1").filter({ hasText: "帳號與點數" });
-    await page.eventually(() => expect(heading.isFocused()).toBe(true));
-    await page.eventually(() =>
-      expect(main.getByRole("status").text()).toContain("已授予 25 點，餘額現在是 145 點"),
-    );
-    expect(page.locator("#admin-grant-amount").value()).toBe("25");
-    expect(page.locator("#admin-grant-note").value()).toBe(reason);
-    expect(main.getByRole("button", { name: "授予", exact: true }).isDisabled()).toBe(true);
+    await expect(heading).toBeFocused();
+    await expect(main.getByRole("status")).toContainText("已授予 25 點，餘額現在是 145 點");
+    await expect(page.locator("#admin-grant-amount")).toHaveValue("25");
+    await expect(page.locator("#admin-grant-note")).toHaveValue(reason);
+    await expect(main.getByRole("button", { name: "授予", exact: true })).toBeDisabled();
     expect(control.writes).toHaveLength(1);
     expect(control.reloads()).toBe(0);
     expect(await page.axeViolations("body")).toEqual([]);
@@ -191,25 +181,21 @@ for (const failure of ["signed-out", "forbidden", "member"] as const) {
     try {
       control.setReply(failure);
       refreshSession();
-      await page.eventually(() => expect(page.locator("#admin-grant-amount").count()).toBe(0));
-      expect(page.locator("#admin-grant-note").count()).toBe(0);
+      await expect(page.locator("#admin-grant-amount")).toHaveCount(0);
+      await expect(page.locator("#admin-grant-note")).toHaveCount(0);
       const main = page.locator("main");
       if (failure === "signed-out") {
         await page.eventually(() => expect(control.reloads()).toBe(1));
-        await page.eventually(() =>
-          expect(main.getByRole("status").text()).toContain("後台需要登入"),
-        );
+        await expect(main.getByRole("status")).toContainText("後台需要登入");
       } else if (failure === "forbidden") {
-        await page.eventually(() =>
-          expect(main.getByRole("alert").text()).toContain("暫時無法讀取後台"),
-        );
+        await expect(main.getByRole("alert")).toContainText("暫時無法讀取後台");
       } else {
-        await page.eventually(() => expect(main.locator("h1").text()).toBe("這一頁現在不存在"));
+        await expect(main.locator("h1")).toHaveText("這一頁現在不存在");
       }
-      expect(main.getByText("封測者甲", { exact: true }).count()).toBe(0);
-      expect(page.locator("header").getByRole("link", { name: "後台", exact: true }).count()).toBe(
-        0,
-      );
+      await expect(main.getByText("封測者甲", { exact: true })).toHaveCount(0);
+      await expect(
+        page.locator("header").getByRole("link", { name: "後台", exact: true }),
+      ).toHaveCount(0);
       expect(control.writes).toEqual([]);
       expect(await page.axeViolations("body")).toEqual([]);
     } finally {
@@ -226,16 +212,16 @@ test("an initial unavailable operator check never mounts private credit controls
   );
   await page.goto("/admin/accounts");
   const main = page.locator("main");
-  await page.eventually(() => expect(main.getByRole("alert").text()).toContain("暫時無法讀取後台"));
-  expect(page.locator("#admin-account-email").count()).toBe(0);
+  await expect(main.getByRole("alert")).toContainText("暫時無法讀取後台");
+  await expect(page.locator("#admin-account-email")).toHaveCount(0);
   const adminReads = () =>
     page.requests.filter((request) => request.url.pathname.startsWith("/admin/"));
   expect(adminReads()).toEqual([]);
   expect(await page.axeViolations("body")).toEqual([]);
   ready = true;
   await main.getByRole("button", { name: "再試一次", exact: true }).click();
-  await page.eventually(() => expect(page.locator("#admin-account-email").count()).toBe(1));
-  expect(page.locator("#admin-account-email").value()).toBe("");
-  expect(page.locator("#admin-grant-amount").count()).toBe(0);
+  await expect(page.locator("#admin-account-email")).toHaveCount(1);
+  await expect(page.locator("#admin-account-email")).toHaveValue("");
+  await expect(page.locator("#admin-grant-amount")).toHaveCount(0);
   expect(adminReads()).toEqual([]);
 });

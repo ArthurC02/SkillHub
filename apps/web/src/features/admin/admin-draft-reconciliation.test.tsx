@@ -141,33 +141,31 @@ for (const setting of SETTINGS) {
     const page = app();
     const { writes, reread } = controlSetting(page, setting);
     await page.goto(setting.page);
-    await page.eventually(() => expect(page.locator(".auth-name").text()).toBe("tester"));
+    await expect(page.locator(".auth-name")).toHaveText("tester");
     const input = page.locator(setting.selector);
     const regionSelector =
       setting.kind === "rounds"
         ? `section:has(> h2#admin-settings-rounds-heading)`
         : `li.download-item:has(${setting.selector})`;
     const region = page.locator(regionSelector);
-    await page.eventually(() =>
-      expect(region.locator("summary").filter({ hasText: setting.summary }).count()).toBe(1),
-    );
+    await expect(region.locator("summary").filter({ hasText: setting.summary })).toHaveCount(1);
     await region.locator("summary").filter({ hasText: setting.summary }).click();
     await input.fill(setting.edited);
     await reread(setting.original);
-    expect(input.value()).toBe(setting.edited);
+    await expect(input).toHaveValue(setting.edited);
     await reread(setting.changed);
-    await page.eventually(() => expect(input.value()).toBe(setting.changed));
+    await expect(input).toHaveValue(setting.changed);
     await reread(setting.original);
-    await page.eventually(() => expect(region.text()).toContain(setting.fact));
-    await page.eventually(() => expect(input.value()).toBe(setting.original));
+    await expect(region).toContainText(setting.fact);
+    await expect(input).toHaveValue(setting.original);
     await input.fill("");
     await reread(setting.original);
-    expect(input.value()).toBe("");
+    await expect(input).toHaveValue("");
     expect(writes).toEqual([]);
     await input.fill(setting.original);
     await page.locator(setting.note).fill("confirm current value");
     await region.locator("button").filter({ hasText: setting.submit }).first().click();
-    await page.eventually(() => expect(page.locator(setting.receipt).isFocused()).toBe(true));
+    await expect(page.locator(setting.receipt)).toBeFocused();
     expect(writes).toEqual([setting.body]);
     expect(await page.axeViolations(regionSelector)).toEqual([]);
   });

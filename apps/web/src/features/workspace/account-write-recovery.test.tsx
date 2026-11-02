@@ -66,15 +66,11 @@ function stubAccount(page: App, requested: boolean) {
 
 async function operate(page: App, action: "request" | "cancel") {
   if (action === "cancel") {
-    await page.eventually(() =>
-      expect(page.getByRole("button", { name: "取消刪除申請", exact: true }).count()).toBe(1),
-    );
+    await expect(page.getByRole("button", { name: "取消刪除申請", exact: true })).toHaveCount(1);
     await page.getByRole("button", { name: "取消刪除申請", exact: true }).click();
     return;
   }
-  await page.eventually(() =>
-    expect(page.getByRole("button", { name: "刪除我的帳號", exact: true }).count()).toBe(1),
-  );
+  await expect(page.getByRole("button", { name: "刪除我的帳號", exact: true })).toHaveCount(1);
   await page.getByRole("button", { name: "刪除我的帳號", exact: true }).click();
   await page.getByRole("button", { name: "確認開始刪除", exact: true }).click();
 }
@@ -88,13 +84,11 @@ for (const action of ["request", "cancel"] as const) {
         scenario.committed = committed;
         scenario.failure = failure;
         await page.goto("/workspace/account");
-        await page.eventually(() => expect(page.locator(".account-profile").count()).toBe(1));
+        await expect(page.locator(".account-profile")).toHaveCount(1);
         const before = scenario.reads;
         await operate(page, action);
-        await page.eventually(() =>
-          expect(page.locator("main [role=alert]").text()).toContain(
-            "未能取得操作結果，請以最新帳號狀態確認",
-          ),
+        await expect(page.locator("main [role=alert]")).toContainText(
+          "未能取得操作結果，請以最新帳號狀態確認",
         );
         const requested = committed ? action === "request" : action === "cancel";
         const buttonName = requested
@@ -102,14 +96,12 @@ for (const action of ["request", "cancel"] as const) {
           : action === "request" && !committed
             ? "確認開始刪除"
             : "刪除我的帳號";
-        await page.eventually(() => {
-          expect(page.getByText("刪除申請中", { exact: true }).count()).toBe(requested ? 1 : 0);
-          expect(page.getByText("目前沒有刪除申請。", { exact: true }).count()).toBe(
-            requested ? 0 : 1,
-          );
-          expect(page.getByRole("button", { name: buttonName, exact: true }).count()).toBe(1);
-        });
-        expect(page.locator("main").text()).not.toContain("沒有記錄成功");
+        await expect(page.getByText("刪除申請中", { exact: true })).toHaveCount(requested ? 1 : 0);
+        await expect(page.getByText("目前沒有刪除申請。", { exact: true })).toHaveCount(
+          requested ? 0 : 1,
+        );
+        await expect(page.getByRole("button", { name: buttonName, exact: true })).toHaveCount(1);
+        await expect(page.locator("main")).not.toContainText("沒有記錄成功");
         expect(scenario.reads).toBe(before + 1);
         expect(scenario.writes).toEqual(action === "request" ? ["DELETE"] : ["POST"]);
       });
@@ -125,39 +117,33 @@ for (const action of ["request", "cancel"] as const) {
     });
     scenario.readFails = true;
     await page.goto("/workspace/account");
-    await page.eventually(() => expect(page.locator(".account-profile").count()).toBe(1));
+    await expect(page.locator(".account-profile")).toHaveCount(1);
     const before = scenario.reads;
     await operate(page, action);
     await page.eventually(() => expect(scenario.reads).toBe(before + 1));
-    await page.eventually(() =>
-      expect(
-        page.locator("main [role=status]").filter({ hasText: "正在確認最新帳號狀態" }).count(),
-      ).toBe(1),
-    );
-    expect(page.getByText("目前沒有刪除申請。", { exact: true }).count()).toBe(0);
+    await expect(
+      page.locator("main [role=status]").filter({ hasText: "正在確認最新帳號狀態" }),
+    ).toHaveCount(1);
+    await expect(page.getByText("目前沒有刪除申請。", { exact: true })).toHaveCount(0);
     releaseRead();
-    await page.eventually(() =>
-      expect(page.locator("main [role=alert]").text()).toContain(
-        "未能取得操作結果，最新帳號狀態也暫時無法確認",
-      ),
+    await expect(page.locator("main [role=alert]")).toContainText(
+      "未能取得操作結果，最新帳號狀態也暫時無法確認",
     );
-    expect(page.locator("main .account-danger-zone").count()).toBe(0);
-    expect(page.locator("main").text()).not.toContain("操作已送出");
+    await expect(page.locator("main .account-danger-zone")).toHaveCount(0);
+    await expect(page.locator("main")).not.toContainText("操作已送出");
     scenario.readFails = false;
     await page.getByRole("button", { name: "再試一次", exact: true }).click();
-    await page.eventually(() => expect(page.locator("main .account-profile").count()).toBe(1));
-    await page.eventually(() =>
-      expect(page.locator("main [role=alert]").text()).toContain(
-        "未能取得操作結果，請以最新帳號狀態確認",
-      ),
+    await expect(page.locator("main .account-profile")).toHaveCount(1);
+    await expect(page.locator("main [role=alert]")).toContainText(
+      "未能取得操作結果，請以最新帳號狀態確認",
     );
-    expect(page.getByText("刪除申請中", { exact: true }).count()).toBe(
+    await expect(page.getByText("刪除申請中", { exact: true })).toHaveCount(
       action === "request" ? 1 : 0,
     );
-    expect(page.getByText("目前沒有刪除申請。", { exact: true }).count()).toBe(
+    await expect(page.getByText("目前沒有刪除申請。", { exact: true })).toHaveCount(
       action === "request" ? 0 : 1,
     );
-    await page.eventually(() => expect(page.locator("main").isFocused()).toBe(true));
+    await expect(page.locator("main")).toBeFocused();
     expect(scenario.reads).toBe(before + 2);
     expect(scenario.writes).toEqual(action === "request" ? ["DELETE"] : ["POST"]);
     expect(await page.axeViolations("main")).toEqual([]);
@@ -168,24 +154,17 @@ for (const action of ["request", "cancel"] as const) {
     const scenario = stubAccount(page, action === "cancel");
     await page.goto("/workspace/account");
     await operate(page, action);
-    await page.eventually(() =>
-      expect(page.locator("main [role=alert]").text()).toContain("未能取得操作結果"),
-    );
+    await expect(page.locator("main [role=alert]")).toContainText("未能取得操作結果");
     scenario.failure = "none";
     await operate(page, action === "request" ? "cancel" : "request");
-    await page.eventually(() =>
-      expect(
-        page
-          .locator("main [role=status]")
-          .filter({
-            hasText:
-              action === "request" ? "已取消。帳號不會被刪除，資料照舊。" : pending.deletion_scope,
-          })
-          .count(),
-      ).toBeGreaterThan(0),
-    );
-    expect(page.locator("main [role=alert]").count()).toBe(0);
-    expect(page.getByText("刪除申請中", { exact: true }).count()).toBe(
+    await expect(
+      page.locator("main [role=status]").filter({
+        hasText:
+          action === "request" ? "已取消。帳號不會被刪除，資料照舊。" : pending.deletion_scope,
+      }),
+    ).toBeVisible();
+    await expect(page.locator("main [role=alert]")).toHaveCount(0);
+    await expect(page.getByText("刪除申請中", { exact: true })).toHaveCount(
       action === "request" ? 0 : 1,
     );
     expect(scenario.writes).toEqual(action === "request" ? ["DELETE", "POST"] : ["POST", "DELETE"]);

@@ -40,15 +40,15 @@ for (const missing of ["one member", "all members"]) {
       name: `首次發佈 v${OWN_BUNDLE.version}`,
       exact: true,
     });
-    await page.eventually(() => expect(publish.count()).toBe(1));
-    await page.eventually(() => expect(publish.isDisabled()).toBe(true));
+    await expect(publish).toHaveCount(1);
+    await expect(publish).toBeDisabled();
     expect(describedText(publish.element())).toMatch(/散布需求尚未確認/);
-    expect(article.getByText("散布需求尚未確認", { exact: false }).count()).toBeGreaterThan(0);
-    expect(section.getByRole("alert").count()).toBe(0);
+    await expect(article.getByText("散布需求尚未確認", { exact: false })).toBeVisible();
+    await expect(section.getByRole("alert")).toHaveCount(0);
     expect(await page.axeViolations(articleSelector)).toEqual([]);
     await section.getByRole("button", { name: "重新整理", exact: true }).click();
-    await page.eventually(() => expect(publish.isDisabled()).toBe(false));
-    expect(article.text()).not.toContain("散布需求尚未確認");
+    await expect(publish).toBeEnabled();
+    await expect(article).not.toContainText("散布需求尚未確認");
     expect(reads).toBe(2);
     expect(writes()).toEqual([]);
     expect(await page.axeViolations(articleSelector)).toEqual([]);

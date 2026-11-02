@@ -45,46 +45,38 @@ for (const action of ["request", "cancel"]) {
     });
     await page.goto("/workspace/account");
     if (action === "request") {
-      await page.eventually(() =>
-        expect(page.getByRole("button", { name: "刪除我的帳號", exact: true }).count()).toBe(1),
-      );
+      await expect(page.getByRole("button", { name: "刪除我的帳號", exact: true })).toHaveCount(1);
       await page.getByRole("button", { name: "刪除我的帳號", exact: true }).click();
       await page.getByRole("button", { name: "確認開始刪除", exact: true }).click();
     } else {
-      await page.eventually(() =>
-        expect(page.getByRole("button", { name: "取消刪除申請", exact: true }).count()).toBe(1),
-      );
+      await expect(page.getByRole("button", { name: "取消刪除申請", exact: true })).toHaveCount(1);
       await page.getByRole("button", { name: "取消刪除申請", exact: true }).click();
     }
-    await page.eventually(() =>
-      expect(page.locator("main [role=alert]").text()).toContain(
-        "操作已送出，但最新帳號狀態暫時無法確認",
-      ),
+    await expect(page.locator("main [role=alert]")).toContainText(
+      "操作已送出，但最新帳號狀態暫時無法確認",
     );
-    expect(page.getByRole("heading", { name: "帳號", exact: true }).count()).toBe(1);
-    expect(page.locator("main .account-profile").count()).toBe(0);
-    expect(page.locator("main .account-danger-zone").count()).toBe(0);
-    expect(page.getByText("刪除申請中", { exact: true }).count()).toBe(0);
-    expect(page.getByRole("button", { name: "取消刪除申請", exact: true }).count()).toBe(0);
-    expect(page.getByRole("button", { name: "刪除我的帳號", exact: true }).count()).toBe(0);
-    expect(page.getByRole("button", { name: "確認開始刪除", exact: true }).count()).toBe(0);
+    await expect(page.getByRole("heading", { name: "帳號", exact: true })).toHaveCount(1);
+    await expect(page.locator("main .account-profile")).toHaveCount(0);
+    await expect(page.locator("main .account-danger-zone")).toHaveCount(0);
+    await expect(page.getByText("刪除申請中", { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "取消刪除申請", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "刪除我的帳號", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "確認開始刪除", exact: true })).toHaveCount(0);
     expect(writes).toEqual(action === "request" ? ["DELETE"] : ["POST"]);
     const before = reads;
     failing = false;
     await page.getByRole("button", { name: "再試一次", exact: true }).click();
-    await page.eventually(() => expect(page.locator("main .account-profile").count()).toBe(1));
-    expect(
-      page
-        .getByRole("button", {
-          name: action === "request" ? "取消刪除申請" : "刪除我的帳號",
-          exact: true,
-        })
-        .count(),
-    ).toBeGreaterThan(0);
-    expect(page.getByText("刪除申請中", { exact: true }).count()).toBe(
+    await expect(page.locator("main .account-profile")).toHaveCount(1);
+    await expect(
+      page.getByRole("button", {
+        name: action === "request" ? "取消刪除申請" : "刪除我的帳號",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(page.getByText("刪除申請中", { exact: true })).toHaveCount(
       action === "request" ? 1 : 0,
     );
-    await page.eventually(() => expect(page.locator("main").isFocused()).toBe(true));
+    await expect(page.locator("main")).toBeFocused();
     expect(reads).toBe(before + 1);
     expect(writes).toEqual(action === "request" ? ["DELETE"] : ["POST"]);
     expect(await page.axeViolations("main")).toEqual([]);
@@ -99,39 +91,30 @@ for (const status of [403, 401]) {
       failing ? { status, json: { error: "unavailable" } } : { json: { ...profile, ...pending } },
     );
     await page.goto("/workspace/account");
-    await page.eventually(() => expect(page.locator("main .account-profile").count()).toBe(1));
-    expect(page.getByRole("button", { name: "取消刪除申請", exact: true }).count()).toBe(1);
+    await expect(page.locator("main .account-profile")).toHaveCount(1);
+    await expect(page.getByRole("button", { name: "取消刪除申請", exact: true })).toHaveCount(1);
     await page.locator('a[href="/policy"]').first().click();
-    await page.eventually(() =>
-      expect(page.getByRole("heading", { name: "資料保存政策", exact: true }).count()).toBe(1),
-    );
+    await expect(page.getByRole("heading", { name: "資料保存政策", exact: true })).toHaveCount(1);
     failing = true;
     await page.goBack();
-    await page.eventually(() =>
-      expect(page.getByRole("heading", { name: "帳號", exact: true }).count()).toBe(1),
-    );
+    await expect(page.getByRole("heading", { name: "帳號", exact: true })).toHaveCount(1);
     if (status === 401)
-      await page.eventually(() =>
-        expect(
-          page.locator("main [role=status]").filter({ hasText: "帳號資料需要登入" }).count(),
-        ).toBe(1),
-      );
-    else
-      await page.eventually(() =>
-        expect(page.locator("main [role=alert]").text()).toContain("暫時無法讀取帳號資料"),
-      );
-    expect(page.locator("main .account-profile").count()).toBe(0);
-    expect(page.locator("main .account-danger-zone").count()).toBe(0);
-    expect(page.getByText(String(profile.email), { exact: true }).count()).toBe(0);
-    expect(page.getByRole("button", { name: "取消刪除申請", exact: true }).count()).toBe(0);
-    expect(page.getByRole("button", { name: "刪除我的帳號", exact: true }).count()).toBe(0);
+      await expect(
+        page.locator("main [role=status]").filter({ hasText: "帳號資料需要登入" }),
+      ).toHaveCount(1);
+    else await expect(page.locator("main [role=alert]")).toContainText("暫時無法讀取帳號資料");
+    await expect(page.locator("main .account-profile")).toHaveCount(0);
+    await expect(page.locator("main .account-danger-zone")).toHaveCount(0);
+    await expect(page.getByText(String(profile.email), { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "取消刪除申請", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "刪除我的帳號", exact: true })).toHaveCount(0);
     if (status === 401)
-      expect(page.getByRole("button", { name: "再試一次", exact: true }).count()).toBe(0);
+      await expect(page.getByRole("button", { name: "再試一次", exact: true })).toHaveCount(0);
     else {
       failing = false;
       await page.getByRole("button", { name: "再試一次", exact: true }).click();
-      await page.eventually(() => expect(page.locator("main .account-profile").count()).toBe(1));
-      await page.eventually(() => expect(page.locator("main").isFocused()).toBe(true));
+      await expect(page.locator("main .account-profile")).toHaveCount(1);
+      await expect(page.locator("main")).toBeFocused();
     }
   });
 }

@@ -59,7 +59,7 @@ for (const leavesForm of [false, true]) {
     await page.goto(`/workspace/downloads?bundleVersion=${VERSION}`);
     const form = page.getByRole("region", { name: "建立 Bundle", exact: true });
     const member = form.getByRole("combobox", { name: "PDF Summariser", exact: true });
-    await page.eventually(() => expect(member.value()).toBe(VERSION));
+    await expect(member).toHaveValue(VERSION);
     const search = page.locator("header input[type=search]");
     try {
       for (const [attempt, version] of ["1.0.0", "1.1.0"].entries()) {
@@ -75,10 +75,8 @@ for (const leavesForm of [false, true]) {
         await form.getByRole("button", { name: "建立", exact: true }).click();
         await page.eventually(() => expect(requests.length).toBe(attempt + 1));
         await page.eventually(() => expect(reads).toBe(attempt + 2));
-        await page.eventually(() =>
-          expect(form.getByRole("status").filter({ hasText: "已建立" }).text()).toBe(
-            `已建立 ${name} v${version}。`,
-          ),
+        await expect(form.getByRole("status").filter({ hasText: "已建立" })).toHaveText(
+          `已建立 ${name} v${version}。`,
         );
         if (leavesForm) await search.fill("保留目前搜尋草稿");
         const row = page
@@ -86,14 +84,14 @@ for (const leavesForm of [false, true]) {
           .filter({ hasText: name })
           .locator(".bundle-version-item")
           .filter({ hasText: `v${version}` });
-        expect(row.count()).toBe(0);
+        await expect(row).toHaveCount(0);
         release();
-        await page.eventually(() => expect(row.count()).toBe(1));
+        await expect(row).toHaveCount(1);
         if (leavesForm) {
-          await page.eventually(() => expect(search.isFocused()).toBe(true));
-          expect(search.value()).toBe("保留目前搜尋草稿");
+          await expect(search).toBeFocused();
+          await expect(search).toHaveValue("保留目前搜尋草稿");
         } else {
-          await page.eventually(() => expect(row.isFocused()).toBe(true));
+          await expect(row).toBeFocused();
         }
       }
       expect(requests).toEqual(
