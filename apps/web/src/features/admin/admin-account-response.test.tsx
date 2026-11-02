@@ -82,7 +82,7 @@ for (const [name, body] of [
       await submitLookup();
       if (reread) {
         await page.eventually(() => expect(lookupHeading().count()).toBe(1));
-        expect(page.locator("#admin-grant-amount").count()).toBe(1);
+        await expect(page.locator("#admin-grant-amount")).toHaveCount(1);
         await submitLookup();
       }
       await page.eventually(() =>

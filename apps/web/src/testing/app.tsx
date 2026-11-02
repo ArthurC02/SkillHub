@@ -10,7 +10,8 @@ import { platformResponse } from "./fixtures/platform";
 import { preloadEveryPage } from "./pages";
 import { DEFAULT_WAIT_MS, pollUntil } from "./poll";
 
-export type Reply = { status?: number; json?: unknown } | "network-error";
+export type Reply =
+  { status?: number; json?: unknown; body?: string; contentType?: string } | "network-error";
 export type Request = { url: URL; method: string; body: unknown };
 type Handler = (request: Request) => Reply | undefined | Promise<Reply | undefined>;
 type Matcher = string | RegExp | ((url: URL) => boolean);
@@ -43,6 +44,11 @@ const BODILESS_STATUSES = new Set([204, 205, 304]);
 function jsonResponse(reply: Exclude<Reply, "network-error">): Response {
   const status = reply.status ?? 200;
   if (BODILESS_STATUSES.has(status)) return new Response(null, { status });
+  if (reply.body !== undefined)
+    return new Response(reply.body, {
+      status,
+      headers: { "Content-Type": reply.contentType ?? "application/json" },
+    });
   return new Response(reply.json === undefined ? "{}" : JSON.stringify(reply.json), {
     status,
     headers: { "Content-Type": "application/json" },
@@ -97,6 +103,11 @@ const ROLE_SELECTORS: Record<string, string> = {
   status: "[role=status], output",
   tab: "[role=tab]",
   tabpanel: "[role=tabpanel]",
+  table: "table, [role=table]",
+  row: "tr, [role=row]",
+  cell: "td, [role=cell]",
+  columnheader: "th[scope=col], thead th, [role=columnheader]",
+  rowheader: "th[scope=row], tbody th, [role=rowheader]",
   textbox:
     "textarea, input:not([type]), input[type=text], input[type=search], input[type=email], input[type=url], input[type=number], [role=textbox]",
 };
@@ -134,9 +145,13 @@ async function pressOn(target: HTMLElement, key: string) {
       new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }),
     );
     if (proceed && key === "Enter") {
-      if (target.tagName === "BUTTON" || target.tagName === "A") target.click();
+      if (["BUTTON", "A", "SUMMARY"].includes(target.tagName)) target.click();
       else if (target.tagName === "INPUT") implicitlySubmit(target);
     }
+    const toggles =
+      target.tagName === "BUTTON" ||
+      (target instanceof HTMLInputElement && ["checkbox", "radio"].includes(target.type));
+    if (proceed && key === " " && toggles) target.click();
     target.dispatchEvent(new KeyboardEvent("keyup", { key, bubbles: true }));
   });
 }
@@ -200,10 +215,24 @@ export class Locator {
     return new Locator(() => this.all().slice(index, index + 1));
   }
 
-  filter({ hasText }: { hasText: TextQuery }): Locator {
+  last(): Locator {
+    return new Locator(() => this.all().slice(-1));
+  }
+
+  filter({ hasText, has }: { hasText?: TextQuery; has?: Locator }): Locator {
     return new Locator(() =>
-      this.all().filter((element) => textMatches(collapse(element.textContent), hasText, false)),
+      this.all().filter(
+        (element) =>
+          (hasText === undefined || textMatches(collapse(element.textContent), hasText, false)) &&
+          (has === undefined || has.all().some((inner) => element.contains(inner))),
+      ),
     );
+  }
+
+  hiddenElement(): HTMLElement {
+    const found = this.resolve();
+    if (found.length !== 1) throw new Error(`expected exactly one element, found ${found.length}`);
+    return found[0] as HTMLElement;
   }
 
   locator(selector: string): Locator {
@@ -500,6 +529,137 @@ export function renderedApp(): () => App {
     if (!current) throw new Error("renderedApp() is read outside a test");
     return current;
   };
+}
+
+const EXPECT_TIMEOUT_MS = 5_000;
+
+type Check = (locator: Locator) => { pass: boolean; actual: string };
+
+function textOf(locator: Locator): string {
+  return locator.text();
+}
+
+function accessibleDescription(element: Element): string {
+  const ids = element.getAttribute("aria-describedby")?.split(/\s+/) ?? [];
+  return collapse(ids.map((id) => document.getElementById(id)?.textContent ?? "").join(" "));
+}
+
+function single(locator: Locator, read: (element: HTMLElement) => string | boolean) {
+  const found = locator.all();
+  if (found.length !== 1) return { ok: false, actual: `${found.length} elements` };
+  return { ok: true, value: read(found[0] as HTMLElement) };
+}
+
+function onOne(read: (element: HTMLElement) => boolean, label: string): Check {
+  return (locator) => {
+    const result = single(locator, read);
+    return result.ok
+      ? { pass: result.value === true, actual: `${label} is ${String(result.value)}` }
+      : { pass: false, actual: result.actual ?? "" };
+  };
+}
+
+function valueOf(
+  read: (element: HTMLElement) => string,
+  expected: TextQuery,
+  exact: boolean,
+): Check {
+  return (locator) => {
+    const result = single(locator, read);
+    if (!result.ok) return { pass: false, actual: result.actual ?? "" };
+    const actual = String(result.value);
+    return { pass: textMatches(actual, expected, exact), actual: JSON.stringify(actual) };
+  };
+}
+
+const LOCATOR_MATCHERS: Record<string, (...args: never[]) => Check> = {
+  toHaveCount: (n: number) => (locator) => ({
+    pass: locator.count() === n,
+    actual: `${locator.count()} elements`,
+  }),
+  toBeVisible: () => (locator) => ({
+    pass: locator.count() > 0,
+    actual: `${locator.count()} visible elements`,
+  }),
+  toBeHidden: () => (locator) => ({
+    pass: locator.count() === 0,
+    actual: `${locator.count()} visible elements`,
+  }),
+  toContainText: (text: TextQuery) => (locator) => ({
+    pass: textMatches(textOf(locator), text, false),
+    actual: JSON.stringify(textOf(locator)),
+  }),
+  toHaveText: (text: TextQuery) => (locator) => ({
+    pass: textMatches(textOf(locator), text, true),
+    actual: JSON.stringify(textOf(locator)),
+  }),
+  toBeFocused: () => onOne((element) => element === document.activeElement, "focused"),
+  toBeDisabled: () => onOne(isDisabledElement, "disabled"),
+  toBeEnabled: () => onOne((element) => !isDisabledElement(element), "enabled"),
+  toBeChecked: () => onOne((element) => (element as HTMLInputElement).checked, "checked"),
+  toBeEditable: () =>
+    onOne(
+      (element) => !isDisabledElement(element) && !element.hasAttribute("readonly"),
+      "editable",
+    ),
+  toHaveValue: (value: TextQuery) =>
+    valueOf((element) => (element as HTMLInputElement).value, value, true),
+  toHaveAccessibleDescription: (text: TextQuery) =>
+    valueOf(accessibleDescription, text, typeof text === "string"),
+  toHaveClass: (name: TextQuery) => valueOf((element) => element.className, name, false),
+  toHaveAttribute: (name: string, value?: TextQuery) => (locator) => {
+    const result = single(locator, (element) => element.getAttribute(name) ?? "");
+    if (!result.ok) return { pass: false, actual: result.actual ?? "" };
+    const present = locator.all()[0].hasAttribute(name);
+    const actual = String(result.value);
+    return {
+      pass: value === undefined ? present : present && textMatches(actual, value, true),
+      actual: present ? `${name}=${JSON.stringify(actual)}` : `no ${name}`,
+    };
+  },
+};
+
+expect.extend(
+  Object.fromEntries(
+    Object.entries(LOCATOR_MATCHERS).map(([name, build]) => [
+      name,
+      async function (this: { isNot: boolean }, received: unknown, ...args: unknown[]) {
+        if (!(received instanceof Locator)) throw new TypeError(`${name} expects a Locator`);
+        const negated = this.isNot === true;
+        const check = (build as (...expected: unknown[]) => Check)(...args);
+        let last = check(received);
+        const settled = () => {
+          last = check(received);
+          return last.pass !== negated;
+        };
+        await pollUntil(settled, () => last.actual, EXPECT_TIMEOUT_MS).catch(() => undefined);
+        return {
+          pass: last.pass,
+          message: () =>
+            `expected locator ${negated ? "not " : ""}${name}(${args.map((a) => JSON.stringify(a)).join(", ")}), got ${last.actual}`,
+        };
+      },
+    ]),
+  ),
+);
+
+declare module "vitest" {
+  interface Matchers<R extends void | Promise<void> = void | Promise<void>, T = unknown> {
+    toHaveCount(n: number): Promise<void>;
+    toBeVisible(): Promise<void>;
+    toBeHidden(): Promise<void>;
+    toContainText(text: TextQuery): Promise<void>;
+    toHaveText(text: TextQuery): Promise<void>;
+    toBeFocused(): Promise<void>;
+    toBeDisabled(): Promise<void>;
+    toBeEnabled(): Promise<void>;
+    toBeChecked(): Promise<void>;
+    toBeEditable(): Promise<void>;
+    toHaveValue(value: TextQuery): Promise<void>;
+    toHaveAccessibleDescription(text: TextQuery): Promise<void>;
+    toHaveClass(name: TextQuery): Promise<void>;
+    toHaveAttribute(name: string, value?: TextQuery): Promise<void>;
+  }
 }
 
 export { expect };
