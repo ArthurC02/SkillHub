@@ -68,9 +68,9 @@ jobs:
 
       - name: Vulnerability report (I-04)
         run: |
-          docker run --rm -v "$PWD/scan:/scan" "$GRYPE" sbom:/scan/sbom.spdx.json \
+          docker run --rm -v skillhub-grype-db:/db -e GRYPE_DB_CACHE_DIR=/db -v "$PWD/scan:/scan" "$GRYPE" sbom:/scan/sbom.spdx.json \
             -o table --file /scan/vulnerabilities.txt
-          docker run --rm -v "$PWD/scan:/scan" "$GRYPE" sbom:/scan/sbom.spdx.json \
+          docker run --rm -v skillhub-grype-db:/db -e GRYPE_DB_CACHE_DIR=/db -v "$PWD/scan:/scan" "$GRYPE" sbom:/scan/sbom.spdx.json \
             -o json --file /scan/vulnerabilities.json
           {
             echo '### Runtime image scan'
@@ -90,7 +90,7 @@ jobs:
       # --only-fixed skips CVEs that Debian marks won't-fix.
       - name: Fail on fixable Critical/High (I-06)
         run: |
-          docker run --rm -v "$PWD/scan:/scan" "$GRYPE" sbom:/scan/sbom.spdx.json \
+          docker run --rm -v skillhub-grype-db:/db -e GRYPE_DB_CACHE_DIR=/db -v "$PWD/scan:/scan" "$GRYPE" sbom:/scan/sbom.spdx.json \
             --only-fixed --fail-on high -o table
 
       - name: Build scan attestation predicate (I-04)
@@ -215,9 +215,9 @@ jobs:
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
             -v "$PWD/scan:/scan" "$SYFT" \
             "$REGISTRY_IMAGE@$PUBLISHED_DIGEST" -o spdx-json=/scan/sbom.spdx.json
-          docker run --rm -v "$PWD/scan:/scan" "$GRYPE" sbom:/scan/sbom.spdx.json \
+          docker run --rm -v skillhub-grype-db:/db -e GRYPE_DB_CACHE_DIR=/db -v "$PWD/scan:/scan" "$GRYPE" sbom:/scan/sbom.spdx.json \
             -o json --file /scan/vulnerabilities.json
-          docker run --rm -v "$PWD/scan:/scan" "$GRYPE" sbom:/scan/sbom.spdx.json \
+          docker run --rm -v skillhub-grype-db:/db -e GRYPE_DB_CACHE_DIR=/db -v "$PWD/scan:/scan" "$GRYPE" sbom:/scan/sbom.spdx.json \
             -o table --file /scan/vulnerabilities.txt
           {
             echo '### Published image re-scan'
@@ -246,5 +246,5 @@ jobs:
 
       - name: Fail on fixable Critical/High in the published image (I-06)
         run: |
-          docker run --rm -v "$PWD/scan:/scan" "$GRYPE" sbom:/scan/sbom.spdx.json \
+          docker run --rm -v skillhub-grype-db:/db -e GRYPE_DB_CACHE_DIR=/db -v "$PWD/scan:/scan" "$GRYPE" sbom:/scan/sbom.spdx.json \
             --only-fixed --fail-on high -o table
