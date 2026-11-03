@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -27,6 +28,13 @@ type formatter struct {
 	args     []string
 	requires string
 	fix      string
+	batch    bool
+}
+
+type batchResult struct {
+	Formatted     *string `json:"formatted"`
+	Unformattable bool    `json:"unformattable"`
+	Error         string  `json:"error"`
 }
 
 func preflight(root string, args []string, in io.Reader, out io.Writer) error {
@@ -165,13 +173,6 @@ func formatProblems(root, rangeSpec string) (problems, warnings []string, err er
 	if err != nil {
 		return nil, nil, err
 	}
-	type formatCheck struct {
-		file        string
-		f           formatter
-		unavailable error
-		formatted   string
-		err         error
-	}
 	var checks []*formatCheck
 	var files []string
 	availability := map[string]error{}
@@ -197,10 +198,29 @@ func formatProblems(root, rangeSpec string) (problems, warnings []string, err er
 	if err != nil {
 		return nil, nil, err
 	}
+	runFormatChecks(root, checks, blobs)
+	problems, warnings = formatCheckProblems(checks, blobs)
+	return problems, warnings, nil
+}
+
+type formatCheck struct {
+	file        string
+	f           formatter
+	unavailable error
+	formatted   string
+	err         error
+}
+
+func runFormatChecks(root string, checks []*formatCheck, blobs map[string]string) {
 	var wg sync.WaitGroup
 	workers := make(chan struct{}, runtime.NumCPU())
+	batches := map[string][]*formatCheck{}
 	for _, check := range checks {
 		if check.unavailable != nil {
+			continue
+		}
+		if check.f.batch {
+			batches[check.f.name] = append(batches[check.f.name], check)
 			continue
 		}
 		wg.Go(func() {
@@ -209,8 +229,23 @@ func formatProblems(root, rangeSpec string) (problems, warnings []string, err er
 			check.formatted, check.err = check.f.format(root, blobs[check.file])
 		})
 	}
+	for _, batch := range batches {
+		wg.Go(func() {
+			sources := make([]string, len(batch))
+			files := make([]string, len(batch))
+			for i, check := range batch {
+				sources[i], files[i] = blobs[check.file], check.file
+			}
+			formatted, errs := batch[0].f.formatAll(root, files, sources)
+			for i, check := range batch {
+				check.formatted, check.err = formatted[i], errs[i]
+			}
+		})
+	}
 	wg.Wait()
+}
 
+func formatCheckProblems(checks []*formatCheck, blobs map[string]string) (problems, warnings []string) {
 	for _, check := range checks {
 		switch {
 		case check.unavailable != nil:
@@ -222,7 +257,7 @@ func formatProblems(root, rangeSpec string) (problems, warnings []string, err er
 			problems = append(problems, fmt.Sprintf("%s is not %s-formatted as committed; run `%s` and commit the result", check.file, check.f.name, check.f.fix))
 		}
 	}
-	return problems, warnings, nil
+	return problems, warnings
 }
 
 func committedBlobs(root, revision string, files []string) (map[string]string, error) {
@@ -290,11 +325,11 @@ func formatterFor(root, file string) (formatter, bool) {
 	case strings.HasSuffix(file, extGo) && (strings.HasPrefix(file, dirAppsPlatform+"/") || strings.HasPrefix(file, dirAppsSandbox+"/") || strings.HasPrefix(file, dirToolsDevctl+"/")):
 		return formatter{name: "gofmt", cmd: "gofmt", fix: "gofmt -w " + file}, true
 	case strings.HasPrefix(file, dirAppsWeb+"/"):
-		prettier := filepath.Join(root, "apps", "web", "node_modules", "prettier", "bin", "prettier.cjs")
+		prettier := filepath.Join(root, "apps", "web", "node_modules", "prettier", "index.mjs")
 		return formatter{
 			name: "prettier", dir: dirAppsWeb, cmd: "node",
-			args:     []string{prettier, "--stdin-filepath", strings.TrimPrefix(file, dirAppsWeb+"/")},
-			requires: prettier, fix: "task format:web",
+			args:     []string{filepath.Join(root, "tools", "devctl", "prettier_batch.mjs"), prettier},
+			requires: prettier, fix: "task format:web", batch: true,
 		}, true
 	case strings.HasPrefix(file, dirAppsLLM+"/") && strings.HasSuffix(file, extPy):
 		return formatter{
@@ -332,4 +367,48 @@ func (f formatter) format(root, source string) (string, error) {
 		return "", fmt.Errorf("%w: %s", err, firstLine(strings.TrimSpace(stderr.String())))
 	}
 	return stdout.String(), nil
+}
+
+func (f formatter) formatAll(root string, files, sources []string) ([]string, []error) {
+	formatted := make([]string, len(files))
+	errs := make([]error, len(files))
+	fail := func(err error) ([]string, []error) {
+		for i := range errs {
+			errs[i] = err
+		}
+		return formatted, errs
+	}
+	type request struct {
+		File   string `json:"file"`
+		Source string `json:"source"`
+	}
+	requests := make([]request, len(files))
+	for i, file := range files {
+		requests[i] = request{File: strings.TrimPrefix(file, f.dir+"/"), Source: sources[i]}
+	}
+	input, err := json.Marshal(requests)
+	if err != nil {
+		return fail(err)
+	}
+	output, err := f.format(root, string(input))
+	if err != nil {
+		return fail(err)
+	}
+	var results []batchResult
+	if err := json.Unmarshal([]byte(output), &results); err != nil || len(results) != len(files) {
+		return fail(fmt.Errorf("%s returned %d results for %d files: %w", f.name, len(results), len(files), err))
+	}
+	for i, result := range results {
+		switch {
+		case result.Unformattable:
+			errs[i] = errNotFormattable
+		case result.Error != "":
+			errs[i] = errors.New(result.Error)
+		case result.Formatted == nil:
+			errs[i] = fmt.Errorf("%s returned no output", f.name)
+		default:
+			formatted[i] = *result.Formatted
+		}
+	}
+	return formatted, errs
 }

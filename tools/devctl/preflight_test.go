@@ -360,6 +360,76 @@ func TestAnUnavailableFormatterWarnsOnceAndBlocksNothing(t *testing.T) {
 	}
 }
 
+const fakePrettier = `export async function getFileInfo(file) {
+  return { ignored: file.startsWith("ignored/"), inferredParser: file.endsWith(".ts") ? "typescript" : null };
+}
+export async function resolveConfig() { return {}; }
+export async function format(source) {
+  if (source.includes("syntax error")) throw new Error("SyntaxError: bad\n  at line 1");
+  return source.replaceAll("=1", " = 1");
+}
+`
+
+func repoWithFakePrettier(t *testing.T, prettier string) gitRepo {
+	t.Helper()
+	if _, err := exec.LookPath("node"); err != nil {
+		t.Fatal("node is required for this test")
+	}
+	root, err := findRepoRoot()
+	if err != nil {
+		t.Fatal(err)
+	}
+	script, err := os.ReadFile(filepath.Join(root, "tools", "devctl", "prettier_batch.mjs"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	repo := newGitRepo(t)
+	writeAt(t, repo.root, "tools/devctl/prettier_batch.mjs", string(script))
+	writeAt(t, repo.root, "apps/web/node_modules/prettier/index.mjs", prettier)
+	return repo
+}
+
+func TestPrettierChecksEveryCommittedWebFileInOneBatch(t *testing.T) {
+	t.Parallel()
+	repo := repoWithFakePrettier(t, fakePrettier)
+	repo.commit(t, map[string]string{"README.md": "x\n"})
+	base := repo.head(t)
+	repo.commit(t, map[string]string{
+		"apps/web/src/clean.ts":  "export const a = 1\n",
+		"apps/web/src/dirty.ts":  "export const a=1\n",
+		"apps/web/src/wide.ts":   strings.Repeat("// 移除流程圖：shot.png\n", 20000),
+		"apps/web/src/broken.ts": "syntax error\n",
+		"apps/web/.npmrc":        "a=1\n",
+		"apps/web/ignored/x.ts":  "a=1\n",
+	})
+	problems, warnings, err := formatProblems(repo.root, base+"..HEAD")
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantProblems := []string{"apps/web/src/dirty.ts is not prettier-formatted as committed; run `task format:web` and commit the result"}
+	wantWarnings := []string{"prettier could not check apps/web/src/broken.ts (SyntaxError: bad); CI still checks it"}
+	if !slices.Equal(problems, wantProblems) || !slices.Equal(warnings, wantWarnings) {
+		t.Fatalf("problems %q, warnings %q; want %q and %q", problems, warnings, wantProblems, wantWarnings)
+	}
+}
+
+func TestAPrettierBatchThatCrashesWarnsForEveryFile(t *testing.T) {
+	t.Parallel()
+	repo := repoWithFakePrettier(t, `throw new Error("prettier failed to load");`)
+	repo.commit(t, map[string]string{"README.md": "x\n"})
+	base := repo.head(t)
+	repo.commit(t, map[string]string{"apps/web/src/a.ts": "export const a=1\n", "apps/web/src/b.ts": "export const b=1\n"})
+	problems, warnings, err := formatProblems(repo.root, base+"..HEAD")
+	if err != nil || len(problems) != 0 || len(warnings) != 2 {
+		t.Fatalf("problems %q, warnings %q, err %v; want one warning per file", problems, warnings, err)
+	}
+	for i, file := range []string{"apps/web/src/a.ts", "apps/web/src/b.ts"} {
+		if !strings.HasPrefix(warnings[i], "prettier could not check "+file+" (exit status 1: ") {
+			t.Errorf("warning %d = %q, want %s named with the batch's exit", i, warnings[i], file)
+		}
+	}
+}
+
 func TestCommittedBlobsReturnsEachFileExactlyAsCommitted(t *testing.T) {
 	t.Parallel()
 	repo := newGitRepo(t)
