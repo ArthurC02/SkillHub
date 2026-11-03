@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -24,9 +23,9 @@ var (
 const deployPreflightSuffix = "/bin/skillhub-preflight"
 
 func dependencyPolicyProblems(root string) []string {
-	out, err := exec.Command("git", "-C", root, "ls-files").Output()
+	out, err := gitOutput(root, "ls-files")
 	if err != nil {
-		return []string{fmt.Sprintf("git ls-files: %v", err)}
+		return []string{err.Error()}
 	}
 	dependabot, err := os.ReadFile(filepath.Join(root, ".github", "dependabot.yml"))
 	if err != nil {
@@ -42,7 +41,7 @@ func dependencyPolicyProblems(root string) []string {
 		composeFiles: map[string]string{},
 		ciFiles:      map[string]string{},
 	}
-	for _, file := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+	for _, file := range strings.Split(strings.TrimSpace(out), "\n") {
 		survey.record(file)
 	}
 	problems := survey.problems

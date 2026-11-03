@@ -335,6 +335,18 @@ func TestCommentBudgetChecksThePushedCommitWhenItIsNotCheckedOut(t *testing.T) {
 	}
 }
 
+func TestCommentBudgetChecksAFileWithANonASCIIName(t *testing.T) {
+	t.Parallel()
+	repo := newGitRepo(t)
+	repo.commit(t, map[string]string{"README.md": "x\n"})
+	base := repo.head(t)
+	repo.commit(t, map[string]string{"apps/platform/目錄/doc.go": overlongGoComment})
+	problems, err := committedCommentProblems(repo.root, base+"..HEAD")
+	if err != nil || len(problems) != 1 || !strings.HasPrefix(problems[0], "comment-budget: apps/platform/目錄/doc.go has 1 comments") {
+		t.Fatalf("problems %q, err %v; want the non-ASCII path named", problems, err)
+	}
+}
+
 func TestCommentBudgetSkipsFilesDeletedInTheRange(t *testing.T) {
 	t.Parallel()
 	repo := newGitRepo(t)

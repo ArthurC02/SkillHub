@@ -102,6 +102,11 @@ func TestADRCitationProblemsFlagsProseInLivingDocuments(t *testing.T) {
 			},
 			want: "docs/domain-memory/changes/x/draft-pr.md:1 names " + one, count: 1,
 		},
+		{
+			name:   "a file with a non-ASCII name names an ADR",
+			change: func(_ string, write func(string, string)) { write("docs/plans/目錄.md", "見 "+one+"。\n") },
+			want:   "docs/plans/目錄.md:1 names " + one, count: 1,
+		},
 	})
 }
 

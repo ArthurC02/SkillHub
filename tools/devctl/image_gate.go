@@ -253,7 +253,7 @@ func rangeEnd(rangeSpec string) string {
 }
 
 func gitOutput(root string, args ...string) (string, error) {
-	cmd := exec.Command("git", append([]string{"-C", root}, args...)...)
+	cmd := exec.Command("git", append([]string{"-C", root, "-c", "core.quotePath=false"}, args...)...)
 	output, err := cmd.Output()
 	if err != nil {
 		var exit *exec.ExitError

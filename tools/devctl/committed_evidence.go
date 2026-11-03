@@ -96,7 +96,7 @@ func citedChanges(root, rangeSpec, end string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	changed, err := gitOutput(root, "-c", "core.quotepath=false", "diff", "--name-only", "--no-renames", rangeSpec)
+	changed, err := gitOutput(root, "diff", "--name-only", "--no-renames", rangeSpec)
 	if err != nil {
 		return nil, err
 	}

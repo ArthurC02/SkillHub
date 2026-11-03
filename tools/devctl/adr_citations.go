@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -45,11 +44,11 @@ var adrCitationExemptions = []struct {
 }
 
 func adrCitationProblems(root string) []string {
-	listed, err := exec.Command("git", "-C", root, "ls-files", "--cached", "--others", "--exclude-standard").Output()
+	listed, err := gitOutput(root, "ls-files", "--cached", "--others", "--exclude-standard")
 	if err != nil {
-		return []string{fmt.Sprintf("adr-citations: git ls-files: %v", err)}
+		return []string{fmt.Sprintf("adr-citations: %v", err)}
 	}
-	files := existingListedFiles(root, string(listed))
+	files := existingListedFiles(root, listed)
 	adrs, problems := adrFilesByNumber(files)
 	if len(adrs) == 0 {
 		return append(problems, fmt.Sprintf("adr-citations: %s holds no ADR, so every rule below would pass on nothing", adrDir))
