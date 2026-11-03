@@ -61,6 +61,9 @@ const RED_LINES: [RegExp, string][] = [
   [red(String.raw`commit\s+${SAME_COMMAND}--amend\b`), 'history is never rewritten; make a new commit'],
   [red(String.raw`push\s+${SAME_COMMAND}(?:--force\b|-f\b|\+\S)`), 'history is never rewritten; merge and push'],
   [new RegExp(String.raw`\s--no-verify\b`), 'hooks are never skipped; fix what the hook found'],
+  [new RegExp(String.raw`(?:^|[;&(\n]|\|\||\$\()\s*(?:[A-Za-z_]\w*=\S*\s+)*(?:\S*[\\/])?(?:python3?|py|node)(?:\.exe)?\s+-(?=\s|$)(?![^;&|\n]*<)`),
+    'a script read from stdin with nothing piped or redirected in waits on the shell\'s open stdin forever and keeps ' +
+    'burning CPU; pipe or heredoc the script in, use node -e, or edit files with the Edit tool'],
 ]
 
 const HEREDOC_BODY = /<<-?\s*(['"]?)(\w+)\1([^\n]*)\n[\s\S]*?\n\2(?=\s|$)/g

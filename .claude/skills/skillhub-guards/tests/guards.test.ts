@@ -413,6 +413,12 @@ const crossesARedLine = [
   'git push --no-verify',
   'cd c:/tmp/wt; git stash list',
   'rtk git stash',
+  'python - 2>/dev/null; node -e "1"',
+  'python3 -',
+  'cd x && PYTHONIOENCODING=utf8 python - --flag',
+  'C:/Python314/python.exe -',
+  'false || node -',
+  'py - > out.txt',
 ]
 
 for (const command of crossesARedLine) {
@@ -442,6 +448,14 @@ const everydayGit = [
   'git status --short',
   'git show HEAD:apps/web/src/a.ts > apps/web/src/a.ts',
   'git diff --stat -- .claude',
+  "python - <<'EOF'\nprint(1)\nEOF",
+  'cat a.py | python -',
+  'python - < a.py',
+  'node -e "console.log(1)"',
+  'python -c "print(1)"',
+  'python -m pytest -q',
+  'node --version',
+  "git commit -q -F - <<'EOF'\nnever run python - here\nEOF",
 ]
 
 for (const command of everydayGit) {
