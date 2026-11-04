@@ -1,4 +1,4 @@
-import { test, expect, type Page, type TestInfo } from "@playwright/test";
+import { test, expect, type BrowserContext, type Page, type TestInfo } from "@playwright/test";
 import RealAxeBuilder from "@axe-core/playwright";
 import AxeBuilder from "./axe";
 import {
@@ -37,6 +37,32 @@ import { stubPlatform } from "./stub";
 import { creationSnapshot } from "../src/testing/fixtures/creation";
 
 const lookupTest = test.extend({ trace: "retain-on-failure" });
+
+const ROUTE_SWEEP_PAGES = 4;
+
+async function sweepRoutes<T>(
+  context: BrowserContext,
+  measure: (page: Page) => Promise<T>,
+): Promise<[name: string, measured: T][]> {
+  const results: [string, T][] = [];
+  const pending = [...ROUTES.entries()];
+  await Promise.all(
+    Array.from({ length: ROUTE_SWEEP_PAGES }, async () => {
+      const page = await context.newPage();
+      await stubPlatform(page);
+      await page.setViewportSize({ width: 1280, height: 900 });
+      for (let next = pending.shift(); next; next = pending.shift()) {
+        const [index, [name, url]] = next;
+        await page.goto(url);
+        await expect(page.locator(".app-nav a").first()).toBeVisible();
+        await expect(page.locator("[data-loading]")).toHaveCount(0);
+        results[index] = [name, await measure(page)];
+      }
+      await page.close();
+    }),
+  );
+  return results;
+}
 
 async function stubCreationContinuations(page: Page) {
   await stubPlatform(page);
@@ -2821,21 +2847,15 @@ test.describe("QA-008 real layout: 選中狀態與資料完整性", () => {
 
 test.describe("QA-008 real layout: 全站唯一主要動作", () => {
   test("at most one filled primary action per page, and only on a.action/button.action", async ({
-    page,
+    context,
   }) => {
     test.slow();
-    await stubPlatform(page);
-    await page.setViewportSize({ width: 1280, height: 900 });
 
     const bad: string[] = [];
     let routesWithOne = 0;
 
-    for (const [name, url] of ROUTES) {
-      await page.goto(url);
-      await expect(page.locator(".app-nav a").first()).toBeVisible();
-      await expect(page.locator("[data-loading]")).toHaveCount(0);
-
-      const found = await page.evaluate(() => {
+    const sweep = await sweepRoutes(context, (page) =>
+      page.evaluate(() => {
         const probe = document.createElement("div");
         document.body.appendChild(probe);
         const unpainted = getComputedStyle(probe).backgroundColor;
@@ -2855,8 +2875,10 @@ test.describe("QA-008 real layout: 全站唯一主要動作", () => {
           });
         }
         return { cta, unpainted, filled };
-      });
+      }),
+    );
 
+    for (const [name, found] of sweep) {
       if (!found.cta || found.cta === found.unpainted) {
         bad.push(
           `${name}: --cta resolved to 「${found.cta}」 — nothing was measured on this route`,
@@ -2958,6 +2980,15 @@ test.describe("QA-008 the real Tab key", () => {
   });
 });
 
+const teachingBlocks = (page: Page) =>
+  page.evaluate(() =>
+    Array.from(document.querySelectorAll('[data-role="teaching"]')).map((el) => ({
+      flat: !el.closest("[hidden]") && el.getClientRects().length > 0,
+      runes: [...(el.textContent ?? "").replace(/\s+/g, "")].length,
+      head: (el.textContent ?? "").trim().slice(0, 16),
+    })),
+  );
+
 test.describe("the text budget and the fourth disclosure, in a real engine", () => {
   const TEACHING_FLAT: Record<string, number> = {
     policy: 95,
@@ -2979,25 +3010,14 @@ test.describe("the text budget and the fourth disclosure, in a real engine", () 
   };
 
   test("flat teaching text: ≤100 runes a block, and never more than the day it was measured", async ({
-    page,
+    context,
   }) => {
     test.slow();
-    await stubPlatform(page);
-    await page.setViewportSize({ width: 1280, height: 900 });
 
     const bad: string[] = [];
     const measured: Record<string, number> = {};
-    for (const [name, url] of ROUTES) {
-      await page.goto(url);
-      await expect(page.locator(".app-nav a").first()).toBeVisible();
-      await expect(page.locator("[data-loading]")).toHaveCount(0);
-      const blocks = await page.evaluate(() =>
-        Array.from(document.querySelectorAll('[data-role="teaching"]')).map((el) => ({
-          flat: !el.closest("[hidden]") && el.getClientRects().length > 0,
-          runes: [...(el.textContent ?? "").replace(/\s+/g, "")].length,
-          head: (el.textContent ?? "").trim().slice(0, 16),
-        })),
-      );
+    const sweep = await sweepRoutes(context, teachingBlocks);
+    for (const [name, blocks] of sweep) {
       const flat = blocks.filter((b) => b.flat);
       measured[name] = flat.reduce((sum, b) => sum + b.runes, 0);
       for (const b of flat) {
@@ -3024,18 +3044,13 @@ test.describe("the text budget and the fourth disclosure, in a real engine", () 
   });
 
   test("flat teaching and identifiers never outweigh visible evidence, reasons, and caveats", async ({
-    page,
+    context,
   }) => {
     test.slow();
-    await stubPlatform(page);
-    await page.setViewportSize({ width: 1280, height: 900 });
 
     const bad: string[] = [];
-    for (const [name, url] of ROUTES) {
-      await page.goto(url);
-      await expect(page.locator(".app-nav a").first()).toBeVisible();
-      await expect(page.locator("[data-loading]")).toHaveCount(0);
-      const measured = await page.evaluate(() => {
+    const sweep = await sweepRoutes(context, (page) =>
+      page.evaluate(() => {
         const runes = (role: string) => {
           const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
           let total = 0;
@@ -3054,7 +3069,9 @@ test.describe("the text budget and the fourth disclosure, in a real engine", () 
           reason: runes("reason"),
           caveat: runes("caveat"),
         };
-      });
+      }),
+    );
+    for (const [name, measured] of sweep) {
       const basis = measured.evidence + measured.reason + measured.caveat;
       if (measured.teaching > basis) {
         bad.push(
