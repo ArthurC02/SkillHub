@@ -16,6 +16,7 @@ CURL_IMAGE="docker.io/curlimages/curl@sha256:c1fe1679c34d9784c1b0d1e5f62ac0a79fc
 PLAYWRIGHT_IMAGE="mcr.microsoft.com/playwright:v1.64.1-noble"
 
 NET="skillhub-smoke"
+PW_VOLUME="skillhub-smoke-playwright"
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 # Git Bash hands Docker an MSYS path it cannot mount, and rewrites arguments
@@ -32,6 +33,7 @@ names=(smoke-web smoke-llm smoke-llm-2 smoke-worker smoke-worker-2 smoke-api smo
 # The browser scripts buffer their results and print them in one go, which the
 # container logs then bury; keep a copy so cleanup can quote the failed ones.
 nodelog="$(mktemp)"
+pwlog="$(mktemp)"
 
 dump() {
 	for c in "${names[@]}"; do
@@ -75,13 +77,14 @@ cleanup() {
 			printf '  FAIL %s\n' "${failures[@]}" >&2
 		fi
 	fi
-	rm -f "$nodelog"
+	rm -f "$nodelog" "$pwlog"
 	if [ "${SMOKE_KEEP:-}" = "1" ]; then
 		echo "stack-smoke: SMOKE_KEEP=1, leaving ${names[*]} and network $NET up" >&2
 		return "$rc"
 	fi
 	docker rm -f "${names[@]}" >/dev/null 2>&1 || true
 	docker network rm "$NET" >/dev/null 2>&1 || true
+	docker volume rm "$PW_VOLUME" >/dev/null 2>&1 || true
 	return "$rc"
 }
 trap cleanup EXIT
@@ -106,10 +109,19 @@ wait_for() { # wait_for <label> <attempts> <command...>
 
 docker rm -f "${names[@]}" >/dev/null 2>&1 || true
 docker network rm "$NET" >/dev/null 2>&1 || true
+docker volume rm "$PW_VOLUME" >/dev/null 2>&1 || true
 docker network create "$NET" >/dev/null
-for image in "$S3_IMAGE" "$CURL_IMAGE" "$PLAYWRIGHT_IMAGE"; do
+for image in "$S3_IMAGE" "$CURL_IMAGE"; do
 	docker pull -q "$image" >/dev/null 2>&1 &
 done
+# The Playwright image supplies the browsers; only the JS package is fetched,
+# once, into a volume both browser passes mount.
+{
+	docker pull -q "$PLAYWRIGHT_IMAGE" >/dev/null 2>&1 || true
+	docker run --rm -v "$PW_VOLUME:/pw" -w /pw "$PLAYWRIGHT_IMAGE" \
+		npm i --no-save --silent --no-audit --no-fund playwright@1.64.1
+} >"$pwlog" 2>&1 &
+pw_pid=$!
 
 phase "Postgres"
 docker run -d --name smoke-pg --network "$NET" \
@@ -250,18 +262,20 @@ me="$(docker run --rm --network "$NET" --entrypoint sh "$CURL_IMAGE" -c '
 [ "$me" = 200 ] && rc=0 || rc=1
 check "a session from one API copy is accepted by the other (got ${me:-nothing})" "$rc"
 
-phase "images pulled in the background"
+phase "playwright package, pulled and installed in the background"
+if ! wait "$pw_pid"; then
+	echo "stack-smoke: installing the playwright package failed:" >&2
+	cat "$pwlog" >&2
+	exit 1
+fi
 wait
 
-# 6. `npm i` fetches only the JS package; the Playwright image already
-#    supplies the browser binaries.
 phase "browser"
 docker run --rm --network "$NET" \
-	-v "$HOST_ROOT:/work:ro" -w /work \
+	-v "$HOST_ROOT:/work:ro" -v "$PW_VOLUME:/pw" -w /pw \
 	-e BASE_URL=http://smoke-web \
 	"$PLAYWRIGHT_IMAGE" \
-	sh -c 'cd /tmp && npm i --no-save --silent --no-audit --no-fund playwright@1.64.1 &&
-	       cp /work/tools/ci/stack-browser.mjs /work/tools/ci/stack-seed.mjs /tmp/ && node /tmp/stack-browser.mjs' 2>&1 | tee -a "$nodelog" && rc=0 || rc=1
+	sh -c 'cp /work/tools/ci/stack-browser.mjs /work/tools/ci/stack-seed.mjs /pw/ && node /pw/stack-browser.mjs' 2>&1 | tee -a "$nodelog" && rc=0 || rc=1
 check "public routes render in a browser against the real API" "$rc"
 
 # A short run of the load test through nginx, spread over both API copies:
@@ -301,10 +315,9 @@ if [ "$login" = 204 ] && [ "$fork_source_login" = 204 ] && [ "$catalogued" = UPD
 	if wait_for "platform-api (credit)" 90 hget -fs -o /dev/null http://smoke-api:8080/healthz &&
 		wait_for "platform-api-2 (credit)" 90 hget -fs -o /dev/null http://smoke-api-2:8080/healthz &&
 		wait_for "web (credit)" 60 hget -fs -o /dev/null -H "Accept: text/html" http://smoke-web/ &&
-		docker run --rm --network "$NET" -v "$HOST_ROOT:/work:ro" -w /work -e BASE_URL=http://smoke-web \
+		docker run --rm --network "$NET" -v "$HOST_ROOT:/work:ro" -v "$PW_VOLUME:/pw" -w /pw -e BASE_URL=http://smoke-web \
 			"$PLAYWRIGHT_IMAGE" \
-			sh -c 'cd /tmp && npm i --no-save --silent --no-audit --no-fund playwright@1.64.1 &&
-			       cp /work/tools/ci/stack-credit.mjs /work/tools/ci/stack-seed.mjs /tmp/ && node /tmp/stack-credit.mjs' 2>&1 | tee -a "$nodelog"; then
+			sh -c 'cp /work/tools/ci/stack-credit.mjs /work/tools/ci/stack-seed.mjs /pw/ && node /pw/stack-credit.mjs' 2>&1 | tee -a "$nodelog"; then
 		rc=0
 	else
 		rc=1

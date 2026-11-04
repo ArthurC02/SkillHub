@@ -96,10 +96,8 @@ try {
   process.exit(1);
 }
 
-for (const { signedIn, context } of [
-  { signedIn: true, context: member },
-  { signedIn: false, context: anon },
-])
+async function drive(context, signedIn) {
+  const results = [];
   for (const route of routes) {
     const page = await context.newPage();
     const problems = [];
@@ -129,9 +127,18 @@ for (const { signedIn, context } of [
       problems.push("no .app-nav link: the app did not mount");
     }
 
-    if (!reportRoute(route, signedIn, problems)) failed = true;
+    results.push({ route, problems });
     await page.close();
   }
+  return results;
+}
+
+// The two passes share nothing but the browser, so they run side by side;
+// the report keeps the signed-in pass first.
+const passes = await Promise.all([drive(member, true), drive(anon, false)]);
+for (const [index, results] of passes.entries())
+  for (const { route, problems } of results)
+    if (!reportRoute(route, index === 0, problems)) failed = true;
 
 function reportRoute(route, signedIn, problems) {
   const session = signedIn ? "signed in" : "signed out";
