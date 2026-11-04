@@ -43,8 +43,27 @@ dump() {
 	done
 }
 
+phases=()
+phase_name=""
+phase_started=$SECONDS
+phase() {
+	if [ -n "$phase_name" ]; then
+		phases+=("$phase_name=$((SECONDS - phase_started))s")
+	fi
+	phase_name="$1"
+	phase_started=$SECONDS
+	echo "--- $1"
+}
+
+report_phases() {
+	phase "end"
+	echo "stack-smoke phases: ${phases[*]} total=${SECONDS}s"
+	echo "::notice title=stack-smoke phases::${phases[*]} total=${SECONDS}s"
+}
+
 cleanup() {
 	rc=$?
+	report_phases
 	if [ "$rc" -ne 0 ]; then
 		dump
 		if grep -q '^FAIL' "$nodelog" 2>/dev/null; then
@@ -88,18 +107,21 @@ wait_for() { # wait_for <label> <attempts> <command...>
 docker rm -f "${names[@]}" >/dev/null 2>&1 || true
 docker network rm "$NET" >/dev/null 2>&1 || true
 docker network create "$NET" >/dev/null
+for image in "$S3_IMAGE" "$CURL_IMAGE" "$PLAYWRIGHT_IMAGE"; do
+	docker pull -q "$image" >/dev/null 2>&1 &
+done
 
-echo "--- Postgres"
+phase "Postgres"
 docker run -d --name smoke-pg --network "$NET" \
 	-e POSTGRES_USER=skillhub -e POSTGRES_PASSWORD=skillhub -e POSTGRES_DB=skillhub \
 	"$PG_IMAGE" >/dev/null
 # Over TCP: the image's init server answers on the socket before POSTGRES_DB exists.
 wait_for "Postgres" 60 docker exec -e PGPASSWORD=skillhub smoke-pg psql -h 127.0.0.1 -U skillhub -d skillhub -tAc "select 1"
 
-echo "--- Schema (db/migrations, in order)"
+phase "Schema (db/migrations, in order)"
 bash "$REPO_ROOT/tools/ci/apply-sql.sh" "$REPO_ROOT"/db/migrations/*.sql -- docker exec -i smoke-pg psql -U skillhub -d skillhub
 
-echo "--- Object store"
+phase "Object store"
 docker run -d --name smoke-s3 --network "$NET" \
 	-v "$HOST_ROOT/infra/compose/seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro" \
 	"$S3_IMAGE" server -s3 -s3.config=/etc/seaweedfs/s3.json -dir=/data >/dev/null
@@ -132,17 +154,17 @@ start_apis() { # start_apis [extra docker run args...]
 	done
 }
 
-echo "--- platform-api x2"
+phase "platform-api x2"
 start_apis
 wait_for "platform-api" 90 hget -fs -o /dev/null http://smoke-api:8080/healthz
 wait_for "platform-api-2" 90 hget -fs -o /dev/null http://smoke-api-2:8080/healthz
 
-echo "--- platform-worker x2"
+phase "platform-worker x2"
 for worker in smoke-worker smoke-worker-2; do
 	docker run -d --name "$worker" --network "$NET" "${api_env[@]}" "$PLATFORM_IMAGE" worker >/dev/null
 done
 
-echo "--- web"
+phase "web"
 # nginx.conf routes on the Accept header: without text/html a request is
 # treated as a fetch() and falls through to the API instead of the SPA shell.
 docker run -d --name smoke-web --network "$NET" "$WEB_IMAGE" >/dev/null
@@ -150,7 +172,7 @@ wait_for "web" 60 hget -fs -o /dev/null -H "Accept: text/html" http://smoke-web/
 
 # Started with no gateway on purpose: a missing LiteLLM must be a request-time
 # error, never a startup failure.
-echo "--- llm x2"
+phase "llm x2"
 for llm in smoke-llm smoke-llm-2; do
 	docker run -d --name "$llm" --network "$NET" --network-alias llm "$LLM_IMAGE" >/dev/null
 	wait_for "$llm" 60 docker exec "$llm" python -c \
@@ -169,7 +191,7 @@ check() { # check <description> <condition-exit-code>
 	fi
 }
 
-echo "--- assertions"
+phase "assertions"
 
 # 1. The SPA, from the image that ships it.
 body="$(hget -fsS -H "Accept: text/html" http://smoke-web/)"
@@ -228,16 +250,12 @@ me="$(docker run --rm --network "$NET" --entrypoint sh "$CURL_IMAGE" -c '
 [ "$me" = 200 ] && rc=0 || rc=1
 check "a session from one API copy is accepted by the other (got ${me:-nothing})" "$rc"
 
-sleep 5
-for worker in smoke-worker smoke-worker-2; do
-	running="$(docker inspect -f '{{.State.Running}}' "$worker")"
-	[ "$running" = "true" ] && rc=0 || rc=1
-	check "$worker is still running" "$rc"
-done
+phase "images pulled in the background"
+wait
 
 # 6. `npm i` fetches only the JS package; the Playwright image already
 #    supplies the browser binaries.
-echo "--- browser"
+phase "browser"
 docker run --rm --network "$NET" \
 	-v "$HOST_ROOT:/work:ro" -w /work \
 	-e BASE_URL=http://smoke-web \
@@ -249,15 +267,21 @@ check "public routes render in a browser against the real API" "$rc"
 # A short run of the load test through nginx, spread over both API copies:
 # no 5xx and no slow reads. The catalogue's rate limit refuses most of this
 # one address's requests, which the report counts apart from errors.
-echo "--- load"
+phase "load"
 docker run --rm --network "$NET" -v "$HOST_ROOT:/work:ro" "$PLAYWRIGHT_IMAGE" \
 	node /work/tools/ci/load.mjs --base http://smoke-web --rps 40 --seconds 15 2>&1 | tee -a "$nodelog" && rc=0 || rc=1
 check "a short load run through both API copies has no server errors or slow reads" "$rc"
 
+for worker in smoke-worker smoke-worker-2; do
+	running="$(docker inspect -f '{{.State.Running}}' "$worker")"
+	[ "$running" = "true" ] && rc=0 || rc=1
+	check "$worker is still running after the browser and load passes" "$rc"
+done
+
 # 7. Credit on the real images: refused at 0, an operator grant, then allowed.
 #    Operator ids and the creation entry are read at startup, so the API restarts
 #    with them; nginx restarts too so it dials the new container.
-echo "--- credit"
+phase "credit"
 login="$(hget -sS -o /dev/null -w '%{http_code}' -X POST -H 'content-type: application/json' \
 	-d '{"user":"smoke-operator"}' http://platform-api:8080/auth/dev/login)" || login=""
 fork_source_login="$(hget -sS -o /dev/null -w '%{http_code}' -X POST -H 'content-type: application/json' \
