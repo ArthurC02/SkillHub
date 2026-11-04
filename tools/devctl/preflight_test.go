@@ -504,3 +504,17 @@ func TestFormatProblemsAreListedInTheOrderTheRangeNamesTheFiles(t *testing.T) {
 		t.Fatalf("problems in order %v, want %v", order, want)
 	}
 }
+
+func TestGitOutputReportsAFailureOnOneLine(t *testing.T) {
+	t.Parallel()
+	repo := newGitRepo(t)
+	repo.commit(t, map[string]string{"a.txt": "a\n"})
+	_, err := gitOutput(repo.root, "cat-file", "-e", "a\nb")
+	if err == nil {
+		t.Fatal("a missing object was accepted")
+	}
+	_, stderr, found := strings.Cut(err.Error(), ": fatal: ")
+	if !found || stderr != "Not a valid object name a" {
+		t.Fatalf("err = %q, want git's two-line stderr cut to its first line", err)
+	}
+}

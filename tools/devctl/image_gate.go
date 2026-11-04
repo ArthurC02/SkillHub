@@ -258,7 +258,7 @@ func gitOutput(root string, args ...string) (string, error) {
 	if err != nil {
 		var exit *exec.ExitError
 		if errors.As(err, &exit) {
-			return "", fmt.Errorf("git %s: %s", strings.Join(args, " "), strings.TrimSpace(string(exit.Stderr)))
+			return "", fmt.Errorf("git %s: %s", strings.Join(args, " "), firstLine(string(exit.Stderr)))
 		}
 		return "", fmt.Errorf("git %s: %w", strings.Join(args, " "), err)
 	}
