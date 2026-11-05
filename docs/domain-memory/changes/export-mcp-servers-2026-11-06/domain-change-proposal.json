@@ -3,12 +3,12 @@
   "proposal_id": "export-mcp-servers-2026-11-06",
   "proposer": "agent:coding-agent",
   "requirement_id": "export-mcp-servers",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-11-05T16:50:12.328718Z",
   "verified_at": "2026-11-05T16:50:27.632282Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-11-05T16:50:47.101685Z",
+  "applied_at": "2026-11-05T16:50:51.366879Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "aa6f0b8069d4e720777f5c1b2f8cd792ff86d445",
@@ -217,5 +217,9 @@
   "supersedes": [
     "identity-packaging-harvest",
     "packaging-source-testcase-and-download-rules-2026-10-18"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "2d4aca7b1f1f8a6378c54456e19f7db5a2b2193e",
+    "registry_digest": "sha256:52e2dd962d1d96aaf116f0865311dd2c0524f47eeb50a9bc93c7b4bd87ceeada"
+  }
 }

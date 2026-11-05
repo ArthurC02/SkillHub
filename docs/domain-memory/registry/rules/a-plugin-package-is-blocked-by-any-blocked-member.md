@@ -6,12 +6,12 @@ version: "1"
 effective_from: unknown
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-16T17:57:56.233858Z"
+    at: "2026-11-05T16:50:27.141932Z"
 sources:
-  - resource: "apps/platform/internal/skill/delivery/plugin.go#L92-101"
-    excerpt_sha256: "sha256:d2183a3f4e3b72d329a357d34901e649bd6d33f468589f38e9b4e9228007540b"
-  - resource: "apps/platform/internal/skill/delivery/plugin.go#L144-154"
-    excerpt_sha256: "sha256:e3b8ff470f3a70d10ec51b54844764941dc2a8cf11953c786d8a24e8de279b63"
+  - resource: "apps/platform/internal/skill/delivery/plugin.go#L108-119"
+    excerpt_sha256: "sha256:ca40dea8c42f0d1a16f6dcf607eb0ef6f533c07f47d49e22df7b519cda424dda"
+  - resource: "apps/platform/internal/skill/delivery/plugin.go#L167-178"
+    excerpt_sha256: "sha256:fd1ed295da7b93e499b54d80618a6c90ba4bfa23c28236ae41ee8b9c1e246b37"
 ---
 A plugin package of several Skill Versions is built only if every member passes the same release checks as a single Skill; the first blocked member stops it and is named in the refusal.
 
