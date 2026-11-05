@@ -392,7 +392,7 @@ docker run --rm --network container:skillhub-postgres-1 \
 **CI 的形狀**（`ci.yml`）：
 
 - main 上的 push 以 commit SHA 分組且不互相取消；只有 PR 會被同一個 PR 的下一次 push 取消。每個未被取消的 run 都必須完成自己的驗證。
-- `images` 有自己的 path filter（見[Repo 結構、CI 與驗證層](../adr/README.md#repo-結構ci-與驗證層)），純文件 commit 不再建置、smoke、推送三個服務映像。它不再等語言 job，與它們並行；推送拆成 `images-push`，等待既有程式、工具、契約、依賴檢查與四個原生瀏覽器彙總閘門通過才推，從同一次 run 的 GHA 快取重建，不重新編譯。
+- `images` 有自己的 path filter（見[Repo 結構、CI 與驗證層](../adr/README.md#repo-結構ci-與驗證層)），純文件 commit 不再建置、smoke、推送三個服務映像。它不再等語言 job，與它們並行；推送拆成 `images-push`，等待既有程式、工具、契約、依賴檢查與四個原生瀏覽器彙總閘門通過才推，五個映像各自一格 matrix 並行，從同一次 run 的 GHA 快取重建，不重新編譯。
 - 每週日一次 `schedule` 全量跑（所有 path filter 視為命中），`workflow_dispatch` 也是全量——手寫 path filter 漏掉的那一格由它兜底。
 - 每個 job 都有 `timeout-minutes`，一個卡住的 job 不會再佔滿預設的 6 小時。
 - `platform` 只跑需要資料庫與物件儲存的測試；golangci-lint、`fmt --diff` 與 `go vet` 在獨立的 `platform-lint` job 並行跑，資料庫無關套件的 race 偵測測試在獨立的 `platform-race` job 並行跑，三者都是 `images-push` 的前提。postgres 與 sandboxd 映像在 `images-postgres-sandboxd` 與 `images` 並行建置與檢查，也是 `images-push` 的前提。
