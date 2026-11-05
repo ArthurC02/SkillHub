@@ -280,7 +280,7 @@ func (r *Report) parseFrontmatter(raw []byte) (body string) {
 		case fieldLicense:
 			m.License, _ = v.(string)
 		case fieldCompatibility:
-			m.Compatibility, _ = v.(string)
+			m.Compatibility = r.decodeCompatibility(v)
 		case fieldAllowedTools:
 			m.AllowedTools = append(m.AllowedTools, r.decodeAllowedTools(v)...)
 		case fieldMetadata:
@@ -315,6 +315,22 @@ func (r *Report) decodeAllowedTools(v any) []string {
 				"陣列是特定客戶端的擴充寫法，其他 Runtime 可能會忽略它")
 	}
 	return tools
+}
+
+func (r *Report) decodeCompatibility(v any) string {
+	s, ok := v.(string)
+	switch {
+	case !ok:
+		r.add(SeverityError, "compatibility-not-a-string", skillMDPath,
+			"compatibility 不是字串；Agent Skills 規格將它定義為 1 到 500 個字元的字串，沒有環境需求就整個欄位拿掉")
+	case s == "":
+		r.add(SeverityError, "compatibility-empty", skillMDPath,
+			"compatibility 是空字串；規格要求有寫就要 1 到 500 個字元，沒有環境需求就整個欄位拿掉")
+	case utf8.RuneCountInString(s) > maxCompatibilityLen:
+		r.add(SeverityError, "compatibility-too-long", skillMDPath,
+			fmt.Sprintf("compatibility 有 %d 個字元，超過規格上限 %d", utf8.RuneCountInString(s), maxCompatibilityLen))
+	}
+	return s
 }
 
 func (r *Report) checkMetadataIsStringMap(v any) {
@@ -382,11 +398,6 @@ func (r *Report) checkManifest() {
 		r.add(SeverityError, "description-missing", skillMDPath, "frontmatter 欄位 description 為必填，且不可為空白")
 	case utf8.RuneCountInString(m.Description) > maxDescriptionLen:
 		r.add(SeverityError, "description-too-long", skillMDPath, fmt.Sprintf("description 超過 %d 個字元", maxDescriptionLen))
-	}
-
-	if n := utf8.RuneCountInString(m.Compatibility); n > maxCompatibilityLen {
-		r.add(SeverityWarning, "spec-compatibility-too-long", skillMDPath,
-			fmt.Sprintf("compatibility 有 %d 個字元，超過規格上限 %d", n, maxCompatibilityLen))
 	}
 }
 

@@ -177,8 +177,9 @@ FIELD_RULES = """- `name`: lowercase letters, digits and single hyphens, at most
   This is the only thing an agent sees when deciding whether to load the skill, so
   say the trigger, not just the capability. Write it in the third person (never I
   or you), name the words a request would use, and never put an XML tag in it.
-- `compatibility`: environment requirements. An empty string when there are
-  none - not "none", not "N/A"; the field is written into the package as-is.
+- `compatibility`: environment requirements, at most 500 characters. An empty
+  string when there are none - not "none", not "N/A"; the field is written into
+  the package as-is.
 - `allowed_tools`: a single space-separated string of tool names, only if the
   skill needs specific tools. An empty string otherwise.
 - `body`: the actual instructions, in Markdown. Concrete steps a competent agent

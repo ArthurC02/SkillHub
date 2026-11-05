@@ -85,6 +85,34 @@ func TestFrontmatterRules(t *testing.T) {
 	}
 }
 
+func TestCompatibilityIsOneToFiveHundredCharactersWhenPresent(t *testing.T) {
+	cases := []struct {
+		name, field, wantCode string
+	}{
+		{"absent", "", ""},
+		{"short requirement", "compatibility: Requires git\n", ""},
+		{"exactly 500 characters", "compatibility: " + strings.Repeat("繁", 500) + "\n", ""},
+		{"501 characters", "compatibility: " + strings.Repeat("繁", 501) + "\n", "compatibility-too-long"},
+		{"empty string", "compatibility: \"\"\n", "compatibility-empty"},
+		{"no value", "compatibility:\n", "compatibility-not-a-string"},
+		{"a list", "compatibility:\n  - git\n", "compatibility-not-a-string"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := Validate(pkg("---\nname: x\ndescription: d\nlicense: MIT\n"+tc.field+"---\n", nil))
+			if tc.wantCode == "" {
+				if r.Blocked {
+					t.Fatalf("a conforming compatibility must not block: %+v", r.Findings)
+				}
+				return
+			}
+			if codes(r)[tc.wantCode] != SeverityError || !r.Blocked {
+				t.Fatalf("want %s blocking, findings: %+v", tc.wantCode, r.Findings)
+			}
+		})
+	}
+}
+
 func TestBadYAMLFindingKeepsTheParserOut(t *testing.T) {
 	r := Validate(pkg("---\nname: [unclosed\n---\nbody", nil))
 	for _, f := range r.Findings {
