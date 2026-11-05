@@ -1,0 +1,46 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "export-mcp-servers",
+  "proposal_id": "export-mcp-servers-2026-11-06",
+  "registry_revision": {
+    "observed_commit": "aa6f0b8069d4e720777f5c1b2f8cd792ff86d445",
+    "registry_digest": "sha256:28a16ff8ec49b74eab7a47388923f276300dbb91bfd642e24a296a64c092d7b2",
+    "committed_digest": "sha256:3d65d5edee6e13c5594bca3a63d58b68c146b5c76552214846c2b0bedc2d5b03"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-export-carries-the-listed-mcp-servers-its-skills-declare",
+      "mutated_protection": "apps/platform/internal/skill/delivery/mcp.go:98: u.User == nil && -> ",
+      "failure_evidence": "AreGroupedByTheServerThatProvidesThem/an_address_with_an_empty_fragment\n--- FAIL: TestDeclaredMCPToolsAreGroupedByTheServerThatProvidesThem (0.00s)\n    --- PASS: TestDeclaredMCPToolsAreGroupedByTheServerThatProvidesThem/nothing_declared (0.00s)\n    --- PASS: TestDeclaredMCPToolsAreGroupedByTheServerThatProvidesThem/one_listed_tool (0.00s)\n    --- PASS: TestDeclaredMCPToolsAreGroupedByTheServerThatProvidesThem/two_tools_on_one_server (0.00s)\n    --- PASS: TestDeclaredMCPToolsAreGroupedByTheServerThatProvidesThem/a_tool_not_on_the_list (0.00s)\n    --- PASS: TestDeclaredMCPToolsAreGroupedByTheServerThatProvidesThem/an_offered_tool_the_Skill_did_not_declare (0.00s)\n    --- PASS: TestDeclaredMCPToolsAreGroupedByTheServerThatProvidesThem/one_server_under_two_addresses (0.00s)\n    --- FAIL: TestDeclaredMCPToolsAreGroupedByTheServerThatProvidesThem/an_address_with_credentials (0.00s)\n    --- PASS: TestDeclaredMCPToolsAreGroupedByTheServerThatProvidesThem/an_address_with_a_fragment (0.00s)\n    --- PASS: TestDeclaredMCPToolsAreGroupedByTheServerThatProvidesThem/an_address_with_an_empty_fragment (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery\t0.379s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "rule-an-export-carries-the-listed-mcp-servers-its-skills-declare",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^(TestAPluginDeclaresTheMCPServersItsMembersCall|TestDeclaredMCPToolsAreGroupedByTheServerThatProvidesThem|TestTheInstallGuideNamesTheServersASkillNeeds|TestAPluginIsNotBuiltWhenTheMCPToolListCannotBeRead|TestAPluginWhoseMembersCallNoListedServerCarriesNoMCPConfig)$ ./internal/skill/delivery/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:e523e4c632d88bb0bb3d4d6d23bf940ca3e5884ee06890f049e23a4d71fad2d6",
+      "finished_at": "2026-11-05T16:50:09.684045Z"
+    },
+    {
+      "obligation_id": "plugin-member-rules-still-hold",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^(TestAPluginMemberCarriesNoManifestOfItsOwnAuthorsMaking|TestAPluginMemberIsFiledUnderTheNameItsOwnManifestDeclares)$ ./internal/skill/delivery/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:596ea9d9e85459706beae45d390978e6ae7969630e9a7ab89f0765a8a89ec122",
+      "finished_at": "2026-11-05T16:50:11.732885Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

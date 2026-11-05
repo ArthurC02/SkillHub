@@ -225,6 +225,7 @@
 - [an-ended-creation-accepts-no-command](/rules/an-ended-creation-accepts-no-command) — A saved or cancelled creation accepts no command, not even cancel.
 - [an-expired-or-purged-package-is-not-served](/rules/an-expired-or-purged-package-is-not-served) — A package is not served once it has expired, been purged or is not scan-available.
 - [an-explicitly-empty-filter-is-refused](/rules/an-explicitly-empty-filter-is-refused) — A filter given with an empty value is refused rather than treated as absent.
+- [an-export-carries-the-listed-mcp-servers-its-skills-declare](/rules/an-export-carries-the-listed-mcp-servers-its-skills-declare) — An export names every MCP server its Skills declare in allowed-tools that is on the operator's MCP tool list: a plugin declares each one as a remote Streamable….
 - [an-exposure-approval-needs-a-current-enriched-snapshot](/rules/an-exposure-approval-needs-a-current-enriched-snapshot) — An exposure approval is refused unless the publication is published, its Skill is available and cleared for the Catalog, and a fully enriched search snapshot o….
 - [an-exposure-review-names-the-release-and-sequence-it-saw](/rules/an-exposure-review-names-the-release-and-sequence-it-saw) — An exposure review is refused as stale unless it names the current release and the review sequence its reviewer saw.
 - [an-exposure-review-needs-a-reason](/rules/an-exposure-review-needs-a-reason) — An exposure review is refused before any lookup unless its decision is approved or revoked and it carries a non-blank reason.

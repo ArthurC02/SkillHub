@@ -1,0 +1,49 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "export-mcp-servers",
+  "proposal_id": "export-mcp-servers-2026-11-06",
+  "obligations": [
+    {
+      "id": "rule-an-export-carries-the-listed-mcp-servers-its-skills-declare",
+      "source_type": "acceptance-criterion",
+      "source_id": "plugin-declares-listed-servers",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "an-export-carries-the-listed-mcp-servers-its-skills-declare"
+        },
+        {
+          "source_type": "acceptance-criterion",
+          "source_id": "undeclarable-servers-are-named"
+        },
+        {
+          "source_type": "acceptance-criterion",
+          "source_id": "skill-package-names-servers"
+        },
+        {
+          "source_type": "acceptance-criterion",
+          "source_id": "unreadable-list-builds-nothing"
+        }
+      ],
+      "expected_outcome": "TestAPluginDeclaresTheMCPServersItsMembersCall finds docs as streamable-http in mcp.json and http in .mcp.json; TestDeclaredMCPToolsAreGroupedByTheServerThatProvidesThem writes no server for an unlisted tool, two addresses, credentials or a fragment; TestTheInstallGuideNamesTheServersASkillNeeds lists the server and the gap; TestAPluginIsNotBuiltWhenTheMCPToolListCannotBeRead returns the read failure.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^(TestAPluginDeclaresTheMCPServersItsMembersCall|TestDeclaredMCPToolsAreGroupedByTheServerThatProvidesThem|TestTheInstallGuideNamesTheServersASkillNeeds|TestAPluginIsNotBuiltWhenTheMCPToolListCannotBeRead|TestAPluginWhoseMembersCallNoListedServerCarriesNoMCPConfig)$ ./internal/skill/delivery/"
+    },
+    {
+      "id": "plugin-member-rules-still-hold",
+      "source_type": "rule",
+      "source_id": "a-plugin-package-is-blocked-by-any-blocked-member",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-plugin-member-version-belongs-to-its-skill"
+        }
+      ],
+      "expected_outcome": "The plugin member tests still pass with the member loop and member read at their new lines.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^(TestAPluginMemberCarriesNoManifestOfItsOwnAuthorsMaking|TestAPluginMemberIsFiledUnderTheNameItsOwnManifestDeclares)$ ./internal/skill/delivery/"
+    }
+  ]
+}

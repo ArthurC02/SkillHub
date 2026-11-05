@@ -1,0 +1,221 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "export-mcp-servers-2026-11-06",
+  "proposer": "agent:coding-agent",
+  "requirement_id": "export-mcp-servers",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-11-05T16:50:12.328718Z",
+  "verified_at": "2026-11-05T16:50:27.632282Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "aa6f0b8069d4e720777f5c1b2f8cd792ff86d445",
+    "registry_digest": "sha256:28a16ff8ec49b74eab7a47388923f276300dbb91bfd642e24a296a64c092d7b2",
+    "committed_digest": "sha256:3d65d5edee6e13c5594bca3a63d58b68c146b5c76552214846c2b0bedc2d5b03"
+  },
+  "affected_contexts": [
+    "packaging"
+  ],
+  "rule_ids": [
+    "an-export-carries-the-listed-mcp-servers-its-skills-declare",
+    "a-plugin-package-is-blocked-by-any-blocked-member",
+    "a-plugin-member-version-belongs-to-its-skill"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "packaging",
+    "invariant": "An export writes a server setting only for a listed MCP tool its Skill declares, at a single https address with no credentials or fragment, and never a local command.",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "packaging is handed the offered MCP tools with each Skill Version it reads, as the trial run is; it imports nothing from the context that owns the tool list.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "The operator's MCP tool list names each listed tool's server and https address; a Skill declares tools as mcp__<server>__<tool> in allowed-tools.",
+      "Agent Plugins 1.0.0 lets a plugin carry mcp.json with remote servers; an Agent Skill cannot carry server settings.",
+      "The platform must not choose what runs on the reader's machine."
+    ],
+    "decision": "The version read returns the offered MCP tools; mcpNeedsOf groups the declared references into declarable servers and gaps; a plugin writes mcp.json and .mcp.json for the servers and its README names servers and gaps; a single Skill package's INSTALL.md names both.",
+    "invariants_preserved": [
+      "Every member still passes the single-Skill release checks and the first blocked one stops the plugin.",
+      "A member version of another Skill is still answered not found.",
+      "No local command is ever written; only remote addresses."
+    ],
+    "rejected_alternatives": [
+      "Writing stdio commands, which would make the platform choose a process to run on the reader's machine.",
+      "Guessing a server for a tool not on the list.",
+      "Adding a reader field to the packaging service, which the architecture budget holds."
+    ],
+    "proof_obligations": [
+      "rule-an-export-carries-the-listed-mcp-servers-its-skills-declare",
+      "plugin-member-rules-still-hold"
+    ],
+    "counterfactual_check": "Letting an address with credentials through declarableServerURL makes the credentials row of TestDeclaredMCPToolsAreGroupedByTheServerThatProvidesThem fail."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-export-carries-the-listed-mcp-servers-its-skills-declare",
+        "statement": "An export names every MCP server its Skills declare in allowed-tools that is on the operator's MCP tool list: a plugin declares each one as a remote Streamable HTTP server in mcp.json and .mcp.json, a single Skill package lists them in INSTALL.md; a tool not on the list, a server listed under two addresses, or an address with credentials or a fragment is named for the reader to set up and never written, and an export whose tool list cannot be read is not produced.",
+        "owner": "skill-packaging",
+        "contexts": [
+          "packaging"
+        ],
+        "examples": [
+          "A member declares mcp__docs__search and docs is listed at https://docs.example.com/mcp: mcp.json declares docs as streamable-http at that address and .mcp.json as http.",
+          "A member declares mcp__crm__lookup, which is not on the list: no server is written for it and the README names it for the reader to set up.",
+          "The MCP tool list cannot be read: no plugin is built."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/delivery/mcp.go",
+            "lines": {
+              "start": 53,
+              "end": 94
+            },
+            "content_sha256": "sha256:7c9d54d9d0ebf4ccfa5af7f2b2e2c6ac042b356a91a81d5e861690aefbdf128b",
+            "excerpt_sha256": "sha256:872a48ec2296f1a904e17c8ac06fd29cfb782666d054a18882681e5dfaabdc04"
+          },
+          {
+            "path": "apps/platform/internal/skill/delivery/mcp.go",
+            "lines": {
+              "start": 96,
+              "end": 99
+            },
+            "content_sha256": "sha256:7c9d54d9d0ebf4ccfa5af7f2b2e2c6ac042b356a91a81d5e861690aefbdf128b",
+            "excerpt_sha256": "sha256:6417deb6185471056734b21815654298633fcb5b3f988c5630f3e123c530dc99"
+          },
+          {
+            "path": "apps/platform/internal/skill/delivery/mcp.go",
+            "lines": {
+              "start": 101,
+              "end": 123
+            },
+            "content_sha256": "sha256:7c9d54d9d0ebf4ccfa5af7f2b2e2c6ac042b356a91a81d5e861690aefbdf128b",
+            "excerpt_sha256": "sha256:20fc1406ded57646a279ba181f87b85f5b9d62dfa1c7ad7714c9a48426ae080d"
+          },
+          {
+            "path": "apps/platform/internal/skill/delivery/mcp_test.go",
+            "lines": {
+              "start": 80,
+              "end": 115
+            },
+            "content_sha256": "sha256:6800571b6323c06c96826008021498bb0e01984b03aa26fd623e6c4b1486cef6",
+            "excerpt_sha256": "sha256:239cbeb28077d3aae76684c6c6619916557dc21c08afa1c453fb7ad29d1adf3e"
+          },
+          {
+            "path": "apps/platform/internal/skill/delivery/mcp_test.go",
+            "lines": {
+              "start": 11,
+              "end": 57
+            },
+            "content_sha256": "sha256:6800571b6323c06c96826008021498bb0e01984b03aa26fd623e6c4b1486cef6",
+            "excerpt_sha256": "sha256:c6eeee8c1613c6778b5c72692409d8a003b6ececb87bb2fcdd790ca410bc0540"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-plugin-package-is-blocked-by-any-blocked-member",
+        "statement": "A plugin package of several Skill Versions is built only if every member passes the same release checks as a single Skill; the first blocked member stops it and is named in the refusal.",
+        "owner": "skill-packaging",
+        "version": "1",
+        "effective_from": "unknown",
+        "contexts": [
+          "packaging"
+        ],
+        "examples": [
+          "Two members, the second taken down: no plugin is built and the message starts with the second member's name.",
+          "Every member releasable: a zip with plugin.json and skills/<name>/ folders is built and its shape is re-read before it is stored."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/delivery/plugin.go",
+            "lines": {
+              "start": 108,
+              "end": 119
+            },
+            "content_sha256": "sha256:85c522d5fa9b63bb4971307edbcefc4c784aaddc12054d0f67bc5b38440467b2",
+            "excerpt_sha256": "sha256:ca40dea8c42f0d1a16f6dcf607eb0ef6f533c07f47d49e22df7b519cda424dda"
+          },
+          {
+            "path": "apps/platform/internal/skill/delivery/plugin.go",
+            "lines": {
+              "start": 167,
+              "end": 178
+            },
+            "content_sha256": "sha256:85c522d5fa9b63bb4971307edbcefc4c784aaddc12054d0f67bc5b38440467b2",
+            "excerpt_sha256": "sha256:fd1ed295da7b93e499b54d80618a6c90ba4bfa23c28236ae41ee8b9c1e246b37"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-plugin-member-version-belongs-to-its-skill",
+        "statement": "A plugin member whose version belongs to another Skill is answered not found, so one Skill's gates never apply to another's content.",
+        "contexts": [
+          "packaging"
+        ],
+        "examples": [
+          "A member naming skill A with a version of skill B is not found."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/delivery/source_rules_test.go",
+            "lines": {
+              "start": 73,
+              "end": 92
+            },
+            "excerpt_sha256": "sha256:82d40426b7c06ef9cb276ca1410ae577012a997fc0babc8cbb6bf146487e78af"
+          },
+          {
+            "path": "apps/platform/internal/skill/delivery/plugin.go",
+            "lines": {
+              "start": 150,
+              "end": 166
+            },
+            "content_sha256": "sha256:85c522d5fa9b63bb4971307edbcefc4c784aaddc12054d0f67bc5b38440467b2",
+            "excerpt_sha256": "sha256:0e2620fd8e81ce9fea502611457d1ac54cd87f7faababea6a431fc2d0785b19f"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-11-05T16:50:27.141932Z",
+      "scope": "proposal",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "aa6f0b8069d4e720777f5c1b2f8cd792ff86d445",
+        "registry_digest": "sha256:28a16ff8ec49b74eab7a47388923f276300dbb91bfd642e24a296a64c092d7b2",
+        "committed_digest": "sha256:3d65d5edee6e13c5594bca3a63d58b68c146b5c76552214846c2b0bedc2d5b03"
+      }
+    }
+  ],
+  "supersedes": [
+    "identity-packaging-harvest",
+    "packaging-source-testcase-and-download-rules-2026-10-18"
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "export-mcp-servers",
+  "status": "draft",
+  "intent": "Someone who installs an exported Skill or plugin learns which MCP servers it calls, and a plugin is wired to them, instead of rediscovering what the platform already knows.",
+  "actor": "skill-consumer",
+  "observable_outcome": "A plugin export declares the listed MCP servers its members call in mcp.json and .mcp.json and names the rest in its README; a single Skill package names the same servers in INSTALL.md.",
+  "acceptance_criteria": [
+    {
+      "id": "plugin-declares-listed-servers",
+      "statement": "A plugin whose member declares a listed MCP tool carries mcp.json with that server as streamable-http at its listed address and .mcp.json with it as http."
+    },
+    {
+      "id": "undeclarable-servers-are-named",
+      "statement": "A declared tool not on the list, a server listed under two addresses, or an address with credentials or a fragment is written into no config and is named for the reader to set up."
+    },
+    {
+      "id": "skill-package-names-servers",
+      "statement": "A single Skill package's INSTALL.md lists the listed servers its Skill calls and the tools it uses on each."
+    },
+    {
+      "id": "unreadable-list-builds-nothing",
+      "statement": "When the MCP tool list cannot be read, no plugin is built."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/skill/delivery/mcp.go",
+    "apps/platform/internal/skill/delivery/plugin.go",
+    "apps/platform/internal/skill/delivery/profile.go",
+    "apps/platform/internal/entrypoint/api/apiserver/app.go"
+  ]
+}
