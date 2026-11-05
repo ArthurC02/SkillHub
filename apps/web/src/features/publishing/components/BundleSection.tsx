@@ -35,7 +35,8 @@ import { packagingGate } from "../../packaging";
 import { AcquisitionFailure } from "./AcquisitionFailure";
 import { DeliveryAudience } from "./DeliveryAudience";
 
-const PLUGIN_SCOPE_NOTE = "Plugin 含成員的 Agent 小工具、說明檔，以及成員用到且列在平台 MCP 工具清單上的 MCP 伺服器設定；不含其他宿主專屬元件。";
+const PLUGIN_SCOPE_NOTE =
+  "Plugin 含成員的 Agent 小工具、說明檔，以及成員用到且列在平台 MCP 工具清單上的 MCP 伺服器設定；不含其他宿主專屬元件。";
 
 interface MemberChoice {
   skillId: string;
