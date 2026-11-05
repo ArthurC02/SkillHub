@@ -339,13 +339,6 @@ jobs:
             -v "$GITHUB_WORKSPACE/infra/compose/seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro" \
             docker.io/chrislusf/seaweedfs:4.48@sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d \
             server -s3 -s3.config=/etc/seaweedfs/s3.json -dir=/data
-          for _ in $(seq 60); do
-            if curl -fs -o /dev/null http://127.0.0.1:8333/status; then exit 0; fi
-            sleep 1
-          done
-          echo "SeaweedFS never became ready"
-          docker logs seaweedfs
-          exit 1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: apps/platform/go.mod
@@ -370,6 +363,15 @@ jobs:
           $PSQL postgres://postgres:postgres@localhost:5432/postgres -c 'CREATE DATABASE skillhub_upgrade'
           bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Upgrade with data' \
             bash "$GITHUB_WORKSPACE/db/tests/upgrade_with_data.sh" 'postgres://postgres:postgres@localhost:5432/skillhub_upgrade?sslmode=disable'
+      - name: Wait for SeaweedFS to answer
+        run: |
+          for _ in $(seq 60); do
+            if curl -fs -o /dev/null http://127.0.0.1:8333/status; then exit 0; fi
+            sleep 1
+          done
+          echo "SeaweedFS never became ready"
+          docker logs seaweedfs
+          exit 1
       - name: Platform tests
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Platform tests' go test -count=1 ./...
       - run: go build ./...
