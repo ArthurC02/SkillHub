@@ -353,7 +353,7 @@ func assertInstallInstructionsHaveAtLeastOneCheck(t *testing.T, p Profile, out s
 func TestInstallInstructionsStateTheSupportStatusAndAtLeastOneCheck(t *testing.T) {
 	profiles := loadRealProfiles(t)
 	for _, p := range profiles.Ordered() {
-		out := renderInstall(p, "demo-skill", []string{"requirements.txt: package declares external dependencies"})
+		out := renderInstall(p, "demo-skill", []string{"requirements.txt: package declares external dependencies"}, mcpNeeds{})
 		assertSupportStatusIsStated(t, p, out)
 		assertInstallInstructionsHaveAtLeastOneCheck(t, p, out)
 	}
@@ -377,7 +377,7 @@ func TestInstallInstructionsListWhatTheScriptsImportWithoutDeclaring(t *testing.
 	if strings.Contains(joined, "executable file") {
 		t.Errorf("a non-dependency finding reached the dependency section: %v", notes)
 	}
-	out := renderInstall(loadRealProfiles(t)["standard"], "demo-skill", notes)
+	out := renderInstall(loadRealProfiles(t)["standard"], "demo-skill", notes, mcpNeeds{})
 	if !strings.Contains(out, "never declares") {
 		t.Errorf("INSTALL.md does not carry the undeclared dependency:\n%s", out)
 	}

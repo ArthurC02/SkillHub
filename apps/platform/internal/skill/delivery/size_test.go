@@ -41,7 +41,7 @@ func TestTheProducedHeadroomFitsWhatPackagingCanAdd(t *testing.T) {
 	}
 	var largestInstall int
 	for _, p := range loadRealProfiles(t).Ordered() {
-		if n := len(renderInstall(p, "demo-skill", nil)); n > largestInstall {
+		if n := len(renderInstall(p, "demo-skill", nil, mcpNeeds{})); n > largestInstall {
 			largestInstall = n
 		}
 	}
@@ -100,7 +100,7 @@ func refusalCount(t *testing.T, ceiling string) float64 {
 
 func TestInstallInstructionsNameTheImportCeilingSoTheRoundTripIsNotAssumed(t *testing.T) {
 	for _, p := range loadRealProfiles(t).Ordered() {
-		out := renderInstall(p, "demo-skill", nil)
+		out := renderInstall(p, "demo-skill", nil, mcpNeeds{})
 		if !strings.Contains(out, "10.0 MB") {
 			t.Errorf("%s: INSTALL.md does not name the import ceiling:\n%s", p.ID, out)
 		}

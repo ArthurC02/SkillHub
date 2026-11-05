@@ -480,7 +480,18 @@ func wirePackagingRegistryReaders(service *packaging.Service, registryService *r
 	}
 	service.ReadVersion = func(ctx context.Context, workspaceID, versionID pgtype.UUID) (packaging.VersionFacts, bool, error) {
 		version, found, err := registryService.WorkspaceVersion(ctx, workspaceID, versionID)
-		return versionFacts(version), found, err
+		if err != nil || !found {
+			return packaging.VersionFacts{}, found, err
+		}
+		offered, err := mcptools.Offered(ctx, registryService.Pool, version.AllowedTools)
+		if err != nil {
+			return packaging.VersionFacts{}, false, err
+		}
+		facts := versionFacts(version)
+		for _, t := range offered {
+			facts.MCPTools = append(facts.MCPTools, packaging.MCPTool{Reference: t.Reference(), Server: t.Server, URL: t.ServerURL})
+		}
+		return facts, true, nil
 	}
 	service.ReadCompatibility = func(ctx context.Context, versionID pgtype.UUID) (packaging.RuntimeCompatibility, bool, error) {
 		compat, found, err := registryService.RuntimeCompatibility(ctx, versionID)

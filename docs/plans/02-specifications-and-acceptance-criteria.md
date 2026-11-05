@@ -1126,7 +1126,7 @@ Skill 執行時可以用平台的兩個工具補 Context：提問工具把只有
 允收準則：
 
 - 作者從自己工作區挑選 Skill Version 建立 Bundle Version：名稱照 `PACK-003` 的規則、版本字串是 semver（`MAJOR.MINOR.PATCH`，可帶預發佈標籤）、一段說明、至少一個成員。同一個 Bundle 的版本字串不得重複；同一個 Bundle Version 裡不得有兩個成員來自同一個 Skill，也不得有兩個成員的 manifest 名稱相同（匯出時會撞在同一個目錄）。**成員只能是自己工作區裡的版本**，別人的要先 Fork。Bundle Version 建立後不可變。
-- 匯出為 Agent Plugin zip：根目錄一份 `plugin.json`（`name` 是 Bundle 名稱、`version` 是版本字串、`description` 是說明），`.claude-plugin/plugin.json` 放一份逐位元相同的副本，讓 Claude Code 讀到同樣的名稱與版本；匯入端只讀根目錄那份。每個成員放在 `skills/<manifest 名稱>/`，內容與單一套件同一份白名單。**匯出只含 Agent Skill**，不含 MCP 設定與宿主專屬元件，下載前的揭露要說出這件事。有一條測試證明：匯出的 zip 被平台自己的匯入端點當成 Agent Plugin 讀回，得到同樣數量、同樣名稱的 Skill。
+- 匯出為 Agent Plugin zip：根目錄一份 `plugin.json`（`name` 是 Bundle 名稱、`version` 是版本字串、`description` 是說明），`.claude-plugin/plugin.json` 放一份逐位元相同的副本，讓 Claude Code 讀到同樣的名稱與版本；匯入端只讀根目錄那份。每個成員放在 `skills/<manifest 名稱>/`，內容與單一套件同一份白名單。`plugin.json` 帶發佈者為 `author`；成員授權全部相同時帶 `license`，否則不寫。根目錄附 README，列出成員、MCP 伺服器與授權。成員在 `allowed-tools` 宣告且列在平台 MCP 工具清單上的伺服器，寫進 `mcp.json`（Agent Plugins 格式，Streamable HTTP）與 `.mcp.json`（Claude Code 格式）；寫不出來的由 README 點名請使用者自己設定；工具清單讀不到時不產出 Plugin。單一 Skill 套件的 `INSTALL.md` 同樣列出它要連的伺服器。匯入時帶進來的 MCP 設定與宿主專屬元件不會出現在匯出裡，下載前的揭露要說出這件事。有一條測試證明：匯出的 zip 被平台自己的匯入端點當成 Agent Plugin 讀回，得到同樣數量、同樣名稱的 Skill。
 - **信任取最壞**：任一成員過不了 `PACK-004` 的散布閘，整個 Bundle 不能匯出也不能發佈，訊息指名是哪一個成員、哪一道鎖。
 - Bundle 可以照 `PACK-004` 發佈。公開位址對 Bundle 列出成員與各自釘住的版本；兩筆相鄰的 Release 之間，哪個成員從哪一版升到哪一版、哪個成員加入或移除，逐項列出。
 

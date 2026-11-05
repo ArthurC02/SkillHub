@@ -154,7 +154,7 @@ const (
 	notListedNote         = "這個發佈物目前不在搜尋與目錄裡；只有拿到這個連結的人看得到。"
 	notOfferedNote        = "這個發佈物目前不提供下載，原因見上方。"
 	downloadNote          = "登入後可以下載這一版的標準 Agent Skill 套件；下載會記在你自己的工作區，保存期限與下載紀錄照你自己打包的套件一樣。"
-	bundleDownloadNote    = "登入後可以下載這一版的 Agent Plugin：只含成員的 Agent Skill，不含 MCP 設定或宿主專屬元件；下載會記在你自己的工作區，保存期限與下載紀錄照你自己打包的套件一樣。"
+	bundleDownloadNote    = "登入後可以下載這一版的 Agent Plugin：含成員的 Agent Skill、說明檔，以及成員用到且列在平台 MCP 工具清單上的 MCP 伺服器設定，不含其他宿主專屬元件；下載會記在你自己的工作區，保存期限與下載紀錄照你自己打包的套件一樣。"
 	invitedOnlyNote       = "這個部署目前只開放受邀者下載：沒有封測邀請的帳號按下下載會被拒絕。"
 	downloadContentPrefix = "/downloads/"
 	kindSkill             = "skill"

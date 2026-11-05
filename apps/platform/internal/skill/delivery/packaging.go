@@ -22,7 +22,7 @@ import (
 	testlab "github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 )
 
-const PackagerVersion = "0.2.0"
+const PackagerVersion = "0.3.0"
 
 const objectCleanupTimeout = 5 * time.Second
 
@@ -128,6 +128,8 @@ type VersionFacts struct {
 	LicenseExpression *string
 	LicenseSource     *string
 	CreatedAt         pgtype.Timestamptz
+
+	MCPTools []MCPTool
 }
 
 type RuntimeCompatibility struct {
@@ -381,7 +383,7 @@ func (s *Service) build(ctx context.Context, ws identity.Workspace, p *Plan) err
 	p.Dependencies = dependencyNotes(report)
 	files = append(files, exportFile{
 		path: InstallFile,
-		data: []byte(renderInstall(p.Profile, skillName, p.Dependencies)),
+		data: []byte(renderInstall(p.Profile, skillName, p.Dependencies, mcpNeedsOf(declaredTools(report), p.Version.MCPTools))),
 	})
 
 	files = dedupeByPath(files)

@@ -88,6 +88,7 @@ type PluginRequest struct {
 	Name        string
 	Version     string
 	Description string
+	Publisher   string
 	Members     []BundleMember
 }
 
@@ -632,11 +633,15 @@ func (s *Service) ExportBundle(ctx context.Context, ws identity.Workspace, bundl
 	if err != nil {
 		return Acquisition{}, err
 	}
-	return s.PackagePluginForRecipient(ctx, ws, ws.ID, pluginRequestOf(bundleVersion))
+	publication, _, err := s.OwnBundlePublication(ctx, ws, bundleName)
+	if err != nil {
+		return Acquisition{}, err
+	}
+	return s.PackagePluginForRecipient(ctx, ws, ws.ID, pluginRequestOf(bundleVersion, publication.Publisher))
 }
 
-func pluginRequestOf(v BundleVersion) PluginRequest {
-	return PluginRequest{Name: v.Bundle, Version: v.Version, Description: v.Description, Members: v.Members}
+func pluginRequestOf(v BundleVersion, publisher string) PluginRequest {
+	return PluginRequest{Name: v.Bundle, Version: v.Version, Description: v.Description, Publisher: publisher, Members: v.Members}
 }
 
 func (s *Service) bundleAvailability(ctx context.Context, owner pgtype.UUID, status Status, current *BundleVersion) (Availability, string, error) {

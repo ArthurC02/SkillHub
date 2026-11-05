@@ -595,7 +595,7 @@ func (s *Service) Acquire(ctx context.Context, recipient identity.Workspace, pub
 		return Acquisition{}, ErrNotFound
 	}
 	if current := publication.Releases[0].Bundle; current != nil {
-		return s.PackagePluginForRecipient(ctx, recipient, publication.OwnerWorkspaceID, pluginRequestOf(*current))
+		return s.PackagePluginForRecipient(ctx, recipient, publication.OwnerWorkspaceID, pluginRequestOf(*current, publication.Publisher))
 	}
 	return s.PackageForRecipient(ctx, recipient, publication.OwnerWorkspaceID, publication.SkillID, publication.Releases[0].VersionID)
 }

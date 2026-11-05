@@ -146,7 +146,7 @@ func substituteName(s, skillName string) string {
 	return strings.ReplaceAll(s, "<name>", skillName)
 }
 
-func renderInstall(p Profile, skillName string, deps []string) string {
+func renderInstall(p Profile, skillName string, deps []string, mcp mcpNeeds) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# Installing %s for %s\n\n", skillName, p.DisplayName)
 
@@ -166,7 +166,7 @@ func renderInstall(p Profile, skillName string, deps []string) string {
 		"(https://agentskills.io/specification). Checked: `SKILL.md` present at the package root; "+
 		"frontmatter parses as YAML; `name` present, at most 64 characters, lowercase alphanumerics "+
 		"and single hyphens, not starting or ending with one; `description` present, non-blank and at "+
-		"most 1024 characters; `compatibility`, where present, at most 500 characters; every file "+
+		"most 1024 characters; `compatibility`, where present, a string of 1 to 500 characters; every file "+
 		"`SKILL.md` points at is in this package.\n\n"+
 		"**Not checked and not claimed:** that your Agent loads this Skill, that its scripts run, or "+
 		"that it does what it says. Those are the other two layers of package compatibility (see [打包、授權溯源與散布](../../../../../docs/adr/README.md#打包授權溯源與散布)), and the "+
@@ -186,6 +186,7 @@ func renderInstall(p Profile, skillName string, deps []string) string {
 
 	writeInstallLocations(&b, p)
 	writeDependencies(&b, deps)
+	writeMCPServers(&b, mcp, skillMCPIntro)
 	writeEnvVars(&b, p)
 
 	if p.Snippet != "" {

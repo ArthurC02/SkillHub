@@ -30,7 +30,7 @@ func TestTheInstallGuidePutsEveryProfileValueInItsOwnSectionInOrder(t *testing.T
 	p.KnownLimitations = []string{"slow"}
 	p.Notes = []string{"note one", "note two"}
 
-	guide := renderInstall(p, "demo", []string{"requests"})
+	guide := renderInstall(p, "demo", []string{"requests"}, mcpNeeds{})
 
 	if strings.Contains(guide, "<name>") {
 		t.Errorf("the guide still says <name> where it should say demo:\n%s", guide)
@@ -65,7 +65,7 @@ func TestTheInstallGuidePutsEveryProfileValueInItsOwnSectionInOrder(t *testing.T
 }
 
 func TestAnInstallGuideLeavesOutTheSectionsAProfileHasNothingFor(t *testing.T) {
-	guide := renderInstall(Profile{DisplayName: "Any", Version: "1"}, "demo", nil)
+	guide := renderInstall(Profile{DisplayName: "Any", Version: "1"}, "demo", nil, mcpNeeds{})
 
 	for _, heading := range []string{"Dependencies", "Environment variables", "Minimal working example", "Known limitations"} {
 		if _, at := installSection(guide, heading); at >= 0 {
@@ -104,7 +104,7 @@ func TestAnInstallGuideForAZipWithItsOwnFolderSaysToUnzipInTheParent(t *testing.
 			p := Profile{DisplayName: "Agent", Version: "1"}
 			p.Install.Locations = []InstallLocation{{Scope: "user", Path: tc.path, Description: "per user"}}
 			p.Install.TopLevelDir = tc.top
-			where, _ := installSection(renderInstall(p, "demo", nil), "Where it goes")
+			where, _ := installSection(renderInstall(p, "demo", nil, mcpNeeds{}), "Where it goes")
 			if !strings.Contains(where, tc.holds) || strings.Contains(where, tc.notHolds) {
 				t.Errorf("the guide should say %q and not %q:\n%s", tc.holds, tc.notHolds, where)
 			}

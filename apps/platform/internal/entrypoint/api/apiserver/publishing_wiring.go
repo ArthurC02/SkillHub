@@ -57,7 +57,9 @@ func newPublishingService(cfg Config, registrySvc *registry.Service, packagingSv
 	svc.PackagePluginForRecipient = func(
 		ctx context.Context, recipient identity.Workspace, ownerWorkspaceID pgtype.UUID, plugin publishing.PluginRequest,
 	) (publishing.Acquisition, error) {
-		spec := packaging.PluginSpec{Name: plugin.Name, Version: plugin.Version, Description: plugin.Description}
+		spec := packaging.PluginSpec{
+			Name: plugin.Name, Version: plugin.Version, Description: plugin.Description, Author: plugin.Publisher,
+		}
 		for _, m := range plugin.Members {
 			spec.Members = append(spec.Members, packaging.PluginMember{SkillID: m.SkillID, VersionID: m.VersionID})
 		}

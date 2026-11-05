@@ -853,7 +853,7 @@ const DOWNLOAD_NOTE =
   "登入後可以下載這一版的標準 Agent 小工具套件；下載會記在你自己的工作區，保存期限與下載紀錄照你自己打包的套件一樣。";
 
 const BUNDLE_DOWNLOAD_NOTE =
-  "登入後可以下載這一版的 Agent Plugin：只含成員的 Agent 小工具，不含 MCP 設定或宿主專屬元件；下載會記在你自己的工作區，保存期限與下載紀錄照你自己打包的套件一樣。";
+  "登入後可以下載這一版的 Agent Plugin：含成員的 Agent 小工具、說明檔，以及成員用到且列在平台 MCP 工具清單上的 MCP 伺服器設定，不含其他宿主專屬元件；下載會記在你自己的工作區，保存期限與下載紀錄照你自己打包的套件一樣。";
 
 export const OWN_PUBLICATION = {
   kind: "skill",
@@ -1013,7 +1013,7 @@ export const PLUGIN_DOWNLOAD_ARTIFACT = {
   version_state: {
     value: "plugin",
     label: "Plugin pdf-toolkit 1.1.0",
-    note: "這一份是一組小工具打成的 Agent Plugin，成員各自釘住一個版本，內容不會改變；只含 Agent 小工具，不含 MCP 設定或宿主專屬元件。",
+    note: "這一份是一組小工具打成的 Agent Plugin，成員各自釘住一個版本，內容不會改變；含成員的 Agent 小工具、說明檔，以及成員用到且列在平台 MCP 工具清單上的 MCP 伺服器設定；不含其他宿主專屬元件。",
   },
   expires_at: "2099-01-01T00:00:00Z",
   created_at: "2026-09-10T00:00:00Z",

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -18,6 +19,7 @@ import (
 const (
 	pluginManifestFile       = "plugin.json"
 	claudePluginManifestFile = ".claude-plugin/plugin.json"
+	pluginReadmeFile         = "README.md"
 	pluginSkillsDir          = "skills/"
 )
 
@@ -30,6 +32,7 @@ type PluginSpec struct {
 	Name        string
 	Version     string
 	Description string
+	Author      string
 	Members     []PluginMember
 }
 
@@ -67,10 +70,25 @@ type PluginResult struct {
 }
 
 type pluginManifest struct {
-	Schema      string `json:"$schema"`
-	Name        string `json:"name"`
-	Version     string `json:"version"`
-	Description string `json:"description"`
+	Schema      string        `json:"$schema"`
+	Name        string        `json:"name"`
+	Version     string        `json:"version"`
+	Description string        `json:"description"`
+	Author      *pluginAuthor `json:"author,omitempty"`
+	License     string        `json:"license,omitempty"`
+}
+
+type pluginAuthor struct {
+	Name string `json:"name"`
+}
+
+type exportedMember struct {
+	files       []exportFile
+	name        string
+	description string
+	license     *string
+	declared    []string
+	offered     []MCPTool
 }
 
 var errPluginShape = errors.New("the exported plugin does not read back as the same set of Agent Skills")
@@ -83,24 +101,27 @@ func (s *Service) PlanPlugin(ctx context.Context, source identity.Workspace, spe
 		return nil, err
 	}
 	p := &PluginPlan{}
-	manifest, err := json.MarshalIndent(pluginManifest{
-		Schema: skillpkg.PluginSchemaID, Name: spec.Name, Version: spec.Version, Description: spec.Description,
-	}, "", "  ")
-	if err != nil {
-		return nil, err
-	}
-	manifest = append(manifest, '\n')
-	files := []exportFile{{path: pluginManifestFile, data: manifest}, {path: claudePluginManifestFile, data: manifest}}
+	var files []exportFile
+	var members []exportedMember
+	var declared []string
+	var offered []MCPTool
 	for _, member := range spec.Members {
-		memberFiles, err := s.exportPluginMember(ctx, source, member, p)
+		exported, err := s.exportPluginMember(ctx, source, member, p)
 		if err != nil {
 			return nil, err
 		}
 		if p.BlockedReason != "" {
 			return p, nil
 		}
-		files = append(files, memberFiles...)
+		files = append(files, exported.files...)
+		members = append(members, exported)
+		declared, offered = append(declared, exported.declared...), append(offered, exported.offered...)
 	}
+	top, err := pluginTopFiles(spec, members, mcpNeedsOf(declared, offered))
+	if err != nil {
+		return nil, err
+	}
+	files = append(top, files...)
 
 	zipped, err := writeZip(files, "")
 	if err != nil {
@@ -128,46 +149,111 @@ func (s *Service) PlanPlugin(ctx context.Context, source identity.Workspace, spe
 
 func (s *Service) exportPluginMember(
 	ctx context.Context, source identity.Workspace, member PluginMember, p *PluginPlan,
-) ([]exportFile, error) {
+) (exportedMember, error) {
 	skill, found, err := s.ReadSkill(ctx, source.ID, member.SkillID)
 	if err != nil {
-		return nil, err
+		return exportedMember{}, err
 	}
 	if !found {
-		return nil, ErrNotFound
+		return exportedMember{}, ErrNotFound
 	}
 	version, found, err := s.ReadVersion(ctx, source.ID, member.VersionID)
 	if err != nil {
-		return nil, err
+		return exportedMember{}, err
 	}
 	if !found || version.SkillID != skill.ID {
-		return nil, ErrNotFound
+		return exportedMember{}, ErrNotFound
 	}
 	if reason, message := gate(skill); reason != "" {
 		p.blockedBy(skill.Name, reason, message)
-		return nil, nil
+		return exportedMember{}, nil
 	}
 	src, err := s.readSource(ctx, version)
 	if err != nil {
-		return nil, err
+		return exportedMember{}, err
 	}
 	if src.blockedReason != "" {
 		p.blockedBy(skill.Name, src.blockedReason, src.blockedMessage)
-		return nil, nil
+		return exportedMember{}, nil
 	}
-	name := exportedName(skill.Name, src.report)
-	files := make([]exportFile, 0, len(src.files))
+	out := exportedMember{
+		name: exportedName(skill.Name, src.report), license: version.LicenseExpression,
+		declared: declaredTools(src.report), offered: version.MCPTools,
+	}
+	if src.report.Manifest != nil {
+		out.description = src.report.Manifest.Description
+	}
 	for _, f := range src.files {
 		if f.path == ManifestFile {
 			continue
 		}
-		files = append(files, exportFile{path: pluginSkillsDir + name + "/" + f.path, data: f.data, executable: f.executable})
+		out.files = append(out.files, exportFile{path: pluginSkillsDir + out.name + "/" + f.path, data: f.data, executable: f.executable})
 	}
 	p.Members = append(p.Members, PluginMemberView{
 		SkillID: pgconv.UUIDString(skill.ID), SkillVersionID: pgconv.UUIDString(version.ID),
-		Name: name, VersionNumber: version.VersionNumber,
+		Name: out.name, VersionNumber: version.VersionNumber,
 	})
-	return files, nil
+	return out, nil
+}
+
+func sharedLicense(members []exportedMember) string {
+	if len(members) == 0 || members[0].license == nil {
+		return ""
+	}
+	for _, m := range members[1:] {
+		if m.license == nil || *m.license != *members[0].license {
+			return ""
+		}
+	}
+	return *members[0].license
+}
+
+func pluginTopFiles(spec PluginSpec, members []exportedMember, mcp mcpNeeds) ([]exportFile, error) {
+	m := pluginManifest{
+		Schema: skillpkg.PluginSchemaID, Name: spec.Name, Version: spec.Version, Description: spec.Description,
+		License: sharedLicense(members),
+	}
+	if spec.Author != "" {
+		m.Author = &pluginAuthor{Name: spec.Author}
+	}
+	manifest, err := json.MarshalIndent(m, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	manifest = append(manifest, '\n')
+	config, err := mcp.configFiles()
+	if err != nil {
+		return nil, err
+	}
+	return append([]exportFile{
+		{path: pluginManifestFile, data: manifest},
+		{path: claudePluginManifestFile, data: manifest},
+		{path: pluginReadmeFile, data: []byte(renderPluginReadme(spec, members, m.License, mcp))},
+	}, config...), nil
+}
+
+func renderPluginReadme(spec PluginSpec, members []exportedMember, license string, mcp mcpNeeds) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "# %s %s\n\n%s\n\n", spec.Name, spec.Version, spec.Description)
+	if spec.Author != "" {
+		fmt.Fprintf(&b, "Published by %s.\n\n", spec.Author)
+	}
+	b.WriteString("## Skills\n\nEach folder under `skills/` is one Agent Skill, pinned to the version listed here; " +
+		"its `SKILL.md` says when your Agent should use it.\n\n")
+	for _, m := range members {
+		fmt.Fprintf(&b, "- `skills/%s/` — %s\n", m.name, strings.Join(strings.Fields(m.description), " "))
+	}
+	b.WriteString("\n")
+	writeMCPServers(&b, mcp, pluginMCPIntro)
+	b.WriteString("## License\n\n")
+	if license != "" {
+		fmt.Fprintf(&b, "Every Skill in this plugin is licensed %s, so `plugin.json` names it.\n\n", license)
+	} else {
+		b.WriteString("The Skills in this plugin do not share one known license, so `plugin.json` names none. " +
+			"Read each Skill's own `license` field and license files before you redistribute it.\n\n")
+	}
+	fmt.Fprintf(&b, "Packaged by Skill Hub packager %s as an Agent Plugin (%s).\n", PackagerVersion, skillpkg.PluginSpecRevision)
+	return b.String()
 }
 
 func (p *PluginPlan) blockedBy(member, reason, message string) {
@@ -247,6 +333,6 @@ func (s *Service) CreatePluginForRecipient(
 func pluginArtifact(a Artifact, view *PluginView) Artifact {
 	a.Plugin = view
 	a.VersionState = labelled{"plugin", "Plugin " + view.Name + " " + view.Version,
-		"這一份是一組 Skill 打成的 Agent Plugin，成員各自釘住一個版本，內容不會改變；只含 Agent Skill，不含 MCP 設定或宿主專屬元件。"}
+		"這一份是一組 Skill 打成的 Agent Plugin，成員各自釘住一個版本，內容不會改變；含成員的 Agent Skill、說明檔，以及成員用到且列在平台 MCP 工具清單上的 MCP 伺服器設定；不含其他宿主專屬元件。"}
 	return a
 }

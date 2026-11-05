@@ -46,8 +46,28 @@ func pluginOfOneMember(t *testing.T, extra map[string]string) *PluginPlan {
 
 func pluginOfOneMemberDescribed(t *testing.T, extra map[string]string, description string) *PluginPlan {
 	t.Helper()
+	p, err := planTestPlugin(pluginFixture{extra: extra, spec: PluginSpec{Description: description}})
+	if err != nil || !p.Allowed {
+		t.Fatalf("plan=%+v err=%v", p, err)
+	}
+	return p
+}
+
+type pluginFixture struct {
+	skillMD string
+	extra   map[string]string
+	license *string
+	spec    PluginSpec
+	offered []MCPTool
+	readErr error
+}
+
+func planTestPlugin(f pluginFixture) (*PluginPlan, error) {
 	files := map[string]string{"SKILL.md": "---\nname: tidy-csv\ndescription: Tidies CSV files.\nlicense: MIT\n---\n\nTidy it.\n"}
-	for name, content := range extra {
+	if f.skillMD != "" {
+		files["SKILL.md"] = f.skillMD
+	}
+	for name, content := range f.extra {
 		files[name] = content
 	}
 	var buf bytes.Buffer
@@ -55,14 +75,14 @@ func pluginOfOneMemberDescribed(t *testing.T, extra map[string]string, descripti
 	for name, content := range files {
 		w, err := zw.Create(name)
 		if err != nil {
-			t.Fatal(err)
+			return nil, err
 		}
 		if _, err := w.Write([]byte(content)); err != nil {
-			t.Fatal(err)
+			return nil, err
 		}
 	}
 	if err := zw.Close(); err != nil {
-		t.Fatal(err)
+		return nil, err
 	}
 	skillID := pgtype.UUID{Bytes: [16]byte{1}, Valid: true}
 	versionID := pgtype.UUID{Bytes: [16]byte{2}, Valid: true}
@@ -72,7 +92,10 @@ func pluginOfOneMemberDescribed(t *testing.T, extra map[string]string, descripti
 			return SkillFacts{ID: skillID, Name: "tidy-csv-fork-2", Redistribution: string(RedistributionAllowed)}, true, nil
 		},
 		ReadVersion: func(context.Context, pgtype.UUID, pgtype.UUID) (VersionFacts, bool, error) {
-			return VersionFacts{ID: versionID, SkillID: skillID, VersionNumber: 1, PackageObjectKey: "packages/member.zip"}, true, nil
+			return VersionFacts{
+				ID: versionID, SkillID: skillID, VersionNumber: 1, PackageObjectKey: "packages/member.zip",
+				LicenseExpression: f.license, MCPTools: f.offered,
+			}, f.readErr == nil, f.readErr
 		},
 	}
 	s.TestLab = &testlab.Service{}
@@ -89,14 +112,10 @@ func pluginOfOneMemberDescribed(t *testing.T, extra map[string]string, descripti
 	s.CuratedSource = func(context.Context, pgtype.UUID) (CuratedSource, bool, error) { return CuratedSource{}, false, nil }
 	s.ReadVersionSummaries = func(context.Context, []pgtype.UUID) (map[pgtype.UUID]VersionSummary, error) { return nil, nil }
 
-	p, err := s.PlanPlugin(context.Background(), identity.Workspace{}, PluginSpec{
-		Name: "csv-kit", Version: "1.0.0", Description: description, Members: []PluginMember{{SkillID: skillID, VersionID: versionID}},
-	})
-
-	if err != nil || !p.Allowed {
-		t.Fatalf("plan=%+v err=%v", p, err)
-	}
-	return p
+	spec := f.spec
+	spec.Name, spec.Version = "csv-kit", "1.0.0"
+	spec.Members = []PluginMember{{SkillID: skillID, VersionID: versionID}}
+	return s.PlanPlugin(context.Background(), identity.Workspace{}, spec)
 }
 
 func TestAPluginMemberCarriesNoManifestOfItsOwnAuthorsMaking(t *testing.T) {
@@ -121,7 +140,7 @@ func TestAPluginMemberIsFiledUnderTheNameItsOwnManifestDeclares(t *testing.T) {
 	}
 	var skillFiles int
 	for _, f := range zr.File {
-		if f.Name == pluginManifestFile || f.Name == claudePluginManifestFile {
+		if f.Name == pluginManifestFile || f.Name == claudePluginManifestFile || f.Name == pluginReadmeFile {
 			continue
 		}
 		skillFiles++

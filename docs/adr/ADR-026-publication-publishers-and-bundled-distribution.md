@@ -61,7 +61,9 @@
 
 匯出時 `plugin.json` 的 `name` 是 Bundle 的名稱，每個成員放在 `skills/<manifest name>/`。**這推翻「平台不產出 Plugin」**：不產出的理由當時是「把 N 個 Skill 組回一個 Plugin 是一個發佈功能，不是匯入的對稱操作」，而本 ADR 就是那個發佈功能。
 
-匯出的 Plugin **只含 Agent Skill**：`mcp.json` 與宿主專屬元件永遠不在裡面，因為平台從不匯入它們，也不替使用者決定要執行什麼。畫面要說出這件事，否則從別處帶著 MCP server 的 Plugin 進來又出去的人會以為東西還在。
+匯出的 Plugin 含成員的 Agent Skill、一份 README，以及**成員在 `allowed-tools` 宣告、而且列在平台 MCP 工具清單上的 MCP 伺服器**：`mcp.json` 依 Agent Plugins 規格把它們寫成 Streamable HTTP 伺服器，`.mcp.json` 是給 Claude Code 的同一份清單。只寫遠端位址，不寫任何本機指令，所以平台仍不替使用者決定要在他的機器上執行什麼；連不連、怎麼登入由他的客戶端決定。不在清單上、或清單給的位址不能照規格寫出（帶帳密、帶片段、同一伺服器兩個位址）的，README 點名請使用者自己設定。從別處匯入時帶的 `mcp.json`、hooks 等宿主專屬元件仍然不會出現在匯出裡，因為平台從不匯入它們；畫面要說出這件事。
+
+`plugin.json` 除了名稱、版本、說明，還帶發佈者（`author`）；所有成員的授權相同時帶 `license`，不同或有成員授權未知就不寫，不替使用者合併授權。
 
 **安裝端的同名衝突由宿主的命名空間承擔**——宿主以 Plugin 名前綴它的元件。平台不為此另造機制，也不改寫成員的 manifest 名稱。
 

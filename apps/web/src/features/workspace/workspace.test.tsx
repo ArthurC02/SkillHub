@@ -1715,7 +1715,7 @@ test("PACK-018 匯出為 Plugin 成功後顯示下載連結，且揭露句在按
   });
   await render(<BundleSection />, () => text().includes("pdf-toolkit-export"));
 
-  expect(text()).toContain("Plugin 只含 Agent 小工具，不含 MCP 設定或宿主專屬元件。");
+  expect(text()).toContain("Plugin 含成員的 Agent 小工具、說明檔，以及成員用到且列在平台 MCP 工具清單上的 MCP 伺服器設定；不含其他宿主專屬元件。");
 
   await act(async () => button("匯出 v1.0.0 Plugin")?.click());
   await waitFor(() => text().includes("pdf-toolkit-1.0.0-plugin.zip"));

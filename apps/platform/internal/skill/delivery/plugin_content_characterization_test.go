@@ -60,7 +60,7 @@ func TestAPluginManifestCarriesTheSchemaNameVersionAndDescriptionOfTheSpec(t *te
 	}
 }
 
-func TestAPluginZipHoldsOnlyItsManifestAndTheMembersFilesUnderSkills(t *testing.T) {
+func TestAPluginZipHoldsItsManifestReadmeAndTheMembersFilesUnderSkills(t *testing.T) {
 	p := pluginOfOneMember(t, map[string]string{
 		"references/guide.md": "Read me.\n",
 		ManifestFile:          `{"hooks":{"on":"start"}}`,
@@ -71,7 +71,7 @@ func TestAPluginZipHoldsOnlyItsManifestAndTheMembersFilesUnderSkills(t *testing.
 		got = append(got, name)
 	}
 	sort.Strings(got)
-	want := []string{".claude-plugin/plugin.json", "plugin.json", "skills/tidy-csv/SKILL.md", "skills/tidy-csv/references/guide.md"}
+	want := []string{".claude-plugin/plugin.json", "README.md", "plugin.json", "skills/tidy-csv/SKILL.md", "skills/tidy-csv/references/guide.md"}
 	if len(got) != len(want) {
 		t.Fatalf("plugin zip files = %v, want exactly %v", got, want)
 	}
