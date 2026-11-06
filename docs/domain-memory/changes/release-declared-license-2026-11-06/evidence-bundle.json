@@ -1,0 +1,46 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "release-declared-license",
+  "proposal_id": "release-declared-license-2026-11-06",
+  "registry_revision": {
+    "observed_commit": "58723d383a72d62fb37e9e22b61aac3c6500e61b",
+    "registry_digest": "sha256:55c3bc4a18128d8c12ac09803436b4962df698ff7cf2a67448127122f90539a1",
+    "committed_digest": "sha256:52e2dd962d1d96aaf116f0865311dd2c0524f47eeb50a9bc93c7b4bd87ceeada"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-recipient-copy-carries-the-license-its-publisher-declared",
+      "mutated_protection": "apps/platform/internal/skill/delivery/release_license.go:11: v.LicenseExpression != nil || -> ",
+      "failure_evidence": "-release-declaration Path: Message:套件本身沒有授權宣告；發佈者在發佈這個版本時宣告授權是 MIT。這份宣告不在 SKILL.md 裡，也沒有經過人工確認。 Details:[]}], want disclosed false\n    release_license_test.go:42: install note = \"\\n## License\\n\\nThis Skill's own files declare no license. The publisher declared MIT when releasing this version; `skillhub-manifest.json` records it with the source tier `release-declaration`. Skill Hub has not checked the declaration.\\n\", want present false\n=== RUN   TestAReleaseDeclarationFillsOnlyALicenseTheVersionLacks/own_license,_nothing_declared\n=== RUN   TestAReleaseDeclarationFillsOnlyALicenseTheVersionLacks/neither\n--- FAIL: TestAReleaseDeclarationFillsOnlyALicenseTheVersionLacks (0.00s)\n    --- PASS: TestAReleaseDeclarationFillsOnlyALicenseTheVersionLacks/no_own_license,_declared_on_release (0.00s)\n    --- FAIL: TestAReleaseDeclarationFillsOnlyALicenseTheVersionLacks/own_license_and_a_different_declaration (0.00s)\n    --- PASS: TestAReleaseDeclarationFillsOnlyALicenseTheVersionLacks/own_license,_nothing_declared (0.00s)\n    --- PASS: TestAReleaseDeclarationFillsOnlyALicenseTheVersionLacks/neither (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/delivery\t0.375s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-recipient-copy-carries-the-license-its-publisher-declared",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestAReleaseDeclarationFillsOnlyALicenseTheVersionLacks$ ./internal/skill/delivery/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:eb0caef4e0a5629c07b907b7cf464b5d9a3322e4fe7fbc981b144b28e0889db7",
+      "finished_at": "2026-11-06T00:11:47.140408Z"
+    },
+    {
+      "obligation_id": "acquired-copy-carries-the-declaration",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestAnAcquiredGeneratedSkillCarriesTheLicenseItsPublisherDeclared$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:3708f23c5d2c53c4f912f5fdef24021ae74cebc4d233d781cd9dd090d0bd600f",
+      "finished_at": "2026-11-06T00:12:22.244510Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

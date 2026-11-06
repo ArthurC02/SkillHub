@@ -1,0 +1,160 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "release-declared-license-2026-11-06",
+  "proposer": "agent:coding-agent",
+  "requirement_id": "release-declared-license",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-11-06T00:12:10.108399Z",
+  "verified_at": "2026-11-06T00:12:22.748429Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "58723d383a72d62fb37e9e22b61aac3c6500e61b",
+    "registry_digest": "sha256:55c3bc4a18128d8c12ac09803436b4962df698ff7cf2a67448127122f90539a1",
+    "committed_digest": "sha256:52e2dd962d1d96aaf116f0865311dd2c0524f47eeb50a9bc93c7b4bd87ceeada"
+  },
+  "affected_contexts": [
+    "packaging",
+    "publishing"
+  ],
+  "rule_ids": [
+    "a-recipient-copy-carries-the-license-its-publisher-declared"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "packaging",
+    "invariant": "A recipient copy records a release-declared license only when the version records none, under the source tier release-declaration with its disclosure; SKILL.md is never rewritten.",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "publishing hands packaging the current release's declared license through the existing recipient package hook; packaging imports nothing from publishing.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A generated Skill's files carry no license; its author declares one on the release.",
+      "The standard package copies SKILL.md byte for byte.",
+      "A license the version records itself is stronger evidence than a declaration outside the bytes."
+    ],
+    "decision": "withReleaseDeclaration fills a missing version license with the declared one under release-declaration; the manifest discloses it and INSTALL.md names it; the recipient hook carries the declared license.",
+    "invariants_preserved": [
+      "SKILL.md is copied byte for byte.",
+      "A version's own license is never overwritten.",
+      "Redistribution and the catalog gate do not read the declaration."
+    ],
+    "rejected_alternatives": [
+      "Writing the license into SKILL.md frontmatter at creation, which overturns the generator leaving it blank.",
+      "Only pointing readers to the publication page, so the declaration would not travel with the bytes."
+    ],
+    "proof_obligations": [
+      "rule-a-recipient-copy-carries-the-license-its-publisher-declared",
+      "acquired-copy-carries-the-declaration"
+    ],
+    "counterfactual_check": "Letting a declaration overwrite a version's own license makes the 'own license and a different declaration' row of TestAReleaseDeclarationFillsOnlyALicenseTheVersionLacks fail."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-recipient-copy-carries-the-license-its-publisher-declared",
+        "statement": "When a Skill Version records no license of its own and its publication release declares one, the copy a recipient acquires records that license in skillhub-manifest.json with the source tier release-declaration and the disclosure license-from-release-declaration, and its INSTALL.md says the publisher declared it and no one has checked it; SKILL.md is copied byte for byte, a license the version records itself always wins and is not disclosed, and the declaration never decides redistribution.",
+        "owner": "skill-packaging",
+        "contexts": [
+          "packaging"
+        ],
+        "examples": [
+          "A generated Skill whose version has no license, released with MIT declared: the acquired manifest records MIT from release-declaration and discloses it.",
+          "A version whose SKILL.md declares Apache-2.0, released with MIT declared: the manifest records Apache-2.0 from manifest and no release-declaration disclosure.",
+          "Neither the version nor the release has a license: expression and source tier are both null."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/delivery/release_license.go",
+            "lines": {
+              "start": 10,
+              "end": 17
+            },
+            "content_sha256": "sha256:9af33328f30e8f0089641b35af87af68864e8c9a6618110e17c1232de881e33f",
+            "excerpt_sha256": "sha256:0b03ed0c32e24ceef6132cb5adc2383c6c6fd540e6624c674501dc31e7e3b1ba"
+          },
+          {
+            "path": "apps/platform/internal/skill/delivery/release_license.go",
+            "lines": {
+              "start": 26,
+              "end": 36
+            },
+            "content_sha256": "sha256:9af33328f30e8f0089641b35af87af68864e8c9a6618110e17c1232de881e33f",
+            "excerpt_sha256": "sha256:2d284175e8d5f7e2d537339186519e26765d68abd90945314e8bace0aa564f1e"
+          },
+          {
+            "path": "apps/platform/internal/skill/delivery/release_license_test.go",
+            "lines": {
+              "start": 8,
+              "end": 46
+            },
+            "content_sha256": "sha256:95569d3a950715974aa43b07976c30ddf9165607e1d1d7aaf2548455e9ac0c36",
+            "excerpt_sha256": "sha256:fbd14e18e1bb9a51d278478bd34777bfa2cc51b41000c4378efa24c5d685885f"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/release_license_integration_test.go",
+            "lines": {
+              "start": 10,
+              "end": 47
+            },
+            "content_sha256": "sha256:51678a103543586f82f9425efdc923fd6d7590a0b3463973ddfcfe5005d22dce",
+            "excerpt_sha256": "sha256:75cc7222f2b7080d60bf4d68041d0fbef63f613ffff53627e891cfcc5561a213"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "packaging-publishing-recipient-package",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook",
+        "producer_context": "packaging",
+        "consumer_context": "publishing",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/publishing_wiring.go",
+            "lines": {
+              "start": 43,
+              "end": 45
+            },
+            "content_sha256": "sha256:4c37ec06efeec3756ae021c90c111123b29448b85dd1d6fbd621249342a2e27f",
+            "excerpt_sha256": "sha256:99de764daf7e9b955ec1cafe94cd56d09e1d3e83cc7c2eba7bbce8cb558386fb"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-11-06T00:12:22.295278Z",
+      "scope": "proposal",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "58723d383a72d62fb37e9e22b61aac3c6500e61b",
+        "registry_digest": "sha256:55c3bc4a18128d8c12ac09803436b4962df698ff7cf2a67448127122f90539a1",
+        "committed_digest": "sha256:52e2dd962d1d96aaf116f0865311dd2c0524f47eeb50a9bc93c7b4bd87ceeada"
+      }
+    }
+  ],
+  "supersedes": [
+    "wiring-collaborations"
+  ]
+}

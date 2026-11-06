@@ -1,0 +1,33 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "release-declared-license",
+  "status": "draft",
+  "intent": "Someone who acquires a published Skill whose files declare no license learns the license its publisher declared, instead of seeing the copy as unlicensed.",
+  "actor": "skill-consumer",
+  "observable_outcome": "The acquired standard package's skillhub-manifest.json records the declared license with source tier release-declaration and discloses it, and INSTALL.md says the publisher declared it; SKILL.md is unchanged.",
+  "acceptance_criteria": [
+    {
+      "id": "declared-license-travels",
+      "statement": "A version with no license, released with a declared license, is acquired with that license, the source tier release-declaration and the disclosure license-from-release-declaration in its manifest, and INSTALL.md names it as the publisher's declaration."
+    },
+    {
+      "id": "own-license-wins",
+      "statement": "A version that records its own license keeps it and its source tier, with no release-declaration disclosure, whatever the release declares."
+    },
+    {
+      "id": "nothing-declared-stays-unknown",
+      "statement": "When neither the version nor the release has a license, expression and source tier are both null."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/skill/delivery/release_license.go",
+    "apps/platform/internal/skill/delivery/packaging.go",
+    "apps/platform/internal/skill/publishing/service.go",
+    "apps/platform/internal/entrypoint/api/apiserver/publishing_wiring.go",
+    "contracts/packaging/download-manifest.schema.json"
+  ]
+}

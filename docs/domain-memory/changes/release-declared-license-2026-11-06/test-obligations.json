@@ -1,0 +1,29 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "release-declared-license",
+  "proposal_id": "release-declared-license-2026-11-06",
+  "obligations": [
+    {
+      "id": "rule-a-recipient-copy-carries-the-license-its-publisher-declared",
+      "source_type": "acceptance-criterion",
+      "source_id": "own-license-wins",
+      "also_covers": [
+        {"source_type": "rule", "source_id": "a-recipient-copy-carries-the-license-its-publisher-declared"},
+        {"source_type": "acceptance-criterion", "source_id": "nothing-declared-stays-unknown"}
+      ],
+      "expected_outcome": "TestAReleaseDeclarationFillsOnlyALicenseTheVersionLacks: a declaration fills only a missing license, discloses only then, and leaves both null when nothing is declared.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestAReleaseDeclarationFillsOnlyALicenseTheVersionLacks$ ./internal/skill/delivery/"
+    },
+    {
+      "id": "acquired-copy-carries-the-declaration",
+      "source_type": "acceptance-criterion",
+      "source_id": "declared-license-travels",
+      "expected_outcome": "TestAnAcquiredGeneratedSkillCarriesTheLicenseItsPublisherDeclared: bob's acquired copy records MIT from release-declaration with one disclosure, INSTALL.md names it, SKILL.md has no license line.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestAnAcquiredGeneratedSkillCarriesTheLicenseItsPublisherDeclared$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}
