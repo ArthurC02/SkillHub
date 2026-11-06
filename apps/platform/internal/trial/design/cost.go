@@ -41,6 +41,6 @@ func (b SuggestBilling) charge(ctx context.Context, workspaceID pgtype.UUID, usa
 		return
 	}
 	if err := b.Charge(context.WithoutCancel(ctx), workspaceID, usage); err != nil {
-		slog.Error("testlab: suggesting criteria not charged", "error", err)
+		slog.Error("testlab: model suggestion not charged", "error", err)
 	}
 }

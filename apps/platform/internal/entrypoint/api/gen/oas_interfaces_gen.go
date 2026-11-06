@@ -613,6 +613,10 @@ type SuggestAcceptanceCriteriaRes interface {
 	suggestAcceptanceCriteriaRes()
 }
 
+type SuggestTestCasesRes interface {
+	suggestTestCasesRes()
+}
+
 type TakedownSkillAsOperatorRes interface {
 	takedownSkillAsOperatorRes()
 }

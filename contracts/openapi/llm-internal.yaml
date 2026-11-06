@@ -275,6 +275,53 @@ paths:
                 $ref: "#/components/schemas/Error"
         "503":
           $ref: "#/components/responses/Unavailable"
+  /suggest-test-cases:
+    post:
+      operationId: suggestTestCases
+      summary: Propose test cases for one skill (TEST-001)
+      description: |
+        A proposal, never a decision. Go returns what comes back to the user
+        and stores nothing; adopting a proposal is the same create route a
+        hand-written test case goes through. An answer the service cannot use
+        comes back as an empty `test_cases` list rather than invented text.
+
+        Only text travels here: the skill's name and summary, the user's own
+        focus sentence and the names of the test cases they already have.
+        Never a file of the package. No retry and no timeout policy - both are
+        Go's and Go degrades a failure here to its own 503.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SuggestTestCasesRequest"
+      responses:
+        "200":
+          description: |
+            The proposed test cases, de-duplicated and capped. An empty list is
+            a valid answer and means no usable proposal was produced.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuggestTestCasesResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          description: Request failed validation.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "502":
+          description: |
+            LiteLLM gateway or model failure. Service bearer configuration
+            failures are reported separately as 503.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "503":
+          $ref: "#/components/responses/Unavailable"
   /judge-run:
     post:
       operationId: judgeRun
@@ -1173,6 +1220,73 @@ components:
             Blank and duplicate texts are dropped by the service, and the list is
             cut at 8. Empty means no usable proposal - not that the task needs no
             criteria.
+        usage:
+          $ref: "#/components/schemas/GatewayUsage"
+          description: |
+            What the proposal cost at the gateway. Optional, same rule as
+            JudgeRunResponse.usage.
+    SuggestTestCasesRequest:
+      type: object
+      description: |
+        What the model is given. Untrusted content throughout - the summary is
+        package text and the focus and names are user text, never treated as
+        instructions.
+      properties:
+        skill_name:
+          type: string
+          default: ""
+        skill_summary:
+          type: string
+          default: ""
+        focus:
+          type: string
+          maxLength: 500
+          description: What the user wants these test cases to probe. Empty when they gave none.
+          default: ""
+        existing_names:
+          type: array
+          items:
+            type: string
+          maxItems: 50
+          description: Names of the test cases the skill already has, so a proposal does not repeat one.
+          default: []
+        timeout_seconds:
+          type: number
+          exclusiveMinimum: 0
+          description: Same rule as SuggestCriteriaRequest.timeout_seconds.
+    SuggestedTestCase:
+      type: object
+      additionalProperties: false
+      required: [name, user_prompt, criteria]
+      properties:
+        name:
+          type: string
+        user_prompt:
+          type: string
+        criteria:
+          type: array
+          items:
+            type: string
+    SuggestTestCasesResponse:
+      type: object
+      description: |
+        `test_cases` is what the model wrote, under the same schema the prompt
+        asks for. `usage` and `prompt_version` are added by this service after
+        the call and the model cannot influence them.
+      additionalProperties: false
+      required: [test_cases, prompt_version]
+      properties:
+        test_cases:
+          type: array
+          items:
+            $ref: "#/components/schemas/SuggestedTestCase"
+          maxItems: 5
+          description: |
+            Proposals with a blank name or prompt, or a name already taken, are
+            dropped; each keeps at most 5 non-blank criteria.
+        prompt_version:
+          type: string
+          description: Which prompt produced these proposals.
         usage:
           $ref: "#/components/schemas/GatewayUsage"
           description: |

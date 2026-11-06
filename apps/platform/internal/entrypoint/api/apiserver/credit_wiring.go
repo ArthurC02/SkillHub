@@ -90,28 +90,35 @@ func wireCostRecording(svc *credit.Service, search *catalog.Service, versions *i
 	versions.Credit = svc
 }
 
-func wireSuggestCredit(lab *testlab.Service, svc *credit.Service, owners *identity.Service, pool *pgxpool.Pool) {
-	lab.Billing.CanStart = func(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {
+func wireSuggestCredit(lab *testlab.Service, testCases *testlab.TestCaseSuggestions, svc *credit.Service, owners *identity.Service, pool *pgxpool.Pool) {
+	lab.Billing = suggestBilling(lab.Billing, credit.KindSuggestCriteria, svc, owners, pool)
+	testCases.Billing = suggestBilling(testCases.Billing, credit.KindSuggestTestCases, svc, owners, pool)
+}
+
+func suggestBilling(
+	b testlab.SuggestBilling, kind credit.CostKind, svc *credit.Service, owners *identity.Service, pool *pgxpool.Pool,
+) testlab.SuggestBilling {
+	b.CanStart = func(ctx context.Context, workspaceID pgtype.UUID) (bool, error) {
 		userID, err := owners.WorkspaceOwner(ctx, workspaceID)
 		if err != nil {
 			return false, err
 		}
-		check, err := svc.CanStart(ctx, userID, credit.KindSuggestCriteria)
+		check, err := svc.CanStart(ctx, userID, kind)
 		if err != nil {
 			return false, err
 		}
 		return check.OK, nil
 	}
-	lab.Billing.Charge = func(ctx context.Context, workspaceID pgtype.UUID, usage *testlab.ModelUsage) error {
+	b.Charge = func(ctx context.Context, workspaceID pgtype.UUID, usage *testlab.ModelUsage) error {
 		return pgx.BeginFunc(ctx, pool, func(tx pgx.Tx) error {
 			userID, err := owners.WorkspaceOwnerIn(ctx, tx, workspaceID)
 			if err != nil {
 				return err
 			}
 			in := credit.ChargeInput{
-				Kind:   credit.KindSuggestCriteria,
+				Kind:   kind,
 				UserID: userID, WorkspaceID: workspaceID,
-				IdempotencyKey: string(credit.KindSuggestCriteria) + ":" + uuid.NewString(),
+				IdempotencyKey: string(kind) + ":" + uuid.NewString(),
 			}
 			if usage != nil {
 				in.PromptTokens, in.CompletionTokens = usage.PromptTokens, usage.CompletionTokens
@@ -124,6 +131,7 @@ func wireSuggestCredit(lab *testlab.Service, svc *credit.Service, owners *identi
 			return err
 		})
 	}
+	return b
 }
 
 func wireGenerateCredit(target *ingest.Service, svc *credit.Service, owners *identity.Service, pool *pgxpool.Pool) {

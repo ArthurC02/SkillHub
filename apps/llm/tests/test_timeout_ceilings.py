@@ -33,6 +33,7 @@ ENDPOINTS = [
         12.0,
     ),
     ("/suggest-criteria", SUGGEST_BODY, app_module, "_client", 30.0),
+    ("/suggest-test-cases", {"skill_name": "docx"}, app_module, "_client", 60.0),
     ("/v1/enrich-skill", ENRICH_REQUEST, enrich, "client", 60.0),
     ("/judge-run", JUDGE_REQUEST, evaluate, "client", 120.0),
     ("/suggest-improvements", IMPROVE_REQUEST, evaluate, "client", 120.0),

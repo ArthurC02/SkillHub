@@ -109,7 +109,13 @@ const (
 	SubmitFeedbackBodyBuildIdMaxLength                        = 64
 	SubmitFeedbackBodyMessageMaxLength                        = 2000
 	SubmitFeedbackBodyPagePathMaxLength                       = 512
+	SuggestTestCasesBodyFocusMaxLength                        = 500
 	TakedownSkillAsOperatorBodyReasonMaxLength                = 1000
+	TestCaseSuggestionsSuggestionsItemCriteriaItemMaxLength   = 2000
+	TestCaseSuggestionsSuggestionsItemCriteriaMaxItems        = 5
+	TestCaseSuggestionsSuggestionsItemNameMaxLength           = 200
+	TestCaseSuggestionsSuggestionsItemUserPromptMaxLength     = 32768
+	TestCaseSuggestionsSuggestionsMaxItems                    = 5
 	TraceAdvancedEventsMaxItems                               = 1000
 	TraceEventAttemptMaximum                                  = 100000
 	TraceEventSeqMaximum                                      = 100000

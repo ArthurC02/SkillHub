@@ -21,8 +21,9 @@ import (
 )
 
 type Handler struct {
-	Svc      *Service
-	Identity *identity.Service
+	Svc         *Service
+	Suggestions *TestCaseSuggestions
+	Identity    *identity.Service
 }
 
 const maxJSONBytes = utf8.UTFMax*(MaxNameChars+MaxPromptChars+MaxCriteria*MaxCriterionChars) + 64<<10
@@ -86,6 +87,12 @@ func fail(w http.ResponseWriter, err error, generic string) {
 		httpx.WriteError(w, http.StatusServiceUnavailable, ErrModelBudgetExhausted.Error())
 	case errors.Is(err, ErrSuggestUnavailable):
 		httpx.WriteError(w, http.StatusServiceUnavailable, ErrSuggestUnavailable.Error())
+	case errors.Is(err, ErrTestCaseCreditThreshold):
+		httpx.WriteError(w, http.StatusUnprocessableEntity, ErrTestCaseCreditThreshold.Error())
+	case errors.Is(err, ErrTestCaseModelCallsHalted), errors.Is(err, ErrTestCaseBudgetExhausted):
+		httpx.WriteError(w, http.StatusServiceUnavailable, err.Error())
+	case errors.Is(err, ErrTestCaseSuggestUnavailable):
+		httpx.WriteError(w, http.StatusServiceUnavailable, ErrTestCaseSuggestUnavailable.Error())
 	default:
 		httpx.WriteError(w, http.StatusInternalServerError, generic)
 	}
@@ -424,6 +431,35 @@ func (h *Handler) SuggestCriteria(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, suggestionsResponse{Suggestions: suggestions})
+}
+
+type testCaseSuggestionsResponse struct {
+	Suggestions []TestCaseSuggestion `json:"suggestions"`
+}
+
+func (h *Handler) SuggestTestCases(w http.ResponseWriter, r *http.Request) {
+	ws, ok := h.workspace(w, r)
+	if !ok {
+		return
+	}
+	var body struct {
+		SkillID string `json:"skill_id"`
+		Focus   string `json:"focus"`
+	}
+	if !decodeJSON(w, r, &body) {
+		return
+	}
+	var skillID pgtype.UUID
+	if err := skillID.Scan(body.SkillID); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "skill_id 必須是小工具的 ID")
+		return
+	}
+	suggestions, err := h.Suggestions.Suggest(r.Context(), ws, skillID, body.Focus)
+	if err != nil {
+		fail(w, err, "建議失敗")
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, testCaseSuggestionsResponse{Suggestions: suggestions})
 }
 
 func (h *Handler) UpdateCriterion(w http.ResponseWriter, r *http.Request) {

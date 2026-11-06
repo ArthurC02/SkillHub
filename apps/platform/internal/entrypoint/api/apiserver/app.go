@@ -136,6 +136,7 @@ func NewApp(cfg Config) (*App, error) {
 	}
 	versions := newVersionsService(cfg, registrySvc)
 	wireTestLab(testlabSvc, cfg, registrySvc)
+	testCases := &testlab.TestCaseSuggestions{Lab: testlabSvc, LLM: testlab.TestCaseModelOrNone(cfg.LLM)}
 
 	runSvc, traceSvc := newRunServices(cfg, testlabSvc, identitySvc, registrySvc, wiring.NewRunQueue(jobs))
 	funnel.RunBelongsToWorkspace = readmodel.Reader{Pool: runSvc.Pool}.BelongsToWorkspace
@@ -167,7 +168,7 @@ func NewApp(cfg Config) (*App, error) {
 	wiring.WireCreationCredit(creationSvc, creditSvc, cfg.Pool)
 
 	wireCostRecording(creditSvc, catalogSvc, versions)
-	wireUserStartedModelCalls(userStartedModelCalls{creditSvc, identitySvc, runSvc, creationSvc, versions, testlabSvc}, cfg.Pool)
+	wireUserStartedModelCalls(userStartedModelCalls{creditSvc, identitySvc, runSvc, creationSvc, versions, testlabSvc, testCases}, cfg.Pool)
 	wiring.WireCreditDisplay(creditSvc, runSvc, traceSvc, evalSvc)
 	wiring.WireRunCredit(runSvc, creditSvc, cfg.Pool)
 
@@ -190,7 +191,7 @@ func NewApp(cfg Config) (*App, error) {
 	app.Deps.Search = &catalog.Handler{Svc: catalogSvc, Identity: auth.Service}
 	app.Deps.Registry = &registry.Handler{Svc: registrySvc, Takedowns: &registry.Takedowns{Registry: registrySvc}, Identity: auth.Service}
 	app.Deps.Governance = &governance.Handler{Svc: newGovernanceService(cfg.Pool, registrySvc, identitySvc)}
-	app.Deps.TestLab = &testlab.Handler{Svc: testlabSvc, Identity: auth.Service}
+	app.Deps.TestLab = &testlab.Handler{Svc: testlabSvc, Suggestions: testCases, Identity: auth.Service}
 	app.Deps.Publishing = newPublishingHandler(cfg, publishingSvc, auth)
 	app.Deps.ModelBudgets = &modelbudget.Handler{Svc: budgets, Actor: sessionActorID}
 	return app, nil
@@ -666,13 +667,15 @@ type userStartedModelCalls struct {
 	creations *creation.Service
 	versions  *ingest.Service
 	lab       *testlab.Service
+	testCases *testlab.TestCaseSuggestions
 }
 
 func wireUserStartedModelCalls(w userStartedModelCalls, pool *pgxpool.Pool) {
-	wireSuggestCredit(w.lab, w.credits, w.owners, pool)
+	wireSuggestCredit(w.lab, w.testCases, w.credits, w.owners, pool)
 	wireGenerateCredit(w.versions, w.credits, w.owners, pool)
 	halted := w.runs.DispatchGate().ModelCallsHalted
 	w.creations.Billing.ModelCallsHalted = halted
 	w.versions.Billing.ModelCallsHalted = halted
 	w.lab.Billing.ModelCallsHalted = halted
+	w.testCases.Billing.ModelCallsHalted = halted
 }

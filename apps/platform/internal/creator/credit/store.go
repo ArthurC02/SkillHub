@@ -21,17 +21,18 @@ var ErrNoStatistics = errors.New("credit: no statistics recorded yet")
 type CostKind string
 
 const (
-	KindCreationStep    CostKind = "creation_step"
-	KindSearchEmbedding CostKind = "search_embedding"
-	KindIndexEnrich     CostKind = "index_enrich"
-	KindReview          CostKind = "review"
-	KindSuggestion      CostKind = "suggestion"
-	KindGenerate        CostKind = "generate"
-	KindMatchReasons    CostKind = "match_reasons"
-	KindSuggestCriteria CostKind = "suggest_criteria"
-	KindSearchIntent    CostKind = "search_intent"
-	KindPlatformAgent   CostKind = "platform_agent"
-	KindInjectionCheck  CostKind = "injection_check"
+	KindCreationStep     CostKind = "creation_step"
+	KindSearchEmbedding  CostKind = "search_embedding"
+	KindIndexEnrich      CostKind = "index_enrich"
+	KindReview           CostKind = "review"
+	KindSuggestion       CostKind = "suggestion"
+	KindGenerate         CostKind = "generate"
+	KindMatchReasons     CostKind = "match_reasons"
+	KindSuggestCriteria  CostKind = "suggest_criteria"
+	KindSearchIntent     CostKind = "search_intent"
+	KindPlatformAgent    CostKind = "platform_agent"
+	KindInjectionCheck   CostKind = "injection_check"
+	KindSuggestTestCases CostKind = "suggest_test_cases"
 
 	KindRun CostKind = "run"
 
@@ -42,7 +43,7 @@ func AllCostEventKinds() []CostKind {
 	return []CostKind{
 		KindCreationStep, KindSearchEmbedding, KindIndexEnrich, KindReview,
 		KindSuggestion, KindGenerate, KindMatchReasons, KindSuggestCriteria, KindSearchIntent, KindRun,
-		KindPlatformAgent, KindInjectionCheck,
+		KindPlatformAgent, KindInjectionCheck, KindSuggestTestCases,
 	}
 }
 
@@ -50,7 +51,7 @@ func AllStatisticKinds() []CostKind {
 	return []CostKind{
 		KindCreationStep, KindSearchEmbedding, KindIndexEnrich, KindReview,
 		KindSuggestion, KindGenerate, KindMatchReasons, KindSuggestCriteria, KindSearchIntent,
-		KindRun, KindCreationSession, KindPlatformAgent, KindInjectionCheck,
+		KindRun, KindCreationSession, KindPlatformAgent, KindInjectionCheck, KindSuggestTestCases,
 	}
 }
 

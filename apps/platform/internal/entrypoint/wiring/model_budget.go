@@ -21,6 +21,7 @@ func NewModelBudgets(pool *pgxpool.Pool) *modelbudget.Service {
 			ingest.EnrichBudget,
 			ingest.GenerateBudget,
 			testlab.SuggestCriteriaBudget,
+			testlab.SuggestTestCasesBudget,
 			eval.JudgeBudget,
 			eval.SuggestImprovementsBudget,
 		},

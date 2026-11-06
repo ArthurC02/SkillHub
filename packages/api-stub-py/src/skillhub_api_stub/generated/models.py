@@ -254,6 +254,32 @@ class SuggestedCriterion(BaseModel):
     text: str
 
 
+class SuggestTestCasesRequest(BaseModel):
+    skill_name: str | None = ''
+    skill_summary: str | None = ''
+    focus: constr(max_length=500) | None = Field(
+        '',
+        description='What the user wants these test cases to probe. Empty when they gave none.',
+    )
+    existing_names: list[str] | None = Field(
+        [],
+        description='Names of the test cases the skill already has, so a proposal does not repeat one.',
+        max_length=50,
+    )
+    timeout_seconds: PositiveFloat | None = Field(
+        None, description='Same rule as SuggestCriteriaRequest.timeout_seconds.'
+    )
+
+
+class SuggestedTestCase(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    name: str
+    user_prompt: str
+    criteria: list[str]
+
+
 class JudgeCriterion(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -906,6 +932,24 @@ class SuggestCriteriaResponse(BaseModel):
         ...,
         description='Blank and duplicate texts are dropped by the service, and the list is\ncut at 8. Empty means no usable proposal - not that the task needs no\ncriteria.\n',
         max_length=8,
+    )
+    usage: GatewayUsage | None = Field(
+        None,
+        description='What the proposal cost at the gateway. Optional, same rule as\nJudgeRunResponse.usage.\n',
+    )
+
+
+class SuggestTestCasesResponse(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    test_cases: list[SuggestedTestCase] = Field(
+        ...,
+        description='Proposals with a blank name or prompt, or a name already taken, are\ndropped; each keeps at most 5 non-blank criteria.\n',
+        max_length=5,
+    )
+    prompt_version: str = Field(
+        ..., description='Which prompt produced these proposals.'
     )
     usage: GatewayUsage | None = Field(
         None,

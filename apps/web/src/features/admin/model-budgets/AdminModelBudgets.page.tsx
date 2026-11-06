@@ -13,6 +13,7 @@ const CALL_NAMES: Record<string, string> = {
   "enrich-skill": "匯入時的小工具摘要增強",
   "generate-skill": "從描述生成小工具",
   "suggest-criteria": "建議驗收條件",
+  "suggest-test-cases": "建議測試題",
   "judge-run": "評估判定",
   "suggest-improvements": "建議改善",
 };

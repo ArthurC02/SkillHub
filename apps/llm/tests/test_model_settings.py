@@ -13,6 +13,12 @@ SETTINGS = [
         "SUGGEST_CRITERIA_MODEL",
         "skillhub-suggest-criteria",
     ),
+    (
+        "SUGGEST_TEST_CASES_MODEL",
+        "skillhub_llm.app",
+        "SUGGEST_TEST_CASES_MODEL",
+        "skillhub-suggest-test-cases",
+    ),
     ("CREATION_MODEL", "skillhub_llm.creation", "MODEL", "skillhub-creation"),
     ("ENRICH_MODEL", "skillhub_llm.enrich", "ENRICH_MODEL", "skillhub-enrich"),
     ("JUDGE_MODEL", "skillhub_llm.evaluate", "JUDGE_MODEL", "skillhub-judge"),

@@ -35204,6 +35204,56 @@ type SuggestAcceptanceCriteriaUnprocessableEntity Error
 
 func (*SuggestAcceptanceCriteriaUnprocessableEntity) suggestAcceptanceCriteriaRes() {}
 
+type SuggestTestCasesBadRequest Error
+
+func (*SuggestTestCasesBadRequest) suggestTestCasesRes() {}
+
+type SuggestTestCasesForbidden Error
+
+func (*SuggestTestCasesForbidden) suggestTestCasesRes() {}
+
+type SuggestTestCasesNotFound Error
+
+func (*SuggestTestCasesNotFound) suggestTestCasesRes() {}
+
+type SuggestTestCasesReq struct {
+	SkillID uuid.UUID `json:"skill_id"`
+	// What these test cases should probe. Optional.
+	Focus OptString `json:"focus"`
+}
+
+// GetSkillID returns the value of SkillID.
+func (s *SuggestTestCasesReq) GetSkillID() uuid.UUID {
+	return s.SkillID
+}
+
+// GetFocus returns the value of Focus.
+func (s *SuggestTestCasesReq) GetFocus() OptString {
+	return s.Focus
+}
+
+// SetSkillID sets the value of SkillID.
+func (s *SuggestTestCasesReq) SetSkillID(val uuid.UUID) {
+	s.SkillID = val
+}
+
+// SetFocus sets the value of Focus.
+func (s *SuggestTestCasesReq) SetFocus(val OptString) {
+	s.Focus = val
+}
+
+type SuggestTestCasesServiceUnavailable Error
+
+func (*SuggestTestCasesServiceUnavailable) suggestTestCasesRes() {}
+
+type SuggestTestCasesUnauthorized Error
+
+func (*SuggestTestCasesUnauthorized) suggestTestCasesRes() {}
+
+type SuggestTestCasesUnprocessableEntity Error
+
+func (*SuggestTestCasesUnprocessableEntity) suggestTestCasesRes() {}
+
 // Why a suggestion cannot be applied. One vocabulary, served from one place, so the preview and the
 // apply call can never disagree about what stops a change.
 //
@@ -35737,6 +35787,61 @@ func (s *TestCaseListItem) SetHasRubric(val bool) {
 	s.HasRubric = val
 }
 
+// Test cases the model proposed for one skill. A proposal has no id because it is not a test case
+// until the user adopts it.
+// Ref: #/components/schemas/TestCaseSuggestions
+type TestCaseSuggestions struct {
+	Suggestions []TestCaseSuggestionsSuggestionsItem `json:"suggestions"`
+}
+
+// GetSuggestions returns the value of Suggestions.
+func (s *TestCaseSuggestions) GetSuggestions() []TestCaseSuggestionsSuggestionsItem {
+	return s.Suggestions
+}
+
+// SetSuggestions sets the value of Suggestions.
+func (s *TestCaseSuggestions) SetSuggestions(val []TestCaseSuggestionsSuggestionsItem) {
+	s.Suggestions = val
+}
+
+func (*TestCaseSuggestions) suggestTestCasesRes() {}
+
+type TestCaseSuggestionsSuggestionsItem struct {
+	Name       string   `json:"name"`
+	UserPrompt string   `json:"user_prompt"`
+	Criteria   []string `json:"criteria"`
+}
+
+// GetName returns the value of Name.
+func (s *TestCaseSuggestionsSuggestionsItem) GetName() string {
+	return s.Name
+}
+
+// GetUserPrompt returns the value of UserPrompt.
+func (s *TestCaseSuggestionsSuggestionsItem) GetUserPrompt() string {
+	return s.UserPrompt
+}
+
+// GetCriteria returns the value of Criteria.
+func (s *TestCaseSuggestionsSuggestionsItem) GetCriteria() []string {
+	return s.Criteria
+}
+
+// SetName sets the value of Name.
+func (s *TestCaseSuggestionsSuggestionsItem) SetName(val string) {
+	s.Name = val
+}
+
+// SetUserPrompt sets the value of UserPrompt.
+func (s *TestCaseSuggestionsSuggestionsItem) SetUserPrompt(val string) {
+	s.UserPrompt = val
+}
+
+// SetCriteria sets the value of Criteria.
+func (s *TestCaseSuggestionsSuggestionsItem) SetCriteria(val []string) {
+	s.Criteria = val
+}
+
 // TooManyRequestsHeaders wraps Error with response headers.
 type TooManyRequestsHeaders struct {
 	RetryAfter int
@@ -35774,6 +35879,7 @@ func (*TooManyRequestsHeaders) saveSkillVersionRes()                  {}
 func (*TooManyRequestsHeaders) searchSkillsWithCorrectedIntentRes()   {}
 func (*TooManyRequestsHeaders) submitFeedbackRes()                    {}
 func (*TooManyRequestsHeaders) suggestAcceptanceCriteriaRes()         {}
+func (*TooManyRequestsHeaders) suggestTestCasesRes()                  {}
 func (*TooManyRequestsHeaders) uploadSkillPackageRes()                {}
 func (*TooManyRequestsHeaders) writeSearchMatchReasonsRes()           {}
 

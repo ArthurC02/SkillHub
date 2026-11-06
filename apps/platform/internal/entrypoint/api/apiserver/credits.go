@@ -145,16 +145,17 @@ const statementNote = "這裡列的是真正扣掉與入帳的點數，一律以
 	"標示「估計」的那一筆，是閘道沒有回報實際花費時，平台依統計上界扣的點數。"
 
 var spentOnLabels = map[credit.CostKind]string{
-	credit.KindRun:             "試跑",
-	credit.KindCreationStep:    "互動創作",
-	credit.KindGenerate:        "從描述生成 Skill",
-	credit.KindReview:          "評估判定",
-	credit.KindSuggestion:      "改善建議",
-	credit.KindSuggestCriteria: "建議驗收條件",
-	credit.KindIndexEnrich:     "匯入時的索引增強",
-	credit.KindMatchReasons:    "搜尋結果的符合原因",
-	credit.KindSearchIntent:    "搜尋意圖分析",
-	credit.KindSearchEmbedding: "搜尋",
+	credit.KindRun:              "試跑",
+	credit.KindCreationStep:     "互動創作",
+	credit.KindGenerate:         "從描述生成 Skill",
+	credit.KindReview:           "評估判定",
+	credit.KindSuggestion:       "改善建議",
+	credit.KindSuggestCriteria:  "建議驗收條件",
+	credit.KindSuggestTestCases: "建議測試題",
+	credit.KindIndexEnrich:      "匯入時的索引增強",
+	credit.KindMatchReasons:     "搜尋結果的符合原因",
+	credit.KindSearchIntent:     "搜尋意圖分析",
+	credit.KindSearchEmbedding:  "搜尋",
 }
 
 var entryKindLabels = map[credit.EntryKind]string{

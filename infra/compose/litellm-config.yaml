@@ -42,6 +42,8 @@ model_list:
       additional_drop_params: ["thinking"]
   - model_name: skillhub-suggest-criteria
     litellm_params: *luna
+  - model_name: skillhub-suggest-test-cases
+    litellm_params: *luna
   - model_name: skillhub-generate
     litellm_params: *luna
   - model_name: skillhub-creation

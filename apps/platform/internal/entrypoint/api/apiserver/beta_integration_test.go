@@ -373,6 +373,7 @@ func TestAdmissionListGatesForkRunAndDownloadOnly(t *testing.T) {
 		{"POST packaging", http.MethodPost, packagingPath(bob.skillID, bob.versionID), `{"target":"claude-code"}`},
 		{"GET download content", http.MethodGet, noSuchArtifact, ""},
 		{"POST criteria suggest", http.MethodPost, "/test-cases/00000000-0000-4000-8000-0000000000fe/criteria/suggest", ""},
+		{"POST test case suggest", http.MethodPost, "/test-cases/suggest", `{"skill_id":"00000000-0000-4000-8000-0000000000fe"}`},
 		{"GET run preflight", http.MethodGet, "/skills/" + bob.skillID + "/runs/preflight?version_id=" + bob.versionID + "&test_case_id=" + bob.testCaseID, ""},
 		{"POST run preflight confirm", http.MethodPost, "/skills/" + bob.skillID + "/runs/preflight/confirm", `{}`},
 	} {

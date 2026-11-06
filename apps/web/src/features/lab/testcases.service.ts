@@ -216,6 +216,55 @@ export function useSuggestCriteria(testCaseId: string) {
   return useMutation({ mutationFn: () => suggestCriteria(testCaseId) });
 }
 
+export type TestCaseSuggestion = { name: string; user_prompt: string; criteria: string[] };
+
+function isTestCaseSuggestion(value: unknown): value is TestCaseSuggestion {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const row = value as Partial<TestCaseSuggestion>;
+  return (
+    typeof row.name === "string" &&
+    typeof row.user_prompt === "string" &&
+    Array.isArray(row.criteria) &&
+    row.criteria.every((c) => typeof c === "string")
+  );
+}
+
+export async function suggestTestCases(skillId: string, focus: string) {
+  const result = await apiFetch<unknown>("/test-cases/suggest", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ skill_id: skillId, focus }),
+  });
+  const suggestions = (result as { suggestions?: unknown } | null)?.suggestions;
+  if (!Array.isArray(suggestions) || !suggestions.every(isTestCaseSuggestion))
+    throw new Error("Invalid test case proposals response");
+  return suggestions;
+}
+
+export function useSuggestTestCases(skillId: string) {
+  return useMutation({ mutationFn: (focus: string) => suggestTestCases(skillId, focus) });
+}
+
+export type AdoptedTestCase = { testCaseId: string; criteriaMissing: number };
+
+export function useAdoptTestCaseSuggestion(skillId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (s: TestCaseSuggestion): Promise<AdoptedTestCase> => {
+      const created = await createTestCase(skillId, s.name, s.user_prompt);
+      for (const [i, text] of s.criteria.entries()) {
+        try {
+          await addCriterion(created.test_case_id, { text, source: "suggested" });
+        } catch {
+          return { testCaseId: created.test_case_id, criteriaMissing: s.criteria.length - i };
+        }
+      }
+      return { testCaseId: created.test_case_id, criteriaMissing: 0 };
+    },
+    onSettled: () => client.invalidateQueries({ queryKey: queryKeys.testCases.all }),
+  });
+}
+
 export function deleteTestCase(testCaseId: string) {
   return apiFetch<{ deleted: boolean; datasets_deleted: number; note: string }>(
     `/test-cases/${testCaseId}`,

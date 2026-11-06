@@ -40,6 +40,34 @@ func (a criteriaOverHTTP) SuggestCriteria(ctx context.Context, req CriteriaReque
 	return out, nil
 }
 
+func TestCaseModelOrNone(c *llmclient.Client) TestCaseSuggester {
+	if c == nil {
+		return nil
+	}
+	return criteriaOverHTTP{client: c}
+}
+
+func (a criteriaOverHTTP) SuggestTestCases(ctx context.Context, req TestCasesRequest) (*TestCasesProposal, error) {
+	resp, err := a.client.SuggestTestCases(ctx, llmclient.SuggestTestCasesRequest{
+		SkillName:      req.SkillName,
+		SkillSummary:   req.SkillSummary,
+		Focus:          req.Focus,
+		ExistingNames:  req.ExistingNames,
+		TimeoutSeconds: req.Within.Seconds(),
+	})
+	if errors.Is(err, llmclient.ErrPlatformBudgetExhausted) {
+		return nil, fmt.Errorf("%w: %w", ErrModelBudgetExhausted, err)
+	}
+	if err != nil {
+		return nil, err
+	}
+	out := &TestCasesProposal{PromptVersion: resp.PromptVersion, Usage: usageFromWire(resp.Usage)}
+	for _, tc := range resp.TestCases {
+		out.TestCases = append(out.TestCases, ProposedTestCase{Name: tc.Name, UserPrompt: tc.UserPrompt, Criteria: tc.Criteria})
+	}
+	return out, nil
+}
+
 func usageFromWire(u *llmclient.GatewayUsage) *ModelUsage {
 	if u == nil {
 		return nil

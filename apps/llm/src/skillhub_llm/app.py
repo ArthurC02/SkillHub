@@ -106,6 +106,10 @@ MATCH_REASONS_TIMEOUT_SECONDS = 12.0
 MATCH_REASONS_MAX_TOKENS = 2048
 # budget-ceiling: app.SUGGEST_CRITERIA_TIMEOUT_SECONDS
 SUGGEST_CRITERIA_TIMEOUT_SECONDS = 30.0
+SUGGEST_TEST_CASES_MODEL = os.getenv("SUGGEST_TEST_CASES_MODEL") or "skillhub-suggest-test-cases"
+SUGGEST_TEST_CASES_PROMPT_VERSION = "suggest-test-cases/v1"
+# budget-ceiling: app.SUGGEST_TEST_CASES_TIMEOUT_SECONDS
+SUGGEST_TEST_CASES_TIMEOUT_SECONDS = 60.0
 
 DATA_TAG = "untrusted_catalog_data"
 
@@ -477,3 +481,107 @@ async def suggest_criteria(req: SuggestCriteriaRequest) -> SuggestCriteriaRespon
         if len(kept) == MAX_SUGGESTED_CRITERIA:
             break
     return SuggestCriteriaResponse(criteria=kept, usage=usage)
+
+
+MAX_SUGGESTED_TEST_CASES = 5
+MAX_CRITERIA_PER_SUGGESTED_TEST_CASE = 5
+
+
+class SuggestTestCasesRequest(BaseModel):
+    skill_name: str = ""
+    skill_summary: str = ""
+    focus: str = Field("", max_length=500)
+    existing_names: list[str] = Field(default_factory=list, max_length=50)
+    timeout_seconds: float | None = Field(None, gt=0)
+
+
+class SuggestedTestCase(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    user_prompt: str
+    criteria: list[str]
+
+
+class SuggestedTestCases(BaseModel):
+    """The JSON schema handed to the model, and the shape parsed back out of it."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    test_cases: list[SuggestedTestCase]
+
+
+class SuggestTestCasesResponse(SuggestedTestCases):
+    prompt_version: str
+    usage: GatewayUsage | None = None
+
+
+def _kept_test_cases(
+    proposed: list[SuggestedTestCase], existing: list[str]
+) -> list[SuggestedTestCase]:
+    taken = {n.strip() for n in existing}
+    kept: list[SuggestedTestCase] = []
+    for tc in proposed:
+        name, prompt = tc.name.strip(), tc.user_prompt.strip()
+        if not name or not prompt or name in taken:
+            continue
+        taken.add(name)
+        criteria = list(dict.fromkeys(c.strip() for c in tc.criteria if c.strip()))
+        kept.append(
+            SuggestedTestCase(
+                name=name,
+                user_prompt=prompt,
+                criteria=criteria[:MAX_CRITERIA_PER_SUGGESTED_TEST_CASE],
+            )
+        )
+        if len(kept) == MAX_SUGGESTED_TEST_CASES:
+            break
+    return kept
+
+
+@app.post("/suggest-test-cases", response_model=SuggestTestCasesResponse, dependencies=budgeted)
+async def suggest_test_cases(req: SuggestTestCasesRequest) -> SuggestTestCasesResponse:
+    """Propose test cases for one skill. A proposal, not a decision."""
+    existing = "\n".join(f"- {_scrub(n)}" for n in req.existing_names) or "(none yet)"
+    system_prompt = (
+        "You help a creator write test cases for an Agent Skill. Each test case is a "
+        "realistic task a user would give an agent that has this Skill loaded, plus short "
+        "acceptance criteria a reviewer can judge as met or not met from the run's output. "
+        "Cover different situations: a typical task, an edge case, and input the Skill "
+        "should handle carefully. Do not reuse an existing test case name. Write in the "
+        "language of the Skill's summary, or of the user's focus when they gave one. "
+        + data_block_rules(
+            DATA_TAG, "a Skill name and summary, the user's focus and existing test case names"
+        )
+        + f" Return at most {MAX_SUGGESTED_TEST_CASES} test cases, each with at most "
+        f"{MAX_CRITERIA_PER_SUGGESTED_TEST_CASE} criteria, as "
+        '{"test_cases": [{"name": "...", "user_prompt": "...", "criteria": ["..."]}]}.'
+    )
+    user_prompt = (
+        fence(
+            DATA_TAG,
+            f"Skill: {_scrub(req.skill_name)}\n"
+            f"What the Skill does: {_scrub(req.skill_summary)}\n\n"
+            f"What the user wants to probe: {_scrub(req.focus) or '(not given)'}\n\n"
+            f"Existing test case names:\n{existing}",
+        )
+        + "\n\nPropose the test cases."
+    )
+
+    response, headers, parsed = await _ask_for_json(
+        _JsonCall(
+            "suggest-test-cases",
+            SUGGEST_TEST_CASES_MODEL,
+            "suggested_test_cases",
+            SuggestedTestCases,
+            max_tokens=4096,
+        ),
+        system_prompt,
+        user_prompt,
+        within(SUGGEST_TEST_CASES_TIMEOUT_SECONDS, req.timeout_seconds),
+    )
+    return SuggestTestCasesResponse(
+        test_cases=_kept_test_cases(parsed.test_cases, req.existing_names) if parsed else [],
+        prompt_version=SUGGEST_TEST_CASES_PROMPT_VERSION,
+        usage=completion_usage(response, headers),
+    )

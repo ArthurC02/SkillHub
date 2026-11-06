@@ -6591,6 +6591,81 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /test-cases/suggest:
+    post:
+      operationId: suggestTestCases
+      summary: Ask the model to propose test cases for one skill (TEST-001)
+      description: |
+        **Returns proposals and stores nothing.** Adopting one is POST
+        /test-cases with its name and prompt, then POST
+        /test-cases/{id}/criteria for each criterion — the same routes a
+        hand-written test case goes through.
+
+        What reaches the model is the skill's name and summary, the caller's
+        own focus sentence and the names of the skill's existing test cases.
+        Never a file of the package and never a past run. A proposal whose
+        name the skill already uses, or that breaks an input rule, is dropped
+        rather than reported.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [skill_id]
+              properties:
+                skill_id: { type: string, format: uuid }
+                focus:
+                  type: string
+                  maxLength: 500
+                  description: What these test cases should probe. Optional.
+      responses:
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "200":
+          description: |
+            The proposals. 200 and not 201 because nothing was created; an
+            empty list is a valid answer.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TestCaseSuggestions" }
+        "400":
+          description: A missing skill_id or a focus longer than 500 characters.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "403":
+          description: Not on the beta invite list.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Skill not visible to the caller.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: |
+            The account's credit balance is below the start threshold for this
+            call. The model was not called and nothing was charged. A
+            suggestion that does reach the model is debited by the usage the
+            gateway reported.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "503":
+          description: |
+            No suggestion could be produced: the LLM service is not configured,
+            it answered an error or did not answer in time, the platform's model
+            budget is spent, or model calls are halted. Nothing was stored and
+            the message names the manual path.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /test-cases/limits:
     get:
       operationId: getDatasetLimits
@@ -11110,6 +11185,26 @@ components:
             required: [text]
             properties:
               text: { type: string, maxLength: 2000 }
+    TestCaseSuggestions:
+      description: |
+        Test cases the model proposed for one skill. A proposal has no id
+        because it is not a test case until the user adopts it.
+      type: object
+      required: [suggestions]
+      properties:
+        suggestions:
+          type: array
+          maxItems: 5
+          items:
+            type: object
+            required: [name, user_prompt, criteria]
+            properties:
+              name: { type: string, maxLength: 200 }
+              user_prompt: { type: string, maxLength: 32768 }
+              criteria:
+                type: array
+                maxItems: 5
+                items: { type: string, maxLength: 2000 }
     RubricItem:
       description: |
         One rubric line, strengthening exactly one acceptance criterion

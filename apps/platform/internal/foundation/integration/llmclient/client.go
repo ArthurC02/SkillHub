@@ -246,6 +246,31 @@ func (c *Client) SuggestCriteria(ctx context.Context, req SuggestCriteriaRequest
 	return post[SuggestCriteriaRequest, SuggestCriteriaResponse](ctx, c, "/suggest-criteria", req)
 }
 
+type SuggestTestCasesRequest struct {
+	SkillName      string   `json:"skill_name,omitempty"`
+	SkillSummary   string   `json:"skill_summary,omitempty"`
+	Focus          string   `json:"focus,omitempty"`
+	ExistingNames  []string `json:"existing_names,omitempty"`
+	TimeoutSeconds float64  `json:"timeout_seconds,omitempty"`
+}
+
+type SuggestedTestCase struct {
+	Name       string   `json:"name"`
+	UserPrompt string   `json:"user_prompt"`
+	Criteria   []string `json:"criteria"`
+}
+
+type SuggestTestCasesResponse struct {
+	TestCases     []SuggestedTestCase `json:"test_cases"`
+	PromptVersion string              `json:"prompt_version"`
+
+	Usage *GatewayUsage `json:"usage,omitempty"`
+}
+
+func (c *Client) SuggestTestCases(ctx context.Context, req SuggestTestCasesRequest) (*SuggestTestCasesResponse, error) {
+	return post[SuggestTestCasesRequest, SuggestTestCasesResponse](ctx, c, "/suggest-test-cases", req)
+}
+
 type JudgeCriterion struct {
 	ID   string `json:"id"`
 	Text string `json:"text"`
