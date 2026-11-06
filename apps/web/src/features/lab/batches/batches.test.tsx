@@ -7,6 +7,7 @@ import {
   OTHER_RUN,
   PREFLIGHT,
   RUN,
+  SKILL_VERSIONS,
   SKILL,
   TEST_CASE,
   VERSION,
@@ -228,4 +229,119 @@ test("choosing a reference batch puts it in the address and shows the paired dif
   expect(page.getByRole("link", { name: "開啟比較基準的批次結果" }).attribute("href")).toBe(
     `/skills/${SKILL}/evaluation-batches/${OTHER_BATCH}`,
   );
+});
+
+const NEWER_VERSION = "22222222-2222-2222-2222-333333333333";
+const WITH_A_NEWER_VERSION = {
+  versions: [
+    {
+      version_id: NEWER_VERSION,
+      version_number: 3,
+      content_hash: "sha256:cccc",
+      created_at: "2026-11-06T00:00:00Z",
+    },
+    ...SKILL_VERSIONS.versions,
+  ],
+};
+
+function checked(page: ReturnType<typeof app>, name: string) {
+  return (page.getByRole("checkbox", { name }).element() as HTMLInputElement).checked;
+}
+
+test("a newest version with no batch offers re-running the most recent batch on it", async () => {
+  const page = app();
+  page.route("**/versions", () => ({ json: WITH_A_NEWER_VERSION }));
+  await page.goto(NEW_BATCH);
+  const offer = page.getByRole("link", { name: "用 v2 最近一批的題目重跑 v3" });
+  await page.eventually(() => expect(offer.count()).toBe(1));
+  expect(page.getByText(/^v3 還沒有評估批次。/).count()).toBe(1);
+  expect(offer.attribute("href")).toBe(
+    `/skills/${SKILL}/evaluation-batches?version=${NEWER_VERSION}&rerun=${BATCH}`,
+  );
+});
+
+test("no re-run is offered while the newest version already has a batch", async () => {
+  const page = app();
+  await page.goto(NEW_BATCH);
+  await page.eventually(() =>
+    expect(page.getByRole("link", { name: /^v2・每題 2 次/ }).count()).toBe(2),
+  );
+  expect(page.getByText(/還沒有評估批次。/).count()).toBe(0);
+});
+
+test("a batch result offers re-running its test cases on the newest other version", async () => {
+  const page = app();
+  page.route("**/versions", () => ({ json: WITH_A_NEWER_VERSION }));
+  await page.goto(BATCH_PAGE);
+  const rerun = page.getByRole("link", { name: "用同樣的題目與次數重跑 v3" });
+  await page.eventually(() => expect(rerun.count()).toBe(1));
+  expect(rerun.attribute("href")).toBe(
+    `/skills/${SKILL}/evaluation-batches?version=${NEWER_VERSION}&rerun=${BATCH}`,
+  );
+});
+
+test("a batch on the newest version offers re-running on a version still to be picked", async () => {
+  const page = app();
+  await page.goto(BATCH_PAGE);
+  const rerun = page.getByRole("link", { name: "用同樣的題目與次數重跑另一個版本" });
+  await page.eventually(() => expect(rerun.count()).toBe(1));
+  expect(rerun.attribute("href")).toBe(`/skills/${SKILL}/evaluation-batches?rerun=${BATCH}`);
+});
+
+test("re-running a batch starts from its choices and opens the new batch compared against it", async () => {
+  const page = app();
+  page.route("**/versions", () => ({ json: WITH_A_NEWER_VERSION }));
+  page.route("**/evaluation-batches", (request) =>
+    request.method === "POST"
+      ? { status: 201, json: evaluationBatch(OTHER_BATCH, { skill_version_id: NEWER_VERSION }) }
+      : undefined,
+  );
+  await page.goto(`/skills/${SKILL}/evaluation-batches?version=${NEWER_VERSION}&rerun=${BATCH}`);
+  await page.eventually(() =>
+    expect(
+      page
+        .getByText("已照 v2 那一批填好題目、次數與對照；開出來之後會直接和那一批逐題比較。")
+        .count(),
+    ).toBe(1),
+  );
+  await page.eventually(() => expect(checked(page, "去重複列")).toBe(true));
+  expect(checked(page, "每次都加跑一次不載入小工具的對照")).toBe(true);
+  expect(page.getByLabel("每題跑幾次").value()).toBe("2");
+
+  await page.getByRole("button", { name: "開始評估批次" }).click();
+  await page.eventually(() =>
+    expect(page.pathname()).toBe(`/skills/${SKILL}/evaluation-batches/${OTHER_BATCH}`),
+  );
+  expect(page.search()).toBe(`?against=${BATCH}`);
+  expect(posts(page, "/evaluation-batches").map((r) => r.body)).toEqual([
+    {
+      skill_version_id: NEWER_VERSION,
+      test_case_ids: [TEST_CASE],
+      trials: 2,
+      with_skill_withheld: true,
+    },
+  ]);
+});
+
+test("a batch to re-run that cannot be read says so and leaves an empty form usable", async () => {
+  const page = app();
+  page.route(`**/evaluation-batches/${BATCH}`, () => ({ status: 500, json: { error: "boom" } }));
+  page.route("**/evaluation-batches", (request) =>
+    request.method === "POST" ? { status: 201, json: evaluationBatch(OTHER_BATCH) } : undefined,
+  );
+  await page.goto(`${NEW_BATCH}&rerun=${BATCH}`);
+  await page.eventually(() =>
+    expect(page.getByRole("alert").filter({ hasText: "要重跑的評估批次" }).count()).toBe(1),
+  );
+  await page.eventually(() =>
+    expect(page.getByRole("checkbox", { name: "去重複列" }).count()).toBe(1),
+  );
+  expect(checked(page, "去重複列")).toBe(false);
+  expect(page.getByText(/^已照/).count()).toBe(0);
+  await chooseTheTestCase(page);
+  await page.getByRole("button", { name: "開始評估批次" }).click();
+  await page.eventually(() =>
+    expect(page.pathname()).toBe(`/skills/${SKILL}/evaluation-batches/${OTHER_BATCH}`),
+  );
+  expect(page.search()).toBe("");
 });

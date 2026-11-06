@@ -3,18 +3,22 @@ import { Loading } from "../../../../shared/ui/Loading";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
 import { useEvaluationBatches } from "../batches.service";
-import { STATUS_LABEL } from "../batches.model";
+import { STATUS_LABEL, type EvaluationBatch } from "../batches.model";
 
 export function BatchList({
   skillId,
   versionNumbers,
+  newest,
 }: {
   skillId: string;
   versionNumbers: Map<string, number>;
+  newest?: { version_id: string; version_number: number };
 }) {
   const batches = useEvaluationBatches(skillId);
   const busy = batches.fetchStatus !== "idle";
   const rows = batches.error ? undefined : batches.data;
+  const toRerun = newest && rows && latestBatchOnAnotherVersion(rows, newest.version_id);
+  const rerunNumber = toRerun && versionNumbers.get(toRerun.skill_version_id.toLowerCase());
 
   return (
     <section aria-labelledby="batch-list-heading">
@@ -29,6 +33,19 @@ export function BatchList({
         retrying={busy}
         focusTarget="batch-list-heading"
       />
+      {newest && toRerun && (
+        <p role="status">
+          v{newest.version_number} 還沒有評估批次。{" "}
+          <Link
+            to="/skills/$skillId/evaluation-batches"
+            params={{ skillId }}
+            search={{ version: newest.version_id, rerun: toRerun.id }}
+          >
+            用{rerunNumber === undefined ? "" : ` v${rerunNumber} `}最近一批的題目重跑 v
+            {newest.version_number}
+          </Link>
+        </p>
+      )}
       {rows &&
         (rows.length === 0 ? (
           <p role="status">還沒有評估批次。</p>
@@ -60,5 +77,14 @@ export function BatchList({
           </ul>
         ))}
     </section>
+  );
+}
+
+function latestBatchOnAnotherVersion(batches: EvaluationBatch[], newestVersionId: string) {
+  const newest = newestVersionId.toLowerCase();
+  if (batches.some((b) => b.skill_version_id.toLowerCase() === newest)) return undefined;
+  return batches.reduce<EvaluationBatch | undefined>(
+    (latest, b) => (latest === undefined || b.created_at > latest.created_at ? b : latest),
+    undefined,
   );
 }

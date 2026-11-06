@@ -82,9 +82,59 @@ export function EvaluationBatch() {
             />
           )}
           <TestCaseResults arm={data} names={names} withheld={data.skill_withheld} />
+          <RerunLink
+            skillId={skillId}
+            batchId={batchId}
+            batchVersionId={data.batch.skill_version_id}
+            batchNumber={versionNumber}
+          />
           <BatchComparison skillId={skillId} batchId={batchId} against={against} />
         </>
       )}
     </section>
+  );
+}
+
+type VersionRow = { version_id: string; version_number: number };
+
+function newestOtherVersion(rows: VersionRow[], batchVersionId: string, batchNumber = 0) {
+  const own = batchVersionId.toLowerCase();
+  return rows
+    .filter((v) => v.version_id.toLowerCase() !== own && v.version_number > batchNumber)
+    .reduce<VersionRow | undefined>(
+      (best, v) => (best === undefined || v.version_number > best.version_number ? v : best),
+      undefined,
+    );
+}
+
+function RerunLink({
+  skillId,
+  batchId,
+  batchVersionId,
+  batchNumber,
+}: {
+  skillId: string;
+  batchId: string;
+  batchVersionId: string;
+  batchNumber?: number;
+}) {
+  const versions = useSkillVersions(skillId);
+  const newest = newestOtherVersion(
+    versions.error ? [] : (versions.data?.versions ?? []),
+    batchVersionId,
+    batchNumber,
+  );
+  return (
+    <p>
+      <Link
+        to="/skills/$skillId/evaluation-batches"
+        params={{ skillId }}
+        search={{ version: newest?.version_id, rerun: batchId }}
+      >
+        {newest
+          ? `用同樣的題目與次數重跑 v${newest.version_number}`
+          : "用同樣的題目與次數重跑另一個版本"}
+      </Link>
+    </p>
   );
 }

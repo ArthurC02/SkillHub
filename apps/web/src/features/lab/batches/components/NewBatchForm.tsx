@@ -8,20 +8,24 @@ import { CreateOutcome } from "./CreateOutcome";
 
 const DEFAULT_TRIALS = 3;
 
+export type BatchChoice = { testCaseIds: string[]; trials: number; withheld: boolean };
+
 export function NewBatchForm({
   skillId,
   versionId,
+  from,
   onCreated,
 }: {
   skillId: string;
   versionId: string;
+  from?: BatchChoice;
   onCreated: (batchId: string) => void;
 }) {
   const testCases = useTestCases(skillId);
   const create = useCreateEvaluationBatch(skillId);
-  const [chosen, setChosen] = useState<string[]>([]);
-  const [trials, setTrials] = useState(DEFAULT_TRIALS);
-  const [withheld, setWithheld] = useState(false);
+  const [chosen, setChosen] = useState<string[]>(from?.testCaseIds ?? []);
+  const [trials, setTrials] = useState(from?.trials ?? DEFAULT_TRIALS);
+  const [withheld, setWithheld] = useState(from?.withheld ?? false);
   const reasonId = useId();
 
   const names = new Map(

@@ -44,6 +44,7 @@ export function useEvaluationBatchReport(skillId: string, batchId: string) {
     },
     refetchInterval: (query) =>
       query.state.data && reportStillMoving(query.state.data) ? REPORT_REFRESH_MS : false,
+    enabled: batchId !== "",
   });
 }
 
