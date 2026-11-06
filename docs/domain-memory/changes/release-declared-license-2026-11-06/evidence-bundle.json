@@ -8,7 +8,17 @@
     "committed_digest": "sha256:52e2dd962d1d96aaf116f0865311dd2c0524f47eeb50a9bc93c7b4bd87ceeada"
   },
   "approvals": [],
-  "scm_attestation": null,
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "d71d18722cda1989c2298792235d9bfe807ae13b",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "58723d383a72d62fb37e9e22b61aac3c6500e61b",
+      "registry_digest": "sha256:55c3bc4a18128d8c12ac09803436b4962df698ff7cf2a67448127122f90539a1",
+      "committed_digest": "sha256:52e2dd962d1d96aaf116f0865311dd2c0524f47eeb50a9bc93c7b4bd87ceeada"
+    }
+  },
   "counterfactual_check": [
     {
       "status": "passed",

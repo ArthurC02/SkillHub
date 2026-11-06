@@ -5,10 +5,10 @@ consistency: synchronous
 delivery: composition-root hook
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-14T00:15:22.987461Z"
+    at: "2026-11-06T00:12:22.295278Z"
 sources:
-  - resource: "apps/platform/internal/entrypoint/api/apiserver/publishing_wiring.go#L43-43"
-    excerpt_sha256: "sha256:dc7ece5c6ca41fdd278a9a68ee795866f9f3b3e9746adf62c69f665044bbdf67"
+  - resource: "apps/platform/internal/entrypoint/api/apiserver/publishing_wiring.go#L43-45"
+    excerpt_sha256: "sha256:99de764daf7e9b955ec1cafe94cd56d09e1d3e83cc7c2eba7bbce8cb558386fb"
 ---
 # Relations
 - Producer context: [packaging](/contexts/packaging)

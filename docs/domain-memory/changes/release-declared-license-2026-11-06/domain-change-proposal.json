@@ -3,12 +3,12 @@
   "proposal_id": "release-declared-license-2026-11-06",
   "proposer": "agent:coding-agent",
   "requirement_id": "release-declared-license",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-11-06T00:12:10.108399Z",
   "verified_at": "2026-11-06T00:12:22.748429Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-11-06T00:16:00.582141Z",
+  "applied_at": "2026-11-06T00:16:05.426711Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "58723d383a72d62fb37e9e22b61aac3c6500e61b",
@@ -156,5 +156,9 @@
   ],
   "supersedes": [
     "wiring-collaborations"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "d71d18722cda1989c2298792235d9bfe807ae13b",
+    "registry_digest": "sha256:73377d2d2a4779f560d0d060b1e26b1f19874a850e2cc50c1501a7d08bde08f5"
+  }
 }
