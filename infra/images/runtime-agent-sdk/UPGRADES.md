@@ -1244,3 +1244,34 @@ Skill 在 `allowed-tools` 宣告營運者清單上的 MCP 工具時，試跑以�
 ### 預設映像從 `-25` 移到 `-26`
 
 四項在 `-26` 的 digest 上跑過之後移動：`apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`（與它 `docker tag` 成的本地 tag）、`p02_docker_test.go` 的常數，以及 `automation.md` 的實跑範例。
+
+## `2026.08-26` → `2026.08-27`（2026-11-06）— **安全性修補：`apt`／`libapt-pkg6.0`**
+
+`Runtime Image` 的 I-06 在 [run #42204098123](https://github.com/ArthurC02/SkillHub/actions/runs/42204098123) 擋下 `-26` 的一筆 fixable High。觸發那次的 commit 動的是 `infra/images/devtools/`，與這個映像無關，紅燈是路徑比對順帶照出來的。以同一版 grype（`v0.121.0`）在本機對 `-26` 重現：
+
+```
+NAME           INSTALLED  FIXED IN  TYPE  VULNERABILITY    SEVERITY
+apt            2.6.1      2.6.2     deb   CVE-2026-109518  High
+libapt-pkg6.0  2.6.1      2.6.2     deb   CVE-2026-109518  High
+```
+
+釘住的基底 `node:22-bookworm-slim@sha256:4b150b48…` 是 `2.6.1`；修復版 `2.6.2` 在 `bookworm-security/main`。今天最新的 `node:22-bookworm-slim`（`sha256:5ec23b7c…`）已含 `2.6.2`，但換基底會連 Node 一起換，比這筆修補需要的多，所以照 `-9` 的做法在既有 apt 層指名升級這兩個套件。
+
+| 欄位 | 值 |
+| --- | --- |
+| 變更 | `Dockerfile` 的 `--only-upgrade` 加上 `apt libapt-pkg6.0`；`ARG IMAGE_VERSION`。**沒有其他改動** |
+| SDK 版本 | `0.3.233`（**未變**） |
+| 基底 digest | **未變** |
+| 依賴集 | Python 與 Node 兩份**未變** |
+| `run.mjs` | **未變** |
+
+### 本機驗證（2026-11-06，沒有任何模型呼叫）
+
+```
+docker build -t skillhub-runtime-agent-sdk:2026.08-27-local infra/images/runtime-agent-sdk
+dpkg-query -W apt libapt-pkg6.0 libpcre2-8-0 perl-base
+  → apt 2.6.2 / libapt-pkg6.0 2.6.2 / libpcre2-8-0 10.42-1+deb12u2 / perl-base 5.36.0-7+deb12u4
+id -u → 65532；node --version → v22.23.4；python --version → Python 3.11.2
+version label → 2026.08-27；.Size → 1,358,773,304 bytes
+anchore/grype:v0.121.0 <image> --only-fixed --fail-on high → No vulnerabilities found（exit 0）
+```
