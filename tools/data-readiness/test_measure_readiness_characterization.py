@@ -298,7 +298,7 @@ def test_a_draft_context_or_policy_does_not_count_as_the_registry_knowing_it():
 
 def test_a_cross_context_foreign_key_is_covered_by_a_dependency_policy_from_child_to_parent():
     _, report = measured()
-    assert ratio(report, "rules.foreign_keys_inside_one_context") == (0, 3)
+    assert "rules.foreign_keys_inside_one_context" not in report["metrics"]
     assert ratio(report, "rules.cross_context_foreign_keys_with_a_recorded_collaboration") == (3, 3)
     assert report["details"]["cross_context_foreign_keys_without_a_recorded_collaboration"] == []
 
@@ -411,7 +411,6 @@ def test_a_generic_table_states_no_rule_and_its_foreign_keys_need_no_dependency_
         report = mr.measure(with_a_generic_table(Path(root)))
     assert report["inventory"]["constraints"] == 7
     assert ratio(report, "rules.constraints_cited_by_a_record") == (1, 6)
-    assert ratio(report, "rules.foreign_keys_inside_one_context") == (0, 3)
     assert ratio(report, "rules.cross_context_foreign_keys_with_a_recorded_collaboration") == (3, 3)
     assert report["details"]["foreign_keys_from_generic_tables"] == ["audit_events->users"]
     assert "db/migrations/0003_audit.sql:4 check audit_events.action" not in report["details"]["uncited_constraints"]

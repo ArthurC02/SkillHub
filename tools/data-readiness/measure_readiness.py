@@ -316,7 +316,6 @@ def _rules(inputs: Inputs) -> tuple[dict[str, Any], dict[str, Any]]:
     covered = [key for key, pair in crossing.items() if pair in collaborations]
     metrics = {
         "rules.constraints_cited_by_a_record": _ratio(len(cited), len(constraints)),
-        "rules.foreign_keys_inside_one_context": _ratio(len(governed) - len(crossing), len(governed)),
         "rules.cross_context_foreign_keys_with_a_recorded_collaboration": _ratio(len(covered), len(crossing)),
     }
     details = {

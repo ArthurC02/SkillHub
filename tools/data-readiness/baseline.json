@@ -73,11 +73,6 @@
       "denominator": 315,
       "ratio": 0.06
     },
-    "rules.foreign_keys_inside_one_context": {
-      "numerator": 46,
-      "denominator": 128,
-      "ratio": 0.359
-    },
     "rules.cross_context_foreign_keys_with_a_recorded_collaboration": {
       "numerator": 82,
       "denominator": 82,
