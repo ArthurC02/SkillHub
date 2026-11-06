@@ -135,8 +135,7 @@ func NewApp(cfg Config) (*App, error) {
 		CatalogWorkspaces: identitySvc.CatalogWorkspaceIDs,
 	}
 	versions := newVersionsService(cfg, registrySvc)
-	wireTestLab(testlabSvc, cfg, registrySvc)
-	testCases := &testlab.TestCaseSuggestions{Lab: testlabSvc, LLM: testlab.TestCaseModelOrNone(cfg.LLM)}
+	testCases := wireTestLab(testlabSvc, cfg, registrySvc)
 
 	runSvc, traceSvc := newRunServices(cfg, testlabSvc, identitySvc, registrySvc, wiring.NewRunQueue(jobs))
 	funnel.RunBelongsToWorkspace = readmodel.Reader{Pool: runSvc.Pool}.BelongsToWorkspace
@@ -259,7 +258,7 @@ func newVersionsService(cfg Config, registrySvc *registry.Service) *ingest.Servi
 	}
 }
 
-func wireTestLab(testlabSvc *testlab.Service, cfg Config, registrySvc *registry.Service) {
+func wireTestLab(testlabSvc *testlab.Service, cfg Config, registrySvc *registry.Service) *testlab.TestCaseSuggestions {
 	testlabSvc.Store = cfg.Store
 	testlabSvc.LLM = testlab.ModelOrNone(cfg.LLM)
 	testlabSvc.ReadSkill = func(ctx context.Context, workspaceID, skillID pgtype.UUID) (testlab.SkillFacts, bool, error) {
@@ -270,6 +269,7 @@ func wireTestLab(testlabSvc *testlab.Service, cfg Config, registrySvc *registry.
 		_, found, err := registrySvc.LockLiveWorkspaceSkill(ctx, tx, workspaceID, skillID)
 		return found, err
 	}
+	return &testlab.TestCaseSuggestions{Lab: testlabSvc, LLM: testlab.TestCaseModelOrNone(cfg.LLM)}
 }
 
 func newRunServices(
