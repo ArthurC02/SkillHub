@@ -1,7 +1,10 @@
 ---
 type: Aggregate
-status: draft
+status: stable
 root: Batch Reflection
+verified:
+  - by: "human:ArthurC"
+    at: "2026-11-06T19:56:27.841987Z"
 sources:
   - resource: "db/migrations/0149_batch_reflections.sql#L1-29"
     excerpt_sha256: "sha256:4f4695e40ce56f0cd765e1fc39fc22fce49f8b39ca2d510e93855fac8d2bd64d"

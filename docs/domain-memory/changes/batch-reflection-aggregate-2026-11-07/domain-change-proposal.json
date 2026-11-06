@@ -3,12 +3,12 @@
   "proposal_id": "batch-reflection-aggregate-2026-11-07",
   "proposer": "agent:coding-agent",
   "requirement_id": "batch-reflection-aggregate",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-11-06T19:56:08.510809Z",
   "verified_at": "2026-11-06T19:56:59.370520Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-11-06T19:57:11.692549Z",
+  "applied_at": "2026-11-06T19:57:17.013689Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "fee82b019ba8774be1bfc9f5863e716370e2681b",
@@ -108,5 +108,9 @@
         "committed_digest": "sha256:25b86268c46be0fb1b0ee0e47179ff64ada2447aec45ec9c0ce7bd55c68ce5f2"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "3eb6bbf8c3e04d6fb3728c7cd92287698f67688d",
+    "registry_digest": "sha256:4582b82dc81cce3554faa8395d68065f894c2680c8dd628dffd58230622f2599"
+  }
 }
