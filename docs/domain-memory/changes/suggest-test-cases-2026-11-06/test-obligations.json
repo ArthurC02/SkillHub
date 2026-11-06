@@ -1,0 +1,37 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "suggest-test-cases",
+  "proposal_id": "suggest-test-cases-2026-11-06",
+  "obligations": [
+    {
+      "id": "rule-a-test-case-suggestion-is-paid-for-by-its-requester",
+      "source_type": "acceptance-criterion",
+      "source_id": "refused-below-threshold",
+      "also_covers": [
+        {"source_type": "rule", "source_id": "a-test-case-suggestion-is-paid-for-by-its-requester"}
+      ],
+      "expected_outcome": "TestSuggestingTestCasesBelowTheStartThresholdIsRefusedBeforeTheModelIsCalled: 69 credits answers 422 naming test case suggestion, no model call, balance stays 69.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestSuggestingTestCasesBelowTheStartThresholdIsRefusedBeforeTheModelIsCalled$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "debited-and-stores-nothing",
+      "source_type": "acceptance-criterion",
+      "source_id": "debited-and-stores-nothing",
+      "expected_outcome": "TestSuggestingTestCasesAtTheStartThresholdIsDebitedByUsageAndStoresNothing: 70 credits answers one proposal, drops the taken name, debits 13 credits with one suggest_test_cases event and leaves one test case.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestSuggestingTestCasesAtTheStartThresholdIsDebitedByUsageAndStoresNothing$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "halted-refused",
+      "source_type": "acceptance-criterion",
+      "source_id": "halted-refused",
+      "expected_outcome": "TestSuggestingTestCasesUnderAP1HaltIsRefusedWithoutCallingTheModel: under a P1 halt the call answers 503 naming the manual path and the model is not called.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestSuggestingTestCasesUnderAP1HaltIsRefusedWithoutCallingTheModel$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

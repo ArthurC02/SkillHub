@@ -1,0 +1,255 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "suggest-test-cases-2026-11-06",
+  "proposer": "agent:coding-agent",
+  "requirement_id": "suggest-test-cases",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-11-06T08:42:41.630402Z",
+  "verified_at": "2026-11-06T08:43:09.461296Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "1ad0754da659d92e0ab0e80ed51ac03f55ddef9a",
+    "registry_digest": "sha256:776af99b97d3f7b1ca269517d25a2e66c420045f9a1a0ceae3809b6fe934d34f",
+    "committed_digest": "sha256:73377d2d2a4779f560d0d060b1e26b1f19874a850e2cc50c1501a7d08bde08f5"
+  },
+  "affected_contexts": [
+    "creation",
+    "credit",
+    "ingest",
+    "run",
+    "testlab"
+  ],
+  "rule_ids": [
+    "a-test-case-suggestion-is-paid-for-by-its-requester"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "testlab",
+    "invariant": "A test case suggestion calls the model only after the owner's balance meets the suggest_test_cases start threshold and model calls are not halted, debits the reported usage once it answers, and stores nothing.",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "credit prices the call through the existing credit-testlab-spend composition-root hook, now parameterised by cost kind; run's dispatch gate halts it through the existing run-testlab-model-call-halt hook. testlab imports neither.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "The user starts the call, so they pay for it, as with criteria suggestion.",
+      "A proposal is not a test case until the user adopts it through the ordinary create route.",
+      "testlab.Service is held at its method budget."
+    ],
+    "decision": "testlab.TestCaseSuggestions reuses SuggestBilling admit and charge with its own cost kind suggest_test_cases; the composition root wires the same hooks for both suggestion kinds.",
+    "invariants_preserved": [
+      "Criteria suggestion keeps its own cost kind and messages.",
+      "No test case or criterion is written by the suggestion call.",
+      "Model calls go through the gateway via apps/llm; Go decides admission, debit and refusal."
+    ],
+    "rejected_alternatives": [
+      "Reusing suggest_criteria as the cost kind, which would mix two features in the start-threshold statistics.",
+      "Writing proposals as draft test cases, which would leave the user deleting what was decided for them."
+    ],
+    "proof_obligations": [
+      "rule-a-test-case-suggestion-is-paid-for-by-its-requester",
+      "debited-and-stores-nothing",
+      "halted-refused"
+    ],
+    "counterfactual_check": "Skip the admission in TestCaseSuggestions.Suggest; the below-threshold test must fail because the model is called and charged."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-test-case-suggestion-is-paid-for-by-its-requester",
+        "statement": "Suggesting test cases for a skill is a model call the user starts, so it is open only to invited accounts, refused before the model is called when the owner's credit balance is below the start threshold for suggest_test_cases or model calls are halted, and debited by the usage the gateway reported once the model answers; it stores nothing, and a proposal whose name the skill already uses is dropped.",
+        "contexts": [
+          "testlab"
+        ],
+        "examples": [
+          "With no suggest_test_cases statistics the threshold is the 70-credit fallback: a balance of 69 is refused with no model call and nothing charged; a balance of 70 is allowed and a $0.01 answer debits 13 credits and records one suggest_test_cases cost event.",
+          "A proposal named like the skill's existing test case is dropped, and the skill still has only the test cases it had before the call."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/suggest_test_cases.go",
+            "lines": {
+              "start": 72,
+              "end": 125
+            },
+            "content_sha256": "sha256:a24f4ae90923c3f8aa499337803ca59c1a68366a7a352e75e4fced5878a826d5",
+            "excerpt_sha256": "sha256:6c9137515b3f5f0218a05d3597eab87d940367d0094f9ba1f82b7dab728413df"
+          },
+          {
+            "path": "apps/platform/internal/trial/design/suggest_test_cases.go",
+            "lines": {
+              "start": 137,
+              "end": 155
+            },
+            "content_sha256": "sha256:a24f4ae90923c3f8aa499337803ca59c1a68366a7a352e75e4fced5878a826d5",
+            "excerpt_sha256": "sha256:8c7a821c2f3fb65025fcd242f1a8e64df4aab0eef974c4592726d1a701765593"
+          },
+          {
+            "path": "apps/platform/internal/trial/design/suggest_test_cases.go",
+            "lines": {
+              "start": 127,
+              "end": 135
+            },
+            "content_sha256": "sha256:a24f4ae90923c3f8aa499337803ca59c1a68366a7a352e75e4fced5878a826d5",
+            "excerpt_sha256": "sha256:438b7ffc12b3f96469f240a598e4c0856ead6be35b153ef20677dd1d9f18d7d2"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/suggest_test_cases_integration_test.go",
+            "lines": {
+              "start": 71,
+              "end": 89
+            },
+            "content_sha256": "sha256:023db3020e6680b6c22141cfd6a66fc05d4b1b318c7cf3e74e2c71b42763fb4a",
+            "excerpt_sha256": "sha256:2ce708d45e29c3e7330981dfc875532ee7b8bb2860d648259631ad59813c0d38"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/suggest_test_cases_integration_test.go",
+            "lines": {
+              "start": 91,
+              "end": 131
+            },
+            "content_sha256": "sha256:023db3020e6680b6c22141cfd6a66fc05d4b1b318c7cf3e74e2c71b42763fb4a",
+            "excerpt_sha256": "sha256:d02140904bf91dac955dff6b425e36a8e57823173016f0bf328bda760c200f63"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/suggest_test_cases_integration_test.go",
+            "lines": {
+              "start": 169,
+              "end": 194
+            },
+            "content_sha256": "sha256:023db3020e6680b6c22141cfd6a66fc05d4b1b318c7cf3e74e2c71b42763fb4a",
+            "excerpt_sha256": "sha256:b1753032bc6eecc4191eedc08f89c7b77e03e326dc80c283d9782ffbad399d14"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "credit-testlab-spend",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook",
+        "producer_context": "credit",
+        "consumer_context": "testlab",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/credit_wiring.go",
+            "lines": {
+              "start": 93,
+              "end": 135
+            },
+            "content_sha256": "sha256:8a92b37da9dc286551492f71a40d7162cf03381cef84a391f196cb8a279ff627",
+            "excerpt_sha256": "sha256:bd0e270bd9d8736a00405369761a94aecd8756f1c978c01eb3faa52e26cd4708"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "run-creation-model-call-halt",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook",
+        "producer_context": "run",
+        "consumer_context": "creation",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/worker/worker.go",
+            "lines": {
+              "start": 131,
+              "end": 134
+            },
+            "excerpt_sha256": "sha256:1d6e9d8aec939b04af79e97b2f941065b6a3dab4787c6fc48793c1462b5dc9c9"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 673,
+              "end": 681
+            },
+            "content_sha256": "sha256:12b887360e4a99cf115c440da57f1fbb70919546234c112a995a378059d8d9c4",
+            "excerpt_sha256": "sha256:1434c2de2ccc118467ca86bc3387cbe0a7166e8f5f06595890b7637829ce7235"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "run-ingest-model-call-halt",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook",
+        "producer_context": "run",
+        "consumer_context": "ingest",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 673,
+              "end": 681
+            },
+            "content_sha256": "sha256:12b887360e4a99cf115c440da57f1fbb70919546234c112a995a378059d8d9c4",
+            "excerpt_sha256": "sha256:1434c2de2ccc118467ca86bc3387cbe0a7166e8f5f06595890b7637829ce7235"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "run-testlab-model-call-halt",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook",
+        "producer_context": "run",
+        "consumer_context": "testlab",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/app.go",
+            "lines": {
+              "start": 673,
+              "end": 681
+            },
+            "content_sha256": "sha256:12b887360e4a99cf115c440da57f1fbb70919546234c112a995a378059d8d9c4",
+            "excerpt_sha256": "sha256:1434c2de2ccc118467ca86bc3387cbe0a7166e8f5f06595890b7637829ce7235"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-11-06T08:43:09.009606Z",
+      "scope": "proposal",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "1ad0754da659d92e0ab0e80ed51ac03f55ddef9a",
+        "registry_digest": "sha256:776af99b97d3f7b1ca269517d25a2e66c420045f9a1a0ceae3809b6fe934d34f",
+        "committed_digest": "sha256:73377d2d2a4779f560d0d060b1e26b1f19874a850e2cc50c1501a7d08bde08f5"
+      }
+    }
+  ],
+  "supersedes": [
+    "testlab-suggest-paid-by-requester",
+    "journey-recite-2026-10-25"
+  ]
+}

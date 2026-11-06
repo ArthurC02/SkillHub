@@ -1,0 +1,55 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "suggest-test-cases",
+  "proposal_id": "suggest-test-cases-2026-11-06",
+  "registry_revision": {
+    "observed_commit": "1ad0754da659d92e0ab0e80ed51ac03f55ddef9a",
+    "registry_digest": "sha256:776af99b97d3f7b1ca269517d25a2e66c420045f9a1a0ceae3809b6fe934d34f",
+    "committed_digest": "sha256:73377d2d2a4779f560d0d060b1e26b1f19874a850e2cc50c1501a7d08bde08f5"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-test-case-suggestion-is-paid-for-by-its-requester",
+      "mutated_protection": "apps/platform/internal/trial/design/suggest_test_cases.go:103: if err := s.Billing.admit(ctx, ws.ID); err != nil { -> if err := error(nil); err != nil {",
+      "failure_evidence": "=== RUN   TestSuggestingTestCasesBelowTheStartThresholdIsRefusedBeforeTheModelIsCalled\n2026/11/06 16:42:22 INFO testlab: test cases suggested prompt_version=suggest-test-cases/v1 proposed=0\n    suggest_test_cases_integration_test.go:81: suggest at 69 credits: got 200 (map[suggestions:[]]), want 422 naming test case suggestion\n--- FAIL: TestSuggestingTestCasesBelowTheStartThresholdIsRefusedBeforeTheModelIsCalled (0.15s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t2.212s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-test-case-suggestion-is-paid-for-by-its-requester",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestSuggestingTestCasesBelowTheStartThresholdIsRefusedBeforeTheModelIsCalled$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:64c748ff4484f17b828a538f1517c153bcd607596657c90bcef7dc4cde78d80c",
+      "finished_at": "2026-11-06T08:42:28.998229Z"
+    },
+    {
+      "obligation_id": "debited-and-stores-nothing",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestSuggestingTestCasesAtTheStartThresholdIsDebitedByUsageAndStoresNothing$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:413d5804e47253131a694ead1a4eb3771ef23f918f33370280d34995c9ba2027",
+      "finished_at": "2026-11-06T08:42:35.339167Z"
+    },
+    {
+      "obligation_id": "halted-refused",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestSuggestingTestCasesUnderAP1HaltIsRefusedWithoutCallingTheModel$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:20a8dfe3c6730b75832e85c773ac3b1138346ffc1961a55833c809cfeedb434b",
+      "finished_at": "2026-11-06T08:42:40.975046Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}
