@@ -1,0 +1,42 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "batch-reflection",
+  "status": "draft",
+  "intent": "A creator who ran an evaluation batch can improve the skill from the failures of the test cases they chose for development, and check the improvement on the test cases the model never saw.",
+  "actor": "skill-creator",
+  "observable_outcome": "POST /skills/{id}/evaluation-batches/{batchId}/reflections reads only the failing development runs, records one immutable round with its suggestions, and the accepted suggestions build the next version through the existing apply path, which records the round as the source.",
+  "acceptance_criteria": [
+    {
+      "id": "reads-only-development-runs",
+      "statement": "The model is shown only runs of the chosen development test cases; the round records how many failing runs it read and how many it left out, and its suggestions never appear in a run evaluation list."
+    },
+    {
+      "id": "holds-a-case-out",
+      "statement": "A round naming no case, every case, a case twice or a case of another batch is refused with 400 and nothing is recorded."
+    },
+    {
+      "id": "waits-for-development-trials",
+      "statement": "A round is refused with 409 while the batch is launching or a development trial is not settled; a held-out case without runs does not hold it back."
+    },
+    {
+      "id": "paid-for-by-its-requester",
+      "statement": "A balance below the batch_reflection start threshold is refused with 422 before the model is called and nothing is charged."
+    },
+    {
+      "id": "applies-through-the-existing-path",
+      "statement": "Accepted suggestions of a round build the next version of the batch skill version, and the version records reflection_id as its improvement source."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/trial/improvement/reflection/reflection.go",
+    "apps/platform/internal/trial/improvement/reflection_store.go",
+    "apps/platform/internal/entrypoint/api/apiserver/reflection_wiring.go",
+    "db/migrations/0149_batch_reflections.sql",
+    "contracts/openapi/public.yaml",
+    "docs/plans/02-specifications-and-acceptance-criteria.md"
+  ]
+}

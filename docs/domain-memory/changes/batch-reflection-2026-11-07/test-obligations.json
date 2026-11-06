@@ -1,0 +1,76 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "batch-reflection",
+  "proposal_id": "batch-reflection-2026-11-07",
+  "obligations": [
+    {
+      "id": "rule-a-batch-reflection-reads-only-its-development-cases",
+      "source_type": "rule",
+      "source_id": "a-batch-reflection-reads-only-its-development-cases",
+      "expected_outcome": "TestADevelopmentSetIsAcceptedOnlyWhenItIsAProperSubsetOfSettledCases: no case, every case, a foreign case and a case twice are invalid; an unsettled development trial and a launching batch are not ready; one case and all but one are accepted.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestADevelopmentSetIsAcceptedOnlyWhenItIsAProperSubsetOfSettledCases$ ./internal/trial/improvement/reflection/"
+    },
+    {
+      "id": "eight-runs-read",
+      "source_type": "acceptance-criterion",
+      "source_id": "reads-only-development-runs",
+      "expected_outcome": "TestAReflectionReadsEightFailingRunsAndCountsTheRest: 1, 8 and 9 failing runs are read as 1, 8 and 8 with 0, 0 and 1 not read.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestAReflectionReadsEightFailingRunsAndCountsTheRest$ ./internal/trial/improvement/reflection/"
+    },
+    {
+      "id": "only-development-runs-reach-the-model",
+      "source_type": "acceptance-criterion",
+      "source_id": "reads-only-development-runs",
+      "expected_outcome": "TestAReflectionReadsOnlyTheDevelopmentRunsAndKeepsItsSuggestionsOffTheRun: the model digest names the development run and not the held-out run, one suggestion is kept and the run suggestion list stays empty.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestAReflectionReadsOnlyTheDevelopmentRunsAndKeepsItsSuggestionsOffTheRun$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "holds-a-case-out",
+      "source_type": "acceptance-criterion",
+      "source_id": "holds-a-case-out",
+      "expected_outcome": "TestAReflectionMustHoldOutACaseAndNameOnlyThisBatchsCasesOnce: every case, no case, a case twice and a foreign case answer 400 and no round is listed.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestAReflectionMustHoldOutACaseAndNameOnlyThisBatchsCasesOnce$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "waits-for-development-trials",
+      "source_type": "acceptance-criterion",
+      "source_id": "waits-for-development-trials",
+      "expected_outcome": "TestAReflectionWaitsForEveryDevelopmentTrialButNotForHeldOutOnes: an unsettled development trial answers 409; an unsettled held-out trial does not.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestAReflectionWaitsForEveryDevelopmentTrialButNotForHeldOutOnes$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-batch-reflection-is-paid-for-by-its-requester",
+      "source_type": "rule",
+      "source_id": "a-batch-reflection-is-paid-for-by-its-requester",
+      "also_covers": [
+        {
+          "source_type": "acceptance-criterion",
+          "source_id": "paid-for-by-its-requester"
+        }
+      ],
+      "expected_outcome": "TestAReflectionBelowTheStartThresholdIsRefusedBeforeTheModelIsCalled: 69 credits answers 422, the model is not called and the balance stays 69.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestAReflectionBelowTheStartThresholdIsRefusedBeforeTheModelIsCalled$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "applies-through-the-existing-path",
+      "source_type": "acceptance-criterion",
+      "source_id": "applies-through-the-existing-path",
+      "expected_outcome": "TestApplyingAReflectionsSuggestionBuildsTheNextVersionAndRecordsItsSource: the accepted suggestion builds version 2 whose improved_by names the round and its suggestion; naming neither or both owners answers 400 and the round id as an evaluation answers 404.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestApplyingAReflectionsSuggestionBuildsTheNextVersionAndRecordsItsSource$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

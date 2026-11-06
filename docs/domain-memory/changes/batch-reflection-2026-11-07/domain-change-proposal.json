@@ -1,0 +1,486 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "batch-reflection-2026-11-07",
+  "proposer": "agent:coding-agent",
+  "requirement_id": "batch-reflection",
+  "status": "superseded",
+  "change_classification": "material",
+  "submitted_at": "2026-11-06T19:36:14.052506Z",
+  "verified_at": null,
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "5f9bdb447de404eb6ff5d585632a7e665bd89a85",
+    "registry_digest": "sha256:1a5d0f32bdf06337433313f15572762a48e3679726348588ca9af1cc5600239e",
+    "committed_digest": "sha256:0efcd37b36c67f0e69cd47c607dae277ca8c7fd626912c7cd4bdbcc5d83b7c61"
+  },
+  "affected_contexts": [
+    "batch",
+    "eval",
+    "ingest"
+  ],
+  "rule_ids": [
+    "a-batch-reflection-reads-only-its-development-cases",
+    "a-batch-reflection-is-paid-for-by-its-requester"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "eval",
+    "invariant": "A batch reflection is immutable once recorded, reads only failing runs of its development cases, needs at least one held-out case and settled development trials, and its suggestions belong to it alone: exactly one of evaluation_id and reflection_id is set on a suggestion, and the version it was written against is the batch version, held equal by a composite foreign key.",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "batch provides the batch skill, version, status and per-case trial settlement through a composition-root fact reader (batch-eval-batch-trials); eval imports nothing from batch. The applied version reaches ingest through the existing improved_by provenance, now carrying reflection_id.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [
+      "eval must not import batch"
+    ],
+    "evidence": []
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "Suggestions read from the same cases they are checked on overfit; a held-out set is what makes the rerun evidence.",
+      "The round reads one version, so its suggestions apply to that version only.",
+      "A suggestion has one owner, so a run evaluation list never shows a round suggestion.",
+      "The user starts the model call, so they pay for it, as with run suggestions.",
+      "The eval Service is held at its method and field budget."
+    ],
+    "decision": "A reflection subpackage of eval orchestrates the round and owns its HTTP, reading batch facts through an injected port; eval exports package functions to read a run failure, store a round and list rounds, and holds the Reflection aggregate that reuses the suggestion ledger for decide and apply. batch_reflections stores skill_version_id under a composite foreign key to evaluation_batches, so apply needs no batch reader.",
+    "invariants_preserved": [
+      "Run suggestions keep their own owner, events and apply path.",
+      "Skill versions stay immutable; applying builds a new version.",
+      "Model calls go through the gateway via apps/llm; Go decides admission, debit and refusal."
+    ],
+    "rejected_alternatives": [
+      "Storing no version on the round and reading it from the batch, which put a batch reader on the eval Service.",
+      "Writing round suggestions under a synthetic evaluation, which would show them in a run suggestion list.",
+      "Updating the round outcome after its suggestions are stored, which the immutable table forbids; the outcome is decided before the insert."
+    ],
+    "proof_obligations": [
+      "rule-a-batch-reflection-reads-only-its-development-cases",
+      "eight-runs-read",
+      "only-development-runs-reach-the-model",
+      "holds-a-case-out",
+      "waits-for-development-trials",
+      "rule-a-batch-reflection-is-paid-for-by-its-requester",
+      "applies-through-the-existing-path"
+    ],
+    "counterfactual_check": "Let devTrials accept a development set that names every case; the decision-table test must fail. Skip the billing admission in reflect; the below-threshold test must fail because the model is called."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "batch-eval-batch-trials",
+        "consistency": "synchronous",
+        "delivery": "composition-root fact reader",
+        "producer_context": "batch",
+        "consumer_context": "eval",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/reflection_wiring.go",
+            "lines": {
+              "start": 40,
+              "end": 62
+            },
+            "excerpt_sha256": "sha256:5c41263cbb011924c59fb28669816ef3c49ca11707516ea26bc5fb6c248cb7e7"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-batch-reflection-reads-only-its-development-cases",
+        "statement": "An improvement round over an evaluation batch reads only the failing runs of the test cases the creator chose for development and holds every other case out for checking the result: it needs at least one development case and at least one held-out case, each named once and from this batch, refuses while the batch is launching or while any development trial is not settled, and reads at most eight failing runs, taking every case's first trial before any second and saying how many it left unread.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "A batch of three cases with all three chosen for development is refused, and so is a round naming no case or one case twice.",
+          "A development case with a trial still running is refused until it settles, while a held-out case with no runs yet does not hold the round back.",
+          "Nine failing development runs are read as eight, and the round records one run not read."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/improvement/reflection/reflection.go",
+            "lines": {
+              "start": 147,
+              "end": 181
+            },
+            "excerpt_sha256": "sha256:9b652a61f6fe2f34584cd34c377eb6ac326e046d3570c2a04597bf0591090c77"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/reflection/reflection.go",
+            "lines": {
+              "start": 213,
+              "end": 216
+            },
+            "excerpt_sha256": "sha256:ee3cd79f8c21afac92618f8e8aa392d7538e952f4e1612fd518e8b8121cead39"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/reflection/reflection.go",
+            "lines": {
+              "start": 197,
+              "end": 211
+            },
+            "content_sha256": "sha256:9d175451ab92c59822df6ca738e9778e697825c7f2bb419980b39d3a6011da1b",
+            "excerpt_sha256": "sha256:a7b4357d754bafe6ce889b42a88b6095bc8902de8e4e1c146ae966bb9cc4cb8a"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/reflection/reflection_test.go",
+            "lines": {
+              "start": 61,
+              "end": 92
+            },
+            "content_sha256": "sha256:e35b2436ed46eb10f8a62aef10f8c6e27896345070d3cb3e47fdd5658e2dee48",
+            "excerpt_sha256": "sha256:c3191b526185f89b357ee6600f53496224918285a98da1771299033750c420b9"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/reflection/reflection_test.go",
+            "lines": {
+              "start": 36,
+              "end": 45
+            },
+            "content_sha256": "sha256:e35b2436ed46eb10f8a62aef10f8c6e27896345070d3cb3e47fdd5658e2dee48",
+            "excerpt_sha256": "sha256:f6f7b41c2fedb7f9d64c150b839262bae863b129104da1f398a38805cb2f61fa"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/reflection/reflection_test.go",
+            "lines": {
+              "start": 23,
+              "end": 34
+            },
+            "content_sha256": "sha256:e35b2436ed46eb10f8a62aef10f8c6e27896345070d3cb3e47fdd5658e2dee48",
+            "excerpt_sha256": "sha256:32ec6de817d8017994ce8b759164e4ddd507c53fb6cbf119a41f57d2d0cecfd2"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/reflection_integration_test.go",
+            "lines": {
+              "start": 270,
+              "end": 307
+            },
+            "content_sha256": "sha256:362ec05b12b0d402f47b9b177b0eb90b002e5b9b9ff5a2789f8872c900295ddd",
+            "excerpt_sha256": "sha256:514d42bcaef9f15d252c69e5c8181cf88bea311e2571c6f2bf2971f081ee3d90"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/reflection_integration_test.go",
+            "lines": {
+              "start": 309,
+              "end": 335
+            },
+            "content_sha256": "sha256:362ec05b12b0d402f47b9b177b0eb90b002e5b9b9ff5a2789f8872c900295ddd",
+            "excerpt_sha256": "sha256:bd4b52143d77bffb2d70d927936efe070a656ca712e04bfd292ccfc1aa93d9d6"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/reflection_integration_test.go",
+            "lines": {
+              "start": 184,
+              "end": 211
+            },
+            "content_sha256": "sha256:362ec05b12b0d402f47b9b177b0eb90b002e5b9b9ff5a2789f8872c900295ddd",
+            "excerpt_sha256": "sha256:8d7e6b21d27409a345f1f1b602f6e01cc9203d4b3e8ff860ad2a436e6bc1307b"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-batch-reflection-is-paid-for-by-its-requester",
+        "statement": "An improvement round over an evaluation batch is a model call the user starts, so it is open only to invited accounts, refused before the model is called when the owner's credit balance is below the start threshold for batch_reflection or model calls are halted, and debited by the usage the gateway reported once the model answers.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "With no batch_reflection statistics a balance of 69 credits is refused with 422, the model is not called and nothing is charged."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/improvement/reflection/reflection.go",
+            "lines": {
+              "start": 58,
+              "end": 73
+            },
+            "excerpt_sha256": "sha256:a48a8a4003f7a809025cc72a585650247820686c77ae6f1f05b8d2434b258816"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/reflection/reflection.go",
+            "lines": {
+              "start": 218,
+              "end": 254
+            },
+            "content_sha256": "sha256:9d175451ab92c59822df6ca738e9778e697825c7f2bb419980b39d3a6011da1b",
+            "excerpt_sha256": "sha256:c61543833faaeb83b7fda4ff296d901954966fe410fc615c69394e144f7b0a9a"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/reflection_integration_test.go",
+            "lines": {
+              "start": 337,
+              "end": 353
+            },
+            "content_sha256": "sha256:362ec05b12b0d402f47b9b177b0eb90b002e5b9b9ff5a2789f8872c900295ddd",
+            "excerpt_sha256": "sha256:e9f743c971e08aac0206b46204cdcf8e8215aa5689e83a5e3c65ad7dd82b031d"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-suggestion-decision-is-accepted-or-rejected",
+        "statement": "A suggestion decision must be accepted or rejected; pending or any other word is refused as not_a_choice.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "Deciding maybe, or going back to pending, leaves the decision as it was."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/improvement/evaluation_test.go",
+            "lines": {
+              "start": 209,
+              "end": 255
+            },
+            "excerpt_sha256": "sha256:f7916b8d47b08f9157c7f24573e676ad5feef8643653e0ad00a99355a101bf7d"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/evaluation.go",
+            "lines": {
+              "start": 271,
+              "end": 277
+            },
+            "content_sha256": "sha256:fca669bdf08df261f9b4680c2ffd128544e8e57e9cafcb3cfd7ea33def501617",
+            "excerpt_sha256": "sha256:d582318163f672a2fb451747e123eaf55ca7d37ea7dcd81d73f1bf6377b83533"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-applied-acceptance-is-final",
+        "statement": "Once a suggestion has gone into a Skill version its acceptance cannot be withdrawn; rejecting it is refused as acceptance_is_final.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "A suggestion applied to version 9 cannot be flipped to rejected."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/improvement/evaluation_test.go",
+            "lines": {
+              "start": 209,
+              "end": 255
+            },
+            "excerpt_sha256": "sha256:f7916b8d47b08f9157c7f24573e676ad5feef8643653e0ad00a99355a101bf7d"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/evaluation.go",
+            "lines": {
+              "start": 278,
+              "end": 279
+            },
+            "content_sha256": "sha256:fca669bdf08df261f9b4680c2ffd128544e8e57e9cafcb3cfd7ea33def501617",
+            "excerpt_sha256": "sha256:00f4885c3c736f5cc30fce59ad00bb6007ce49f3b9720a625fd37adef39d40de"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "suggestions-apply-only-through-their-evaluated-skill",
+        "statement": "Suggestions apply only under the skill their evaluation ran; another skill's id is not found.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "Applying under an unrelated skill answers 404 and creates no version."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/suggestion_integration_test.go",
+            "lines": {
+              "start": 716,
+              "end": 742
+            },
+            "excerpt_sha256": "sha256:ea15402b78021d61301a03809502e700423868f826147fdf406d29108d07e332"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/apply.go",
+            "lines": {
+              "start": 480,
+              "end": 487
+            },
+            "content_sha256": "sha256:e20559963e55df83d9409f3be6af5091403b376d76350d9684a1eb872acde30d",
+            "excerpt_sha256": "sha256:4bb0367d651ba017074d830fce264c5a98aca1617b78c7dad3b6e6e93ea06650"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-suggestion-of-another-evaluation-cannot-be-applied-through-this-one",
+        "statement": "A suggestion that belongs to another evaluation is not found when applied through this one.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "Suggestion of evaluation E1 posted with E2 answers 404."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/suggestion_apply_characterization_test.go",
+            "lines": {
+              "start": 44,
+              "end": 67
+            },
+            "excerpt_sha256": "sha256:6147934408299054a3ba62ce6962f2500ec7e8ab2019aa32c3cbd13df2fd53a2"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/apply.go",
+            "lines": {
+              "start": 501,
+              "end": 506
+            },
+            "content_sha256": "sha256:e20559963e55df83d9409f3be6af5091403b376d76350d9684a1eb872acde30d",
+            "excerpt_sha256": "sha256:9aa8b79f20a0fe4fc838a0c5c6b14335c0033ba7e73bccca9d18350da04398ea"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "rebuilding-an-existing-version-records-its-suggestion-provenance",
+        "statement": "When applying suggestions rebuilds an existing version, the suggestions are recorded against that version.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "Restoring an earlier text records the suggestion as applied to the earlier version."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/suggestion_integration_test.go",
+            "lines": {
+              "start": 470,
+              "end": 526
+            },
+            "excerpt_sha256": "sha256:54d0b65ca0cf0d1d222e01b4d2110a758fbc6439e45e37d80a9963a5a945d5f8"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/apply.go",
+            "lines": {
+              "start": 608,
+              "end": 612
+            },
+            "content_sha256": "sha256:e20559963e55df83d9409f3be6af5091403b376d76350d9684a1eb872acde30d",
+            "excerpt_sha256": "sha256:cfcf526f14c448cc9afce75936d911d381582f4295238254cff11951ea713c77"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-unlisted-mcp-tool-blocks-a-created-draft-and-warns-an-import",
+        "statement": "A created draft or created version of a Skill that declares in allowed-tools an mcp__ name no mcp_tools row offers is blocked with the finding mcp-tool-not-offered naming it and listing the offered references; an imported or uploaded package gets the same finding as a warning and is not blocked.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "A created draft declaring mcp__mail__send while mcp_tools is empty is blocked and told the list is empty.",
+          "An imported zip declaring mcp__mail__send is admitted with a warning."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/mcp_tools.go",
+            "lines": {
+              "start": 13,
+              "end": 43
+            },
+            "excerpt_sha256": "sha256:0dff15123f2cc103abfe2bd0a5a7540b2416c27b6570b8d23e26da3978f12a0c"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/mcp_tools.go",
+            "lines": {
+              "start": 54,
+              "end": 65
+            },
+            "excerpt_sha256": "sha256:df93ec0b6bdce85c9b44c6c99dc719a3f139cf39d9f3285af182dfa00ff04277"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/creation.go",
+            "lines": {
+              "start": 52,
+              "end": 52
+            },
+            "excerpt_sha256": "sha256:5248e297b8dda66dcf2785374f181b041475027ace06330c3bb3db3fbf4f716c"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/creation.go",
+            "lines": {
+              "start": 208,
+              "end": 208
+            },
+            "excerpt_sha256": "sha256:5248e297b8dda66dcf2785374f181b041475027ace06330c3bb3db3fbf4f716c"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/service.go",
+            "lines": {
+              "start": 341,
+              "end": 341
+            },
+            "excerpt_sha256": "sha256:06b9214ed080db7e866e502be192d11fe6152c484835061148a4e929f0848258"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/mcp_tools_test.go",
+            "lines": {
+              "start": 35,
+              "end": 57
+            },
+            "excerpt_sha256": "sha256:025365e193db70c470ad49a71c9016770caea2709cbab2e3ac8d07d8a8714085"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/service.go",
+            "lines": {
+              "start": 415,
+              "end": 415
+            },
+            "content_sha256": "sha256:6a8d0bcba9d83fbedcd0c271ea08ba95aee785c6028c5e2c2cd03d87c8027926",
+            "excerpt_sha256": "sha256:06b9214ed080db7e866e502be192d11fe6152c484835061148a4e929f0848258"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [],
+  "supersedes": [
+    "eval-harvest-rules-2026-10-17",
+    "eval-suggestion-and-judging-rules-2026-10-18",
+    "mcp-tool-catalog-rules-2026-11-01"
+  ],
+  "superseded_from_status": "submitted",
+  "superseded_at": "2026-11-06T19:37:03.334355Z",
+  "superseded_reason": "three test citations moved when an assertion helper was extracted before review",
+  "superseded_by": "batch-reflection-recited-2026-11-07"
+}

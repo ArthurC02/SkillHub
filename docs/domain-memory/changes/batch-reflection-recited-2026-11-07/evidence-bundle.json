@@ -1,0 +1,98 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "batch-reflection",
+  "proposal_id": "batch-reflection-recited-2026-11-07",
+  "registry_revision": {
+    "observed_commit": "5f9bdb447de404eb6ff5d585632a7e665bd89a85",
+    "registry_digest": "sha256:1a5d0f32bdf06337433313f15572762a48e3679726348588ca9af1cc5600239e",
+    "committed_digest": "sha256:0efcd37b36c67f0e69cd47c607dae277ca8c7fd626912c7cd4bdbcc5d83b7c61"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-batch-reflection-reads-only-its-development-cases",
+      "mutated_protection": "apps/platform/internal/trial/improvement/reflection/reflection.go:165: case len(devIDs) >= len(byID): -> case len(devIDs) > len(byID):",
+      "failure_evidence": "=== RUN   TestADevelopmentSetIsAcceptedOnlyWhenItIsAProperSubsetOfSettledCases\n    reflection_test.go:85: every case: err = 開發集裡還有試跑沒有跑完或還沒評估完，等它們都有結果再找改進。, want reflection request is invalid\n--- FAIL: TestADevelopmentSetIsAcceptedOnlyWhenItIsAProperSubsetOfSettledCases (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/reflection\t1.850s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-batch-reflection-is-paid-for-by-its-requester",
+      "mutated_protection": "apps/platform/internal/trial/improvement/reflection/reflection.go:230: if err := s.Billing.admit(ctx, round.WorkspaceID); err != nil { -> if err := error(nil); err != nil {",
+      "failure_evidence": "esholdIsRefusedBeforeTheModelIsCalled\n2026/11/07 03:37:48 INFO improvement proposals batch_id=6b30b81b-7993-405b-81a7-986f49a0bc61 proposed=1 stored=1 dropped_no_evidence=0 dropped_unstorable=0 dropped_write_failed=0 dropped_over_cap=0\n    reflection_integration_test.go:339: reflect at 69 credits: got 201 {\"reflection_id\":\"bb974242-7956-4d68-abb1-591578c13d9c\",\"batch_id\":\"6b30b81b-7993-405b-81a7-986f49a0bc61\",\"dev_test_case_ids\":[\"85ce4ff3-75fa-4247-bc7f-325dca9ca102\"],\"outcome\":\"kept\",\"runs_read\":1,\"runs_not_read\":0,\"created_at\":\"2026-11-06T19:37:48Z\",\"suggestions\":[{\"suggestion_id\":\"f297d9ca-eb1c-4c33-911b-f13606988d85\",\"category\":\"skill\",\"problem\":\"the skill never says how to find duplicates\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":2,\"end\":43},\"excerpt\":\"could not tell which rows were duplicates\",\"excerpt_truncated\":false,\"available\":true}],\"target_path\":\"SKILL.md\",\"expected_impact\":\"the next run removes duplicate rows\",\"decision\":\"pending\"}]}\n        , want 422\n--- FAIL: TestAReflectionBelowTheStartThresholdIsRefusedBeforeTheModelIsCalled (0.30s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t2.404s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-batch-reflection-reads-only-its-development-cases",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestADevelopmentSetIsAcceptedOnlyWhenItIsAProperSubsetOfSettledCases$ ./internal/trial/improvement/reflection/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:15e6c0d8e42b703f891b5883171041b8c18c9bd2ec26d1643bce8ce07aafbec6",
+      "finished_at": "2026-11-06T19:38:12.114286Z"
+    },
+    {
+      "obligation_id": "eight-runs-read",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestAReflectionReadsEightFailingRunsAndCountsTheRest$ ./internal/trial/improvement/reflection/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:49ab84ed49666f34fac1b0cece7c14873e3eda6a185e0ffe720d1c998a3ec187",
+      "finished_at": "2026-11-06T19:38:16.181659Z"
+    },
+    {
+      "obligation_id": "only-development-runs-reach-the-model",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestAReflectionReadsOnlyTheDevelopmentRunsAndKeepsItsSuggestionsOffTheRun$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:30741f6c748456bfc9dfddafecd4ceec2324566ef0225b07fb34678b830656f3",
+      "finished_at": "2026-11-06T19:38:21.953364Z"
+    },
+    {
+      "obligation_id": "holds-a-case-out",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestAReflectionMustHoldOutACaseAndNameOnlyThisBatchsCasesOnce$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:03e658de083d960ebeb0d1aeee1fbdb8f1ccc4f625e862f7492f8ae0523bc650",
+      "finished_at": "2026-11-06T19:38:27.565309Z"
+    },
+    {
+      "obligation_id": "waits-for-development-trials",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestAReflectionWaitsForEveryDevelopmentTrialButNotForHeldOutOnes$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:306e1a4f25f7e07df51770e403474470afba661447d63e3167cf9f1688f0529c",
+      "finished_at": "2026-11-06T19:38:33.395238Z"
+    },
+    {
+      "obligation_id": "rule-a-batch-reflection-is-paid-for-by-its-requester",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestAReflectionBelowTheStartThresholdIsRefusedBeforeTheModelIsCalled$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:33a4f154787621bcf4ebfb73e311767a8a35340e736d0c88bdabf304d51bf4ce",
+      "finished_at": "2026-11-06T19:38:39.727174Z"
+    },
+    {
+      "obligation_id": "applies-through-the-existing-path",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestApplyingAReflectionsSuggestionBuildsTheNextVersionAndRecordsItsSource$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:28330a00b24e95f916bac76d9c0b0c0f7685b9f0700e1c451bc8b5246ffb3085",
+      "finished_at": "2026-11-06T19:38:45.586589Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

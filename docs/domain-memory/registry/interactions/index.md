@@ -1,6 +1,7 @@
 # Interactions
 
 - [analytics-identity-workspace-purge](/interactions/analytics-identity-workspace-purge)
+- [batch-eval-batch-trials](/interactions/batch-eval-batch-trials)
 - [catalog-creation-reference-search](/interactions/catalog-creation-reference-search)
 - [catalog-ingest-index-enriched](/interactions/catalog-ingest-index-enriched)
 - [catalog-publishing-search-snapshot](/interactions/catalog-publishing-search-snapshot)

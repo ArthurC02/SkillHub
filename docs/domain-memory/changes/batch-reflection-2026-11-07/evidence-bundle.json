@@ -1,0 +1,34 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "batch-reflection",
+  "proposal_id": "batch-reflection-2026-11-07",
+  "registry_revision": {
+    "observed_commit": "5f9bdb447de404eb6ff5d585632a7e665bd89a85",
+    "registry_digest": "sha256:1a5d0f32bdf06337433313f15572762a48e3679726348588ca9af1cc5600239e",
+    "committed_digest": "sha256:0efcd37b36c67f0e69cd47c607dae277ca8c7fd626912c7cd4bdbcc5d83b7c61"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-batch-reflection-reads-only-its-development-cases",
+      "mutated_protection": "apps/platform/internal/trial/improvement/reflection/reflection.go:165: case len(devIDs) >= len(byID): -> case len(devIDs) > len(byID):",
+      "failure_evidence": "=== RUN   TestADevelopmentSetIsAcceptedOnlyWhenItIsAProperSubsetOfSettledCases\n    reflection_test.go:85: every case: err = 開發集裡還有試跑沒有跑完或還沒評估完，等它們都有結果再找改進。, want reflection request is invalid\n--- FAIL: TestADevelopmentSetIsAcceptedOnlyWhenItIsAProperSubsetOfSettledCases (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/reflection\t21.383s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-batch-reflection-is-paid-for-by-its-requester",
+      "mutated_protection": "apps/platform/internal/trial/improvement/reflection/reflection.go:230: if err := s.Billing.admit(ctx, round.WorkspaceID); err != nil { -> if err := error(nil); err != nil {",
+      "failure_evidence": "esholdIsRefusedBeforeTheModelIsCalled\n2026/11/07 03:17:19 INFO improvement proposals batch_id=9952e203-7927-4165-989c-c2c09b54be09 proposed=1 stored=1 dropped_no_evidence=0 dropped_unstorable=0 dropped_write_failed=0 dropped_over_cap=0\n    reflection_integration_test.go:345: reflect at 69 credits: got 201 {\"reflection_id\":\"4a4cb4a6-6f83-4206-8caf-c0b44810ebfe\",\"batch_id\":\"9952e203-7927-4165-989c-c2c09b54be09\",\"dev_test_case_ids\":[\"98e43867-b397-4cbe-b4e9-d6436fbb09f8\"],\"outcome\":\"kept\",\"runs_read\":1,\"runs_not_read\":0,\"created_at\":\"2026-11-06T19:17:19Z\",\"suggestions\":[{\"suggestion_id\":\"a79ab928-0da7-49d0-8a9f-145db4380df8\",\"category\":\"skill\",\"problem\":\"the skill never says how to find duplicates\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":2,\"end\":43},\"excerpt\":\"could not tell which rows were duplicates\",\"excerpt_truncated\":false,\"available\":true}],\"target_path\":\"SKILL.md\",\"expected_impact\":\"the next run removes duplicate rows\",\"decision\":\"pending\"}]}\n        , want 422\n--- FAIL: TestAReflectionBelowTheStartThresholdIsRefusedBeforeTheModelIsCalled (0.30s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t2.381s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}
