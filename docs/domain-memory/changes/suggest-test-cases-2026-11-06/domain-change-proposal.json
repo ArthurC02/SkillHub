@@ -3,12 +3,12 @@
   "proposal_id": "suggest-test-cases-2026-11-06",
   "proposer": "agent:coding-agent",
   "requirement_id": "suggest-test-cases",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-11-06T08:42:41.630402Z",
   "verified_at": "2026-11-06T08:43:09.461296Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-11-06T08:43:22.525515Z",
+  "applied_at": "2026-11-06T08:43:27.360985Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "1ad0754da659d92e0ab0e80ed51ac03f55ddef9a",
@@ -251,5 +251,9 @@
   "supersedes": [
     "testlab-suggest-paid-by-requester",
     "journey-recite-2026-10-25"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "661c4e24a1e8e3de44d3e44cab919fb096928b03",
+    "registry_digest": "sha256:0efcd37b36c67f0e69cd47c607dae277ca8c7fd626912c7cd4bdbcc5d83b7c61"
+  }
 }
