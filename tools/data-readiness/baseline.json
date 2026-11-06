@@ -1,26 +1,26 @@
 {
   "inventory": {
-    "migrations": 144,
-    "tables": 73,
+    "migrations": 149,
+    "tables": 75,
     "partitions": 4,
-    "columns": 665,
-    "queries": 520,
-    "constraints": 301,
-    "foreign_keys": 129,
+    "columns": 693,
+    "queries": 536,
+    "constraints": 326,
+    "foreign_keys": 133,
     "types": 2,
-    "registry_records": 752,
+    "registry_records": 769,
     "unparsed_statements": 0,
     "dynamic_ddl_statements": 1
   },
   "metrics": {
     "meaning.tables_described": {
-      "numerator": 73,
-      "denominator": 73,
+      "numerator": 75,
+      "denominator": 75,
       "ratio": 1.0
     },
     "meaning.columns_described": {
-      "numerator": 593,
-      "denominator": 682,
+      "numerator": 603,
+      "denominator": 693,
       "ratio": 0.87
     },
     "meaning.enum_columns_whose_comment_names_every_value": {
@@ -29,63 +29,63 @@
       "ratio": 1.0
     },
     "meaning.status_like_columns_with_a_check_list": {
-      "numerator": 31,
-      "denominator": 34,
-      "ratio": 0.912
+      "numerator": 32,
+      "denominator": 35,
+      "ratio": 0.914
     },
     "meaning.tables_known_to_registry": {
-      "numerator": 12,
-      "denominator": 74,
-      "ratio": 0.162
+      "numerator": 15,
+      "denominator": 75,
+      "ratio": 0.2
     },
     "meaning.queried_columns_described": {
-      "numerator": 568,
-      "denominator": 568,
+      "numerator": 592,
+      "denominator": 592,
       "ratio": 1.0
     },
     "ownership.tables_with_exactly_one_declared_owner": {
-      "numerator": 72,
-      "denominator": 73,
-      "ratio": 0.986
+      "numerator": 74,
+      "denominator": 75,
+      "ratio": 0.987
     },
     "ownership.tables_with_a_known_owner": {
-      "numerator": 73,
-      "denominator": 73,
+      "numerator": 75,
+      "denominator": 75,
       "ratio": 1.0
     },
     "ownership.tables_written_by_at_most_one_owner": {
-      "numerator": 72,
-      "denominator": 73,
-      "ratio": 0.986
+      "numerator": 74,
+      "denominator": 75,
+      "ratio": 0.987
     },
     "ownership.tables_claimed_by_an_aggregate": {
-      "numerator": 0,
-      "denominator": 73,
-      "ratio": 0.0
+      "numerator": 4,
+      "denominator": 75,
+      "ratio": 0.053
     },
     "ownership.tables_touched_by_a_query": {
-      "numerator": 73,
-      "denominator": 73,
+      "numerator": 75,
+      "denominator": 75,
       "ratio": 1.0
     },
     "rules.constraints_cited_by_a_record": {
-      "numerator": 11,
-      "denominator": 307,
-      "ratio": 0.036
+      "numerator": 19,
+      "denominator": 315,
+      "ratio": 0.06
     },
     "rules.foreign_keys_inside_one_context": {
-      "numerator": 45,
-      "denominator": 124,
-      "ratio": 0.363
+      "numerator": 46,
+      "denominator": 128,
+      "ratio": 0.359
     },
     "rules.cross_context_foreign_keys_with_a_recorded_collaboration": {
-      "numerator": 79,
-      "denominator": 79,
+      "numerator": 82,
+      "denominator": 82,
       "ratio": 1.0
     },
     "access.queries_with_an_owner": {
-      "numerator": 520,
-      "denominator": 520,
+      "numerator": 536,
+      "denominator": 536,
       "ratio": 1.0
     },
     "sensitivity.candidate_columns_classified": {
@@ -99,23 +99,23 @@
       "ratio": 0.0
     },
     "consistency.interactions_with_a_known_consistency": {
-      "numerator": 57,
-      "denominator": 58,
+      "numerator": 59,
+      "denominator": 60,
       "ratio": 0.983
     },
     "provenance.migrations_cited_by_a_record": {
-      "numerator": 3,
-      "denominator": 147,
-      "ratio": 0.02
+      "numerator": 4,
+      "denominator": 149,
+      "ratio": 0.027
     },
     "provenance.immutable_tables_known_to_registry": {
-      "numerator": 0,
-      "denominator": 17,
-      "ratio": 0.0
+      "numerator": 1,
+      "denominator": 18,
+      "ratio": 0.056
     },
     "provenance.tables_with_a_retention_policy": {
-      "numerator": 73,
-      "denominator": 73,
+      "numerator": 75,
+      "denominator": 75,
       "ratio": 1.0
     }
   }
