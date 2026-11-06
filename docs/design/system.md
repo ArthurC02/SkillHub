@@ -619,7 +619,7 @@ MVP 承諾是「**10 分鐘內**找到 → 驗證 → 下載」（`01` §3）。
 | 主要動作連結是控制項尺寸的目標（≥32px、要有 box） | 同上 | **`/skills/$id` 一條**（1280×900），三引擎 |
 | 事實與它的但書在結果卡上不同色 | 同上 | **`/?q=…` 一條**（1280×900），三引擎；比對 `.result-facets dd` 與其中 `.note` 的實際顏色 |
 | Tab 順序不倒退 | 同上 | **`/` 一條**，三引擎；斷言「不往回跳」而非固定清單，因為 WebKit 預設不把連結放進序列 |
-| e2e 各 spec 在每個測試狀態（讀取失敗、空清單、重讀中…）跑 axe | [`e2e/axe.ts`](../../apps/web/e2e/axe.ts) 包住 `@axe-core/playwright`，各 spec 經它呼叫 | **只在 Linux 的 chromium 專案真的掃**；firefox、webkit 與 windows 上 `analyze()` 回空報告並在測試加註 `accessibility` annotation。axe 讀 DOM 與 `getComputedStyle`、不讀像素，三引擎掃出來的結果相同（同下方 grayscale 那段的理由），其他引擎上省下的是重複；同一條測試的焦點、捲動、版面斷言照常在三引擎跑。直接 import `@axe-core/playwright` 的只有要讀 `passes` 的那幾支（`rendered.spec.ts` 的像素對比、`audit-cell-layout`、兩支 comparison） |
+| e2e 各 spec 在每個測試狀態（讀取失敗、空清單、重讀中…）跑 axe | [`e2e/axe.ts`](../../apps/web/e2e/axe.ts) 包住 `@axe-core/playwright`，各 spec 經它呼叫 | **只在 Linux 的 chromium 專案真的掃**；firefox 與 webkit 上 `analyze()` 回空報告並在測試加註 `accessibility` annotation。axe 讀 DOM 與 `getComputedStyle`、不讀像素，三引擎掃出來的結果相同（同下方 grayscale 那段的理由），其他引擎上省下的是重複；同一條測試的焦點、捲動、版面斷言照常在三引擎跑。直接 import `@axe-core/playwright` 的只有要讀 `passes` 的那幾支（`rendered.spec.ts` 的像素對比、`audit-cell-layout`、兩支 comparison） |
 | 正 `tabindex` 不存在 | [`a11y.test.tsx`](../../apps/web/src/guards/a11y.test.tsx) | 全部路由。**上面那一列的 Tab 斷言靠它成立**（DOM 順序＝焦點順序） |
 | `<details>` 一定有 `<summary>` | 同上 | 全部路由。這是 §2.6 唯一的機器 |
 | 表單標籤、鍵盤可達、**100 條** axe 規則 | 同上 | **全部路由的成功態 ＋ 三個代表性非成功態**，新路由沒加案例會 FAIL。**數字是 axe-core 4.13.0 在六個 tag 下的實際值，不是一個抄來的快照**。<br>**（這一欄的標題是「覆蓋範圍」，而「全部路由」被讀成了「全部畫面」。）** 每條路由只掃**一個**狀態，而 `testing/fixtures/platform.ts` 明文說那刻意是**忙碌的成功態**——理由對了一半：空頁確實證明得少，但**讀取失敗不是空頁**，它是 `role="alert"`、`role="status"`、一條登入連結與一份被抽掉的表單，也就是新的、沒被掃過的互動 markup，而那正是 a11y 缺陷最容易長出來的地方。`Loading` 有 **30** 個呼叫點、`ReadFailure`／`LoginRequired` 散在 **21** 個檔案〔**這一類手數的數字在本檔漂過不止一次**，引用它們時請當作「量級」而不是事實〕。<br>**三個代表**（不是 17×4，補的是三種**形狀**）：`/library` 的 401、`/skills/$skillId/test-cases/$testCaseId/runs/new` 的載入中、`/workspace/runs` 的空清單，各多存一份 `__outlines__/` 快照 |
@@ -661,7 +661,7 @@ Test Case 詳情頁原有的九段 D 類說明已改為保留快照、權限與 
 - **在 `filter: grayscale(1)` 下重跑 axe 什麼都證明不了。** axe 讀 `getComputedStyle`，不讀畫出來的像素，而且[它根本不處理 `filter`](https://github.com/dequelabs/axe-core/issues/3214)。結果會與未加濾鏡的那次逐位元相同——一個什麼都沒證明的綠勾，正是 `rendered.spec.ts` 用「先斷言 `color-contrast` 有做出判定」擋掉的那種失效。
 - **`Emulation.setEmulatedVisionDeficiency` 拿得到但沒用。** Playwright 沒有原生 API，走 CDP 可行但**只有 Chromium**，而且它是算繪階段的濾鏡，改不了本 repo 任何一條斷言讀得到的東西——它只能餵截圖，於是又回到基準線圖片的問題。
 
-**視覺回歸基準線（`toHaveScreenshot`）維持不採用**：基準線對字型與捲軸差異敏感，CI 跑 **4 個組合**（ubuntu × 三引擎、windows × chromium），等於要讓四組圖片一直為真，而這類變更本來就要人判斷。`e2e/shots.spec.ts` 只產出給人看的截圖（設了 `SHOT_DIR` 才跑），不做斷言。
+**視覺回歸基準線（`toHaveScreenshot`）維持不採用**：基準線對字型與捲軸差異敏感，CI 跑 **3 個組合**（ubuntu × 三引擎），等於要讓三組圖片一直為真，而這類變更本來就要人判斷。`e2e/shots.spec.ts` 只產出給人看的截圖（設了 `SHOT_DIR` 才跑），不做斷言。
 
 ---
 

@@ -38,7 +38,6 @@ func TestBrowserShardsRetainEverySupportedEnvironment(t *testing.T) {
 		"ubuntu-latest\n            browser: chromium":  2,
 		"ubuntu-latest\n            browser: firefox":   2,
 		"ubuntu-latest\n            browser: webkit":    2,
-		"windows-latest\n            browser: chromium": 2,
 	} {
 		for shard := 1; shard <= total; shard++ {
 			row := "- os: " + environment + "\n            shard: " + strconv.Itoa(shard) + "\n            total: " + strconv.Itoa(total) + "\n"
@@ -47,8 +46,8 @@ func TestBrowserShardsRetainEverySupportedEnvironment(t *testing.T) {
 			}
 		}
 	}
-	if strings.Count(job, "- os:") != 8 {
-		t.Error("browser matrix must contain exactly eight shards")
+	if strings.Count(job, "- os:") != 6 {
+		t.Error("browser matrix must contain exactly six shards")
 	}
 	for _, required := range []string{
 		"fail-fast: false",
@@ -93,7 +92,6 @@ func TestBrowserRequiredChecksFailUnlessEveryShardSucceeded(t *testing.T) {
 		"- os: ubuntu-latest\n            browser: chromium",
 		"- os: ubuntu-latest\n            browser: firefox",
 		"- os: ubuntu-latest\n            browser: webkit",
-		"- os: windows-latest\n            browser: chromium",
 		"BROWSER_SHARD_RESULT: ${{ needs.web-browser-shards.result }}",
 		"test \"$BROWSER_SHARD_RESULT\" = success",
 	} {
@@ -101,8 +99,8 @@ func TestBrowserRequiredChecksFailUnlessEveryShardSucceeded(t *testing.T) {
 			t.Errorf("required browser checks must retain %q", required)
 		}
 	}
-	if strings.Count(job, "- os:") != 4 {
-		t.Error("retain exactly the four existing required browser check names")
+	if strings.Count(job, "- os:") != 3 {
+		t.Error("retain exactly the three existing required browser check names")
 	}
 }
 

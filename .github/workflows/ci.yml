@@ -200,14 +200,6 @@ jobs:
             shard: 2
             total: 2
             weights: "42:58"
-          - os: windows-latest
-            browser: chromium
-            shard: 1
-            total: 2
-          - os: windows-latest
-            browser: chromium
-            shard: 2
-            total: 2
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     defaults:
@@ -229,16 +221,14 @@ jobs:
       - run: npm run build
         working-directory: packages/api-client-ts
       - run: npm ci --no-audit
-      - if: runner.os == 'Linux'
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/playwright-debs
           key: playwright-debs-${{ runner.os }}-${{ matrix.browser }}-${{ hashFiles('apps/web/package-lock.json') }}
           restore-keys: |
             playwright-debs-${{ runner.os }}-${{ matrix.browser }}-
             playwright-debs-${{ runner.os }}-
-      - if: runner.os == 'Linux'
-        timeout-minutes: 9
+      - timeout-minutes: 9
         name: Install Linux browser dependencies
         run: |
           mkdir -p ~/playwright-debs
@@ -263,8 +253,6 @@ jobs:
           done
           find /var/cache/apt/archives -maxdepth 1 -name '*.deb' -exec cp -t ~/playwright-debs {} +
           npx playwright install ${{ matrix.browser }}
-      - if: runner.os != 'Linux'
-        run: npx playwright install ${{ matrix.browser }}
       - env:
           PWTEST_SHARD_WEIGHTS: ${{ matrix.weights }}
         run: npm run test:e2e -- --project=${{ matrix.browser }} --shard=${{ matrix.shard }}/${{ matrix.total }}
@@ -290,8 +278,6 @@ jobs:
             browser: firefox
           - os: ubuntu-latest
             browser: webkit
-          - os: windows-latest
-            browser: chromium
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

@@ -392,11 +392,11 @@ docker run --rm --network container:skillhub-postgres-1 \
 **CI 的形狀**（`ci.yml`）：
 
 - main 上的 push 以 commit SHA 分組且不互相取消；只有 PR 會被同一個 PR 的下一次 push 取消。每個未被取消的 run 都必須完成自己的驗證。
-- `images` 有自己的 path filter（見[Repo 結構、CI 與驗證層](../adr/README.md#repo-結構ci-與驗證層)），純文件 commit 不再建置、smoke、推送三個服務映像。它不再等語言 job，與它們並行；推送拆成 `images-push`，等待既有程式、工具、契約、依賴檢查與四個原生瀏覽器彙總閘門通過才推，五個映像各自一格 matrix 並行，從同一次 run 的 GHA 快取重建，不重新編譯。
+- `images` 有自己的 path filter（見[Repo 結構、CI 與驗證層](../adr/README.md#repo-結構ci-與驗證層)），純文件 commit 不再建置、smoke、推送三個服務映像。它不再等語言 job，與它們並行；推送拆成 `images-push`，等待既有程式、工具、契約、依賴檢查與三個瀏覽器彙總閘門通過才推，五個映像各自一格 matrix 並行，從同一次 run 的 GHA 快取重建，不重新編譯。
 - 每週日一次 `schedule` 全量跑（所有 path filter 視為命中），`workflow_dispatch` 也是全量——手寫 path filter 漏掉的那一格由它兜底。
 - 每個 job 都有 `timeout-minutes`，一個卡住的 job 不會再佔滿預設的 6 小時。
 - `platform` 只跑需要資料庫與物件儲存的測試；golangci-lint、`fmt --diff` 與 `go vet` 在獨立的 `platform-lint` job 並行跑，資料庫無關套件的 race 偵測測試在獨立的 `platform-race` job 並行跑，三者都是 `images-push` 的前提。postgres 與 sandboxd 映像在 `images-postgres-sandboxd` 與 `images` 並行建置與檢查，也是 `images-push` 的前提。
-- 瀏覽器測試使用 Playwright 原生分片：四個環境（Linux Chromium、Firefox、WebKit 與 Windows Chromium）各兩片（Linux Chromium 是唯一真跑 axe 的引擎，每條測試較重），保留完整套件與既有逾時。片數以帳號的並行 job 上限為準：GitHub Free 方案同時最多 20 個 job，全量 run 本來就超過 20 個，多切一片只是多一份安裝成本、讓別的 job 排更久；先看 run 的總 runner 分鐘與最長排隊時間，再決定要不要加片。e2e 的 webServer 只跑 `vite build`，型別檢查與 bundle 來源檢查在 `web` job 跑過；失敗產物按環境、分片與總片數命名。Playwright 把測試依檔名順序切成連續等量的段，各段每條測試的耗時不同，所以三個 Linux 引擎的矩陣項帶 `weights`（以 `PWTEST_SHARD_WEIGHTS` 傳給 Playwright，冒號分隔），讓慢的段少分幾條；要重調就拿 `devctl ci-status --timing` 的各片時間，權重取「每條測試耗時」的倒數比例。原有四個 `web-browser` 檢查名稱保留為彙總閘門，只有全部分片成功才通過，分片失敗、取消或缺席都不得放行。
+- 瀏覽器測試使用 Playwright 原生分片：三個環境（Linux Chromium、Firefox 與 WebKit）各兩片；Windows 上的 Chromium 不再跑，它多年只抓到 runner 自己的連接埠耗盡、沒抓過產品缺陷，而 Windows 專屬的檔案系統與路徑行為由 `sandbox-windows` 與 Windows 的 `web` 單元測試分片守著（Linux Chromium 是唯一真跑 axe 的引擎，每條測試較重），保留完整套件與既有逾時。片數以帳號的並行 job 上限為準：GitHub Free 方案同時最多 20 個 job，全量 run 本來就超過 20 個，多切一片只是多一份安裝成本、讓別的 job 排更久；先看 run 的總 runner 分鐘與最長排隊時間，再決定要不要加片。e2e 的 webServer 只跑 `vite build`，型別檢查與 bundle 來源檢查在 `web` job 跑過；失敗產物按環境、分片與總片數命名。Playwright 把測試依檔名順序切成連續等量的段，各段每條測試的耗時不同，所以三個 Linux 引擎的矩陣項帶 `weights`（以 `PWTEST_SHARD_WEIGHTS` 傳給 Playwright，冒號分隔），讓慢的段少分幾條；要重調就拿 `devctl ci-status --timing` 的各片時間，權重取「每條測試耗時」的倒數比例。三個 `web-browser` 檢查名稱保留為彙總閘門，只有全部分片成功才通過，分片失敗、取消或缺席都不得放行。
 - 瀏覽器的 baseURL、就緒探測網址與預覽監聽位址使用同一個明確的 IPv4 loopback，不依賴 localhost 的位址族解析順序。
 - `web` 與瀏覽器分片的依賴安裝使用 `npm ci --no-audit`，避免每個安裝步驟重複查詢漏洞；獨立的 `dependency-audit` 仍執行完整的既定稽核並在失敗時擋下交付。
 - 每次都跑、沒有 path filter 的有三個並行 job：`devctl`（devctl 自己的 vet／race 測試、`automation-check`、`agent-sync`）、`contracts-drift`（`gen --check` 與 `contracts/` 的各項檢查）與 `dependency-audit`（見下一條）。純文件 commit 的等待時間由三者中最慢的那個決定，不再是相加。
