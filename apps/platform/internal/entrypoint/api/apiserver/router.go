@@ -24,6 +24,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/checks"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/evalsettings"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/reflection"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/modelbudget"
 )
@@ -41,6 +42,7 @@ type Deps struct {
 	Trace           *trace.Handler
 	Eval            *eval.Handler
 	EvalBatches     *batch.BatchHandler
+	Reflections     *reflection.Handler
 	Graders         *eval.GraderHandler
 	MCPTools        *mcptools.Service
 	Packaging       *packaging.Handler
@@ -344,6 +346,8 @@ func mountEvaluationRoutes(mux *http.ServeMux, d Deps) {
 	mux.HandleFunc("GET /skills/{id}/evaluation-batches/{batchId}", auth.RequireSession(d.EvalBatches.BatchReport))
 	mux.HandleFunc("POST /skills/{id}/evaluation-batches/{batchId}/resume", auth.RequireSession(auth.RequireInvited(d.EvalBatches.ResumeBatch)))
 	mux.HandleFunc("GET /skills/{id}/evaluation-batches/{batchId}/comparison", auth.RequireSession(d.EvalBatches.CompareBatches))
+	mux.HandleFunc("POST /skills/{id}/evaluation-batches/{batchId}/reflections", auth.RequireSession(auth.RequireInvited(d.Reflections.Reflect)))
+	mux.HandleFunc("GET /skills/{id}/evaluation-batches/{batchId}/reflections", auth.RequireSession(d.Reflections.List))
 }
 
 func mountPackagingRoutes(mux *http.ServeMux, d Deps) {

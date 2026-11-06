@@ -10,6 +10,7 @@ import { TestCaseResults } from "./components/TestCaseResults";
 import { PairedSummary } from "./components/PairedSummary";
 import { BatchState } from "./components/BatchState";
 import { BatchComparison } from "./components/BatchComparison";
+import { BatchImprovement } from "./components/BatchImprovement";
 
 const HEADING = "evaluation-batch-heading";
 
@@ -82,6 +83,7 @@ export function EvaluationBatch() {
             />
           )}
           <TestCaseResults arm={data} names={names} withheld={data.skill_withheld} />
+          <BatchImprovement skillId={skillId} batchId={batchId} report={data} names={names} />
           <RerunLink
             skillId={skillId}
             batchId={batchId}

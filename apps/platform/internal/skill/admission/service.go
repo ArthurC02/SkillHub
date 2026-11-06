@@ -391,6 +391,7 @@ func (s *Service) SaveVersion(ctx context.Context, ws identity.Workspace, skillI
 
 type Improvement struct {
 	EvaluationID  pgtype.UUID
+	ReflectionID  pgtype.UUID
 	SuggestionIDs []pgtype.UUID
 	BaseVersionID pgtype.UUID
 }
@@ -401,7 +402,7 @@ func (s *Service) SaveImprovedVersion(
 	ctx context.Context, ws identity.Workspace, skillID pgtype.UUID, data []byte, by Improvement,
 ) (Result, error) {
 	return s.saveVersion(ctx, ws, skillID, data, sourceMeta{
-		Type: SourceUpload, ImprovedBy: &registry.Improvement{EvaluationID: by.EvaluationID, SuggestionIDs: by.SuggestionIDs},
+		Type: SourceUpload, ImprovedBy: &registry.Improvement{EvaluationID: by.EvaluationID, ReflectionID: by.ReflectionID, SuggestionIDs: by.SuggestionIDs},
 		ImprovedFrom: by.BaseVersionID,
 	})
 }

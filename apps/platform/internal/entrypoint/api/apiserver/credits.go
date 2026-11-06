@@ -152,6 +152,7 @@ var spentOnLabels = map[credit.CostKind]string{
 	credit.KindSuggestion:       "改善建議",
 	credit.KindSuggestCriteria:  "建議驗收條件",
 	credit.KindSuggestTestCases: "建議測試題",
+	credit.KindBatchReflection:  "從評估批次找改進",
 	credit.KindIndexEnrich:      "匯入時的索引增強",
 	credit.KindMatchReasons:     "搜尋結果的符合原因",
 	credit.KindSearchIntent:     "搜尋意圖分析",

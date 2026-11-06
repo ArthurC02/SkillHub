@@ -1715,6 +1715,10 @@ const ROUTES: RouteMatcher[] = [
       : undefined,
   (path) =>
     path === `/skills/${SKILL}/evaluation-batches/${BATCH}` ? ok(BATCH_REPORT) : undefined,
+  (path) =>
+    path === `/skills/${SKILL}/evaluation-batches/${BATCH}/reflections`
+      ? ok({ reflections: [] })
+      : undefined,
   (path) => (path === "/admin/accounts" ? ok(ADMIN_ACCOUNT) : undefined),
   (path) =>
     path.startsWith("/admin/credits/") && !path.endsWith("/grants") ? ok(ADMIN_LEDGER) : undefined,

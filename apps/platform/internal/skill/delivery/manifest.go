@@ -105,7 +105,8 @@ type forkOrigin struct {
 
 type improvementOrigin struct {
 	Kind         string          `json:"kind"`
-	EvaluationID string          `json:"evaluation_id"`
+	EvaluationID string          `json:"evaluation_id,omitempty"`
+	ReflectionID string          `json:"reflection_id,omitempty"`
 	Suggestions  []suggestionRef `json:"suggestions"`
 	Base         any             `json:"base"`
 	RootSource   any             `json:"root_source"`
@@ -277,7 +278,8 @@ func (s *Service) improvementOriginOf(
 	}
 	return improvementOrigin{
 		Kind:         "improvement",
-		EvaluationID: pgconv.UUIDString(sugs[0].EvaluationID),
+		EvaluationID: optionalUUID(sugs[0].EvaluationID),
+		ReflectionID: optionalUUID(sugs[0].ReflectionID),
 		Suggestions:  refs,
 		Base:         base,
 		RootSource:   root,
@@ -343,4 +345,11 @@ func rfc3339(ts pgtype.Timestamptz) string {
 		return time.Unix(0, 0).UTC().Format(time.RFC3339)
 	}
 	return ts.Time.UTC().Format(time.RFC3339)
+}
+
+func optionalUUID(id pgtype.UUID) string {
+	if !id.Valid {
+		return ""
+	}
+	return pgconv.UUIDString(id)
 }

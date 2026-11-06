@@ -167,6 +167,7 @@ func (s *Service) requireOwnerReads() error {
 
 type AppliedSuggestion struct {
 	EvaluationID pgtype.UUID
+	ReflectionID pgtype.UUID
 	Category     string
 	TargetPath   string
 }

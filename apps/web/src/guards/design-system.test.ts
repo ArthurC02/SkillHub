@@ -279,7 +279,6 @@ const GLOBAL_BY_RECIPE: Record<string, string> = {
   "license-badge":
     "one rule with .match-reason, and the badge-then-note spacing rule excludes both beside .badge-row",
   "match-reason": "the other half of the .license-badge rule",
-  "suggestion-list": EVALUATION_LIST,
   "evidence-list": EVALUATION_LIST,
   "trace-events": EVALUATION_LIST,
   suggestion: "shares the evaluation item frame with .criterion",

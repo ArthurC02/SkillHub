@@ -78,30 +78,59 @@ func (s *Service) loadSuggestion(
 		return sc, err
 	}
 	sc.suggestion = sug
-
-	ev, err := q.GetEvaluation(ctx, gen.GetEvaluationParams{
-		ID: sug.EvaluationID, WorkspaceID: workspaceID,
-	})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return sc, ErrNotFound
-	}
+	origin, err := originVersion(ctx, s, workspaceID, SuggestionParent{EvaluationID: sug.EvaluationID, ReflectionID: sug.ReflectionID})
 	if err != nil {
 		return sc, err
 	}
-	return s.loadVersions(ctx, workspaceID, ev, sc)
+	return s.loadVersions(ctx, workspaceID, origin, sc)
+}
+
+type SuggestionParent struct {
+	EvaluationID pgtype.UUID
+	ReflectionID pgtype.UUID
+}
+
+func (p SuggestionParent) owns(sug gen.EvaluationSuggestion) bool {
+	if p.ReflectionID.Valid {
+		return sug.ReflectionID == p.ReflectionID
+	}
+	return p.EvaluationID.Valid && sug.EvaluationID == p.EvaluationID
+}
+
+func originVersion(ctx context.Context, s *Service, workspaceID pgtype.UUID, parent SuggestionParent) (pgtype.UUID, error) {
+	q := s.queries()
+	if parent.ReflectionID.Valid {
+		reflection, err := q.GetBatchReflection(ctx, gen.GetBatchReflectionParams{ID: parent.ReflectionID, WorkspaceID: workspaceID})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return pgtype.UUID{}, ErrNotFound
+		}
+		if err != nil {
+			return pgtype.UUID{}, err
+		}
+		return reflection.SkillVersionID, nil
+	}
+	ev, err := q.GetEvaluation(ctx, gen.GetEvaluationParams{ID: parent.EvaluationID, WorkspaceID: workspaceID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return pgtype.UUID{}, ErrNotFound
+	}
+	if err != nil {
+		return pgtype.UUID{}, err
+	}
+	run, err := s.runFacts(ctx, workspaceID, ev.RunID)
+	if err != nil {
+		return pgtype.UUID{}, err
+	}
+	return run.SkillVersionID, nil
 }
 
 func (s *Service) loadVersions(
-	ctx context.Context, workspaceID pgtype.UUID, ev gen.Evaluation, sc suggestionCtx,
+	ctx context.Context, workspaceID, originVersionID pgtype.UUID, sc suggestionCtx,
 ) (suggestionCtx, error) {
 	if s.ReadVersion == nil || s.ReadSkill == nil || s.ReadLatestVersion == nil {
 		return sc, errRegistryReadNotConfigured
 	}
-	run, err := s.runFacts(ctx, workspaceID, ev.RunID)
-	if err != nil {
-		return sc, err
-	}
-	if sc.origin, err = s.existingVersion(ctx, workspaceID, run.SkillVersionID); err != nil {
+	var err error
+	if sc.origin, err = s.existingVersion(ctx, workspaceID, originVersionID); err != nil {
 		return sc, err
 	}
 	if sc.skill, err = required(ctx, s.ReadSkill, workspaceID, sc.origin.SkillID); err != nil {
@@ -411,17 +440,17 @@ type ApplyResult struct {
 }
 
 func (s *Service) ApplySuggestions(
-	ctx context.Context, ws identity.Workspace, skillID, evaluationID pgtype.UUID, ids []pgtype.UUID,
+	ctx context.Context, ws identity.Workspace, skillID pgtype.UUID, parent SuggestionParent, ids []pgtype.UUID,
 ) (ApplyResult, error) {
 	var out ApplyResult
 	if s.Versions == nil || s.store() == nil {
 		return out, errNoStore
 	}
-	base, err := s.evaluatedSkill(ctx, ws.ID, skillID, evaluationID)
+	base, err := s.evaluatedSkill(ctx, ws.ID, skillID, parent)
 	if err != nil {
 		return out, err
 	}
-	suggestions, notAccepted, err := s.selectedSuggestions(ctx, ws.ID, evaluationID, ids)
+	suggestions, notAccepted, err := s.selectedSuggestions(ctx, ws.ID, parent, ids)
 	out.NotAccepted = notAccepted
 	if err != nil {
 		return out, err
@@ -440,20 +469,15 @@ func (s *Service) ApplySuggestions(
 		out.rejectApplied(blocked.Reason, blocked.Message)
 		return out, nil
 	}
-	return s.buildImprovedVersion(ctx, evaluatedSkillRef{ws: ws, skillID: skillID, evaluationID: evaluationID}, base, plan, out)
+	return s.buildImprovedVersion(ctx, evaluatedSkillRef{ws: ws, skillID: skillID, parent: parent}, base, plan, out)
 }
 
-func (s *Service) evaluatedSkill(ctx context.Context, workspaceID, skillID, evaluationID pgtype.UUID) (suggestionCtx, error) {
-	ev, err := s.queries().GetEvaluation(ctx, gen.GetEvaluationParams{
-		ID: evaluationID, WorkspaceID: workspaceID,
-	})
-	if errors.Is(err, pgx.ErrNoRows) {
-		return suggestionCtx{}, ErrNotFound
-	}
+func (s *Service) evaluatedSkill(ctx context.Context, workspaceID, skillID pgtype.UUID, parent SuggestionParent) (suggestionCtx, error) {
+	origin, err := originVersion(ctx, s, workspaceID, parent)
 	if err != nil {
 		return suggestionCtx{}, err
 	}
-	base, err := s.loadVersions(ctx, workspaceID, ev, suggestionCtx{})
+	base, err := s.loadVersions(ctx, workspaceID, origin, suggestionCtx{})
 	if err != nil {
 		return suggestionCtx{}, err
 	}
@@ -464,7 +488,7 @@ func (s *Service) evaluatedSkill(ctx context.Context, workspaceID, skillID, eval
 }
 
 func (s *Service) selectedSuggestions(
-	ctx context.Context, workspaceID, evaluationID pgtype.UUID, ids []pgtype.UUID,
+	ctx context.Context, workspaceID pgtype.UUID, parent SuggestionParent, ids []pgtype.UUID,
 ) (suggestions []gen.EvaluationSuggestion, notAccepted []string, err error) {
 	suggestions = make([]gen.EvaluationSuggestion, 0, len(ids))
 	seenIDs := make(map[string]bool, len(ids))
@@ -477,7 +501,7 @@ func (s *Service) selectedSuggestions(
 		sug, err := s.queries().GetEvaluationSuggestion(ctx, gen.GetEvaluationSuggestionParams{
 			ID: id, WorkspaceID: workspaceID,
 		})
-		if errors.Is(err, pgx.ErrNoRows) || (err == nil && sug.EvaluationID != evaluationID) {
+		if errors.Is(err, pgx.ErrNoRows) || (err == nil && !parent.owns(sug)) {
 			return nil, notAccepted, ErrNotFound
 		}
 		if err != nil {
@@ -553,21 +577,21 @@ func (r *ApplyResult) rejectApplied(reason, message string) {
 }
 
 type evaluatedSkillRef struct {
-	ws           identity.Workspace
-	skillID      pgtype.UUID
-	evaluationID pgtype.UUID
+	ws      identity.Workspace
+	skillID pgtype.UUID
+	parent  SuggestionParent
 }
 
 func (s *Service) buildImprovedVersion(
 	ctx context.Context, target evaluatedSkillRef, base suggestionCtx, plan patchPlan, out ApplyResult,
 ) (ApplyResult, error) {
-	ws, skillID, evaluationID := target.ws, target.skillID, target.evaluationID
+	ws, skillID, parent := target.ws, target.skillID, target.parent
 	patched, err := patchArchive(base.latestZip, base.latest.SourcePath, plan.patches)
 	if err != nil {
 		return out, err
 	}
 	res, err := s.Versions.SaveImprovedVersion(ctx, ws, skillID, patched, ingest.Improvement{
-		EvaluationID: evaluationID, SuggestionIDs: plan.applied, BaseVersionID: base.latest.ID,
+		EvaluationID: parent.EvaluationID, ReflectionID: parent.ReflectionID, SuggestionIDs: plan.applied, BaseVersionID: base.latest.ID,
 	})
 	if errors.Is(err, ingest.ErrBaseVersionMoved) {
 		out.rejectApplied(BlockedTargetChanged, "a newer version of this skill was saved while these changes were being applied, "+
@@ -582,7 +606,7 @@ func (s *Service) buildImprovedVersion(
 		return out, nil
 	}
 	if res.Duplicate {
-		if err := s.RecordSuggestionsApplied(ctx, ws.ID, evaluationID, res.Version.ID, plan.applied); err != nil {
+		if err := s.RecordSuggestionsApplied(ctx, ws.ID, parent, res.Version.ID, plan.applied); err != nil {
 			return out, err
 		}
 	}

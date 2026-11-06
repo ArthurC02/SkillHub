@@ -211,6 +211,8 @@ func newEventDispatcher(
 			outbox.EvaluationStarted, outbox.EvaluationSuperseded, outbox.EvaluationCompleted,
 			outbox.EvaluationFailed, outbox.EvaluationFeedbackRecorded, outbox.EvaluationSuggestionDecided,
 			outbox.EvaluationSuggestionsApplied).
+		Ignore("batch reflection facts: no aggregate reacts to them yet, and every reader answers from the reflection's own rows",
+			outbox.BatchReflectionSuggestionDecided, outbox.BatchReflectionSuggestionsApplied).
 		Ignore("skill facts: no aggregate reacts to them yet, and every reader answers from the skill's own rows",
 			outbox.SkillTakenDown, outbox.SkillAccessRestricted, outbox.SkillAccessRestrictionLifted,
 			outbox.SkillRedistributionSet, outbox.SkillCategorized,

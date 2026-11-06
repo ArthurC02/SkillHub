@@ -121,7 +121,25 @@ func recordSuggestionOutcome(ctx context.Context, q *gen.Queries, ev gen.Evaluat
 
 func (s *Service) storeProposals(ctx context.Context, ev gen.Evaluation, proposals []modelport.ImprovementProposal, refs []verdict.EvidenceRef) int {
 	q := s.queries()
+	return keepProposals(proposalOwner{key: "evaluation_id", id: pgconv.UUIDString(ev.ID)}, proposals, refs, func(k keptProposal) error {
+		_, err := q.CreateEvaluationSuggestion(ctx, gen.CreateEvaluationSuggestionParams{
+			WorkspaceID: ev.WorkspaceID, EvaluationID: ev.ID, Category: k.Category, Problem: k.Problem,
+			Evidence: k.Evidence, TargetPath: k.TargetPath, ProposedContent: k.ProposedContent, ExpectedImpact: k.ExpectedImpact,
+		})
+		return err
+	})
+}
 
+type proposalOwner struct{ key, id string }
+
+type keptProposal struct {
+	Category, Problem, TargetPath, ProposedContent, ExpectedImpact string
+	Evidence                                                       []byte
+}
+
+func keepProposals(
+	owner proposalOwner, proposals []modelport.ImprovementProposal, refs []verdict.EvidenceRef, create func(keptProposal) error,
+) int {
 	stored, noEvidence, unstorable, writeFailed, overCap := 0, 0, 0, 0, 0
 	for _, p := range proposals {
 		if stored == maxSuggestionsStore {
@@ -130,36 +148,26 @@ func (s *Service) storeProposals(ctx context.Context, ev gen.Evaluation, proposa
 		}
 		evidence, err := suggestionEvidence(p, refs)
 		if err != nil || len(evidence) == 0 {
-
 			quote := strings.TrimSpace(p.Evidence)
 			head, _ := textx.CutRunes(quote, loggedQuoteHeadRunes)
 			slog.Warn("improvement proposal has no matching verified evidence",
-				"evaluation_id", pgconv.UUIDString(ev.ID), "category", p.Category,
+				owner.key, owner.id, "category", p.Category,
 				"quote_runes", utf8.RuneCountInString(quote), "candidate_refs", len(refs),
 				"quote_head", head)
 			noEvidence++
 			continue
 		}
 		if !storable(p) {
-
-			slog.Warn("improvement proposal refused before storage",
-				"evaluation_id", pgconv.UUIDString(ev.ID), "category", p.Category)
+			slog.Warn("improvement proposal refused before storage", owner.key, owner.id, "category", p.Category)
 			unstorable++
 			continue
 		}
 		target, _ := cleanTargetPath(p.TargetPath)
-		if _, err := q.CreateEvaluationSuggestion(ctx, gen.CreateEvaluationSuggestionParams{
-			WorkspaceID:     ev.WorkspaceID,
-			EvaluationID:    ev.ID,
-			Category:        p.Category,
-			Problem:         strings.TrimSpace(p.Problem),
-			Evidence:        evidence,
-			TargetPath:      target,
-			ProposedContent: p.ProposedContent,
-			ExpectedImpact:  strings.TrimSpace(p.ExpectedImpact),
+		if err := create(keptProposal{
+			Category: p.Category, Problem: strings.TrimSpace(p.Problem), Evidence: evidence, TargetPath: target,
+			ProposedContent: p.ProposedContent, ExpectedImpact: strings.TrimSpace(p.ExpectedImpact),
 		}); err != nil {
-			slog.Warn("improvement proposal not stored",
-				"evaluation_id", pgconv.UUIDString(ev.ID), "error", err)
+			slog.Warn("improvement proposal not stored", owner.key, owner.id, "error", err)
 			writeFailed++
 			continue
 		}
@@ -167,7 +175,7 @@ func (s *Service) storeProposals(ctx context.Context, ev gen.Evaluation, proposa
 	}
 
 	slog.Info("improvement proposals",
-		"evaluation_id", pgconv.UUIDString(ev.ID),
+		owner.key, owner.id,
 		"proposed", len(proposals),
 		"stored", stored,
 		"dropped_no_evidence", noEvidence,

@@ -24,6 +24,7 @@ import { contractEnum } from "../../core/api/contract-enum";
 import type {
   Evaluation,
   EvaluationRevision,
+  ImprovementSuggestion,
   RunComparison,
   RunSuggestions,
   SuggestionDiff,
@@ -392,7 +393,7 @@ export function isEvaluationRevisionsResponse(
   return isRecord(value) && Array.isArray(value.revisions) && value.revisions.every(isRevision);
 }
 
-function isSuggestion(value: unknown): boolean {
+export function isSuggestion(value: unknown): value is ImprovementSuggestion {
   if (!isRecord(value)) return false;
   return (
     isText(value.suggestion_id) &&

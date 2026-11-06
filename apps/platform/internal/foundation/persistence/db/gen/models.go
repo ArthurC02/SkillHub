@@ -253,6 +253,29 @@ type AuditEvent struct {
 	ActorAgentID pgtype.UUID
 }
 
+// One improvement round read from the failures of an evaluation batch's development test cases; the batch's other test cases are held out and never read.
+type BatchReflection struct {
+	ID pgtype.UUID
+	// Workspace that owns the batch and therefore this round.
+	WorkspaceID pgtype.UUID
+	// The evaluation batch whose runs were read.
+	BatchID pgtype.UUID
+	// The skill version every read run ran, and so the version the suggestions were written against; the foreign key keeps it equal to the batch's own version.
+	SkillVersionID pgtype.UUID
+	// The batch test cases whose runs the model was shown, frozen when the round was made. Every other test case of the batch is held out for checking the result.
+	DevTestCaseIds []pgtype.UUID
+	// Why the round holds the suggestions it holds: restricted (licence hold, no model call), not_needed (every development run passed with nothing to improve, no model call), no_evidence (no failing run cited anything), unavailable (the model call failed, which says nothing about the skill), none_proposed, none_kept (proposals failed the evidence or storage checks) or kept.
+	Outcome string
+	// How many failing development runs were put in front of the model.
+	RunsRead int32
+	// How many failing development runs were left out to stay within the request size, so a partial reading is never presented as a complete one.
+	RunsNotRead int32
+	// The user who asked for the round; cleared when that user is deleted.
+	CreatedBy pgtype.UUID
+	// When the round was recorded, after the model answered.
+	CreatedAt pgtype.Timestamptz
+}
+
 // A named, workspace-owned collection of skills that is versioned and downloaded as one unit.
 type Bundle struct {
 	ID pgtype.UUID
@@ -300,7 +323,7 @@ type BundleVersion struct {
 // One paid model call made by the platform, with model, token counts, cost in micro-dollars and whether the cost was measured or estimated. Immutable and never deleted; recomputing statistics creates new windows instead of changing events.
 type CostEvent struct {
 	ID pgtype.UUID
-	// Which feature made the paid call: creation_step (one step of an interactive creation session), search_embedding (embedding a search query), index_enrich (enriching a skill's catalog metadata), review (an AI review), injection_check (asking whether a run's output addresses its reviewer, priced by the operator), suggestion (an improvement suggestion), generate (generating a skill from a description), run (a trial run), match_reasons, suggest_criteria, search_intent (search-time model calls), platform_agent (a platform agent step) or suggest_test_cases (proposing test cases for a skill).
+	// Which feature made the paid call: creation_step (one step of an interactive creation session), search_embedding (embedding a search query), index_enrich (enriching a skill's catalog metadata), review (an AI review), injection_check (asking whether a run's output addresses its reviewer, priced by the operator), suggestion (an improvement suggestion), batch_reflection (one improvement round read from an evaluation batch), generate (generating a skill from a description), run (a trial run), match_reasons, suggest_criteria, search_intent (search-time model calls), platform_agent (a platform agent step) or suggest_test_cases (proposing test cases for a skill).
 	Kind string
 	// Identifier of the model that served the call, as the gateway reported it.
 	Model string
@@ -346,7 +369,7 @@ type CostSessionSummary struct {
 // One percentile summary (median, 90th, 95th, maximum cost) of a kind of model call over a time window, used to decide whether a paid call may start and what it is expected to cost. Derived data recomputed daily.
 type CostStatistic struct {
 	ID pgtype.UUID
-	// Kind of model call or session these percentiles describe. The call kinds match cost_events.kind: creation_step, search_embedding, index_enrich, review, injection_check, suggestion, generate, run, match_reasons, suggest_criteria, search_intent, platform_agent and suggest_test_cases; creation_session is the extra kind for a whole interactive creation session, so a new session can be refused before it starts when the balance cannot cover one.
+	// Kind of model call or session these percentiles describe. The call kinds match cost_events.kind: creation_step, search_embedding, index_enrich, review, injection_check, suggestion, batch_reflection, generate, run, match_reasons, suggest_criteria, search_intent, platform_agent and suggest_test_cases; creation_session is the extra kind for a whole interactive creation session, so a new session can be refused before it starts when the balance cannot cover one.
 	Kind string
 	// Inclusive start of the time window the samples were taken from.
 	WindowStart pgtype.Timestamptz
@@ -778,7 +801,7 @@ type EvaluationSuggestion struct {
 	ID pgtype.UUID
 	// The workspace the evaluation belongs to, so every read of a suggestion is scoped to its workspace.
 	WorkspaceID pgtype.UUID
-	// The evaluation whose result this suggestion was derived from.
+	// The evaluation of one run that produced this suggestion. Exactly one of evaluation_id and reflection_id is set.
 	EvaluationID pgtype.UUID
 	// What the problem is about. skill: the skill's own content. runtime: the execution environment or its dependencies. tool: the tools the run used. dataset: the test input. mcp is accepted by the constraint but never stored.
 	Category string
@@ -799,6 +822,8 @@ type EvaluationSuggestion struct {
 	// The skill version created when the suggestion was applied; null until then and only possible for accepted suggestions.
 	AppliedSkillVersionID pgtype.UUID
 	CreatedAt             pgtype.Timestamptz
+	// The batch improvement round that produced this suggestion. Exactly one of evaluation_id and reflection_id is set.
+	ReflectionID pgtype.UUID
 }
 
 // The link between an accepted evaluation suggestion and the new skill version created from it. Immutable and append-only: later applications never overwrite an earlier source.

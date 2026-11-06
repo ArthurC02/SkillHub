@@ -11,12 +11,12 @@ import (
 )
 
 const (
-	migrationPath = "../../../../../../db/migrations/0124_skill_takedown_restore.sql"
+	migrationPath = "../../../../../../db/migrations/0149_batch_reflections.sql"
 	cataloguePath = "../../../../../../contracts/events/domain-events.md"
 )
 
 func TestEventTypesMatchTheMigrationCheck(t *testing.T) {
-	assertSameSet(t, "the DB CHECK in 0124", EventTypes, migrationCheckValues(t))
+	assertSameSet(t, "the DB CHECK in 0149", EventTypes, migrationCheckValues(t))
 }
 
 func TestAnEventOutsideTheClosedSetIsNeverWritten(t *testing.T) {
@@ -74,7 +74,7 @@ func catalogueEventTypes(t *testing.T) []string {
 	}
 	seen := map[string]bool{}
 	var types []string
-	for _, m := range regexp.MustCompile("`((?:run|evaluation|skill)\\.[a-z_]+)`").FindAllStringSubmatch(section, -1) {
+	for _, m := range regexp.MustCompile("`((?:run|evaluation|batch_reflection|skill)\\.[a-z_]+)`").FindAllStringSubmatch(section, -1) {
 		if !seen[m[1]] {
 			seen[m[1]] = true
 			types = append(types, m[1])

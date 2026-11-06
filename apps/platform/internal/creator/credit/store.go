@@ -33,6 +33,7 @@ const (
 	KindPlatformAgent    CostKind = "platform_agent"
 	KindInjectionCheck   CostKind = "injection_check"
 	KindSuggestTestCases CostKind = "suggest_test_cases"
+	KindBatchReflection  CostKind = "batch_reflection"
 
 	KindRun CostKind = "run"
 
@@ -43,7 +44,7 @@ func AllCostEventKinds() []CostKind {
 	return []CostKind{
 		KindCreationStep, KindSearchEmbedding, KindIndexEnrich, KindReview,
 		KindSuggestion, KindGenerate, KindMatchReasons, KindSuggestCriteria, KindSearchIntent, KindRun,
-		KindPlatformAgent, KindInjectionCheck, KindSuggestTestCases,
+		KindPlatformAgent, KindInjectionCheck, KindSuggestTestCases, KindBatchReflection,
 	}
 }
 
@@ -52,6 +53,7 @@ func AllStatisticKinds() []CostKind {
 		KindCreationStep, KindSearchEmbedding, KindIndexEnrich, KindReview,
 		KindSuggestion, KindGenerate, KindMatchReasons, KindSuggestCriteria, KindSearchIntent,
 		KindRun, KindCreationSession, KindPlatformAgent, KindInjectionCheck, KindSuggestTestCases,
+		KindBatchReflection,
 	}
 }
 

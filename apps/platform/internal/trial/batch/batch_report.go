@@ -278,3 +278,15 @@ func passRate(passed, judged int) (*float64, *Interval) {
 	half := normalZ95 * math.Sqrt(p*(1-p)/n+z2/(4*n*n)) / denominator
 	return &p, &Interval{Low: centre - half, High: centre + half}
 }
+
+func (s *BatchService) ReportOfBatch(ctx context.Context, workspaceID, batchID pgtype.UUID) (BatchReport, error) {
+	batch, err := s.batch(ctx, workspaceID, batchID)
+	if err != nil {
+		return BatchReport{}, err
+	}
+	return s.BatchReport(ctx, workspaceID, batch.SkillID, batchID)
+}
+
+func (o TrialOutcome) Settled() bool {
+	return o != TrialPending && o != TrialRunning && o != TrialAwaitingAnswer
+}

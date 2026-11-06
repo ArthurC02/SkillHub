@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
@@ -26,6 +27,7 @@ type versionAdded struct {
 	VersionID  pgtype.UUID `json:"version_id"`
 	ImprovedBy *struct {
 		EvaluationID  pgtype.UUID   `json:"evaluation_id"`
+		ReflectionID  pgtype.UUID   `json:"reflection_id"`
 		SuggestionIDs []pgtype.UUID `json:"suggestion_ids"`
 	} `json:"improved_by"`
 }
@@ -50,13 +52,18 @@ type SuggestionsAppliedArgs struct {
 	SkillID        pgtype.UUID   `json:"skill_id"`
 	SkillVersionID pgtype.UUID   `json:"skill_version_id"`
 	EvaluationID   pgtype.UUID   `json:"evaluation_id"`
+	ReflectionID   pgtype.UUID   `json:"reflection_id"`
 	SuggestionIDs  []pgtype.UUID `json:"suggestion_ids"`
+}
+
+func (a SuggestionsAppliedArgs) parent() SuggestionParent {
+	return SuggestionParent{EvaluationID: a.EvaluationID, ReflectionID: a.ReflectionID}
 }
 
 func (SuggestionsAppliedArgs) Kind() string { return "record_suggestions_applied" }
 
 func (s *Service) ConsumeSuggestionsApplied(ctx context.Context, a SuggestionsAppliedArgs) error {
-	return s.RecordSuggestionsApplied(ctx, a.WorkspaceID, a.EvaluationID, a.SkillVersionID, a.SuggestionIDs)
+	return s.RecordSuggestionsApplied(ctx, a.WorkspaceID, a.parent(), a.SkillVersionID, a.SuggestionIDs)
 }
 
 func (s *Service) ConsumeSuggestionsAppliedOnLastTry(ctx context.Context, a SuggestionsAppliedArgs) error {
@@ -73,14 +80,21 @@ func (s *Service) ConsumeSuggestionsAppliedOnLastTry(ctx context.Context, a Sugg
 }
 
 func (s *Service) RecordSuggestionsApplied(
-	ctx context.Context, workspaceID, evaluationID, versionID pgtype.UUID, suggestionIDs []pgtype.UUID,
+	ctx context.Context, workspaceID pgtype.UUID, parent SuggestionParent, versionID pgtype.UUID, suggestionIDs []pgtype.UUID,
 ) error {
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	e, err := loadEvaluationWithSuggestions(ctx, gen.New(tx), workspaceID, evaluationID, suggestionIDs)
+	if parent.ReflectionID.Valid {
+		r, err := loadReflectionWithSuggestions(ctx, gen.New(tx), workspaceID, parent.ReflectionID, suggestionIDs)
+		if err != nil {
+			return err
+		}
+		return commitReflectionApplied(ctx, tx, r, versionID, suggestionIDs)
+	}
+	e, err := loadEvaluationWithSuggestions(ctx, gen.New(tx), workspaceID, parent.EvaluationID, suggestionIDs)
 	if err != nil {
 		return err
 	}
@@ -107,4 +121,17 @@ func (s *Service) auditLostProvenance(ctx context.Context, a SuggestionsAppliedA
 			"version_exists": true,
 		},
 	})
+}
+
+func commitReflectionApplied(
+	ctx context.Context, tx pgx.Tx, r *Reflection, versionID pgtype.UUID, suggestionIDs []pgtype.UUID,
+) error {
+	r.RecordApplied(versionID, suggestionIDs)
+	if _, refused := r.Refusal(); refused {
+		return nil
+	}
+	if err := saveReflectionUnlessRefused(ctx, tx, r); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }

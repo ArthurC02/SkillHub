@@ -579,6 +579,193 @@ func (s *AmountTrend) SetBuckets(val []DailyAmount) {
 
 func (*AmountTrend) getCostTrendRes() {}
 
+// One improvement round read from an evaluation batch's development test cases. Frozen once written;
+// only its suggestions' decisions move.
+// Ref: #/components/schemas/BatchReflection
+type BatchReflection struct {
+	ReflectionID uuid.UUID `json:"reflection_id"`
+	BatchID      uuid.UUID `json:"batch_id"`
+	// The cases whose runs were read. Every other case of the batch is held out.
+	DevTestCaseIds []uuid.UUID `json:"dev_test_case_ids"`
+	// Why `suggestions` holds what it holds, so an empty list is never read as "nothing to fix".
+	// `restricted`: licence hold, no model call. `not_needed`: every development run passed with nothing
+	// to improve, no model call. `no_evidence`: failing runs cite nothing a suggestion could quote, no
+	// model call. `unavailable`: the model call failed, which says nothing about the skill.
+	// `none_proposed`: the model proposed nothing. `none_kept`: proposals failed the evidence or storage
+	// checks. `kept`: at least one is listed.
+	Outcome BatchReflectionOutcome `json:"outcome"`
+	// Failing development runs shown to the model.
+	RunsRead int `json:"runs_read"`
+	// Failing development runs left out to fit the request; above zero means the reading was partial.
+	RunsNotRead int                     `json:"runs_not_read"`
+	CreatedAt   time.Time               `json:"created_at"`
+	Suggestions []ImprovementSuggestion `json:"suggestions"`
+}
+
+// GetReflectionID returns the value of ReflectionID.
+func (s *BatchReflection) GetReflectionID() uuid.UUID {
+	return s.ReflectionID
+}
+
+// GetBatchID returns the value of BatchID.
+func (s *BatchReflection) GetBatchID() uuid.UUID {
+	return s.BatchID
+}
+
+// GetDevTestCaseIds returns the value of DevTestCaseIds.
+func (s *BatchReflection) GetDevTestCaseIds() []uuid.UUID {
+	return s.DevTestCaseIds
+}
+
+// GetOutcome returns the value of Outcome.
+func (s *BatchReflection) GetOutcome() BatchReflectionOutcome {
+	return s.Outcome
+}
+
+// GetRunsRead returns the value of RunsRead.
+func (s *BatchReflection) GetRunsRead() int {
+	return s.RunsRead
+}
+
+// GetRunsNotRead returns the value of RunsNotRead.
+func (s *BatchReflection) GetRunsNotRead() int {
+	return s.RunsNotRead
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *BatchReflection) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// GetSuggestions returns the value of Suggestions.
+func (s *BatchReflection) GetSuggestions() []ImprovementSuggestion {
+	return s.Suggestions
+}
+
+// SetReflectionID sets the value of ReflectionID.
+func (s *BatchReflection) SetReflectionID(val uuid.UUID) {
+	s.ReflectionID = val
+}
+
+// SetBatchID sets the value of BatchID.
+func (s *BatchReflection) SetBatchID(val uuid.UUID) {
+	s.BatchID = val
+}
+
+// SetDevTestCaseIds sets the value of DevTestCaseIds.
+func (s *BatchReflection) SetDevTestCaseIds(val []uuid.UUID) {
+	s.DevTestCaseIds = val
+}
+
+// SetOutcome sets the value of Outcome.
+func (s *BatchReflection) SetOutcome(val BatchReflectionOutcome) {
+	s.Outcome = val
+}
+
+// SetRunsRead sets the value of RunsRead.
+func (s *BatchReflection) SetRunsRead(val int) {
+	s.RunsRead = val
+}
+
+// SetRunsNotRead sets the value of RunsNotRead.
+func (s *BatchReflection) SetRunsNotRead(val int) {
+	s.RunsNotRead = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *BatchReflection) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
+// SetSuggestions sets the value of Suggestions.
+func (s *BatchReflection) SetSuggestions(val []ImprovementSuggestion) {
+	s.Suggestions = val
+}
+
+func (*BatchReflection) reflectOnEvaluationBatchRes() {}
+
+// Why `suggestions` holds what it holds, so an empty list is never read as "nothing to fix".
+// `restricted`: licence hold, no model call. `not_needed`: every development run passed with nothing
+// to improve, no model call. `no_evidence`: failing runs cite nothing a suggestion could quote, no
+// model call. `unavailable`: the model call failed, which says nothing about the skill.
+// `none_proposed`: the model proposed nothing. `none_kept`: proposals failed the evidence or storage
+// checks. `kept`: at least one is listed.
+type BatchReflectionOutcome string
+
+const (
+	BatchReflectionOutcomeRestricted   BatchReflectionOutcome = "restricted"
+	BatchReflectionOutcomeNotNeeded    BatchReflectionOutcome = "not_needed"
+	BatchReflectionOutcomeNoEvidence   BatchReflectionOutcome = "no_evidence"
+	BatchReflectionOutcomeUnavailable  BatchReflectionOutcome = "unavailable"
+	BatchReflectionOutcomeNoneProposed BatchReflectionOutcome = "none_proposed"
+	BatchReflectionOutcomeNoneKept     BatchReflectionOutcome = "none_kept"
+	BatchReflectionOutcomeKept         BatchReflectionOutcome = "kept"
+)
+
+// AllValues returns all BatchReflectionOutcome values.
+func (BatchReflectionOutcome) AllValues() []BatchReflectionOutcome {
+	return []BatchReflectionOutcome{
+		BatchReflectionOutcomeRestricted,
+		BatchReflectionOutcomeNotNeeded,
+		BatchReflectionOutcomeNoEvidence,
+		BatchReflectionOutcomeUnavailable,
+		BatchReflectionOutcomeNoneProposed,
+		BatchReflectionOutcomeNoneKept,
+		BatchReflectionOutcomeKept,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s BatchReflectionOutcome) MarshalText() ([]byte, error) {
+	switch s {
+	case BatchReflectionOutcomeRestricted:
+		return []byte(s), nil
+	case BatchReflectionOutcomeNotNeeded:
+		return []byte(s), nil
+	case BatchReflectionOutcomeNoEvidence:
+		return []byte(s), nil
+	case BatchReflectionOutcomeUnavailable:
+		return []byte(s), nil
+	case BatchReflectionOutcomeNoneProposed:
+		return []byte(s), nil
+	case BatchReflectionOutcomeNoneKept:
+		return []byte(s), nil
+	case BatchReflectionOutcomeKept:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *BatchReflectionOutcome) UnmarshalText(data []byte) error {
+	switch BatchReflectionOutcome(data) {
+	case BatchReflectionOutcomeRestricted:
+		*s = BatchReflectionOutcomeRestricted
+		return nil
+	case BatchReflectionOutcomeNotNeeded:
+		*s = BatchReflectionOutcomeNotNeeded
+		return nil
+	case BatchReflectionOutcomeNoEvidence:
+		*s = BatchReflectionOutcomeNoEvidence
+		return nil
+	case BatchReflectionOutcomeUnavailable:
+		*s = BatchReflectionOutcomeUnavailable
+		return nil
+	case BatchReflectionOutcomeNoneProposed:
+		*s = BatchReflectionOutcomeNoneProposed
+		return nil
+	case BatchReflectionOutcomeNoneKept:
+		*s = BatchReflectionOutcomeNoneKept
+		return nil
+	case BatchReflectionOutcomeKept:
+		*s = BatchReflectionOutcomeKept
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 type BrowseCatalogAgent string
 
 const (
@@ -3428,16 +3615,26 @@ func (*CreateSkillVersionFromSuggestionsNotFound) createSkillVersionFromSuggesti
 
 type CreateSkillVersionFromSuggestionsReq struct {
 	// The evaluation the suggestions belong to. Named explicitly rather than derived, so applying a set
-	// produced under one rubric cannot pick up a suggestion from a re-evaluation.
-	EvaluationID uuid.UUID `json:"evaluation_id"`
-	// The suggestions to apply, all of which must belong to `evaluation_id`. Order does not matter; two
-	// suggestions touching the same file are applied in path order.
+	// produced under one rubric cannot pick up a suggestion from a re-evaluation. Exactly one of
+	// `evaluation_id` and `reflection_id` is sent; both or neither is a 400.
+	EvaluationID OptUUID `json:"evaluation_id"`
+	// The batch improvement round the suggestions belong to, for suggestions made by POST
+	// /skills/{id}/evaluation-batches/{batchId}/reflections. The version they were written against is that
+	// batch's.
+	ReflectionID OptUUID `json:"reflection_id"`
+	// The suggestions to apply, all of which must belong to `evaluation_id` (or `reflection_id`). Order
+	// does not matter; two suggestions touching the same file are applied in path order.
 	SuggestionIds []uuid.UUID `json:"suggestion_ids"`
 }
 
 // GetEvaluationID returns the value of EvaluationID.
-func (s *CreateSkillVersionFromSuggestionsReq) GetEvaluationID() uuid.UUID {
+func (s *CreateSkillVersionFromSuggestionsReq) GetEvaluationID() OptUUID {
 	return s.EvaluationID
+}
+
+// GetReflectionID returns the value of ReflectionID.
+func (s *CreateSkillVersionFromSuggestionsReq) GetReflectionID() OptUUID {
+	return s.ReflectionID
 }
 
 // GetSuggestionIds returns the value of SuggestionIds.
@@ -3446,8 +3643,13 @@ func (s *CreateSkillVersionFromSuggestionsReq) GetSuggestionIds() []uuid.UUID {
 }
 
 // SetEvaluationID sets the value of EvaluationID.
-func (s *CreateSkillVersionFromSuggestionsReq) SetEvaluationID(val uuid.UUID) {
+func (s *CreateSkillVersionFromSuggestionsReq) SetEvaluationID(val OptUUID) {
 	s.EvaluationID = val
+}
+
+// SetReflectionID sets the value of ReflectionID.
+func (s *CreateSkillVersionFromSuggestionsReq) SetReflectionID(val OptUUID) {
+	s.ReflectionID = val
 }
 
 // SetSuggestionIds sets the value of SuggestionIds.
@@ -14578,6 +14780,30 @@ func (s *ListDownloadRecordsOKRecordsItem) SetActor(val string) {
 type ListDownloadRecordsUnauthorized Error
 
 func (*ListDownloadRecordsUnauthorized) listDownloadRecordsRes() {}
+
+type ListEvaluationBatchReflectionsNotFound Error
+
+func (*ListEvaluationBatchReflectionsNotFound) listEvaluationBatchReflectionsRes() {}
+
+type ListEvaluationBatchReflectionsOK struct {
+	Reflections []BatchReflection `json:"reflections"`
+}
+
+// GetReflections returns the value of Reflections.
+func (s *ListEvaluationBatchReflectionsOK) GetReflections() []BatchReflection {
+	return s.Reflections
+}
+
+// SetReflections sets the value of Reflections.
+func (s *ListEvaluationBatchReflectionsOK) SetReflections(val []BatchReflection) {
+	s.Reflections = val
+}
+
+func (*ListEvaluationBatchReflectionsOK) listEvaluationBatchReflectionsRes() {}
+
+type ListEvaluationBatchReflectionsUnauthorized Error
+
+func (*ListEvaluationBatchReflectionsUnauthorized) listEvaluationBatchReflectionsRes() {}
 
 type ListEvaluationBatchesOK struct {
 	Batches []EvaluationBatch `json:"batches"`
@@ -27116,6 +27342,49 @@ func (s *PublishingRefusalReason) UnmarshalText(data []byte) error {
 	}
 }
 
+type ReflectOnEvaluationBatchBadRequest Error
+
+func (*ReflectOnEvaluationBatchBadRequest) reflectOnEvaluationBatchRes() {}
+
+type ReflectOnEvaluationBatchConflict Error
+
+func (*ReflectOnEvaluationBatchConflict) reflectOnEvaluationBatchRes() {}
+
+type ReflectOnEvaluationBatchForbidden Error
+
+func (*ReflectOnEvaluationBatchForbidden) reflectOnEvaluationBatchRes() {}
+
+type ReflectOnEvaluationBatchNotFound Error
+
+func (*ReflectOnEvaluationBatchNotFound) reflectOnEvaluationBatchRes() {}
+
+type ReflectOnEvaluationBatchReq struct {
+	// The development cases, each a test case of this batch and named once. Fewer than all of them.
+	DevTestCaseIds []uuid.UUID `json:"dev_test_case_ids"`
+}
+
+// GetDevTestCaseIds returns the value of DevTestCaseIds.
+func (s *ReflectOnEvaluationBatchReq) GetDevTestCaseIds() []uuid.UUID {
+	return s.DevTestCaseIds
+}
+
+// SetDevTestCaseIds sets the value of DevTestCaseIds.
+func (s *ReflectOnEvaluationBatchReq) SetDevTestCaseIds(val []uuid.UUID) {
+	s.DevTestCaseIds = val
+}
+
+type ReflectOnEvaluationBatchServiceUnavailable Error
+
+func (*ReflectOnEvaluationBatchServiceUnavailable) reflectOnEvaluationBatchRes() {}
+
+type ReflectOnEvaluationBatchUnauthorized Error
+
+func (*ReflectOnEvaluationBatchUnauthorized) reflectOnEvaluationBatchRes() {}
+
+type ReflectOnEvaluationBatchUnprocessableEntity Error
+
+func (*ReflectOnEvaluationBatchUnprocessableEntity) reflectOnEvaluationBatchRes() {}
+
 // A candidate skill the platform found and did not create. One bad skill does not refuse the rest of a
 // source, so this list can sit beside a non-empty `skills`.
 // Ref: #/components/schemas/RefusedSkill
@@ -35902,6 +36171,7 @@ func (*TooManyRequestsHeaders) createSkillVersionFromSuggestionsRes() {}
 func (*TooManyRequestsHeaders) generateSkillRes()                     {}
 func (*TooManyRequestsHeaders) importSkillFromURLRes()                {}
 func (*TooManyRequestsHeaders) publicSearchSkillsRes()                {}
+func (*TooManyRequestsHeaders) reflectOnEvaluationBatchRes()          {}
 func (*TooManyRequestsHeaders) saveSkillVersionRes()                  {}
 func (*TooManyRequestsHeaders) searchSkillsWithCorrectedIntentRes()   {}
 func (*TooManyRequestsHeaders) submitFeedbackRes()                    {}

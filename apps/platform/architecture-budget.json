@@ -1,7 +1,8 @@
 {
   "packages": {
     "entrypoint/wiring": 26,
-    "trial/execution": 30
+    "trial/execution": 30,
+    "trial/improvement": 26
   },
   "types": {
     "creator/creation.Service": {

@@ -534,7 +534,7 @@ def test_suggest_improvements_returns_proposals(capture):
     assert response.status_code == 200
     body = response.json()
     assert body["model"] == "skillhub-judge"
-    assert body["prompt_version"] == "suggest-improvements/v4"
+    assert body["prompt_version"] == "suggest-improvements/v5"
     proposal = body["suggestions"][0]
     assert set(proposal) == {
         "category",

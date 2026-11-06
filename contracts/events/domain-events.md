@@ -1,7 +1,7 @@
 # Platform 領域事件目錄
 
 - 狀態：§5 的七項缺口關閉六項，值域封閉、同交易型別保證、retention 與 poison 隔離皆已落地。**Go 型別是實作的事實來源**（`apps/platform/internal/foundation/persistence/db/gen` 的 `OutboxEvent` 信封＋各 producer 的 payload 組裝）；本目錄是**規範與盤點**——列出全部合法 `event_type`、payload 形狀與新增規則。
-- 形式：文件目錄，暫無 JSON Schema 與 validator。**第一個非 Go consumer 出現時**，依 [Run Trace 契約](README.md) 的前例補 schema＋validator；在那之前加 schema 是投機成本（目前唯一 consumer 是 process log）。§3 的 `run.*`、`evaluation.*` 與 `skill.*` token 現在**是被機器讀的**：`internal/outbox` 的 conformance test 抓它們，與 Go 常數和 DB `CHECK` 三方比對，所以那些反引號不是排版而是契約。
+- 形式：文件目錄，暫無 JSON Schema 與 validator。**第一個非 Go consumer 出現時**，依 [Run Trace 契約](README.md) 的前例補 schema＋validator；在那之前加 schema 是投機成本（目前唯一 consumer 是 process log）。§3 的 `run.*`、`evaluation.*`、`batch_reflection.*` 與 `skill.*` token 現在**是被機器讀的**：`internal/outbox` 的 conformance test 抓它們，與 Go 常數和 DB `CHECK` 三方比對，所以那些反引號不是排版而是契約。
 - 位置理由：`contracts/` 是跨程序介面的唯一來源；領域事件今天雖只在 Go 程序內流動，`internal/run/service.go` 的既有註解早已預告 schema 落點是 `contracts/events/`，本目錄兌現該預告。
 
 ## 1. 與其他事件平面的分野
@@ -26,7 +26,7 @@
 | `correlation_id` | 業務關聯根 | Run 事件＝平台 `run_id`（鐵律 10：不用 Provider 臨時 ID） |
 | `causation_id` | 直接成因 | 觸發本事件的 attempt／job／command 識別；填寫規則見下 |
 | `workspace_id` | 租戶邊界 | 鐵律 3 |
-| `aggregate_type`／`aggregate_id` | 事件所屬 aggregate | 現況 `outbox.AggregateRun`（`"run"`）、`outbox.AggregateEvaluation`（`"evaluation"`）與 `outbox.AggregateSkill`（`"skill"`）；詞彙表由本目錄擁有，與 audit 的 resource 詞彙是兩套（§1） |
+| `aggregate_type`／`aggregate_id` | 事件所屬 aggregate | 現況 `outbox.AggregateRun`（`"run"`）、`outbox.AggregateEvaluation`（`"evaluation"`）、`outbox.AggregateBatchReflection`（`"batch_reflection"`）與 `outbox.AggregateSkill`（`"skill"`）；詞彙表由本目錄擁有，與 audit 的 resource 詞彙是兩套（§1） |
 | `payload` | jsonb | 形狀由 §3 各列定義 |
 | `delivery_attempts`／`dead_lettered_at` | 傳輸元資料 | **不是領域資料**：publisher 私有，consumer 不得讀（見 §6） |
 
@@ -87,6 +87,15 @@
 | `evaluation.suggestion_decided` | 使用者接受或拒絕一則建議（`DecideSuggestion`） | `suggestion_id`、`decision` | 已套用的建議只能維持接受 |
 | `evaluation.suggestions_applied` | 評估的 Mailbox（`record_suggestions_applied` job，以事件識別去重）收到帶 `improved_by` 的 `skill.version_added`，記下哪些建議進了這一版（`RecordSuggestionApplications`）；套用的結果與某個既有版本內容相同時 Skill 沒有新版本、也沒有事件，由套用當下直接記到那個既有版本 | `skill_version_id`、`suggestion_ids`（實際記下的那幾則） | 進了版本的建議一律標成接受（建版之後、記下之前送來的拒絕不成立；原本就接受的保留當初的決定時間）；每一對建議與版本各記一筆，`applied_skill_version_id` 保留第一個記下的版本；只記還沒記在這一版的，重送不重記；這些判斷全在評估聚合根，資料表只照寫；job 最後一次重試仍失敗時寫一筆「來源沒記下」的稽核 |
 
+### `batch_reflection` aggregate（producer：`trial/improvement` 的 Reflection aggregate，存回在 `reflection_aggregate.go` 的 `saveReflectionUnlessRefused`）
+
+`aggregate_id`＝那一輪批次改善的 id；`correlation_id`＝評估批次的 id；`causation_id` NULL（§2 例外 2）。一輪批次改善讀一個評估批次裡開發題的失敗、寫下一組建議；建議的決定與套用規則和 `evaluation` aggregate 完全相同，只是擁有者不同。命令被拒絕時不發事件。目前沒有訂閱者，Dispatcher 以具名理由忽略。
+
+| `event_type` | 觸發（同交易的狀態變更） | payload | 備註 |
+| --- | --- | --- | --- |
+| `batch_reflection.suggestion_decided` | 使用者接受或拒絕一則屬於這一輪的建議（`DecideSuggestion`） | `suggestion_id`、`decision` | 已套用的建議只能維持接受 |
+| `batch_reflection.suggestions_applied` | 評估的 Mailbox 收到 `improved_by` 帶 `reflection_id` 的 `skill.version_added`，記下哪些建議進了這一版（`RecordSuggestionApplications`） | `skill_version_id`、`suggestion_ids`（實際記下的那幾則） | 與 `evaluation.suggestions_applied` 同一套判斷 |
+
 ### `skill` aggregate（producer：`skill/library` 的 Skill aggregate，存回在 `skill_store.go` 的 `saveSkill`）
 
 `aggregate_id`＝`correlation_id`＝Skill 的 id；`causation_id` NULL（§2 例外 2）。命令被拒絕時不發事件。`skill.version_added` 由評估的 Mailbox 訂閱（見 `evaluation.suggestions_applied`），其餘沒有訂閱者，Dispatcher 以具名理由忽略。
@@ -102,7 +111,7 @@
 | `skill.categorized` | 擁有者指定或清除分類（`SetSkillCategory`） | `category`、`category_source`（皆可為 null） | |
 | `skill.deleted` | 擁有者刪除（`SoftDeleteSkill`） | 空物件 | 版本快照照舊凍結 |
 | `skill.created` | 匯入、生成或 Fork 建立一個 Skill（`CreateSkill`） | `redistribution`、`forked_from_skill_id`、`forked_from_version_id`（不是 Fork 時為 null） | 同一工作區內名稱唯一由 unique index 守 |
-| `skill.version_added` | 匯入、存新版本、生成或 Fork 加上一個版本（`CreateSkillVersion`） | `version_id`、`version_number`、`content_hash`、`improved_by`（套用改善建議建成時為 `evaluation_id`、`suggestion_ids`，否則 null） | 版本號由 query 配發；相同內容不成為第二版（unique index）；generated 的 Skill 只收生成的內容 |
+| `skill.version_added` | 匯入、存新版本、生成或 Fork 加上一個版本（`CreateSkillVersion`） | `version_id`、`version_number`、`content_hash`、`improved_by`（套用改善建議建成時為 `evaluation_id` 或 `reflection_id` 其中之一、`suggestion_ids`，否則 null；`reflection_id` 只在來自批次改善時出現） | 版本號由 query 配發；相同內容不成為第二版（unique index）；generated 的 Skill 只收生成的內容 |
 | `skill.described` | 存新版本時，Skill 的說明換成新版本宣告的那一句（`UpdateSkillSummary`） | 空物件 | 說明是人寫的文字，不進 payload |
 
 ### 概念名對照

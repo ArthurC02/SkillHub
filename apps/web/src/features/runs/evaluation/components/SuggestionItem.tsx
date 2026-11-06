@@ -67,18 +67,18 @@ function DecisionFailure({
 
 export function SuggestionItem({
   suggestion,
-  runId,
+  listKey,
   decisionState,
   onDecisionStateChange,
 }: {
   suggestion: ImprovementSuggestion;
-  runId: string;
+  listKey: readonly unknown[];
   decisionState?: SuggestionDecisionState;
   onDecisionStateChange: (id: string, state?: SuggestionDecisionState) => void;
 }) {
   const [showDiff, setShowDiff] = useState(false);
   const unconfirmed = decisionState?.unconfirmed;
-  const decide = useDecideSuggestion(runId, {
+  const decide = useDecideSuggestion(listKey, {
     onError: (error, decision) => {
       onDecisionStateChange(suggestion.suggestion_id, {
         error,

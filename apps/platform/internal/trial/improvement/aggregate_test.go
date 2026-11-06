@@ -252,7 +252,7 @@ func runSuggestionApplicationScenario(t *testing.T, firstVersionA bool) {
 
 	apply := func(versionID pgtype.UUID, suggestionIDs []pgtype.UUID) {
 		t.Helper()
-		if err := s.RecordSuggestionsApplied(context.Background(), m.Run.WorkspaceID, evaluation.ID, versionID, suggestionIDs); err != nil {
+		if err := s.RecordSuggestionsApplied(context.Background(), m.Run.WorkspaceID, SuggestionParent{EvaluationID: evaluation.ID}, versionID, suggestionIDs); err != nil {
 			t.Fatalf("record suggestions applied: %v", err)
 		}
 	}
@@ -302,7 +302,7 @@ func TestApplyingSuggestionsAcceptsThePendingOneAndKeepsAnEarlierAcceptanceTime(
 		t.Fatalf("accept X: %v", err)
 	}
 	version := seedImprovedVersion(t, s.Pool, m.Run.ID, 2, t.Name()+"-improved")
-	if err := s.RecordSuggestionsApplied(ctx, m.Run.WorkspaceID, evaluation.ID, version, []pgtype.UUID{accepted.ID, pending.ID}); err != nil {
+	if err := s.RecordSuggestionsApplied(ctx, m.Run.WorkspaceID, SuggestionParent{EvaluationID: evaluation.ID}, version, []pgtype.UUID{accepted.ID, pending.ID}); err != nil {
 		t.Fatalf("record suggestions applied: %v", err)
 	}
 	decision := func(id pgtype.UUID) (string, pgtype.Timestamptz) {
@@ -353,7 +353,7 @@ func TestSuggestionApplicationsAreImmutableUntilTheirVersionIsPurged(t *testing.
 	second := seedImprovedVersion(t, s.Pool, m.Run.ID, 3, t.Name()+"-second")
 	ctx := context.Background()
 	for _, version := range []pgtype.UUID{first, second} {
-		if err := s.RecordSuggestionsApplied(ctx, m.Run.WorkspaceID, evaluation.ID, version, []pgtype.UUID{suggestion.ID}); err != nil {
+		if err := s.RecordSuggestionsApplied(ctx, m.Run.WorkspaceID, SuggestionParent{EvaluationID: evaluation.ID}, version, []pgtype.UUID{suggestion.ID}); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -836,7 +836,7 @@ func TestEveryEvaluationCommandLeavesItsEventInTheOutbox(t *testing.T) {
 		t.Fatalf("read the run's version: %v", err)
 	}
 	for range 2 {
-		if err := s.RecordSuggestionsApplied(ctx, m.Run.WorkspaceID, second.ID, version,
+		if err := s.RecordSuggestionsApplied(ctx, m.Run.WorkspaceID, SuggestionParent{EvaluationID: second.ID}, version,
 			[]pgtype.UUID{suggestion.ID}); err != nil {
 			t.Fatalf("record applied: %v", err)
 		}
@@ -904,7 +904,7 @@ func TestTheMailboxRecordsOnlySuggestionsItsOwnEvaluationHolds(t *testing.T) {
 	}
 	nowhere := pgtype.UUID{Bytes: [16]byte{0xde, 0xad}, Valid: true}
 
-	if err := s.RecordSuggestionsApplied(ctx, m.Run.WorkspaceID, second.ID, version,
+	if err := s.RecordSuggestionsApplied(ctx, m.Run.WorkspaceID, SuggestionParent{EvaluationID: second.ID}, version,
 		[]pgtype.UUID{earlier.ID, nowhere}); err != nil {
 		t.Fatalf("a letter naming suggestions the evaluation does not hold: %v", err)
 	}

@@ -100,12 +100,11 @@ type failure struct {
 }
 
 type Evaluation struct {
-	row         gen.Evaluation
-	suggestions map[pgtype.UUID]gen.EvaluationSuggestion
-	applied     map[pgtype.UUID]map[pgtype.UUID]struct{}
-	verdict     assessment
-	failure     failure
-	events      []Event
+	row gen.Evaluation
+	suggestionLedger
+	verdict assessment
+	failure failure
+	events  []Event
 }
 
 func startEvaluation(workspaceID, runID pgtype.UUID, declared EvaluationStarted) *Evaluation {
@@ -175,60 +174,19 @@ func (e *Evaluation) RecordFeedback(helpful bool, comment string) {
 }
 
 func (e *Evaluation) Decide(suggestionID pgtype.UUID, to Decision) {
-	suggestion, known := e.suggestions[suggestionID]
-	switch {
-	case !to.chosen():
-		e.refuse(RefusedNotAChoice)
-	case !known:
-		e.refuse(RefusedUnknownSuggestion)
-	case suggestion.AppliedSkillVersionID.Valid && to != DecisionAccepted:
-		e.refuse(RefusedAcceptanceIsFinal)
-	default:
-		suggestion.Decision = string(to)
-		e.suggestions[suggestionID] = suggestion
-		e.record(SuggestionDecided{SuggestionID: suggestionID, Decision: to})
-	}
+	e.settle(e.decide(suggestionID, to))
 }
 
 func (e *Evaluation) RecordApplied(versionID pgtype.UUID, suggestionIDs []pgtype.UUID) {
-	applied := SuggestionsApplied{SkillVersionID: versionID}
-	for _, id := range suggestionIDs {
-		suggestion, known := e.suggestions[id]
-		if !known || e.appliedTo(id, versionID) {
-			continue
-		}
-		e.markApplied(id, versionID)
-		if Decision(suggestion.Decision) != DecisionAccepted {
-			suggestion.Decision = string(DecisionAccepted)
-			applied.newlyAccepted = append(applied.newlyAccepted, id)
-		}
-		if !suggestion.AppliedSkillVersionID.Valid {
-			suggestion.AppliedSkillVersionID = versionID
-			applied.witnessed = append(applied.witnessed, id)
-		}
-		e.suggestions[id] = suggestion
-		applied.SuggestionIDs = append(applied.SuggestionIDs, id)
-	}
-	if len(applied.SuggestionIDs) == 0 {
-		e.refuse(RefusedNothingToApply)
+	e.settle(e.recordApplied(versionID, suggestionIDs))
+}
+
+func (e *Evaluation) settle(event Event, refusal Refusal) {
+	if refusal != "" {
+		e.refuse(refusal)
 		return
 	}
-	e.record(applied)
-}
-
-func (e *Evaluation) appliedTo(suggestionID, versionID pgtype.UUID) bool {
-	_, recorded := e.applied[suggestionID][versionID]
-	return recorded
-}
-
-func (e *Evaluation) markApplied(suggestionID, versionID pgtype.UUID) {
-	if e.applied == nil {
-		e.applied = map[pgtype.UUID]map[pgtype.UUID]struct{}{}
-	}
-	if e.applied[suggestionID] == nil {
-		e.applied[suggestionID] = map[pgtype.UUID]struct{}{}
-	}
-	e.applied[suggestionID][versionID] = struct{}{}
+	e.record(event)
 }
 
 func (e *Evaluation) refuse(reason Refusal) { e.record(Refused{Reason: reason}) }
@@ -304,3 +262,72 @@ func cloneUsage(usage *modelport.ModelUsage) *modelport.ModelUsage {
 	}
 	return cloned
 }
+
+type suggestionLedger struct {
+	suggestions map[pgtype.UUID]gen.EvaluationSuggestion
+	applied     map[pgtype.UUID]map[pgtype.UUID]struct{}
+}
+
+func (l *suggestionLedger) decide(suggestionID pgtype.UUID, to Decision) (Event, Refusal) {
+	suggestion, known := l.suggestions[suggestionID]
+	switch {
+	case !to.chosen():
+		return nil, RefusedNotAChoice
+	case !known:
+		return nil, RefusedUnknownSuggestion
+	case suggestion.AppliedSkillVersionID.Valid && to != DecisionAccepted:
+		return nil, RefusedAcceptanceIsFinal
+	}
+	suggestion.Decision = string(to)
+	l.suggestions[suggestionID] = suggestion
+	return SuggestionDecided{SuggestionID: suggestionID, Decision: to}, ""
+}
+
+func (l *suggestionLedger) recordApplied(versionID pgtype.UUID, suggestionIDs []pgtype.UUID) (Event, Refusal) {
+	applied := SuggestionsApplied{SkillVersionID: versionID}
+	for _, id := range suggestionIDs {
+		suggestion, known := l.suggestions[id]
+		if !known || l.appliedTo(id, versionID) {
+			continue
+		}
+		l.markApplied(id, versionID)
+		if Decision(suggestion.Decision) != DecisionAccepted {
+			suggestion.Decision = string(DecisionAccepted)
+			applied.newlyAccepted = append(applied.newlyAccepted, id)
+		}
+		if !suggestion.AppliedSkillVersionID.Valid {
+			suggestion.AppliedSkillVersionID = versionID
+			applied.witnessed = append(applied.witnessed, id)
+		}
+		l.suggestions[id] = suggestion
+		applied.SuggestionIDs = append(applied.SuggestionIDs, id)
+	}
+	if len(applied.SuggestionIDs) == 0 {
+		return nil, RefusedNothingToApply
+	}
+	return applied, ""
+}
+
+func (l *suggestionLedger) appliedTo(suggestionID, versionID pgtype.UUID) bool {
+	_, recorded := l.applied[suggestionID][versionID]
+	return recorded
+}
+
+func (l *suggestionLedger) markApplied(suggestionID, versionID pgtype.UUID) {
+	if l.applied == nil {
+		l.applied = map[pgtype.UUID]map[pgtype.UUID]struct{}{}
+	}
+	if l.applied[suggestionID] == nil {
+		l.applied[suggestionID] = map[pgtype.UUID]struct{}{}
+	}
+	l.applied[suggestionID][versionID] = struct{}{}
+}
+
+func (l *suggestionLedger) loadApplications(rows []suggestionApplication) {
+	l.applied = map[pgtype.UUID]map[pgtype.UUID]struct{}{}
+	for _, row := range rows {
+		l.markApplied(row.suggestionID, row.versionID)
+	}
+}
+
+type suggestionApplication struct{ suggestionID, versionID pgtype.UUID }

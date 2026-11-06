@@ -52,6 +52,8 @@ var strangerRoutes = []strangerCase{
 	{pattern: "GET /skills/{id}/evaluation-batches/{batchId}", want: http.StatusNotFound},
 	{pattern: "GET /skills/{id}/evaluation-batches/{batchId}/comparison", query: "?against={batchId}", want: http.StatusNotFound},
 	{pattern: "POST /skills/{id}/evaluation-batches/{batchId}/resume", want: http.StatusNotFound},
+	{pattern: "POST /skills/{id}/evaluation-batches/{batchId}/reflections", body: `{"dev_test_case_ids":["00000000-0000-4000-8000-000000000001"]}`, want: http.StatusNotFound},
+	{pattern: "GET /skills/{id}/evaluation-batches/{batchId}/reflections", want: http.StatusNotFound},
 
 	{pattern: "GET /downloads/{artifactId}", want: http.StatusNotFound},
 	{pattern: "GET /downloads/{artifactId}/records", want: http.StatusNotFound},

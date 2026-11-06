@@ -365,6 +365,7 @@ func newDeps(cfg Config, app *App, creditSvc *credit.Service, funnel *analytics.
 		Trace:           &trace.Handler{Svc: app.TraceSvc, Identity: auth.Service},
 		Eval:            &eval.Handler{Svc: evalSvc, Identity: auth.Service},
 		EvalBatches:     &batch.BatchHandler{Svc: app.EvalBatches, Identity: auth.Service},
+		Reflections:     newReflectionHandler(cfg, app, creditSvc),
 		Graders:         &eval.GraderHandler{Svc: &graders.Service{Pool: cfg.Pool}, Identity: auth.Service},
 		MCPTools:        &mcptools.Service{Pool: cfg.Pool},
 		Packaging:       &packaging.Handler{Svc: app.PackagingSvc, Identity: auth.Service},
@@ -564,6 +565,7 @@ func packagingSuggestions(ctx context.Context, svc *eval.Service, workspaceID, v
 	for i, row := range rows {
 		result[i] = packaging.AppliedSuggestion{
 			EvaluationID: row.EvaluationID,
+			ReflectionID: row.ReflectionID,
 			Category:     row.Category,
 			TargetPath:   row.TargetPath,
 		}

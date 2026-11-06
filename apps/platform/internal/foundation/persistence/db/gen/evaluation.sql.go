@@ -109,6 +109,53 @@ func (q *Queries) CompleteEvaluation(ctx context.Context, arg CompleteEvaluation
 	return i, err
 }
 
+const createBatchReflection = `-- name: CreateBatchReflection :one
+INSERT INTO batch_reflections (
+    workspace_id, batch_id, skill_version_id, dev_test_case_ids, outcome, runs_read, runs_not_read, created_by
+) VALUES (
+    $1, $2, $3, $4::uuid[], $5, $6, $7, $8
+)
+RETURNING id, workspace_id, batch_id, skill_version_id, dev_test_case_ids, outcome, runs_read, runs_not_read, created_by, created_at
+`
+
+type CreateBatchReflectionParams struct {
+	WorkspaceID    pgtype.UUID
+	BatchID        pgtype.UUID
+	SkillVersionID pgtype.UUID
+	DevTestCaseIds []pgtype.UUID
+	Outcome        string
+	RunsRead       int32
+	RunsNotRead    int32
+	CreatedBy      pgtype.UUID
+}
+
+func (q *Queries) CreateBatchReflection(ctx context.Context, arg CreateBatchReflectionParams) (BatchReflection, error) {
+	row := q.db.QueryRow(ctx, createBatchReflection,
+		arg.WorkspaceID,
+		arg.BatchID,
+		arg.SkillVersionID,
+		arg.DevTestCaseIds,
+		arg.Outcome,
+		arg.RunsRead,
+		arg.RunsNotRead,
+		arg.CreatedBy,
+	)
+	var i BatchReflection
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.BatchID,
+		&i.SkillVersionID,
+		&i.DevTestCaseIds,
+		&i.Outcome,
+		&i.RunsRead,
+		&i.RunsNotRead,
+		&i.CreatedBy,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const createEvaluation = `-- name: CreateEvaluation :one
 INSERT INTO evaluations (
     workspace_id, run_id, status, overall, evidence_complete,
@@ -178,7 +225,7 @@ INSERT INTO evaluation_suggestions (
     workspace_id, evaluation_id, category, problem, evidence,
     target_path, proposed_content, expected_impact
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, workspace_id, evaluation_id, category, problem, evidence, target_path, proposed_content, expected_impact, decision, decided_at, applied_skill_version_id, created_at
+RETURNING id, workspace_id, evaluation_id, category, problem, evidence, target_path, proposed_content, expected_impact, decision, decided_at, applied_skill_version_id, created_at, reflection_id
 `
 
 type CreateEvaluationSuggestionParams struct {
@@ -218,6 +265,60 @@ func (q *Queries) CreateEvaluationSuggestion(ctx context.Context, arg CreateEval
 		&i.DecidedAt,
 		&i.AppliedSkillVersionID,
 		&i.CreatedAt,
+		&i.ReflectionID,
+	)
+	return i, err
+}
+
+const createReflectionSuggestion = `-- name: CreateReflectionSuggestion :one
+INSERT INTO evaluation_suggestions (
+    workspace_id, reflection_id, category, problem, evidence,
+    target_path, proposed_content, expected_impact
+) VALUES (
+    $1, $2, $3, $4, $5,
+    $6, $7, $8
+)
+RETURNING id, workspace_id, evaluation_id, category, problem, evidence, target_path, proposed_content, expected_impact, decision, decided_at, applied_skill_version_id, created_at, reflection_id
+`
+
+type CreateReflectionSuggestionParams struct {
+	WorkspaceID     pgtype.UUID
+	ReflectionID    pgtype.UUID
+	Category        string
+	Problem         string
+	Evidence        []byte
+	TargetPath      string
+	ProposedContent string
+	ExpectedImpact  string
+}
+
+func (q *Queries) CreateReflectionSuggestion(ctx context.Context, arg CreateReflectionSuggestionParams) (EvaluationSuggestion, error) {
+	row := q.db.QueryRow(ctx, createReflectionSuggestion,
+		arg.WorkspaceID,
+		arg.ReflectionID,
+		arg.Category,
+		arg.Problem,
+		arg.Evidence,
+		arg.TargetPath,
+		arg.ProposedContent,
+		arg.ExpectedImpact,
+	)
+	var i EvaluationSuggestion
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.EvaluationID,
+		&i.Category,
+		&i.Problem,
+		&i.Evidence,
+		&i.TargetPath,
+		&i.ProposedContent,
+		&i.ExpectedImpact,
+		&i.Decision,
+		&i.DecidedAt,
+		&i.AppliedSkillVersionID,
+		&i.CreatedAt,
+		&i.ReflectionID,
 	)
 	return i, err
 }
@@ -227,7 +328,7 @@ UPDATE evaluation_suggestions SET
     decision = $1,
     decided_at = now()
 WHERE id = $2 AND workspace_id = $3
-RETURNING id, workspace_id, evaluation_id, category, problem, evidence, target_path, proposed_content, expected_impact, decision, decided_at, applied_skill_version_id, created_at
+RETURNING id, workspace_id, evaluation_id, category, problem, evidence, target_path, proposed_content, expected_impact, decision, decided_at, applied_skill_version_id, created_at, reflection_id
 `
 
 type DecideSuggestionParams struct {
@@ -253,6 +354,7 @@ func (q *Queries) DecideSuggestion(ctx context.Context, arg DecideSuggestionPara
 		&i.DecidedAt,
 		&i.AppliedSkillVersionID,
 		&i.CreatedAt,
+		&i.ReflectionID,
 	)
 	return i, err
 }
@@ -345,6 +447,34 @@ func (q *Queries) FindLiveTraceEvents(ctx context.Context, arg FindLiveTraceEven
 		return nil, err
 	}
 	return items, nil
+}
+
+const getBatchReflection = `-- name: GetBatchReflection :one
+SELECT id, workspace_id, batch_id, skill_version_id, dev_test_case_ids, outcome, runs_read, runs_not_read, created_by, created_at FROM batch_reflections
+WHERE id = $1 AND workspace_id = $2
+`
+
+type GetBatchReflectionParams struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+func (q *Queries) GetBatchReflection(ctx context.Context, arg GetBatchReflectionParams) (BatchReflection, error) {
+	row := q.db.QueryRow(ctx, getBatchReflection, arg.ID, arg.WorkspaceID)
+	var i BatchReflection
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.BatchID,
+		&i.SkillVersionID,
+		&i.DevTestCaseIds,
+		&i.Outcome,
+		&i.RunsRead,
+		&i.RunsNotRead,
+		&i.CreatedBy,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const getCurrentEvaluation = `-- name: GetCurrentEvaluation :one
@@ -496,7 +626,7 @@ func (q *Queries) GetEvaluationSettings(ctx context.Context) (EvaluationSetting,
 }
 
 const getEvaluationSuggestion = `-- name: GetEvaluationSuggestion :one
-SELECT id, workspace_id, evaluation_id, category, problem, evidence, target_path, proposed_content, expected_impact, decision, decided_at, applied_skill_version_id, created_at FROM evaluation_suggestions
+SELECT id, workspace_id, evaluation_id, category, problem, evidence, target_path, proposed_content, expected_impact, decision, decided_at, applied_skill_version_id, created_at, reflection_id FROM evaluation_suggestions
 WHERE id = $1 AND workspace_id = $2
 `
 
@@ -522,8 +652,53 @@ func (q *Queries) GetEvaluationSuggestion(ctx context.Context, arg GetEvaluation
 		&i.DecidedAt,
 		&i.AppliedSkillVersionID,
 		&i.CreatedAt,
+		&i.ReflectionID,
 	)
 	return i, err
+}
+
+const listBatchReflections = `-- name: ListBatchReflections :many
+SELECT id, workspace_id, batch_id, skill_version_id, dev_test_case_ids, outcome, runs_read, runs_not_read, created_by, created_at FROM batch_reflections
+WHERE workspace_id = $1 AND batch_id = $2
+ORDER BY created_at DESC, id DESC
+LIMIT $3
+`
+
+type ListBatchReflectionsParams struct {
+	WorkspaceID pgtype.UUID
+	BatchID     pgtype.UUID
+	RowLimit    int32
+}
+
+func (q *Queries) ListBatchReflections(ctx context.Context, arg ListBatchReflectionsParams) ([]BatchReflection, error) {
+	rows, err := q.db.Query(ctx, listBatchReflections, arg.WorkspaceID, arg.BatchID, arg.RowLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []BatchReflection
+	for rows.Next() {
+		var i BatchReflection
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.BatchID,
+			&i.SkillVersionID,
+			&i.DevTestCaseIds,
+			&i.Outcome,
+			&i.RunsRead,
+			&i.RunsNotRead,
+			&i.CreatedBy,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listCurrentEvaluations = `-- name: ListCurrentEvaluations :many
@@ -700,7 +875,7 @@ func (q *Queries) ListEvaluationSuggestionApplications(ctx context.Context, arg 
 }
 
 const listEvaluationSuggestions = `-- name: ListEvaluationSuggestions :many
-SELECT id, workspace_id, evaluation_id, category, problem, evidence, target_path, proposed_content, expected_impact, decision, decided_at, applied_skill_version_id, created_at FROM evaluation_suggestions
+SELECT id, workspace_id, evaluation_id, category, problem, evidence, target_path, proposed_content, expected_impact, decision, decided_at, applied_skill_version_id, created_at, reflection_id FROM evaluation_suggestions
 WHERE evaluation_id = $1 AND workspace_id = $2
 ORDER BY created_at, id
 `
@@ -733,6 +908,91 @@ func (q *Queries) ListEvaluationSuggestions(ctx context.Context, arg ListEvaluat
 			&i.DecidedAt,
 			&i.AppliedSkillVersionID,
 			&i.CreatedAt,
+			&i.ReflectionID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listReflectionSuggestionApplications = `-- name: ListReflectionSuggestionApplications :many
+SELECT a.suggestion_id, a.skill_version_id
+FROM evaluation_suggestion_applications a
+JOIN evaluation_suggestions s ON s.id = a.suggestion_id AND s.workspace_id = a.workspace_id
+WHERE s.reflection_id = $1 AND a.workspace_id = $2
+ORDER BY a.suggestion_id, a.skill_version_id
+`
+
+type ListReflectionSuggestionApplicationsParams struct {
+	ReflectionID pgtype.UUID
+	WorkspaceID  pgtype.UUID
+}
+
+type ListReflectionSuggestionApplicationsRow struct {
+	SuggestionID   pgtype.UUID
+	SkillVersionID pgtype.UUID
+}
+
+func (q *Queries) ListReflectionSuggestionApplications(ctx context.Context, arg ListReflectionSuggestionApplicationsParams) ([]ListReflectionSuggestionApplicationsRow, error) {
+	rows, err := q.db.Query(ctx, listReflectionSuggestionApplications, arg.ReflectionID, arg.WorkspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListReflectionSuggestionApplicationsRow
+	for rows.Next() {
+		var i ListReflectionSuggestionApplicationsRow
+		if err := rows.Scan(&i.SuggestionID, &i.SkillVersionID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listReflectionSuggestions = `-- name: ListReflectionSuggestions :many
+SELECT id, workspace_id, evaluation_id, category, problem, evidence, target_path, proposed_content, expected_impact, decision, decided_at, applied_skill_version_id, created_at, reflection_id FROM evaluation_suggestions
+WHERE reflection_id = ANY($1::uuid[]) AND workspace_id = $2
+ORDER BY created_at, id
+`
+
+type ListReflectionSuggestionsParams struct {
+	ReflectionIds []pgtype.UUID
+	WorkspaceID   pgtype.UUID
+}
+
+func (q *Queries) ListReflectionSuggestions(ctx context.Context, arg ListReflectionSuggestionsParams) ([]EvaluationSuggestion, error) {
+	rows, err := q.db.Query(ctx, listReflectionSuggestions, arg.ReflectionIds, arg.WorkspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []EvaluationSuggestion
+	for rows.Next() {
+		var i EvaluationSuggestion
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.EvaluationID,
+			&i.Category,
+			&i.Problem,
+			&i.Evidence,
+			&i.TargetPath,
+			&i.ProposedContent,
+			&i.ExpectedImpact,
+			&i.Decision,
+			&i.DecidedAt,
+			&i.AppliedSkillVersionID,
+			&i.CreatedAt,
+			&i.ReflectionID,
 		); err != nil {
 			return nil, err
 		}
@@ -811,7 +1071,7 @@ func (q *Queries) ListStalePendingEvaluations(ctx context.Context, arg ListStale
 }
 
 const listSuggestionsAppliedToVersion = `-- name: ListSuggestionsAppliedToVersion :many
-SELECT s.evaluation_id, s.category, s.target_path
+SELECT s.evaluation_id, s.reflection_id, s.category, s.target_path
 FROM evaluation_suggestion_applications a
 JOIN evaluation_suggestions s ON s.id = a.suggestion_id AND s.workspace_id = a.workspace_id
 WHERE a.skill_version_id = $1 AND a.workspace_id = $2
@@ -825,6 +1085,7 @@ type ListSuggestionsAppliedToVersionParams struct {
 
 type ListSuggestionsAppliedToVersionRow struct {
 	EvaluationID pgtype.UUID
+	ReflectionID pgtype.UUID
 	Category     string
 	TargetPath   string
 }
@@ -838,7 +1099,12 @@ func (q *Queries) ListSuggestionsAppliedToVersion(ctx context.Context, arg ListS
 	var items []ListSuggestionsAppliedToVersionRow
 	for rows.Next() {
 		var i ListSuggestionsAppliedToVersionRow
-		if err := rows.Scan(&i.EvaluationID, &i.Category, &i.TargetPath); err != nil {
+		if err := rows.Scan(
+			&i.EvaluationID,
+			&i.ReflectionID,
+			&i.Category,
+			&i.TargetPath,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -936,7 +1202,7 @@ func (q *Queries) LockEvaluation(ctx context.Context, arg LockEvaluationParams) 
 }
 
 const lockEvaluationSuggestion = `-- name: LockEvaluationSuggestion :one
-SELECT id, workspace_id, evaluation_id, category, problem, evidence, target_path, proposed_content, expected_impact, decision, decided_at, applied_skill_version_id, created_at FROM evaluation_suggestions
+SELECT id, workspace_id, evaluation_id, category, problem, evidence, target_path, proposed_content, expected_impact, decision, decided_at, applied_skill_version_id, created_at, reflection_id FROM evaluation_suggestions
 WHERE id = $1 AND workspace_id = $2
 FOR UPDATE
 `
@@ -963,6 +1229,7 @@ func (q *Queries) LockEvaluationSuggestion(ctx context.Context, arg LockEvaluati
 		&i.DecidedAt,
 		&i.AppliedSkillVersionID,
 		&i.CreatedAt,
+		&i.ReflectionID,
 	)
 	return i, err
 }

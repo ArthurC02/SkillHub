@@ -29,6 +29,7 @@ type EvidenceRef struct {
 	ArtifactPath     string `json:"artifact_path,omitempty"`
 	ByteRange        *Range `json:"byte_range,omitempty"`
 	CharRange        *Range `json:"char_range,omitempty"`
+	RunID            string `json:"run_id,omitempty"`
 	Excerpt          string `json:"excerpt"`
 	ExcerptTruncated bool   `json:"excerpt_truncated"`
 	Available        bool   `json:"available"`

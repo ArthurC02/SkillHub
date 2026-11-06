@@ -139,15 +139,8 @@ func writeEvaluationEvent(ctx context.Context, q *gen.Queries, e *Evaluation, ev
 			ID: e.row.ID, WorkspaceID: e.row.WorkspaceID,
 			FeedbackHelpful: e.row.FeedbackHelpful, FeedbackComment: e.row.FeedbackComment,
 		})
-	case SuggestionDecided:
-		var decided gen.EvaluationSuggestion
-		if decided, err = q.DecideSuggestion(ctx, gen.DecideSuggestionParams{
-			Decision: string(event.Decision), ID: event.SuggestionID, WorkspaceID: e.row.WorkspaceID,
-		}); err == nil {
-			e.suggestions[event.SuggestionID] = decided
-		}
-	case SuggestionsApplied:
-		err = writeSuggestionsApplied(ctx, q, e.row.WorkspaceID, event)
+	case SuggestionDecided, SuggestionsApplied:
+		err = writeSuggestionEvent(ctx, q, e.row.WorkspaceID, &e.suggestionLedger, event)
 	default:
 		err = fmt.Errorf("evaluation event %T has nothing to write", event)
 	}
@@ -260,4 +253,22 @@ func screeningProbability(s *judging.Screening) *float64 {
 		return nil
 	}
 	return pgconv.Clone(s.Probability)
+}
+
+func writeSuggestionEvent(
+	ctx context.Context, q *gen.Queries, workspaceID pgtype.UUID, ledger *suggestionLedger, event Event,
+) error {
+	switch event := event.(type) {
+	case SuggestionDecided:
+		decided, err := q.DecideSuggestion(ctx, gen.DecideSuggestionParams{
+			Decision: string(event.Decision), ID: event.SuggestionID, WorkspaceID: workspaceID,
+		})
+		if err == nil {
+			ledger.suggestions[event.SuggestionID] = decided
+		}
+		return err
+	case SuggestionsApplied:
+		return writeSuggestionsApplied(ctx, q, workspaceID, event)
+	}
+	return fmt.Errorf("suggestion event %T has nothing to write", event)
 }

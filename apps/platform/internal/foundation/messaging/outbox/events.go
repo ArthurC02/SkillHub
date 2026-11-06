@@ -96,6 +96,9 @@ const (
 	EvaluationFeedbackRecorded   = "evaluation.feedback_recorded"
 	EvaluationSuggestionDecided  = "evaluation.suggestion_decided"
 	EvaluationSuggestionsApplied = "evaluation.suggestions_applied"
+
+	BatchReflectionSuggestionDecided  = "batch_reflection.suggestion_decided"
+	BatchReflectionSuggestionsApplied = "batch_reflection.suggestions_applied"
 )
 
 const (
@@ -113,9 +116,10 @@ const (
 )
 
 const (
-	AggregateRun        = "run"
-	AggregateEvaluation = "evaluation"
-	AggregateSkill      = "skill"
+	AggregateRun             = "run"
+	AggregateEvaluation      = "evaluation"
+	AggregateBatchReflection = "batch_reflection"
+	AggregateSkill           = "skill"
 
 	EventVersion1 = int32(1)
 )
@@ -145,6 +149,8 @@ var EventTypes = []string{
 	EvaluationFeedbackRecorded,
 	EvaluationSuggestionDecided,
 	EvaluationSuggestionsApplied,
+	BatchReflectionSuggestionDecided,
+	BatchReflectionSuggestionsApplied,
 	SkillTakenDown,
 	SkillAccessRestricted,
 	SkillAccessRestrictionLifted,

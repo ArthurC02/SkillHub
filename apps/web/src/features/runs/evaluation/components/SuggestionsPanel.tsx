@@ -3,6 +3,7 @@ import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { focusFeedback } from "../../../../shared/ui/focusFeedback";
 import { useContinuationFocus } from "../../../../shared/ui/useContinuationFocus";
 import { ApiError } from "../../../../core/api/client";
+import { queryKeys } from "../../../../core/api/queryKeys";
 import { useEffect, useRef, useState } from "react";
 import {
   isApplyResultUnknown,
@@ -144,7 +145,7 @@ function SuggestionsList({
           <SuggestionItem
             key={suggestion.suggestion_id.toLowerCase()}
             suggestion={suggestion}
-            runId={runId}
+            listKey={queryKeys.evaluation.suggestions(runId)}
             decisionState={decisionStates.get(suggestion.suggestion_id.toLowerCase())}
             onDecisionStateChange={onDecisionStateChange}
           />

@@ -21,12 +21,22 @@ export interface CreateSkillVersionFromSuggestionsRequest {
      * The evaluation the suggestions belong to. Named explicitly
      * rather than derived, so applying a set produced under one
      * rubric cannot pick up a suggestion from a re-evaluation.
+     * Exactly one of `evaluation_id` and `reflection_id` is
+     * sent; both or neither is a 400.
      * 
      */
-    evaluationId: string;
+    evaluationId?: string;
+    /**
+     * The batch improvement round the suggestions belong to, for
+     * suggestions made by
+     * POST /skills/{id}/evaluation-batches/{batchId}/reflections.
+     * The version they were written against is that batch's.
+     * 
+     */
+    reflectionId?: string;
     /**
      * The suggestions to apply, all of which must belong to
-     * `evaluation_id`. Order does not matter; two suggestions
+     * `evaluation_id` (or `reflection_id`). Order does not matter; two suggestions
      * touching the same file are applied in path order.
      * 
      */

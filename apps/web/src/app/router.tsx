@@ -122,10 +122,16 @@ const evaluationBatchesRoute = createRoute({
     () => import("../features/lab/batches/EvaluationBatches.page"),
     "EvaluationBatches",
   ),
-  validateSearch: (search: Record<string, unknown>): { version?: string; rerun?: string } => ({
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { version?: string; rerun?: string; reflection?: string } => ({
     version:
       typeof search.version === "string" && search.version.length > 0 ? search.version : undefined,
     rerun: typeof search.rerun === "string" && search.rerun.length > 0 ? search.rerun : undefined,
+    reflection:
+      typeof search.reflection === "string" && search.reflection.length > 0
+        ? search.reflection
+        : undefined,
   }),
 });
 

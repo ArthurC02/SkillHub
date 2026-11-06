@@ -82,6 +82,7 @@ func suggestionsApplied(event outbox.Event) (SuggestionsAppliedArgs, bool, error
 	return SuggestionsAppliedArgs{
 		EventID:     event.EventID,
 		WorkspaceID: event.WorkspaceID, SkillID: event.AggregateID, SkillVersionID: added.VersionID,
-		EvaluationID: added.ImprovedBy.EvaluationID, SuggestionIDs: added.ImprovedBy.SuggestionIDs,
+		EvaluationID: added.ImprovedBy.EvaluationID, ReflectionID: added.ImprovedBy.ReflectionID,
+		SuggestionIDs: added.ImprovedBy.SuggestionIDs,
 	}, true, nil
 }

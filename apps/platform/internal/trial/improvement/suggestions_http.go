@@ -14,7 +14,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/verdict"
 )
 
-type suggestionView struct {
+type SuggestionView struct {
 	SuggestionID          string                `json:"suggestion_id"`
 	Category              string                `json:"category"`
 	Problem               string                `json:"problem"`
@@ -29,10 +29,10 @@ type suggestionView struct {
 type suggestionListResponse struct {
 	EvaluationID string           `json:"evaluation_id"`
 	Outcome      string           `json:"outcome,omitempty"`
-	Suggestions  []suggestionView `json:"suggestions"`
+	Suggestions  []SuggestionView `json:"suggestions"`
 }
 
-func toSuggestionView(row Suggestion) suggestionView {
+func toSuggestionView(row Suggestion) SuggestionView {
 	var evidence []verdict.EvidenceRef
 	if len(row.Evidence) > 0 {
 		_ = json.Unmarshal(row.Evidence, &evidence)
@@ -40,7 +40,7 @@ func toSuggestionView(row Suggestion) suggestionView {
 	if evidence == nil {
 		evidence = []verdict.EvidenceRef{}
 	}
-	out := suggestionView{
+	out := SuggestionView{
 		SuggestionID:   pgconv.UUIDString(row.ID),
 		Category:       row.Category,
 		Problem:        row.Problem,
@@ -82,7 +82,7 @@ func (h *Handler) Suggestions(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusInternalServerError, "suggestion lookup failed")
 		return
 	}
-	out := make([]suggestionView, 0, len(rows))
+	out := make([]SuggestionView, 0, len(rows))
 	sets := make([][]verdict.EvidenceRef, 0, len(rows))
 	for _, row := range rows {
 		v := toSuggestionView(row)
@@ -190,14 +190,14 @@ func (h *Handler) ApplySuggestions(w http.ResponseWriter, r *http.Request) {
 
 	var body struct {
 		EvaluationID  string   `json:"evaluation_id"`
+		ReflectionID  string   `json:"reflection_id"`
 		SuggestionIDs []string `json:"suggestion_ids"`
 	}
 	if !httpx.DecodeJSON(w, r, maxApplyBodyBytes, &body, "body must be JSON with `evaluation_id` and `suggestion_ids`") {
 		return
 	}
-	var evaluationID pgtype.UUID
-	if err := evaluationID.Scan(body.EvaluationID); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "`evaluation_id` must be a UUID")
+	parent, ok := suggestionParentOf(w, body.EvaluationID, body.ReflectionID)
+	if !ok {
 		return
 	}
 	if len(body.SuggestionIDs) == 0 {
@@ -214,7 +214,7 @@ func (h *Handler) ApplySuggestions(w http.ResponseWriter, r *http.Request) {
 		ids = append(ids, id)
 	}
 
-	res, err := h.Svc.ApplySuggestions(r.Context(), ws, skillID, evaluationID, ids)
+	res, err := h.Svc.ApplySuggestions(r.Context(), ws, skillID, parent, ids)
 	if errors.Is(err, ErrNotFound) {
 		httpx.WriteError(w, http.StatusNotFound, "skill, evaluation or suggestion not found")
 		return
@@ -248,6 +248,26 @@ func (h *Handler) ApplySuggestions(w http.ResponseWriter, r *http.Request) {
 		AppliedSuggestionIDs: res.Applied,
 		RejectedSuggestions:  rejected,
 	})
+}
+
+func suggestionParentOf(w http.ResponseWriter, evaluationID, reflectionID string) (SuggestionParent, bool) {
+	var parent SuggestionParent
+	if (evaluationID == "") == (reflectionID == "") {
+		httpx.WriteError(w, http.StatusBadRequest, "name exactly one of `evaluation_id` and `reflection_id`")
+		return parent, false
+	}
+	if evaluationID != "" {
+		if err := parent.EvaluationID.Scan(evaluationID); err != nil {
+			httpx.WriteError(w, http.StatusBadRequest, "`evaluation_id` must be a UUID")
+			return parent, false
+		}
+		return parent, true
+	}
+	if err := parent.ReflectionID.Scan(reflectionID); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "`reflection_id` must be a UUID")
+		return parent, false
+	}
+	return parent, true
 }
 
 func join(ids []string) string {

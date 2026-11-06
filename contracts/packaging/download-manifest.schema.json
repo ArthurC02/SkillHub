@@ -293,10 +293,21 @@
           "additionalProperties": false,
           "required": [
             "kind",
-            "evaluation_id",
             "suggestions",
             "base",
             "root_source"
+          ],
+          "oneOf": [
+            {
+              "required": [
+                "evaluation_id"
+              ]
+            },
+            {
+              "required": [
+                "reflection_id"
+              ]
+            }
           ],
           "title": "improvement",
           "description": "Created by adopting improvement suggestions (EVAL-002 4). Found by reverse lookup on `evaluation_suggestions.applied_skill_version_id`; there is no `derived_from_evaluation_id` column and one is deliberately not being added (m3/evaluation-design.md §5.3).",
@@ -306,7 +317,13 @@
             },
             "evaluation_id": {
               "type": "string",
-              "format": "uuid"
+              "format": "uuid",
+              "description": "The evaluation of one run whose suggestions built this version."
+            },
+            "reflection_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "The batch improvement round whose suggestions built this version. Exactly one of `evaluation_id` and `reflection_id` is present."
             },
             "suggestions": {
               "type": "array",

@@ -2283,7 +2283,7 @@ paths:
           application/json:
             schema:
               type: object
-              required: [evaluation_id, suggestion_ids]
+              required: [suggestion_ids]
               properties:
                 evaluation_id:
                   type: string
@@ -2292,13 +2292,23 @@ paths:
                     The evaluation the suggestions belong to. Named explicitly
                     rather than derived, so applying a set produced under one
                     rubric cannot pick up a suggestion from a re-evaluation.
+                    Exactly one of `evaluation_id` and `reflection_id` is
+                    sent; both or neither is a 400.
+                reflection_id:
+                  type: string
+                  format: uuid
+                  description: |
+                    The batch improvement round the suggestions belong to, for
+                    suggestions made by
+                    POST /skills/{id}/evaluation-batches/{batchId}/reflections.
+                    The version they were written against is that batch's.
                 suggestion_ids:
                   type: array
                   minItems: 1
                   items: { type: string, format: uuid }
                   description: |
                     The suggestions to apply, all of which must belong to
-                    `evaluation_id`. Order does not matter; two suggestions
+                    `evaluation_id` (or `reflection_id`). Order does not matter; two suggestions
                     touching the same file are applied in path order.
       responses:
         "429": { $ref: "#/components/responses/TooManyRequests" }
@@ -5661,6 +5671,140 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "409":
           description: The batch is not paused.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /skills/{id}/evaluation-batches/{batchId}/reflections:
+    post:
+      operationId: reflectOnEvaluationBatch
+      summary: Read a batch's development test cases and propose one round of improvements (EVAL-002)
+      description: |
+        The caller splits the batch's test cases in two. The failing runs of
+        the development cases are read together and one model call proposes
+        improvements, which are decided, previewed and applied exactly like a
+        run's suggestions; applying builds one new version through
+        POST /skills/{id}/versions/from-suggestions with `reflection_id`.
+
+        Every other test case of the batch is held out: none of its runs is
+        read, so re-running the held-out cases on the new version is a check
+        the proposals could not have been fitted to. At least one case must be
+        held out. Only the with-skill arm is read; trials run with the skill
+        withheld are a baseline, not evidence about the package.
+
+        Every trial of every development case must have finished and been
+        through evaluation; held-out cases need not have. At most eight
+        failing runs are read, the first trial of each case before any second
+        trial; the rest are counted in `runs_not_read` and the request to the
+        model says the reading is partial.
+
+        The model call is charged to its own cost kind and is refused, before
+        anything is sent, when the credit is short, model calls are halted or
+        the platform model budget is spent. A licence hold, or development
+        runs that all passed, records a round with no model call.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: batchId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [dev_test_case_ids]
+              properties:
+                dev_test_case_ids:
+                  type: array
+                  minItems: 1
+                  maxItems: 49
+                  items: { type: string, format: uuid }
+                  description: |
+                    The development cases, each a test case of this batch and
+                    named once. Fewer than all of them.
+      responses:
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "201":
+          description: The round as recorded, with the suggestions it kept.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BatchReflection" }
+        "400":
+          description: |
+            Body is not JSON, an id is not a UUID or not a test case of this
+            batch, a case is named twice, no case is named, or no case is
+            left held out.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "403":
+          description: The account is not invited.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not the caller's batch, or not this skill's.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: |
+            The batch is still launching, or a development case has a trial
+            that has not finished or not been evaluated yet.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: The credit is short; no model call was made.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "503":
+          description: Model calls are halted or the platform model budget is spent; nothing was charged.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    get:
+      operationId: listEvaluationBatchReflections
+      summary: The improvement rounds made from this batch, newest first (EVAL-002)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: batchId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Up to twenty rounds, newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [reflections]
+                properties:
+                  reflections:
+                    type: array
+                    maxItems: 20
+                    items: { $ref: "#/components/schemas/BatchReflection" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not the caller's batch, or not this skill's.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -12549,6 +12693,43 @@ components:
             POST /skills/{id}/versions/from-suggestions by a moment. Absent
             means no application has been recorded yet. The source version
             remains unchanged (iron rule 4).
+    BatchReflection:
+      description: |
+        One improvement round read from an evaluation batch's development
+        test cases. Frozen once written; only its suggestions' decisions move.
+      type: object
+      required: [reflection_id, batch_id, dev_test_case_ids, outcome, runs_read, runs_not_read, created_at, suggestions]
+      properties:
+        reflection_id: { type: string, format: uuid }
+        batch_id: { type: string, format: uuid }
+        dev_test_case_ids:
+          type: array
+          items: { type: string, format: uuid }
+          description: The cases whose runs were read. Every other case of the batch is held out.
+        outcome:
+          type: string
+          enum: [restricted, not_needed, no_evidence, unavailable, none_proposed, none_kept, kept]
+          description: |
+            Why `suggestions` holds what it holds, so an empty list is never
+            read as "nothing to fix". `restricted`: licence hold, no model
+            call. `not_needed`: every development run passed with nothing to
+            improve, no model call. `no_evidence`: failing runs cite nothing a
+            suggestion could quote, no model call. `unavailable`: the model
+            call failed, which says nothing about the skill. `none_proposed`:
+            the model proposed nothing. `none_kept`: proposals failed the
+            evidence or storage checks. `kept`: at least one is listed.
+        runs_read:
+          type: integer
+          minimum: 0
+          description: Failing development runs shown to the model.
+        runs_not_read:
+          type: integer
+          minimum: 0
+          description: Failing development runs left out to fit the request; above zero means the reading was partial.
+        created_at: { type: string, format: date-time }
+        suggestions:
+          type: array
+          items: { $ref: "#/components/schemas/ImprovementSuggestion" }
     SuggestionBlockedReason:
       description: |
         Why a suggestion cannot be applied. One vocabulary, served from one

@@ -12,6 +12,7 @@ import (
 
 type AppliedSuggestion struct {
 	EvaluationID pgtype.UUID
+	ReflectionID pgtype.UUID
 	Category     string
 	TargetPath   string
 }
@@ -20,6 +21,7 @@ type Suggestion struct {
 	ID                    pgtype.UUID
 	WorkspaceID           pgtype.UUID
 	EvaluationID          pgtype.UUID
+	ReflectionID          pgtype.UUID
 	Category              string
 	Problem               string
 	Evidence              []byte
@@ -44,6 +46,7 @@ func (s *Service) AppliedSuggestions(ctx context.Context, workspaceID, versionID
 	for i, row := range rows {
 		result[i] = AppliedSuggestion{
 			EvaluationID: row.EvaluationID,
+			ReflectionID: row.ReflectionID,
 			Category:     row.Category,
 			TargetPath:   row.TargetPath,
 		}
@@ -60,18 +63,40 @@ func (s *Service) Decide(
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	e, err := loadEvaluationOfSuggestion(ctx, s.queries().WithTx(tx), workspaceID, suggestionID)
+	q := s.queries().WithTx(tx)
+	owner, err := q.GetEvaluationSuggestion(ctx, gen.GetEvaluationSuggestionParams{ID: suggestionID, WorkspaceID: workspaceID})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return Suggestion{}, ErrNotFound
 	}
 	if err != nil {
 		return Suggestion{}, err
 	}
-	e.Decide(suggestionID, to)
-	if err := saveUnlessRefused(ctx, tx, e); err != nil {
+	decided, err := decideOwned(ctx, tx, q, owner, to)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Suggestion{}, ErrNotFound
+	}
+	if err != nil {
 		return Suggestion{}, err
 	}
-	return suggestionOf(e.suggestions[suggestionID]), tx.Commit(ctx)
+	return suggestionOf(decided), tx.Commit(ctx)
+}
+
+func decideOwned(ctx context.Context, tx pgx.Tx, q *gen.Queries, owner gen.EvaluationSuggestion, to Decision) (gen.EvaluationSuggestion, error) {
+	ids := []pgtype.UUID{owner.ID}
+	if owner.ReflectionID.Valid {
+		r, err := loadReflectionWithSuggestions(ctx, q, owner.WorkspaceID, owner.ReflectionID, ids)
+		if err != nil {
+			return gen.EvaluationSuggestion{}, err
+		}
+		r.Decide(owner.ID, to)
+		return r.suggestions[owner.ID], saveReflectionUnlessRefused(ctx, tx, r)
+	}
+	e, err := loadEvaluationOfSuggestion(ctx, q, owner.WorkspaceID, owner.ID)
+	if err != nil {
+		return gen.EvaluationSuggestion{}, err
+	}
+	e.Decide(owner.ID, to)
+	return e.suggestions[owner.ID], saveUnlessRefused(ctx, tx, e)
 }
 
 func (s *Service) Suggestions(
@@ -91,7 +116,7 @@ func (s *Service) Suggestions(
 
 func suggestionOf(row gen.EvaluationSuggestion) Suggestion {
 	return Suggestion{
-		ID: row.ID, WorkspaceID: row.WorkspaceID, EvaluationID: row.EvaluationID,
+		ID: row.ID, WorkspaceID: row.WorkspaceID, EvaluationID: row.EvaluationID, ReflectionID: row.ReflectionID,
 		Category: row.Category, Problem: row.Problem, Evidence: row.Evidence,
 		TargetPath: row.TargetPath, ProposedContent: row.ProposedContent,
 		ExpectedImpact: row.ExpectedImpact, Decision: row.Decision,

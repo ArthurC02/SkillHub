@@ -102,6 +102,25 @@ VALUES ('88888888-8888-4888-8888-888888888888', 1, 'fail when curt', 'first vers
 SELECT must_fail($$UPDATE evaluation_grader_versions SET instructions = 'rewritten' WHERE reason = 'first version'$$);
 SELECT must_fail($$DELETE FROM evaluation_grader_versions WHERE reason = 'first version'$$);
 
+INSERT INTO skill_versions (id, workspace_id, skill_id, version_number, content_hash, package_object_key)
+VALUES ('44444444-4444-4444-4444-444444444445', '22222222-2222-2222-2222-222222222222',
+        '33333333-3333-3333-3333-333333333333', 2, 'hash-2', 'ws/22/skill/33/v2.tar.zst');
+INSERT INTO evaluation_batches (id, workspace_id, skill_id, skill_version_id, trials)
+VALUES ('cccccccc-cccc-4ccc-8ccc-cccccccccccc', '22222222-2222-2222-2222-222222222222',
+        '33333333-3333-3333-3333-333333333333', '44444444-4444-4444-4444-444444444444', 1);
+INSERT INTO batch_reflections (id, workspace_id, batch_id, skill_version_id, dev_test_case_ids, outcome, runs_read, runs_not_read)
+VALUES ('dddddddd-dddd-4ddd-8ddd-dddddddddddd', '22222222-2222-2222-2222-222222222222',
+        'cccccccc-cccc-4ccc-8ccc-cccccccccccc', '44444444-4444-4444-4444-444444444444',
+        ARRAY['55555555-5555-5555-5555-555555555555']::uuid[], 'not_needed', 0, 0);
+SELECT must_fail($$UPDATE batch_reflections SET outcome = 'kept' WHERE id = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd'$$);
+SELECT must_fail($$DELETE FROM batch_reflections WHERE id = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd'$$);
+SELECT must_violate_fk($$
+    INSERT INTO batch_reflections (workspace_id, batch_id, skill_version_id, dev_test_case_ids, outcome, runs_read, runs_not_read)
+    VALUES ('22222222-2222-2222-2222-222222222222', 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+            '44444444-4444-4444-4444-444444444445',
+            ARRAY['55555555-5555-5555-5555-555555555555']::uuid[], 'not_needed', 0, 0)
+$$);
+
 SELECT must_violate_check($$UPDATE runs SET status = 'running'
 WHERE id = '77777777-7777-7777-7777-777777777777'$$);
 UPDATE runs SET status = 'provisioning', started_at = now()

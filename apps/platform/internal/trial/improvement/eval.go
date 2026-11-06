@@ -95,6 +95,7 @@ func (s *Service) requireTestLab() error {
 }
 
 var errRunReaderNotConfigured = errors.New("evaluation run reader is not configured")
+
 var errRegistryReadNotConfigured = errors.New("evaluation registry reader is not configured")
 var errRunStillGoing = errors.New("evaluation: the run has not finished")
 

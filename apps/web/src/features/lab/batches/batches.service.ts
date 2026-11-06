@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../../../core/api/client";
 import { queryKeys } from "../../../core/api/queryKeys";
 import { confirmPreflight } from "../lab.service";
+import { createVersionFromSuggestions } from "../../runs";
+import { isBatchReflection, isBatchReflectionList, type BatchReflection } from "./reflection.model";
 import {
   isBatchComparison,
   isBatchList,
@@ -94,5 +96,56 @@ export function useConfirmRunPermissions(skillId: string, versionId: string, tes
   return useMutation({
     mutationFn: (summaryHash: string) =>
       confirmPreflight(skillId, versionId, testCaseId, summaryHash),
+  });
+}
+
+export function useBatchReflections(skillId: string, batchId: string) {
+  return useQuery({
+    queryKey: queryKeys.evaluationBatches.reflections(skillId, batchId),
+    queryFn: async () => {
+      const body = await apiFetch<unknown>(`${base(skillId)}/${batchId}/reflections`);
+      if (!isBatchReflectionList(body, batchId)) throw new Error("Invalid batch reflections");
+      return body.reflections;
+    },
+    enabled: batchId !== "",
+  });
+}
+
+export function useReflectOnBatch(skillId: string, batchId: string) {
+  const client = useQueryClient();
+  const key = queryKeys.evaluationBatches.reflections(skillId, batchId);
+  return useMutation({
+    mutationFn: async (devTestCaseIds: string[]) => {
+      const body = await apiFetch<unknown>(`${base(skillId)}/${batchId}/reflections`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dev_test_case_ids: devTestCaseIds }),
+      });
+      if (!isBatchReflection(body, batchId)) throw new Error("Invalid batch reflection");
+      return body;
+    },
+    onSuccess: (created) => {
+      client.setQueryData<BatchReflection[]>(key, (held) => [created, ...(held ?? [])]);
+      void client.invalidateQueries({ queryKey: key });
+      void client.invalidateQueries({ queryKey: queryKeys.credits });
+    },
+  });
+}
+
+export function useApplyReflection(skillId: string, batchId: string) {
+  const client = useQueryClient();
+  const key = queryKeys.evaluationBatches.reflections(skillId, batchId);
+  return useMutation({
+    mutationFn: ({
+      reflectionId,
+      suggestionIds,
+    }: {
+      reflectionId: string;
+      suggestionIds: string[];
+    }) => createVersionFromSuggestions(skillId, { reflection_id: reflectionId }, suggestionIds),
+    onSettled: () => {
+      void client.invalidateQueries({ queryKey: key });
+      void client.invalidateQueries({ queryKey: queryKeys.skills.versions(skillId) });
+    },
   });
 }

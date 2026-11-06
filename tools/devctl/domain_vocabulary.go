@@ -279,6 +279,14 @@ var domainVocabularies = []domainVocabulary{
 		},
 	},
 	{
+		name: "batch reflection outcome",
+		sources: []vocabularySource{
+			sqlColumnCheck("batch_reflections", "outcome"),
+			goConstEnum("apps/platform/internal/trial/improvement/suggest.go", "SuggestionOutcome"),
+			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "BatchReflectionOutcome"),
+		},
+	},
+	{
 		name: "evaluation injection check",
 		sources: []vocabularySource{
 			sqlColumnCheck("evaluations", "injection_check"),

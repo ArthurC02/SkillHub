@@ -8,7 +8,6 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/facts"
 )
 
@@ -30,7 +29,7 @@ func TestASuggestionWhoseRunVersionIsGoneIsNotFound(t *testing.T) {
 		},
 	}
 
-	_, err := svc.loadVersions(context.Background(), pgtype.UUID{}, gen.Evaluation{}, suggestionCtx{})
+	_, err := svc.loadVersions(context.Background(), pgtype.UUID{}, pgtype.UUID{}, suggestionCtx{})
 
 	if !errors.Is(err, ErrNotFound) {
 		t.Fatalf("err = %v, want ErrNotFound", err)

@@ -70,6 +70,7 @@ export const MovePlatformAgentFindingBodyNoteMaxLength = 1000;
 export const PublicSearchResultRankMaximum = 1;
 export const PublicSearchSkillsLimitMaximum = 100;
 export const PublicSearchSkillsQMaxLength = 2000;
+export const ReflectOnEvaluationBatchBodyDevTestCaseIdsMaxItems = 49;
 export const ReleasePlatformAgentBrakeBodyNoteMaxLength = 1000;
 export const RubricItemTextMaxLength = 2000;
 export const RubricItemsMaxItems = 50;

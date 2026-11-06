@@ -356,7 +356,7 @@ export async function decideSuggestion(suggestionId: string, decision: "accepted
 }
 
 export function useDecideSuggestion(
-  runId: string,
+  listKey: readonly unknown[],
   callbacks: {
     onConfirmed: () => void;
     onError: (error: Error, decision: "accepted" | "rejected") => void;
@@ -374,20 +374,22 @@ export function useDecideSuggestion(
     onError: (error, { decision }) => callbacks.onError(error, decision),
     onSuccess: () => {
       callbacks.onConfirmed();
-      return client.invalidateQueries({ queryKey: queryKeys.evaluation.suggestions(runId) });
+      return client.invalidateQueries({ queryKey: listKey });
     },
   });
 }
 
+export type SuggestionOwner = { evaluation_id: string } | { reflection_id: string };
+
 export async function createVersionFromSuggestions(
   skillId: string,
-  evaluationId: string,
+  owner: SuggestionOwner,
   suggestionIds: string[],
 ) {
   const result = await apiFetch<unknown>(`/skills/${skillId}/versions/from-suggestions`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ evaluation_id: evaluationId, suggestion_ids: suggestionIds }),
+    body: JSON.stringify({ ...owner, suggestion_ids: suggestionIds }),
   });
   if (!isAppliedVersion(result) || !matchesAppliedRequest(result, skillId, suggestionIds))
     throw new Error("Invalid applied version response");
@@ -465,7 +467,7 @@ export function useApplySuggestions(runId: string) {
       skillId: string;
       evaluationId: string;
       suggestionIds: string[];
-    }) => createVersionFromSuggestions(skillId, evaluationId, suggestionIds),
+    }) => createVersionFromSuggestions(skillId, { evaluation_id: evaluationId }, suggestionIds),
     onSuccess: (created, request) => {
       client.setQueryData<RunSuggestions>(
         queryKeys.evaluation.suggestions(runId),

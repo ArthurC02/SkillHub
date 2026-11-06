@@ -376,6 +376,12 @@ type ListDownloadRecordsParams struct {
 	ArtifactId uuid.UUID
 }
 
+// ListEvaluationBatchReflectionsParams is parameters of listEvaluationBatchReflections operation.
+type ListEvaluationBatchReflectionsParams struct {
+	ID      uuid.UUID
+	BatchId uuid.UUID
+}
+
 // ListEvaluationBatchesParams is parameters of listEvaluationBatches operation.
 type ListEvaluationBatchesParams struct {
 	ID uuid.UUID
@@ -559,6 +565,12 @@ type PublishBundleParams struct {
 // PublishSkillParams is parameters of publishSkill operation.
 type PublishSkillParams struct {
 	ID uuid.UUID
+}
+
+// ReflectOnEvaluationBatchParams is parameters of reflectOnEvaluationBatch operation.
+type ReflectOnEvaluationBatchParams struct {
+	ID      uuid.UUID
+	BatchId uuid.UUID
 }
 
 // RestoreSkillParams is parameters of restoreSkill operation.

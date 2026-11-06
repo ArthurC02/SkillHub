@@ -527,6 +527,7 @@ immutable:
   download_artifact_members: Plugin 產物是由哪幾個版本組成的；重打包是新列
   evaluation_grader_versions: 一個 check 釘住的評分指示；改了等於改寫已經判過的尺
   exposure_reviews: 曝光審核紀錄；撤銷是新的一筆，舊的判斷與它看過的快照要留著
+  batch_reflections: 一輪批次改善讀過哪些開發題；改了等於改寫那幾條建議的依據
 
 immutable_allow:
   PurgeSkillsByID: skill_versions
@@ -600,6 +601,7 @@ tables:
   evaluation_settings: eval
   evaluation_batches: batch
   evaluation_batch_items: batch
+  batch_reflections: eval
   evaluation_graders: eval
   evaluation_grader_versions: eval
   run_continuations: run
@@ -664,6 +666,7 @@ retention:
   run_rate_limit_setting: keep operator configuration
   evaluation_batches: keep the record of which evaluation set ran against which version
   evaluation_batch_items: keep the link from a batch trial to its permanent run
+  batch_reflections: keep the record of which development test cases an improvement round read
   evaluation_graders: with_owner deleted with its workspace by account purge; platform graders keep
   evaluation_grader_versions: with_owner deleted with its grader
   artifacts: expire objects past retention, maintenance purge-run-artifacts marks the row

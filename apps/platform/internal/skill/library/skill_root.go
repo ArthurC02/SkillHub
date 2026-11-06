@@ -136,6 +136,7 @@ type SkillVersionAdded struct {
 
 type Improvement struct {
 	EvaluationID  pgtype.UUID   `json:"evaluation_id"`
+	ReflectionID  pgtype.UUID   `json:"reflection_id,omitzero"`
 	SuggestionIDs []pgtype.UUID `json:"suggestion_ids"`
 }
 

@@ -75,6 +75,12 @@ export const queryKeys = {
   evaluationBatches: {
     list: (skillId: string) => ["evaluation-batches", skillId],
     report: (skillId: string, batchId: string) => ["evaluation-batches", skillId, batchId],
+    reflections: (skillId: string, batchId: string) => [
+      "evaluation-batches",
+      skillId,
+      batchId,
+      "reflections",
+    ],
     comparison: (skillId: string, batchId: string, against: string) => [
       "evaluation-batches",
       skillId,

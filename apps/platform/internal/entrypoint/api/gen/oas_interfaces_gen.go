@@ -373,6 +373,10 @@ type ListDownloadRecordsRes interface {
 	listDownloadRecordsRes()
 }
 
+type ListEvaluationBatchReflectionsRes interface {
+	listEvaluationBatchReflectionsRes()
+}
+
 type ListEvaluationBatchesRes interface {
 	listEvaluationBatchesRes()
 }
@@ -495,6 +499,10 @@ type PublishBundleRes interface {
 
 type PublishSkillRes interface {
 	publishSkillRes()
+}
+
+type ReflectOnEvaluationBatchRes interface {
+	reflectOnEvaluationBatchRes()
 }
 
 type RegisterPublisherRes interface {

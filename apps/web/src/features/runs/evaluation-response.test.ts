@@ -28,7 +28,7 @@ test.each([1, 9007199254740991])(
   async (version) => {
     vi.mocked(apiFetch).mockResolvedValue({ ...receipt, version_number: version });
     await expect(
-      createVersionFromSuggestions("skill", "evaluation", ["s1", "s2"]),
+      createVersionFromSuggestions("skill", { evaluation_id: "evaluation" }, ["s1", "s2"]),
     ).resolves.toMatchObject({
       version_number: version,
       applied_suggestion_ids: ["s1"],
@@ -41,7 +41,7 @@ test.each([1, 9007199254740991])(
 test("a duplicate receipt retains the existing version identity", async () => {
   vi.mocked(apiFetch).mockResolvedValue({ ...receipt, duplicate: true });
   await expect(
-    createVersionFromSuggestions("skill", "evaluation", ["s1", "s2"]),
+    createVersionFromSuggestions("skill", { evaluation_id: "evaluation" }, ["s1", "s2"]),
   ).resolves.toMatchObject({ version_id: "version", duplicate: true });
 });
 
@@ -53,7 +53,7 @@ test("an apply receipt matches identifiers without changing UUID case semantics"
     rejected_suggestions: [{ ...receipt.rejected_suggestions[0], suggestion_id: "S2" }],
   });
   await expect(
-    createVersionFromSuggestions("abc", "evaluation", ["s1", "s2"]),
+    createVersionFromSuggestions("abc", { evaluation_id: "evaluation" }, ["s1", "s2"]),
   ).resolves.toMatchObject({
     skill_id: "ABC",
     applied_suggestion_ids: ["S1"],
@@ -63,7 +63,7 @@ test("an apply receipt matches identifiers without changing UUID case semantics"
 test("repeated requested suggestions require only one outcome per identifier", async () => {
   vi.mocked(apiFetch).mockResolvedValue(receipt);
   await expect(
-    createVersionFromSuggestions("skill", "evaluation", ["s1", "S1", "s2"]),
+    createVersionFromSuggestions("skill", { evaluation_id: "evaluation" }, ["s1", "S1", "s2"]),
   ).resolves.toEqual(receipt);
 });
 
@@ -89,9 +89,9 @@ test.each([
   ["both applied and rejected suggestion", { ...receipt, applied_suggestion_ids: ["s1", "s2"] }],
 ])("a receipt with %s cannot confirm the requested operation", async (_name, response) => {
   vi.mocked(apiFetch).mockResolvedValue(response);
-  await expect(createVersionFromSuggestions("skill", "evaluation", ["s1", "s2"])).rejects.toThrow(
-    "Invalid applied version response",
-  );
+  await expect(
+    createVersionFromSuggestions("skill", { evaluation_id: "evaluation" }, ["s1", "s2"]),
+  ).rejects.toThrow("Invalid applied version response");
 });
 test.each([
   ["null", null],
@@ -121,9 +121,9 @@ test.each([
   ],
 ])("a %s receipt cannot announce a created version", async (_name, response) => {
   vi.mocked(apiFetch).mockResolvedValue(response);
-  await expect(createVersionFromSuggestions("skill", "evaluation", ["s1", "s2"])).rejects.toThrow(
-    "Invalid applied version response",
-  );
+  await expect(
+    createVersionFromSuggestions("skill", { evaluation_id: "evaluation" }, ["s1", "s2"]),
+  ).rejects.toThrow("Invalid applied version response");
 });
 test.each<[string, Error, boolean]>([
   ["lost response", new TypeError("Failed to fetch"), true],

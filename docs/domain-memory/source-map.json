@@ -87,6 +87,7 @@
         "apps/platform/internal/trial/improvement/judging/doc.go",
         "apps/platform/internal/trial/improvement/llmadapter/doc.go",
         "apps/platform/internal/trial/improvement/modelport/doc.go",
+        "apps/platform/internal/trial/improvement/reflection/doc.go",
         "apps/platform/internal/trial/improvement/verdict/doc.go"
       ]
     },

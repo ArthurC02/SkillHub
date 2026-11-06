@@ -145,7 +145,7 @@ WHERE s.evaluation_id = @evaluation_id AND a.workspace_id = @workspace_id
 ORDER BY a.suggestion_id, a.skill_version_id;
 
 -- name: ListSuggestionsAppliedToVersion :many
-SELECT s.evaluation_id, s.category, s.target_path
+SELECT s.evaluation_id, s.reflection_id, s.category, s.target_path
 FROM evaluation_suggestion_applications a
 JOIN evaluation_suggestions s ON s.id = a.suggestion_id AND s.workspace_id = a.workspace_id
 WHERE a.skill_version_id = sqlc.arg(applied_skill_version_id) AND a.workspace_id = @workspace_id
@@ -200,3 +200,43 @@ RETURNING *;
 
 -- name: ListRunsWithAnEvaluation :many
 SELECT DISTINCT run_id FROM evaluations WHERE run_id = ANY(@run_ids::uuid[]);
+
+-- name: CreateBatchReflection :one
+INSERT INTO batch_reflections (
+    workspace_id, batch_id, skill_version_id, dev_test_case_ids, outcome, runs_read, runs_not_read, created_by
+) VALUES (
+    @workspace_id, @batch_id, @skill_version_id, @dev_test_case_ids::uuid[], @outcome, @runs_read, @runs_not_read, sqlc.narg(created_by)
+)
+RETURNING *;
+
+-- name: ListBatchReflections :many
+SELECT * FROM batch_reflections
+WHERE workspace_id = @workspace_id AND batch_id = @batch_id
+ORDER BY created_at DESC, id DESC
+LIMIT @row_limit;
+
+-- name: GetBatchReflection :one
+SELECT * FROM batch_reflections
+WHERE id = @id AND workspace_id = @workspace_id;
+
+-- name: CreateReflectionSuggestion :one
+INSERT INTO evaluation_suggestions (
+    workspace_id, reflection_id, category, problem, evidence,
+    target_path, proposed_content, expected_impact
+) VALUES (
+    @workspace_id, @reflection_id, @category, @problem, @evidence,
+    @target_path, @proposed_content, @expected_impact
+)
+RETURNING *;
+
+-- name: ListReflectionSuggestions :many
+SELECT * FROM evaluation_suggestions
+WHERE reflection_id = ANY(@reflection_ids::uuid[]) AND workspace_id = @workspace_id
+ORDER BY created_at, id;
+
+-- name: ListReflectionSuggestionApplications :many
+SELECT a.suggestion_id, a.skill_version_id
+FROM evaluation_suggestion_applications a
+JOIN evaluation_suggestions s ON s.id = a.suggestion_id AND s.workspace_id = a.workspace_id
+WHERE s.reflection_id = @reflection_id AND a.workspace_id = @workspace_id
+ORDER BY a.suggestion_id, a.skill_version_id;
