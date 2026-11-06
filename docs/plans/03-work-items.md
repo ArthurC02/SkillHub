@@ -172,6 +172,9 @@
 - [x] TEST-012 實作 Test Lab 的 Test Case 與驗收條件介面：建立 Test Case、輸入與編輯 User Prompt、驗收條件的新增／編輯／刪除／確認、Dataset 列表與刪除。
 - [ ] TEST-013 限制每個 Skill 的 Test Case 數量。（現無上限，導致列表全量實體化且 `PACK-012` 無法推導產出上限；需先裁定數值，再於建立時強制並以既有 `excluded_test_cases` 表示打包排除。PDM-005 的單一 Test Case／Run 上限不涵蓋本項。）
 - [x] TEST-014 測試題建議：在只顯示某一個 Skill 的測試題清單上，依 Skill 名稱與摘要和選填的「想測的方向」請系統建議整組測試題，逐題採納或忽略；採納時建立測試題並把驗收條件標成系統建議、未確認，有幾條沒加成就照實說。只提案不存、獨立的成本用途與點數門檻、平台暫停與總額度用完時拒絕。（對應 `02:TEST-001`）
+- [x] TEST-015 試跑存成測試題：試跑頁可以照那次凍結的快照另存一題（提示含接續的問答、驗收條件、評分準則、模擬使用者的已知事實），不複製上傳檔案；`POST /runs/{id}/test-case`。（對應 `02:TEST-001`）
+- [x] TEST-016 從檔案匯入測試題：只顯示某一個 Skill 的測試題清單上傳 .jsonl 或 .csv，逐列預覽與說明讀不進來的原因，按下才逐題建立，被拒就停在那一列。（對應 `02:TEST-001`）
+- [x] TEST-017 用另一個版本重跑評估批次：批次結果頁與批次清單可照原批次預填題目、次數與對照，開出的批次以原批次為比較基準。（對應 `02:EVAL-014`）
 - [x] TEST-010 保存實際執行使用的 Test Case 快照。（`testlab.CreateSnapshot` 為唯一實作，由 `internal/run` 於建立 Run 的同一交易呼叫；快照涵蓋 Prompt、驗收條件與 Dataset 參照並以單一 content hash 固定，不可變由 0005 trigger 保證；已刪除的 Test Case 不可起 Run）
 
 ## 10. Run Orchestrator 與 Provider 契約（M2）

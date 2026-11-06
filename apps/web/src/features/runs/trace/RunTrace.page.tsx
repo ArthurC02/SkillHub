@@ -13,6 +13,7 @@ import { RunArtifacts } from "./components/RunArtifacts";
 import { GeneralMode } from "./components/GeneralMode";
 import { AnswerQuestions } from "./components/AnswerQuestions";
 import { AdvancedMode } from "./components/AdvancedMode";
+import { SaveAsTestCase } from "./components/SaveAsTestCase";
 import { SkillWorkspaceNav } from "../../skill";
 import "./RunTrace.page.css";
 
@@ -55,7 +56,15 @@ function RunSourceContext({
   );
 }
 
-function RunWorkspaceRail({ runId, status }: { runId: string; status?: string }) {
+function RunWorkspaceRail({
+  runId,
+  status,
+  versionId,
+}: {
+  runId: string;
+  status?: string;
+  versionId?: string;
+}) {
   return (
     <aside className="run-workspace-rail" aria-label="試跑紀錄操作與區段導覽">
       <section>
@@ -79,6 +88,7 @@ function RunWorkspaceRail({ runId, status }: { runId: string; status?: string })
           </Link>
         </p>
         <CancelRunControl runId={runId} status={status} />
+        <SaveAsTestCase runId={runId} versionId={versionId} />
       </section>
     </aside>
   );
@@ -187,7 +197,11 @@ function RunWorkspaceBody({
       </section>
 
       <div className="run-workspace-layout">
-        <RunWorkspaceRail runId={runId} status={readableTrace?.status} />
+        <RunWorkspaceRail
+          runId={runId}
+          status={readableTrace?.status}
+          versionId={readableRun?.skill_version_id}
+        />
 
         <div className="run-workspace-main">
           <section className="run-workspace-panel" id="run-trace">

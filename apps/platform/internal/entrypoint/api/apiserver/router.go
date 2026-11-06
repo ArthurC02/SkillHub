@@ -277,6 +277,7 @@ func mountTestLabRoutes(mux *http.ServeMux, d Deps) {
 	mux.HandleFunc("GET /test-cases/limits", auth.RequireSession(lab.Limits))
 	mux.HandleFunc("POST /test-cases/suggest", auth.RequireSession(limited(d, metrics.RouteSuggest, auth.RequireInvited(lab.SuggestTestCases))))
 	mux.HandleFunc("POST /test-cases", auth.RequireSession(lab.Create))
+	mux.HandleFunc("POST /runs/{id}/test-case", auth.RequireSession(lab.SaveRunAsTestCase))
 	mux.HandleFunc("GET /test-cases", auth.RequireSession(lab.List))
 	mux.HandleFunc("GET /test-cases/{id}", auth.RequireSession(lab.Get))
 	mux.HandleFunc("PATCH /test-cases/{id}", auth.RequireSession(lab.Update))

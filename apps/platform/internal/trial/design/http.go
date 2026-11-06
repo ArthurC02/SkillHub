@@ -21,9 +21,10 @@ import (
 )
 
 type Handler struct {
-	Svc         *Service
-	Suggestions *TestCaseSuggestions
-	Identity    *identity.Service
+	Svc          *Service
+	Suggestions  *TestCaseSuggestions
+	RunTestCases *RunTestCases
+	Identity     *identity.Service
 }
 
 const maxJSONBytes = utf8.UTFMax*(MaxNameChars+MaxPromptChars+MaxCriteria*MaxCriterionChars) + 64<<10
@@ -626,4 +627,27 @@ func (h *Handler) DeleteDataset(w http.ResponseWriter, r *http.Request) {
 		DatasetID: pgconv.UUIDString(ds.ID),
 		Note:      deleteDatasetNote,
 	})
+}
+
+func (h *Handler) SaveRunAsTestCase(w http.ResponseWriter, r *http.Request) {
+	ws, ok := h.workspace(w, r)
+	if !ok {
+		return
+	}
+	runID, ok := pathUUID(w, r, "id")
+	if !ok {
+		return
+	}
+	var body struct {
+		Name string `json:"name"`
+	}
+	if !decodeJSON(w, r, &body) {
+		return
+	}
+	tc, err := h.RunTestCases.Save(r.Context(), ws, runID, body.Name)
+	if err != nil {
+		fail(w, err, "建立失敗")
+		return
+	}
+	writeTestCaseResponse(w, http.StatusCreated, tc)
 }

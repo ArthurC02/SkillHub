@@ -287,6 +287,7 @@ export * from './RunSettingsModelBudget';
 export * from './RunSettingsTokensPerMinute';
 export * from './RunTransitionsInner';
 export * from './SandboxTraceEvent';
+export * from './SaveRunAsTestCaseRequest';
 export * from './SearchFilters';
 export * from './SearchHit';
 export * from './SearchIntent';

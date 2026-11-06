@@ -76,6 +76,7 @@ export const RubricItemsMaxItems = 50;
 export const RubricVersionMaxLength = 200;
 export const RunComparisonCriterionMatrixItemResultsMaxItems = 2;
 export const RunComparisonRunsMaxItems = 2;
+export const SaveRunAsTestCaseBodyNameMaxLength = 200;
 export const SearchIntentDataMaxLength = 2000;
 export const SearchIntentEnvironmentMaxLength = 2000;
 export const SearchIntentInputMaxLength = 2000;

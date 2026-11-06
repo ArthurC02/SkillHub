@@ -280,3 +280,20 @@ export function useDeleteRunArtifact(runId: string) {
     onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.runs.artifacts(runId) }),
   });
 }
+
+export function useSaveRunAsTestCase(runId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (name: string) => {
+      const body = await apiFetch<unknown>(`/runs/${runId}/test-case`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      const id = (body as { test_case_id?: unknown } | null)?.test_case_id;
+      if (typeof id !== "string" || id === "") throw new Error("Invalid saved test case response");
+      return id;
+    },
+    onSettled: () => client.invalidateQueries({ queryKey: queryKeys.testCases.all }),
+  });
+}

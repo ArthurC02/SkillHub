@@ -79,6 +79,7 @@ const (
 	RubricVersionMaxLength                                    = 200
 	RunComparisonCriterionMatrixItemResultsMaxItems           = 2
 	RunComparisonRunsMaxItems                                 = 2
+	SaveRunAsTestCaseBodyNameMaxLength                        = 200
 	SearchIntentDataMaxLength                                 = 2000
 	SearchIntentEnvironmentMaxLength                          = 2000
 	SearchIntentInputMaxLength                                = 2000

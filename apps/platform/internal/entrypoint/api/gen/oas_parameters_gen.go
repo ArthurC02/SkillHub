@@ -593,6 +593,11 @@ type RevisePlatformEvaluationGraderParams struct {
 	ID uuid.UUID
 }
 
+// SaveRunAsTestCaseParams is parameters of saveRunAsTestCase operation.
+type SaveRunAsTestCaseParams struct {
+	ID uuid.UUID
+}
+
 // SaveSkillVersionParams is parameters of saveSkillVersion operation.
 type SaveSkillVersionParams struct {
 	ID uuid.UUID

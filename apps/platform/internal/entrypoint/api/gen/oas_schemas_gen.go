@@ -30807,6 +30807,32 @@ func (s *SandboxTraceEventType) UnmarshalText(data []byte) error {
 	}
 }
 
+type SaveRunAsTestCaseBadRequest Error
+
+func (*SaveRunAsTestCaseBadRequest) saveRunAsTestCaseRes() {}
+
+type SaveRunAsTestCaseNotFound Error
+
+func (*SaveRunAsTestCaseNotFound) saveRunAsTestCaseRes() {}
+
+type SaveRunAsTestCaseReq struct {
+	Name string `json:"name"`
+}
+
+// GetName returns the value of Name.
+func (s *SaveRunAsTestCaseReq) GetName() string {
+	return s.Name
+}
+
+// SetName sets the value of Name.
+func (s *SaveRunAsTestCaseReq) SetName(val string) {
+	s.Name = val
+}
+
+type SaveRunAsTestCaseUnauthorized Error
+
+func (*SaveRunAsTestCaseUnauthorized) saveRunAsTestCaseRes() {}
+
 type SaveSkillVersionBadRequest Error
 
 func (*SaveSkillVersionBadRequest) saveSkillVersionRes() {}
@@ -35627,6 +35653,7 @@ func (*TestCase) addAcceptanceCriterionRes()    {}
 func (*TestCase) createTestCaseRes()            {}
 func (*TestCase) deleteAcceptanceCriterionRes() {}
 func (*TestCase) getTestCaseRes()               {}
+func (*TestCase) saveRunAsTestCaseRes()         {}
 func (*TestCase) updateAcceptanceCriterionRes() {}
 func (*TestCase) updateTestCaseRes()            {}
 

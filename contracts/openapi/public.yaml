@@ -5447,6 +5447,51 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /runs/{id}/test-case:
+    post:
+      operationId: saveRunAsTestCase
+      summary: Save what a run executed as a new test case (TEST-015)
+      description: |
+        Copies the run's frozen snapshot into a new editable draft on the run's
+        skill: its prompt (for a continuing run, the prompt with every question
+        and answer), its acceptance criteria as they stood, its rubric and its
+        simulated user facts. Uploaded files are not copied. The run, its
+        snapshot and the test case it came from are not changed.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, maxLength: 200 }
+      responses:
+        "201":
+          description: The new draft.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TestCase" }
+        "400":
+          description: Body is not JSON, or the name is blank or over-long.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not the caller's run, or its skill no longer exists.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /skills/{id}/evaluation-batches:
     post:
       operationId: createEvaluationBatch

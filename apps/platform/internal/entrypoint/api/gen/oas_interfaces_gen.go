@@ -533,6 +533,10 @@ type RevisePlatformEvaluationGraderRes interface {
 	revisePlatformEvaluationGraderRes()
 }
 
+type SaveRunAsTestCaseRes interface {
+	saveRunAsTestCaseRes()
+}
+
 type SaveSkillVersionRes interface {
 	saveSkillVersionRes()
 }

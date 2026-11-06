@@ -2,6 +2,7 @@ package apiserver
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"sort"
@@ -190,7 +191,7 @@ func NewApp(cfg Config) (*App, error) {
 	app.Deps.Search = &catalog.Handler{Svc: catalogSvc, Identity: auth.Service}
 	app.Deps.Registry = &registry.Handler{Svc: registrySvc, Takedowns: &registry.Takedowns{Registry: registrySvc}, Identity: auth.Service}
 	app.Deps.Governance = &governance.Handler{Svc: newGovernanceService(cfg.Pool, registrySvc, identitySvc)}
-	app.Deps.TestLab = &testlab.Handler{Svc: testlabSvc, Suggestions: testCases, Identity: auth.Service}
+	app.Deps.TestLab = &testlab.Handler{Svc: testlabSvc, Suggestions: testCases, RunTestCases: runTestCases(testlabSvc, runSvc), Identity: auth.Service}
 	app.Deps.Publishing = newPublishingHandler(cfg, publishingSvc, auth)
 	app.Deps.ModelBudgets = &modelbudget.Handler{Svc: budgets, Actor: sessionActorID}
 	return app, nil
@@ -678,4 +679,21 @@ func wireUserStartedModelCalls(w userStartedModelCalls, pool *pgxpool.Pool) {
 	w.versions.Billing.ModelCallsHalted = halted
 	w.lab.Billing.ModelCallsHalted = halted
 	w.testCases.Billing.ModelCallsHalted = halted
+}
+
+func runTestCases(lab *testlab.Service, runs *run.Service) *testlab.RunTestCases {
+	return &testlab.RunTestCases{Lab: lab, Origin: func(ctx context.Context, workspaceID, runID pgtype.UUID) (testlab.RunOrigin, error) {
+		view, err := runs.Get(ctx, workspaceID, runID)
+		if errors.Is(err, run.ErrNotFound) {
+			return testlab.RunOrigin{}, testlab.ErrNotFound
+		}
+		if err != nil {
+			return testlab.RunOrigin{}, err
+		}
+		link, err := runs.Linkage(ctx, workspaceID, runID)
+		if err != nil {
+			return testlab.RunOrigin{}, err
+		}
+		return testlab.RunOrigin{SkillID: link.SkillID, SnapshotID: view.TestCaseSnapshotID}, nil
+	}}
 }
