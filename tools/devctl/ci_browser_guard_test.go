@@ -35,9 +35,9 @@ func TestBrowserShardsRetainEverySupportedEnvironment(t *testing.T) {
 	t.Parallel()
 	job := browserWorkflowJob(t, "web-browser-shards")
 	for environment, total := range map[string]int{
-		"ubuntu-latest\n            browser: chromium":  2,
-		"ubuntu-latest\n            browser: firefox":   2,
-		"ubuntu-latest\n            browser: webkit":    2,
+		"ubuntu-latest\n            browser: chromium": 2,
+		"ubuntu-latest\n            browser: firefox":  2,
+		"ubuntu-latest\n            browser: webkit":   2,
 	} {
 		for shard := 1; shard <= total; shard++ {
 			row := "- os: " + environment + "\n            shard: " + strconv.Itoa(shard) + "\n            total: " + strconv.Itoa(total) + "\n"
