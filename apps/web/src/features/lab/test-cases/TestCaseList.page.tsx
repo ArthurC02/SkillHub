@@ -5,6 +5,7 @@ import { SkillWorkspaceNav, useOwnSkillPages, ownSkillsFromPages } from "../../s
 import { ExistingTestCasesSection } from "./components/ExistingTestCasesSection";
 import { CreateTestCaseForm } from "./components/CreateTestCaseForm";
 import { SuggestTestCases } from "./components/SuggestTestCases";
+import { ImportTestCases } from "./components/ImportTestCases";
 import "./TestCaseList.page.css";
 import { canRetainLoadedPage } from "../../../core/api/client";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
@@ -185,7 +186,10 @@ function TestCaseIndex({
         onFetchNextPage={() => testCases.fetchNextPage()}
       />
       {filter && ownedSkillName && !notMine && (
-        <SuggestTestCases skillId={filter} version={version} />
+        <>
+          <SuggestTestCases skillId={filter} version={version} />
+          <ImportTestCases skillId={filter} />
+        </>
       )}
     </section>
   );

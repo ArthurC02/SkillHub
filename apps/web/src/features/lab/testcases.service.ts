@@ -248,13 +248,17 @@ export function useSuggestTestCases(skillId: string) {
 export type AdoptedTestCase = { testCaseId: string; criteriaMissing: number };
 
 export function useAdoptTestCaseSuggestion(skillId: string) {
+  return useCreateTestCaseWithCriteria(skillId, "suggested");
+}
+
+export function useCreateTestCaseWithCriteria(skillId: string, source: "user" | "suggested") {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async (s: TestCaseSuggestion): Promise<AdoptedTestCase> => {
       const created = await createTestCase(skillId, s.name, s.user_prompt);
       for (const [i, text] of s.criteria.entries()) {
         try {
-          await addCriterion(created.test_case_id, { text, source: "suggested" });
+          await addCriterion(created.test_case_id, { text, source });
         } catch {
           return { testCaseId: created.test_case_id, criteriaMissing: s.criteria.length - i };
         }
