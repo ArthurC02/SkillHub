@@ -130,6 +130,7 @@ Generator upgrade 必須獨立 commit／PR，同時更新 manifest、generator l
 | `dev:model` 缺變數 | devctl只列變數名稱。把 secret放 ignored `.env`，不要放 `.env.example` |
 | CI 紅了，但 annotation 只有 `Process completed with exit code 1.` | 那一步沒包 [`tools/ci/report-failure.sh`](../../tools/ci/report-failure.sh)，不是查不到原因。診斷順序與會騙人的訊號見 [CI 看不見的失敗](../runbooks/ci-red.md) |
 | `gofmt`／`prettier --check`／`golangci-lint fmt --diff` 對你沒碰過的檔案報格式錯，但 CI 的 Linux runner 全綠 | 工作樹是 CRLF checkout。行尾一律 LF，由 [`.gitattributes`](../../.gitattributes) 強制；保留工作樹中的未提交修改，在乾淨 clone 重新檢出或依作業系統的安全流程刷新行尾，再重跑檢查。 |
+| Docker 吃掉大量磁碟 | `docker system df` 看映像、容器、volume、build cache 各自可回收多少。不丟資料的清法：`docker image prune -a`（刪沒有容器在用的映像，含舊的 runtime 與 Playwright 版本，要用時重拉或重建）、`docker builder prune`（build cache，下次建置變慢）。**`docker volume prune -a` 會刪掉沒有容器掛著的 volume，包括停掉的開發資料庫與 SeaweedFS 資料**，先 `docker volume ls` 確認沒有要留的再跑；不要用 `docker system prune --volumes` 一次全清。 |
 | postgres 容器起不來，日誌說 `there appears to be PostgreSQL data in: /var/lib/postgresql/data` | 先判斷資料是否要保留。要保留就以相容的舊版本匯出，再以現行映像還原；可拋資料則另起 disposable volume／資料庫後重跑初始化。不要直接刪除共享 volume。 |
 
 ### 本機同時跑 SPA 與 API：一個旗標加一個檔案

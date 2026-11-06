@@ -43,6 +43,7 @@ RUN apt-get update \
     && chmod 0755 /usr/local/lib/docker/cli-plugins/docker-compose \
     && go install "github.com/go-task/task/v3/cmd/task@v${TASK_VERSION}" \
     && go install "github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v${GOLANGCI_LINT_VERSION}" \
+    && go clean -cache -modcache \
     && curl -fsSL "https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-${uv_arch}-unknown-linux-gnu.tar.gz" -o /tmp/uv.tar.gz \
     && echo "${uv_sha256}  /tmp/uv.tar.gz" | sha256sum -c - \
     && tar -xzf /tmp/uv.tar.gz -C /tmp \
