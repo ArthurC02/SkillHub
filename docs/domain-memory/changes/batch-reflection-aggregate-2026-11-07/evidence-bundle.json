@@ -1,0 +1,46 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "batch-reflection-aggregate",
+  "proposal_id": "batch-reflection-aggregate-2026-11-07",
+  "registry_revision": {
+    "observed_commit": "fee82b019ba8774be1bfc9f5863e716370e2681b",
+    "registry_digest": "sha256:f64d1c0b3cc3e804f892ca43b4214cf29af157dd4af023a1caaf5cf6b57b739d",
+    "committed_digest": "sha256:25b86268c46be0fb1b0ee0e47179ff64ada2447aec45ec9c0ce7bd55c68ce5f2"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "one-owner",
+      "mutated_protection": "apps/platform/internal/trial/improvement/apply.go:95: return sug.ReflectionID == p.ReflectionID -> return sug.ReflectionID.Valid",
+      "failure_evidence": "sals batch_id=ffcd55c1-4d0b-4d46-b1f8-3bf54d35f981 proposed=1 stored=1 dropped_no_evidence=0 dropped_unstorable=0 dropped_write_failed=0 dropped_over_cap=0\n2026/11/07 03:56:58 INFO improvement proposals batch_id=ffcd55c1-4d0b-4d46-b1f8-3bf54d35f981 proposed=1 stored=1 dropped_no_evidence=0 dropped_unstorable=0 dropped_write_failed=0 dropped_over_cap=0\n    reflection_integration_test.go:239: apply one round's suggestion through another round: got 201, want 404\n    reflection_integration_test.go:243: apply: got 422 {SkillID: VersionID: VersionNumber:0 ContentHash: Duplicate:false AppliedSuggestionIDs:[] RejectedSuggestions:[{SuggestionID:05dbcd58-b6d1-4eba-9bb0-ecd8b9471b51 BlockedReason:target_changed Message:SKILL.md is no longer what it was when this suggestion was written, so the change was reasoned about other bytes; re-evaluate the newest version to get a suggestion about it}] Error:not one of the suggestions could be applied, so no version was created}, want version 2 with the suggestion\n--- FAIL: TestApplyingAReflectionsSuggestionBuildsTheNextVersionAndRecordsItsSource (0.39s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t3.390s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "one-owner",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestApplyingAReflectionsSuggestionBuildsTheNextVersionAndRecordsItsSource$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:91c95aaf911daad6c67d1b49bd1fbed1e5b61ce1b8c906e3c24bc440ab3f0b34",
+      "finished_at": "2026-11-06T19:56:20.710071Z"
+    },
+    {
+      "obligation_id": "kept-off-the-run",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestAReflectionReadsOnlyTheDevelopmentRunsAndKeepsItsSuggestionsOffTheRun$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:f4ee9a069a1aeba4b19104866c2e39d618eefd9c3992380007d5d4df0bd9d676",
+      "finished_at": "2026-11-06T19:56:27.709208Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

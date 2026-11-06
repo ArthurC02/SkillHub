@@ -1,0 +1,112 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "batch-reflection-aggregate-2026-11-07",
+  "proposer": "agent:coding-agent",
+  "requirement_id": "batch-reflection-aggregate",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-11-06T19:56:08.510809Z",
+  "verified_at": "2026-11-06T19:56:59.370520Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "fee82b019ba8774be1bfc9f5863e716370e2681b",
+    "registry_digest": "sha256:f64d1c0b3cc3e804f892ca43b4214cf29af157dd4af023a1caaf5cf6b57b739d",
+    "committed_digest": "sha256:25b86268c46be0fb1b0ee0e47179ff64ada2447aec45ec9c0ce7bd55c68ce5f2"
+  },
+  "affected_contexts": [
+    "eval"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "eval",
+    "invariant": "A Batch Reflection is written once, names at least one development case and its batch version, and owns its suggestions alone.",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "No new collaboration: the reviewed batch-eval-batch-trials interaction already supplies the batch facts; this records the aggregate the schema already enforces.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "The schema already enforces the round's invariants; the Registry did not name them."
+    ],
+    "decision": "Record the Batch Reflection aggregate with citations of the constraints and the store function that writes it; no code changes.",
+    "invariants_preserved": [
+      "The rules and the interaction reviewed in batch-reflection-recited-2026-11-07 are unchanged."
+    ],
+    "rejected_alternatives": [
+      "Citing the constraints from the existing rules, which state behaviour rather than the aggregate boundary."
+    ],
+    "proof_obligations": [
+      "one-owner",
+      "kept-off-the-run"
+    ],
+    "counterfactual_check": "db/tests/immutability_test.sql already turns red for an UPDATE-only trigger and for a two-column foreign key; the two integration tests turn red when owns() ignores the round."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "aggregates",
+      "record": {
+        "id": "batch-reflection",
+        "root": "Batch Reflection",
+        "context": "eval",
+        "invariants": [
+          "A round is stored once in batch_reflections and never updated or deleted outside an account purge; its outcome, its development test cases and its counts of runs read and not read are decided before it is written.",
+          "A round names at least one development test case and records the skill version of its batch, which the composite foreign key to evaluation_batches keeps equal to the batch version.",
+          "Every suggestion in evaluation_suggestions has exactly one owner, an evaluation or a round, so a round suggestion never appears under a run."
+        ],
+        "evidence": [
+          {
+            "path": "db/migrations/0149_batch_reflections.sql",
+            "lines": {
+              "start": 1,
+              "end": 29
+            },
+            "excerpt_sha256": "sha256:4f4695e40ce56f0cd765e1fc39fc22fce49f8b39ca2d510e93855fac8d2bd64d"
+          },
+          {
+            "path": "db/migrations/0149_batch_reflections.sql",
+            "lines": {
+              "start": 50,
+              "end": 58
+            },
+            "excerpt_sha256": "sha256:0192f39e0005784a382c33c56fac57435579fde3cf2317a9cfd09f6bdb43a7e7"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/reflection_store.go",
+            "lines": {
+              "start": 203,
+              "end": 238
+            },
+            "excerpt_sha256": "sha256:45f600a54d9175ecb9ef4b3e12b195937da20af44f243447abc449dcdffa216c"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-11-06T19:56:27.841987Z",
+      "scope": "proposal",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "fee82b019ba8774be1bfc9f5863e716370e2681b",
+        "registry_digest": "sha256:f64d1c0b3cc3e804f892ca43b4214cf29af157dd4af023a1caaf5cf6b57b739d",
+        "committed_digest": "sha256:25b86268c46be0fb1b0ee0e47179ff64ada2447aec45ec9c0ce7bd55c68ce5f2"
+      }
+    }
+  ]
+}

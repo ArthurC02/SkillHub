@@ -1,0 +1,25 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "batch-reflection-aggregate",
+  "proposal_id": "batch-reflection-aggregate-2026-11-07",
+  "obligations": [
+    {
+      "id": "one-owner",
+      "source_type": "acceptance-criterion",
+      "source_id": "one-owner",
+      "expected_outcome": "TestApplyingAReflectionsSuggestionBuildsTheNextVersionAndRecordsItsSource: applying the round suggestion as an evaluation's or through another round answers 404; naming neither or both owners answers 400.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestApplyingAReflectionsSuggestionBuildsTheNextVersionAndRecordsItsSource$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "kept-off-the-run",
+      "source_type": "invariant",
+      "source_id": "batch-reflection",
+      "expected_outcome": "TestAReflectionReadsOnlyTheDevelopmentRunsAndKeepsItsSuggestionsOffTheRun: the round suggestion is not listed under the development run.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestAReflectionReadsOnlyTheDevelopmentRunsAndKeepsItsSuggestionsOffTheRun$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

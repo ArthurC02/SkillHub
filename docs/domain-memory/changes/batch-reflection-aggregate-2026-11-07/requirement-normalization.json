@@ -1,0 +1,23 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "batch-reflection-aggregate",
+  "status": "draft",
+  "intent": "The Registry knows the Batch Reflection aggregate and the constraints that hold it together, so a reader of the schema finds the rule behind each one.",
+  "actor": "skill-creator",
+  "observable_outcome": "A round is stored once and cannot be rewritten, names its development cases and its batch version, and its suggestions have one owner.",
+  "acceptance_criteria": [
+    {
+      "id": "one-owner",
+      "statement": "A suggestion of a round cannot be applied as an evaluation's, nor through another round, and never appears in a run suggestion list."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "db/migrations/0149_batch_reflections.sql",
+    "apps/platform/internal/trial/improvement/reflection_store.go",
+    "db/tests/immutability_test.sql"
+  ]
+}
