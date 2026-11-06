@@ -43,6 +43,8 @@ Skill Hub 把外部與使用者自帶的 Skill 收進目錄、打包、交付下
 
 排序準則是**證據可稽核的程度**：第 1–4 層都留在套件內、進入內容雜湊與不可變快照，任何人拿到同一份套件都能重驗；第 5 層做不到。
 
+五層之外還有一個只出現在下載 manifest 的來源層 `release-declaration`：版本五層都沒有授權、發佈者在 Release 宣告了 License（`publication_releases.declared_license`，生成物就是這條路，見 [ADR-011｜從描述生成 Skill](./ADR-011-generating-a-skill-from-a-description.md) 決策 8）時，取得者的副本在 manifest 寫上宣告與這個來源層，並揭露 `license-from-release-declaration`；版本任一層有授權就以版本的為準。它與第 5 層的差別是**宣告隨副本走、證據不隨走**：收件者看得到是誰在何時宣告了什麼，但 `SKILL.md` 位元組裡沒有它，沒人能從套件重驗。所以它同樣只到「已宣告」，不得作為 `redistribution` 放行依據，也不寫回 `skill_versions.license_source`。
+
 打包器切出 monorepo 子目錄時，**若且唯若該目錄自身沒有任何 license 檔**，才把 repo 根授權搬入，寫出兩個檔案：`LICENSE.repo`（逐位元組原樣複製，不加註記）與 `LICENSE.repo.provenance.json`（記 `carried_from`、`repo_url`、`commit`、`skill_path`）。第 3、4 層每次搬運與回退都要對外揭露（`license-from-package-file`／`license-from-repo-file` info，後者訊息明講「涵蓋 repository，不必然涵蓋本套件內容」），不得靜默把偵測結果升格為宣告。
 
 其餘規則：

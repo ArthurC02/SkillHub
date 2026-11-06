@@ -27,7 +27,8 @@
       "description": "Manifest contract version, MAJOR.MINOR. Minor bumps are additive only and an older manifest stays a valid instance of the newer minor; a breaking change bumps the major and gets a new $id. A producer that writes only 1.0 fields keeps declaring 1.0. Same rule as contracts/events.",
       "examples": [
         "1.0",
-        "1.2"
+        "1.2",
+        "1.3"
       ]
     },
     "packaged_at": {
@@ -454,13 +455,14 @@
             "manifest-referenced-file",
             "package-license-file",
             "repo-license-file",
+            "release-declaration",
             null
           ],
-          "description": "License provenance tier, strongest first, verbatim the value domain of `skill_versions.license_source` (0012 + 0014). `manifest` - the author declared it in SKILL.md frontmatter. `manifest-referenced-file` - frontmatter pointed at a package file (`SEE LICENSE IN <file>`) and that file's text was recognised. `package-license-file` - a LICENSE file in the package itself. `repo-license-file` - a repository-level LICENSE carried in as `LICENSE.repo` for a package cut from a monorepo sub-directory; it covers the repository and not necessarily this content. The fourth license provenance tier `curated-declared` is defined but not implemented and is not accepted here."
+          "description": "License provenance tier, strongest first. The first four are verbatim the value domain of `skill_versions.license_source` (0012 + 0014). `release-declaration` - the version itself carries no license and the publisher declared one when releasing it (`publication_releases.declared_license`); the declaration travels with this copy, it is not in the SKILL.md bytes and no one has checked it.`manifest` - the author declared it in SKILL.md frontmatter. `manifest-referenced-file` - frontmatter pointed at a package file (`SEE LICENSE IN <file>`) and that file's text was recognised. `package-license-file` - a LICENSE file in the package itself. `repo-license-file` - a repository-level LICENSE carried in as `LICENSE.repo` for a package cut from a monorepo sub-directory; it covers the repository and not necessarily this content. The fourth license provenance tier `curated-declared` is defined but not implemented and is not accepted here."
         },
         "disclosures": {
           "type": "array",
-          "description": "The info-level findings raised while the licence was resolved (every carry and every fallback is disclosed, never silent), e.g. `license-from-package-file`, `license-from-repo-file`. Platform-authored text.",
+          "description": "The info-level findings raised while the licence was resolved (every carry and every fallback is disclosed, never silent), e.g. `license-from-package-file`, `license-from-repo-file`, `license-from-release-declaration`. Platform-authored text.",
           "items": {
             "$ref": "#/$defs/finding"
           }

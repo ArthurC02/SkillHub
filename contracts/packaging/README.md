@@ -50,7 +50,7 @@
 
 `expression` 另外拒收 `NOASSERTION`／`NONE`：這個欄位只承載運算式，不承載狀態，未知就是 NULL。輸出 SPDX／SBOM 時再映射。
 
-`source_tier` 的值域逐字取自 `skill_versions.license_source`（`0012` ＋ `0014`）。[打包、授權溯源與散布](../../docs/adr/README.md#打包授權溯源與散布)定義的第 4 層 `curated-declared` 已定義但不實作，**這裡也不收**。
+`source_tier` 的前四個值逐字取自 `skill_versions.license_source`（`0012` ＋ `0014`）；第五個值 `release-declaration` 只出現在取得者的副本：版本沒有授權、發佈者在 Release 宣告了 License（`publication_releases.declared_license`）時寫入，並揭露 `license-from-release-declaration`。它不在 `SKILL.md` 位元組裡、沒經過人工確認，加入時 `schema_version` 進到 `1.3`。[打包、授權溯源與散布](../../docs/adr/README.md#打包授權溯源與散布)定義的第 4 層 `curated-declared` 已定義但不實作，**這裡也不收**。
 
 **這份 schema 不決定哪些 License 可以打包。** 可散布性是 Skill 上的另一道鎖（`skills.redistribution`，三態、預設 `unknown`，見[打包、授權溯源與散布](../../docs/adr/README.md#打包授權溯源與散布)與 [packaging-design.md](../../docs/plans/mvp/m4/packaging-design.md) §4.5），且 `license_status = Confirmed` **明文不得成為放行條件**（`02:CONTENT-002`）。manifest 報告授權證據，閘門拒絕套件——兩件事。
 
@@ -97,7 +97,7 @@
 
 **`manifest_hash` 的語意一旦有第一個 Download Artifact 存在就不能再改**（[packaging-design.md](../../docs/plans/mvp/m4/packaging-design.md) §2.4）。改它是 major，而且是需要 ADR 的那一種。
 
-**值域鏡像**：`license.source_tier` 是 `skill_versions.license_source` CHECK 的複本，`compatibility.capability`／`behaviour` 是 `skill_runtime_compatibility` 兩欄 CHECK 的複本，`origin.improvement.suggestions[].category` 是 `evaluation_suggestions.category` CHECK 的複本。**DB 是定義，這裡是複本**；改 DB 的 CHECK 必須同步這裡，並依上述規則判定是 minor 還是 major。
+**值域鏡像**：`license.source_tier` 是 `skill_versions.license_source` CHECK 的複本（加上 `release-declaration`，它的定義是 `publication_releases.declared_license` 的 CHECK），`compatibility.capability`／`behaviour` 是 `skill_runtime_compatibility` 兩欄 CHECK 的複本，`origin.improvement.suggestions[].category` 是 `evaluation_suggestions.category` CHECK 的複本。**DB 是定義，這裡是複本**；改 DB 的 CHECK 必須同步這裡，並依上述規則判定是 minor 還是 major。
 
 ## 6. 反例清單（validator 的另一半）
 

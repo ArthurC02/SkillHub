@@ -712,8 +712,8 @@ func TestShippedProfilesSpeakTheInterfaceLanguageAndKeepTheReviewedOriginal(t *t
 }
 
 func TestManifestWritesTheSourceVersionTimeUnderBothNames(t *testing.T) {
-	if ManifestSchemaVersion != "1.2" {
-		t.Fatalf("the additive field landed in 1.2; version says %s", ManifestSchemaVersion)
+	if ManifestSchemaVersion != "1.3" {
+		t.Fatalf("the release-declaration source tier landed in 1.3; version says %s", ManifestSchemaVersion)
 	}
 	m := Manifest{PackagedAt: "2026-08-17T09:00:00Z", SourceVersionCreatedAt: "2026-08-17T09:00:00Z"}
 	blob, err := json.Marshal(m)

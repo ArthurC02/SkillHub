@@ -12,7 +12,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
-const ManifestSchemaVersion = "1.2"
+const ManifestSchemaVersion = "1.3"
 
 const unavailable = "unavailable"
 

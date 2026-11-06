@@ -256,6 +256,7 @@ func (s *Service) Plan(ctx context.Context, ws identity.Workspace, req PackageRe
 	if err != nil {
 		return nil, err
 	}
+	version = withReleaseDeclaration(version, req.declaredLicense)
 	summaries, err := s.ReadVersionSummaries(ctx, []pgtype.UUID{version.ID})
 	if err != nil {
 		return nil, err
@@ -383,7 +384,7 @@ func (s *Service) build(ctx context.Context, ws identity.Workspace, p *Plan) err
 	p.Dependencies = dependencyNotes(report)
 	files = append(files, exportFile{
 		path: InstallFile,
-		data: []byte(renderInstall(p.Profile, skillName, p.Dependencies, mcpNeedsOf(declaredTools(report), p.Version.MCPTools))),
+		data: []byte(renderInstall(p.Profile, skillName, p.Dependencies, mcpNeedsOf(declaredTools(report), p.Version.MCPTools)) + releaseDeclarationInstallNote(p.Version)),
 	})
 
 	files = dedupeByPath(files)
@@ -510,7 +511,7 @@ func (s *Service) buildManifest(
 
 			Expression:  p.Version.LicenseExpression,
 			SourceTier:  p.Version.LicenseSource,
-			Disclosures: licenseDisclosures(cat.Infos),
+			Disclosures: append(licenseDisclosures(cat.Infos), releaseDeclarationDisclosures(p.Version)...),
 		},
 		Validation:        carriedValidation(report),
 		Compatibility:     compat,
@@ -615,11 +616,16 @@ func (s *Service) Create(ctx context.Context, ws identity.Workspace, req Package
 	return s.create(ctx, ws, ws, req)
 }
 
-func (s *Service) CreateForRecipient(
-	ctx context.Context, recipient identity.Workspace, sourceWorkspaceID, skillID, versionID pgtype.UUID,
-) (Result, error) {
-	return s.create(ctx, identity.Workspace{ID: sourceWorkspaceID}, recipient, PackageRequest{
-		SkillID: skillID, VersionID: versionID, Target: StandardTargetID, forRecipient: true,
+type RecipientRequest struct {
+	SourceWorkspaceID pgtype.UUID
+	SkillID           pgtype.UUID
+	VersionID         pgtype.UUID
+	DeclaredLicense   string
+}
+
+func (s *Service) CreateForRecipient(ctx context.Context, recipient identity.Workspace, req RecipientRequest) (Result, error) {
+	return s.create(ctx, identity.Workspace{ID: req.SourceWorkspaceID}, recipient, PackageRequest{
+		SkillID: req.SkillID, VersionID: req.VersionID, Target: StandardTargetID, forRecipient: true, declaredLicense: req.DeclaredLicense,
 	})
 }
 
@@ -629,7 +635,8 @@ type PackageRequest struct {
 	Target           string
 	IncludeTestCases bool
 
-	forRecipient bool
+	forRecipient    bool
+	declaredLicense string
 }
 
 func (s *Service) create(ctx context.Context, source, recipient identity.Workspace, req PackageRequest) (Result, error) {

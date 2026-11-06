@@ -38,9 +38,11 @@ func newPublishingService(cfg Config, registrySvc *registry.Service, packagingSv
 		return publishingVersionFacts(version), found, err
 	}
 	svc.PackageForRecipient = func(
-		ctx context.Context, recipient identity.Workspace, ownerWorkspaceID, skillID, versionID pgtype.UUID,
+		ctx context.Context, recipient identity.Workspace, ownerWorkspaceID, skillID, versionID pgtype.UUID, declaredLicense string,
 	) (publishing.Acquisition, error) {
-		result, err := packagingSvc.CreateForRecipient(ctx, recipient, ownerWorkspaceID, skillID, versionID)
+		result, err := packagingSvc.CreateForRecipient(ctx, recipient, packaging.RecipientRequest{
+			SourceWorkspaceID: ownerWorkspaceID, SkillID: skillID, VersionID: versionID, DeclaredLicense: declaredLicense,
+		})
 		if errors.Is(err, packaging.ErrNotFound) {
 			return publishing.Acquisition{}, publishing.ErrNotFound
 		}

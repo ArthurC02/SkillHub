@@ -64,7 +64,7 @@ type Service struct {
 	ReadVersion         func(ctx context.Context, workspaceID, versionID pgtype.UUID) (VersionFacts, bool, error)
 	LatestVersion       func(ctx context.Context, workspaceID, skillID pgtype.UUID) (VersionFacts, bool, error)
 
-	PackageForRecipient       func(ctx context.Context, recipient identity.Workspace, ownerWorkspaceID, skillID, versionID pgtype.UUID) (Acquisition, error)
+	PackageForRecipient       func(ctx context.Context, recipient identity.Workspace, ownerWorkspaceID, skillID, versionID pgtype.UUID, declaredLicense string) (Acquisition, error)
 	PackagePluginForRecipient func(ctx context.Context, recipient identity.Workspace, ownerWorkspaceID pgtype.UUID, plugin PluginRequest) (Acquisition, error)
 }
 
@@ -594,10 +594,11 @@ func (s *Service) Acquire(ctx context.Context, recipient identity.Workspace, pub
 	if len(publication.Releases) == 0 {
 		return Acquisition{}, ErrNotFound
 	}
-	if current := publication.Releases[0].Bundle; current != nil {
-		return s.PackagePluginForRecipient(ctx, recipient, publication.OwnerWorkspaceID, pluginRequestOf(*current, publication.Publisher))
+	current := publication.Releases[0]
+	if current.Bundle != nil {
+		return s.PackagePluginForRecipient(ctx, recipient, publication.OwnerWorkspaceID, pluginRequestOf(*current.Bundle, publication.Publisher))
 	}
-	return s.PackageForRecipient(ctx, recipient, publication.OwnerWorkspaceID, publication.SkillID, publication.Releases[0].VersionID)
+	return s.PackageForRecipient(ctx, recipient, publication.OwnerWorkspaceID, publication.SkillID, current.VersionID, current.DeclaredLicense)
 }
 
 func PurgeWorkspace(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID) error {
