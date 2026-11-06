@@ -3,12 +3,12 @@
   "proposal_id": "batch-reflection-recited-2026-11-07",
   "proposer": "agent:coding-agent",
   "requirement_id": "batch-reflection",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-11-06T19:38:07.970869Z",
   "verified_at": "2026-11-06T19:38:46.112285Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-11-06T19:39:08.138756Z",
+  "applied_at": "2026-11-06T19:39:18.229078Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "5f9bdb447de404eb6ff5d585632a7e665bd89a85",
@@ -494,5 +494,9 @@
     "eval-suggestion-and-judging-rules-2026-10-18",
     "mcp-tool-catalog-rules-2026-11-01"
   ],
-  "redrafted_at": "2026-11-06T19:37:03.575776Z"
+  "redrafted_at": "2026-11-06T19:37:03.575776Z",
+  "applied_registry_revision": {
+    "observed_commit": "d06f1330c39ab50666dbd6948500285fd8e9f9d6",
+    "registry_digest": "sha256:25b86268c46be0fb1b0ee0e47179ff64ada2447aec45ec9c0ce7bd55c68ce5f2"
+  }
 }
