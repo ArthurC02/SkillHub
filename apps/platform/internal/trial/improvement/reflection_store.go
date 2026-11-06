@@ -131,8 +131,15 @@ func FailureOfRun(ctx context.Context, s *Service, workspaceID, runID pgtype.UUI
 	if errors.Is(err, pgx.ErrNoRows) {
 		return RunFailure{}, false, nil
 	}
-	if err != nil || Status(ev.Status) != StatusCompleted {
+	if err != nil {
 		return RunFailure{}, false, err
+	}
+	return failureOf(runID, ev)
+}
+
+func failureOf(runID pgtype.UUID, ev gen.Evaluation) (RunFailure, bool, error) {
+	if Status(ev.Status) != StatusCompleted {
+		return RunFailure{}, false, nil
 	}
 	v := assessment{overall: verdict.Overall(ev.Overall)}
 	if ev.Summary != nil {
