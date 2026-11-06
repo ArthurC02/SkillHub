@@ -3,7 +3,7 @@ name: Runtime Image
 on:
   pull_request:
     paths:
-      - 'infra/images/**'
+      - 'infra/images/runtime-agent-sdk/**'
       - '!infra/images/**/*.md'
       - '.github/workflows/runtime-image.yml'
       - 'tools/ci/scan_predicate.sh'
@@ -11,7 +11,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'infra/images/**'
+      - 'infra/images/runtime-agent-sdk/**'
       - '!infra/images/**/*.md'
       - '.github/workflows/runtime-image.yml'
       - 'tools/ci/scan_predicate.sh'
@@ -90,7 +90,8 @@ jobs:
       # --only-fixed skips CVEs that Debian marks won't-fix.
       - name: Fail on fixable Critical/High (I-06)
         run: |
-          docker run --rm -v skillhub-grype-db:/db -e GRYPE_DB_CACHE_DIR=/db -v "$PWD/scan:/scan" "$GRYPE" sbom:/scan/sbom.spdx.json \
+          bash tools/ci/report-failure.sh 'Fixable Critical/High (I-06)' \
+            docker run --rm -v skillhub-grype-db:/db -e GRYPE_DB_CACHE_DIR=/db -v "$PWD/scan:/scan" "$GRYPE" sbom:/scan/sbom.spdx.json \
             --only-fixed --fail-on high -o table
 
       - name: Build scan attestation predicate (I-04)
@@ -246,5 +247,6 @@ jobs:
 
       - name: Fail on fixable Critical/High in the published image (I-06)
         run: |
-          docker run --rm -v skillhub-grype-db:/db -e GRYPE_DB_CACHE_DIR=/db -v "$PWD/scan:/scan" "$GRYPE" sbom:/scan/sbom.spdx.json \
+          bash tools/ci/report-failure.sh 'Fixable Critical/High (I-06)' \
+            docker run --rm -v skillhub-grype-db:/db -e GRYPE_DB_CACHE_DIR=/db -v "$PWD/scan:/scan" "$GRYPE" sbom:/scan/sbom.spdx.json \
             --only-fixed --fail-on high -o table

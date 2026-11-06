@@ -28,6 +28,7 @@ jobs:
       qa002: ${{ steps.scope.outputs.all == 'true' || steps.filter.outputs.qa002 == 'true' }}
       pglite: ${{ steps.scope.outputs.all == 'true' || steps.filter.outputs.pglite == 'true' }}
       images: ${{ steps.scope.outputs.all == 'true' || steps.filter.outputs.images == 'true' }}
+      devtools: ${{ steps.filter.outputs.devtools == 'true' }}
       deploy: ${{ steps.scope.outputs.all == 'true' || steps.filter.outputs.deploy == 'true' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -81,6 +82,9 @@ jobs:
               - 'tools/pglite/**'
               - 'tools/cleanmode/**'
               - '.github/workflows/ci.yml'
+            devtools:
+              - 'infra/images/devtools/**'
+              - '.devcontainer/**'
             images:
               - 'apps/platform/**'
               - 'apps/web/**'
@@ -916,6 +920,23 @@ jobs:
           output=$(docker run --rm "$SANDBOXD_IMAGE" 2>&1) || status=$?
           echo "$output"
           [ "$status" = 1 ] && grep -q 'SKILLHUB_SANDBOX_TOKEN is required' <<<"$output"
+
+  devtools-image:
+    needs: changes
+    if: needs.changes.outputs.devtools == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build the Dev Container image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: infra/images/devtools/Dockerfile
+          push: false
 
   images-push:
     needs: [images, images-postgres-sandboxd, web, web-browser, platform, platform-lint, platform-race, llm, sandbox, devctl, contracts-drift, dependency-audit]
