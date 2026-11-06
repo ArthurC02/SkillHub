@@ -505,6 +505,14 @@ function VersionActions({
         </Link>
         <Link
           className="action-secondary"
+          to="/skills/$skillId/evaluation-batches"
+          params={{ skillId }}
+          search={{ version: versionId }}
+        >
+          評估批次
+        </Link>
+        <Link
+          className="action-secondary"
           to="/workspace/downloads"
           search={{ bundleVersion: versionId }}
         >

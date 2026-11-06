@@ -47,6 +47,11 @@ import type { DownloadArtifact } from "../../features/packaging/packaging.servic
 import type { ActivityPage } from "../../features/activity/activity.service";
 import type { CheckKinds, Grader } from "../../features/evaluation/evaluation.service";
 import type { SkillImportLimits } from "../../features/creation/import.service";
+import type {
+  BatchComparison,
+  BatchReport,
+  EvaluationBatch,
+} from "../../features/lab/batches/batches.model";
 
 export const SKILL = "11111111-1111-1111-1111-111111111111";
 export const SKILL_B = "aaaaaaaa-2222-2222-2222-222222222222";
@@ -58,6 +63,8 @@ export const OTHER_RUN = "5c2e8a10-4b6d-4c31-9f77-2ab3d4e5f608";
 export const ARTIFACT = "44444444-4444-4444-4444-444444444444";
 export const PUBLISHER = "acme-tools";
 export const PUBLICATION = "pdf-summariser";
+export const BATCH = "55555555-5555-4555-8555-555555555555";
+export const OTHER_BATCH = "66666666-6666-4666-8666-666666666666";
 
 export const ME: Me = {
   user_id: "e1111111-1111-4111-8111-111111111111",
@@ -1597,6 +1604,83 @@ export const PLATFORM_GRADER = {
 
 type RouteResult = { body: unknown; status: number };
 
+export function evaluationBatch(
+  id: string,
+  overrides: Partial<EvaluationBatch> = {},
+): EvaluationBatch {
+  return {
+    id,
+    skill_id: SKILL,
+    skill_version_id: VERSION,
+    trials: 2,
+    with_skill_withheld: true,
+    status: "launched",
+    created_at: "2026-11-05T09:00:00Z",
+    ...overrides,
+  };
+}
+
+export const BATCH_REPORT: BatchReport = {
+  batch: evaluationBatch(BATCH),
+  test_cases: [
+    {
+      test_case_id: TEST_CASE,
+      trials: [
+        { trial: 1, run_id: OTHER_RUN, end_run_id: RUN, outcome: "met" },
+        { trial: 2, run_id: OTHER_RUN, outcome: "not_met" },
+      ],
+      passed: 1,
+      judged: 2,
+      pass_at_k: true,
+      pass_all_k: false,
+      prompt_varied_across: false,
+    },
+  ],
+  passed: 1,
+  judged: 2,
+  pass_rate: 0.5,
+  pass_rate_95: { low: 0.09, high: 0.91 },
+  test_cases_all_passed: 0,
+  test_cases_decided: 1,
+  skill_withheld: {
+    test_cases: [
+      {
+        test_case_id: TEST_CASE,
+        trials: [
+          { trial: 1, outcome: "not_met" },
+          { trial: 2, outcome: "not_met" },
+        ],
+        passed: 0,
+        judged: 2,
+        pass_at_k: false,
+        pass_all_k: false,
+        prompt_varied_across: false,
+      },
+    ],
+    passed: 0,
+    judged: 2,
+    pass_rate: 0,
+    pass_rate_95: { low: 0, high: 0.66 },
+    test_cases_all_passed: 0,
+    test_cases_decided: 1,
+  },
+  skill_effect: { paired: 1, unpaired: 0, difference: 0.5, better: 1, worse: 0, tied: 0 },
+};
+
+export const BATCH_COMPARISON: BatchComparison = {
+  reference: evaluationBatch(OTHER_BATCH, {
+    with_skill_withheld: false,
+    created_at: "2026-11-01T09:00:00Z",
+  }),
+  candidate: evaluationBatch(BATCH),
+  paired: 1,
+  unpaired: 0,
+  difference: 0.25,
+  candidate_better: 1,
+  reference_better: 0,
+  tied: 0,
+};
+
 function ok(body: unknown, status = 200): RouteResult {
   return { body, status };
 }
@@ -1613,6 +1697,24 @@ const ADMIN_TRENDS: Record<string, Trend> = {
 };
 
 const ROUTES: RouteMatcher[] = [
+  (path) =>
+    path === `/skills/${SKILL}/evaluation-batches`
+      ? ok({
+          batches: [
+            evaluationBatch(BATCH),
+            evaluationBatch(OTHER_BATCH, {
+              with_skill_withheld: false,
+              created_at: "2026-11-01T09:00:00Z",
+            }),
+          ],
+        })
+      : undefined,
+  (path) =>
+    path === `/skills/${SKILL}/evaluation-batches/${BATCH}/comparison`
+      ? ok(BATCH_COMPARISON)
+      : undefined,
+  (path) =>
+    path === `/skills/${SKILL}/evaluation-batches/${BATCH}` ? ok(BATCH_REPORT) : undefined,
   (path) => (path === "/admin/accounts" ? ok(ADMIN_ACCOUNT) : undefined),
   (path) =>
     path.startsWith("/admin/credits/") && !path.endsWith("/grants") ? ok(ADMIN_LEDGER) : undefined,

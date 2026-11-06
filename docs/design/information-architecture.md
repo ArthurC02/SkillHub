@@ -94,6 +94,8 @@
 | `/skills/$skillId` | `SkillDetail` | DISC-003、SKILL | Skill 生命週期／Skill 資產與版本歷史 |
 | `/skills/$skillId/files` | `SkillFiles` | SKILL | Skill 生命週期／Skill 資產與版本歷史 |
 | `/skills/$skillId/versions/$versionId` | `SkillVersion` | SKILL、TEST、PACK-001／004 | Skill 生命週期／**精確版本、驗證與發佈**〔兩個 id 都是不可變脈絡；發佈仍不等於 Catalog 曝光〕 |
+| `/skills/$skillId/evaluation-batches` | `EvaluationBatches` | 02:EVAL-014 | 試跑與改善／**評估批次**〔這個小工具的批次清單與開一個新批次；選中的版本在 query，不屬於這個工作區的測試題會在送出時被拒；權限沒確認的題目就地看權限摘要並確認〕 |
+| `/skills/$skillId/evaluation-batches/$batchId` | `EvaluationBatch` | 02:EVAL-014 | 試跑與改善／**評估批次**〔一個批次的通過率、逐題與逐次結果、不載入小工具的對照；比較基準的批次在 query（`against`）〕 |
 | `/skills/$skillId/package` | `Packaging` | 02:PACK-001／002 | Skill 生命週期／**Skill 交付與安裝** |
 | `/p/$publisher/$name` | `PublicPublication` | 02:PACK-004 | Skill 生命週期／**Skill 發佈**〔不需登入；單筆的 id 是「發佈者／名稱」這一對，所以是兩段〕 |
 | `/workspace` | `WorkspaceHome` | 02:WS-002／WS-004 | 創作者空間／**續作與跨物件注意事項** |
@@ -237,13 +239,12 @@ AdminSettings ──► /admin/agents
 | ---: | --- | --- |
 | **0** | （無） | ✅ 沒有孤兒頁 |
 | **1** | `/compare`、`/lab/test-cases/$testCaseId/datasets` | ✅ 兩項都是 R3 的「具名」那一支（IA-7）：每一頁都要求一個**只有一個地方產得出來的脈絡**，第二條入邊得先發明一個脈絡才畫得出來，逐項理由見 §5 IA-7 |
-| 2 | `/workspace`、`/workspace/account`、`/workspace/creations`、`/policy`、`/runs/$runId/compare`、`/admin`、`/admin/accounts`、`/admin/dispatch`、`/admin/rosters`、`/admin/model-budgets`、`/admin/settings`、`/admin/graders`、`/admin/cost-statistics`、`/lab/graders` | ✅ |
-| 3 | `/skills/$skillId/files`、`/skills/$skillId/package`、`/p/$publisher/$name`、`/workspace/runs`、`/admin/skills`、`/admin/audit-log`、`/admin/trends`、`/admin/exposure` | ✅ |
+| 2 | `/workspace`、`/workspace/account`、`/workspace/creations`、`/policy`、`/runs/$runId/compare`、`/admin`、`/admin/accounts`、`/admin/dispatch`、`/admin/rosters`、`/admin/model-budgets`、`/admin/settings`、`/admin/graders`、`/admin/cost-statistics`、`/lab/graders`、`/skills/$skillId/evaluation-batches/$batchId` | ✅ |
+| 3 | `/skills/$skillId/files`、`/skills/$skillId/package`、`/p/$publisher/$name`、`/workspace/runs`、`/admin/skills`、`/admin/audit-log`、`/admin/trends`、`/admin/exposure`、`/skills/$skillId/evaluation-batches` | ✅ |
 | 4 | `/workspace/import`、`/skills/$skillId/test-cases/$testCaseId/runs/new` | ✅ |
-| 5 | `/lab/test-cases/$testCaseId` | ✅ |
+| 6 | `/lab/test-cases/$testCaseId` | ✅ |
 | 7 | `/`、`/library` | ✅ |
-| 8 | `/runs/$runId` | ✅ |
-| 9 | `/workspace/downloads`、`/admin/agents` | ✅ |
+| 9 | `/workspace/downloads`、`/admin/agents`、`/runs/$runId` | ✅ |
 | 9 | `/lab/test-cases` | ✅ |
 | 12 | `/skills/$skillId/versions/$versionId` | ✅ |
 | 16 | `/skills/$skillId` | ✅ 全 app 的匯流點 |
@@ -295,6 +296,8 @@ Catalog landing `/` 的 `<h1>` 是名詞化的產品承諾 `探索能直接採�
 | --- | --- | --- |
 | `/` | `q`、`correction`、`script`、`validation`、`agent`、`tier`、`category`、`compare` | 搜尋條件即所看之物。`correction` 保存使用者確認的五欄意圖與關鍵詞 JSON，篩選仍由既有參數承載；重載與分享時直接使用修正版，不重新分析。修正版無效時明確報錯，不偷偷退回原句；不在列舉內的值直接丟掉，讓手改的網址落在未篩選清單而不是錯誤頁。<br>**`compare` 是後來加入的**，逗號分隔，與 `/compare?ids=` 同一個形狀。**它不是一條新規則，是既有那條規則的另一半**：`/compare?ids=` 把選擇放在網址上，讓一次比較可以被連結、撐得過重新整理（DISC-009），而產生那份選擇的上一步把它放在 `useState` 裡——同一份東西，晚一步撐得過重新整理，早一步撐不過，於是 DISC-009 自己的工作流「比較 → 上一頁 → 換掉一筆 → 再比較」每走一次都要重新勾兩個。<br>**原本提的是把 `q` 放到 `/compare` 上，那個修法被 R4 擋掉並且沒有做**：`q` 對 `/compare` 既不是「你在看哪一份東西」也不是偏好，是「你從哪來」，而 §0.2 只收「R 的推導前提在這裡不成立」。**而且它的前提本來就不成立**——`submitSearch` 是 `replace: true`，瀏覽器上一頁本來就回得到 `/?q=…`；遺失的一直是勾選。<br>**`category`**（PDM-001 的三個架位，自 migration 0053 起是平台欄位）。**進網址的理由是 R4 的「你在看哪一份東西」那一邊**：一個類別是目錄的一段——「文件類的 Skill 有哪些」是一個回答得完的問題，把網址貼給別人，他看到的就是那一段——而不是一種看法；反面同時成立，換一個類別換掉的是清單的內容，不是它的呈現方式。<br>**同一個參數由兩個控制項寫**：搜尋框下方那一列分類 chip（快捷，帶伺服器數出來的筆數）與篩選列裡的「類別」select（與其他五個維度並列）。**它們不是兩個狀態**——`?category=` 只有一份；兩個控制項對同一件事講不同的話，是這一頁已經出過事的形狀（「清除所有篩選」曾經漏掉 `agent`）。<br>**不收 `unassigned`**：那是一列在沒有人給它類別時的回答（畫面上是型別化的缺席詞，`02:DISC-004`），不是一個架位。`05` R-19 決定使用者自行匯入的 Skill 如何取得類別之前，那個狀態會一直在 |
 | `/compare` | `ids` | DISC-009：比較要能被連結、能撐過重新整理 |
+| `/skills/$skillId/evaluation-batches` | `version` | 要用哪一個版本開評估批次；從版本頁或這一版的測試題清單進來時帶著它，不改變批次清單本身（清單一律是這個小工具的全部批次） |
+| `/skills/$skillId/evaluation-batches/$batchId` | `against` | EVAL-014：比較基準的批次在網址裡，逐題配對比較才能被連結、撐得過重新整理 |
 | `/skills/$id/package` | `version` | PACK-001／002：版本是路徑之外的另一個「哪一份」 |
 | `/workspace/creations` | `session`（須為 UUID） | 目前正在續作哪一場可變創作會話；選擇歷程或建立成功都改寫同一個值，重載後向伺服器取回該 session 的最新 revision。它不把 revision 放進網址，也不把 session 當成正式 Skill Version |
 | `/workspace/downloads` | `artifact`（須為 UUID）、`publication`（須為 `發佈者/名稱`）、`bundleVersion`（須為 UUID） | 發佈與交付空間裡正在續接哪一筆保存紀錄或哪一個 Bundle 成員版本。`artifact` 指向一個不可變打包成品，`publication` 指向一筆 Skill Publication，`bundleVersion` 指向使用者剛選定且 owner 版本清單確實包含的不可變 Skill Version；三者都只使用 owner API 已回傳的識別，不把 Workspace 識別或前一頁脈絡塞進網址。打包、公開取得或 Bundle 匯出一旦收到 `artifact_id`，產生結果的連結就必須帶回該值；版本內的 Publication 操作同樣使用回應中的 `publisher/name`；「加入 Bundle」則保留當下的精確 Version，不得只把人送到泛用清單，也不得改選最新版本。資料成功載入且找到精確項目後才定位；成功載入但找不到時說明目前工作區找不到這筆，讀取失敗仍是讀取失敗。兩個以上參數同時出現是含糊連結，頁面不任選一筆，也不移動焦點。Bundle Publication 不在 `/me/publications`，不由這一批參數假裝支援 |
@@ -311,7 +314,7 @@ Catalog landing `/` 的 `<h1>` 是名詞化的產品承諾 `探索能直接採�
 | `/admin/trends` | `days` | 你在看哪一段資料（`02:OPS-008`）：7、30 或 90 天，其他值丟掉、回到預設的 30；分享出去的連結重現同一段 |
 | `/admin/agents` | `status`（已解決、已忽略、已自行恢復三種）、`finding`（須為 UUID）、`proposal`（須為 UUID）、`proposal_view`（待核准、處理中、最近結案三種）、`proposal_offset`（非負整數）、`run`（須為 UUID） | 平台 Agent 的待辦收件匣與提案（`02:OPS-012`、`02:OPS-013`）：`status` 是你在看哪一疊已關閉的事，沒有它就是待辦（待處理與處理中）；`finding`、`proposal`、`run` 各是正在打開的待辦、提案與執行；`proposal_view` 與 `proposal_offset` 指明提案清單的工作位置，沒有時從待核准的第一頁開始。這些都是「正在看哪一份東西」，可連結且重整後不遺失；不合形狀的值丟掉，回到預設 |
 
-**其餘十七條路由沒有 `validateSearch`**（33 條路由減去上表的 16 條）（`/skills/$id`、`/skills/$id/files`、`/skills/$id/versions/$versionId`、五條不含網址狀態的 `/workspace` 與 `/workspace/*`、`/policy` 等）：它們回答的問題完全由路徑決定，所以上表沒有它們的列——多列一條會 FAIL。
+**其餘十七條路由沒有 `validateSearch`**（35 條路由減去上表的 18 條）（`/skills/$id`、`/skills/$id/files`、`/skills/$id/versions/$versionId`、五條不含網址狀態的 `/workspace` 與 `/workspace/*`、`/policy` 等）：它們回答的問題完全由路徑決定，所以上表沒有它們的列——多列一條會 FAIL。
 
 **永遠不進網址的一項**：Provider 的臨時 id。平台的 `run_id` 是唯一識別（鐵律 10）。
 

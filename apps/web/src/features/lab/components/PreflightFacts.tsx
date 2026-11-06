@@ -1,7 +1,8 @@
-import { Timestamp } from "../../../../shared/ui/Timestamp";
-import { bytes } from "../../../../shared/format";
-import type { CostEstimate, PreflightSummary, RunQuota } from "../../lab.service";
-import { SCRIPT_LABEL } from "../preflight.model";
+import "./PreflightFacts.css";
+import { Timestamp } from "../../../shared/ui/Timestamp";
+import { bytes } from "../../../shared/format";
+import type { CostEstimate, PreflightSummary, RunQuota } from "../lab.service";
+import { SCRIPT_LABEL } from "../preflight/preflight.model";
 import { ResourceLimitsFacts } from "./ResourceLimitsFacts";
 
 const isolationLabels: Record<string, string> = {

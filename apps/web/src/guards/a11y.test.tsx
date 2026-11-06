@@ -8,6 +8,8 @@ import App from "../app/App";
 import { queryClient } from "../core/api/queryClient";
 import { router } from "../app/router";
 import {
+  BATCH,
+  OTHER_BATCH,
   OTHER_RUN,
   PUBLICATION,
   PUBLISHER,
@@ -312,6 +314,8 @@ const SCANNED_ROUTES = [
   "/skills/$skillId/package",
   "/skills/$skillId/test-cases/$testCaseId/runs/new",
   "/skills/$skillId/versions/$versionId",
+  "/skills/$skillId/evaluation-batches",
+  "/skills/$skillId/evaluation-batches/$batchId",
   "/p/$publisher/$name",
   "/lab/run",
   "/lab/datasets",
@@ -612,6 +616,36 @@ test("QA-009: 試跑比較", async () => {
   });
   await waitFor(has("逐條驗收條件"));
   await scan("/runs/$runId/compare");
+}, 30000);
+
+test("QA-009: 評估批次清單與開批次", async () => {
+  stubPlatform();
+  await mount();
+  await act(async () => {
+    await router.navigate({
+      to: "/skills/$skillId/evaluation-batches",
+      params: { skillId: SKILL },
+      search: { version: VERSION },
+    });
+  });
+  await waitFor(has("去重複列"));
+  await waitFor(has("每題 2 次＋不載入小工具的對照"));
+  await scan("/skills/$skillId/evaluation-batches");
+}, 30000);
+
+test("QA-009: 評估批次結果與比較", async () => {
+  stubPlatform();
+  await mount();
+  await act(async () => {
+    await router.navigate({
+      to: "/skills/$skillId/evaluation-batches/$batchId",
+      params: { skillId: SKILL, batchId: BATCH },
+      search: { against: OTHER_BATCH },
+    });
+  });
+  await waitFor(has("小工具帶來的差別"));
+  await waitFor(has("這個批次比較常通過"));
+  await scan("/skills/$skillId/evaluation-batches/$batchId");
 }, 30000);
 
 test("QA-009: 測試題列表", async () => {

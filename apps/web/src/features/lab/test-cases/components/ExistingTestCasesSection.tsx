@@ -42,6 +42,7 @@ export function ExistingTestCasesSection({
           </Link>
         </p>
       )}
+      <BatchEntry skillId={filter} version={version} notMine={notMine} listed={rows.length} />
       {notMine && (
         <p className="notice" role="status">
           這個小工具不在你的工作區。測試題屬於工作區，所以這裡看不到它，建立表單的小工具選單也選不到它——
@@ -91,5 +92,26 @@ export function ExistingTestCasesSection({
         </button>
       )}
     </>
+  );
+}
+
+function BatchEntry({
+  skillId,
+  version,
+  notMine,
+  listed,
+}: {
+  skillId: string | undefined;
+  version: string | undefined;
+  notMine: boolean;
+  listed: number;
+}) {
+  if (!skillId || notMine || listed === 0) return null;
+  return (
+    <p>
+      <Link to="/skills/$skillId/evaluation-batches" params={{ skillId }} search={{ version }}>
+        把這些測試題一起跑幾次（評估批次）
+      </Link>
+    </p>
   );
 }

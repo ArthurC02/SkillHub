@@ -1,5 +1,5 @@
-import type { PreflightSummary } from "../../lab.service";
-import { ceiling, limit, count, seconds, tokens } from "../preflight.model";
+import type { PreflightSummary } from "../lab.service";
+import { ceiling, limit, count, seconds, tokens } from "../preflight/preflight.model";
 
 export function ResourceLimitsFacts({
   resourceLimits,

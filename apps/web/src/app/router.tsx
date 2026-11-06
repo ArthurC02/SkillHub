@@ -115,6 +115,32 @@ const skillVersionRoute = createRoute({
   ),
 });
 
+const evaluationBatchesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/skills/$skillId/evaluation-batches",
+  component: lazyRouteComponent(
+    () => import("../features/lab/batches/EvaluationBatches.page"),
+    "EvaluationBatches",
+  ),
+  validateSearch: (search: Record<string, unknown>): { version?: string } => ({
+    version:
+      typeof search.version === "string" && search.version.length > 0 ? search.version : undefined,
+  }),
+});
+
+const evaluationBatchRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/skills/$skillId/evaluation-batches/$batchId",
+  component: lazyRouteComponent(
+    () => import("../features/lab/batches/EvaluationBatch.page"),
+    "EvaluationBatch",
+  ),
+  validateSearch: (search: Record<string, unknown>): { against?: string } => ({
+    against:
+      typeof search.against === "string" && search.against.length > 0 ? search.against : undefined,
+  }),
+});
+
 const packagingRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/skills/$skillId/package",
@@ -566,6 +592,8 @@ const routeTree = rootRoute.addChildren([
   skillDetailRoute,
   skillFilesRoute,
   skillVersionRoute,
+  evaluationBatchesRoute,
+  evaluationBatchRoute,
   packagingRoute,
   publicPublicationRoute,
   downloadsRoute,

@@ -1,5 +1,7 @@
 import {
   AGENT_REPORT_RUN,
+  BATCH,
+  OTHER_BATCH,
   OTHER_RUN,
   PUBLICATION,
   PUBLISHER,
@@ -18,6 +20,8 @@ export const ROUTES: [name: string, url: string][] = [
   ["skill-detail", `/skills/${SKILL}`],
   ["skill-files", `/skills/${SKILL}/files`],
   ["skill-version", `/skills/${SKILL}/versions/${VERSION}`],
+  ["evaluation-batches", `/skills/${SKILL}/evaluation-batches?version=${VERSION}`],
+  ["evaluation-batch", `/skills/${SKILL}/evaluation-batches/${BATCH}?against=${OTHER_BATCH}`],
   ["packaging", `/skills/${SKILL}/package?version=${VERSION}`],
   ["public-publication", `/p/${PUBLISHER}/${PUBLICATION}`],
   ["run-preflight", `/skills/${SKILL}/test-cases/${TEST_CASE}/runs/new?version=${VERSION}`],

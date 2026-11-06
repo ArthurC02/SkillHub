@@ -7,7 +7,7 @@ import { useConfirmAndStartRun, usePreflight } from "../lab.service";
 import { useSkillDetail, useSkillVersions } from "../../skill";
 import { useTestCase } from "../testcases.service";
 import { PreflightShell } from "./components/PreflightShell";
-import { PreflightFacts } from "./components/PreflightFacts";
+import { PreflightFacts } from "../components/PreflightFacts";
 import { RunStartControl } from "./components/RunStartControl";
 import { ApiError } from "../../../core/api/client";
 import { NOT_INVITED_SENTENCE, runCeilingCredits } from "./preflight.model";
