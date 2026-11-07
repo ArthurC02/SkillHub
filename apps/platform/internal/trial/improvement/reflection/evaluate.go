@@ -80,6 +80,7 @@ func (s *Service) EvaluateCandidates(ctx context.Context, ws identity.Workspace,
 	for candidate := range builds {
 		builds[candidate] = eval.CandidateBuild{Candidate: candidate}
 		if !evaluable[candidate] {
+			builds[candidate].Skipped = rejectedSuggestions(round, candidate)
 			continue
 		}
 		if builds[candidate], err = s.Eval.BuildCandidate(ctx, ws, ask.candidate(candidate)); err != nil {
@@ -113,6 +114,16 @@ func evaluableCandidates(round eval.ReflectionRecord) map[int]bool {
 		}
 	}
 	return evaluable
+}
+
+func rejectedSuggestions(round eval.ReflectionRecord, candidate int) []pgtype.UUID {
+	var ids []pgtype.UUID
+	for _, sug := range round.Suggestions {
+		if int(sug.Candidate) == candidate && eval.Decision(sug.Decision) == eval.DecisionRejected {
+			ids = append(ids, sug.ID)
+		}
+	}
+	return ids
 }
 
 func trialRuns(source BatchTrials) int64 {

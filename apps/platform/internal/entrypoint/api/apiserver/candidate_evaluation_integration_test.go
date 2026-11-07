@@ -279,6 +279,44 @@ func TestAHeldCandidateThatWasNeverAdoptedCannotStartARound(t *testing.T) {
 	}
 }
 
+func TestARejectedSuggestionIsLeftOutSoACandidateOfOnlyRejectedOnesIsUnavailable(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	alice, f, round := reflectOnCandidates(t, a, pool, "evaluate-rejected", 2)
+	var rejected string
+	if err := pool.QueryRow(context.Background(),
+		`SELECT id::text FROM evaluation_suggestions WHERE reflection_id = $1 AND candidate = 1`,
+		mustUUID(t, round)).Scan(&rejected); err != nil {
+		t.Fatal(err)
+	}
+	if code, decided := alice.decide(t, rejected, "rejected"); code != http.StatusOK || decided.Decision != "rejected" {
+		t.Fatalf("reject candidate 1's suggestion: %d %+v", code, decided)
+	}
+	_, refused, _ := alice.roundAction(t, f, round, "evaluate", "")
+	alice.confirmEveryPair(t, f, refused)
+	code, evaluated, raw := alice.roundAction(t, f, round, "evaluate", "")
+	if code != http.StatusOK || evaluated.Evaluation == nil || len(evaluated.Evaluation.Candidates) != 2 {
+		t.Fatalf("evaluate: got %d %s, want 200 with two candidates", code, raw)
+	}
+	if built, unavailable := evaluated.Evaluation.Candidates[0], evaluated.Evaluation.Candidates[1]; built.SkillVersionID == nil ||
+		unavailable.SkillVersionID != nil || unavailable.BatchID != nil {
+		t.Errorf("candidates = %s, want candidate 0 built and candidate 1 unavailable", raw)
+	}
+	var decision, skipped string
+	if err := pool.QueryRow(context.Background(), `
+		SELECT s.decision, array_to_string(l.skipped_suggestion_ids, ',')
+		FROM evaluation_suggestions s JOIN reflection_candidate_batches l ON l.reflection_id = s.reflection_id AND l.candidate = 1
+		WHERE s.id = $1`, mustUUID(t, rejected)).Scan(&decision, &skipped); err != nil {
+		t.Fatal(err)
+	}
+	if decision != "rejected" || skipped != rejected {
+		t.Errorf("rejected suggestion = %s, skipped %q; want still rejected and skipped as %s", decision, skipped, rejected)
+	}
+	if all, held, _ := candidateLine(t, pool, f.skillID); all != 2 || held != 1 {
+		t.Errorf("versions = %d with %d held, want 2 with only candidate 0's held", all, held)
+	}
+}
+
 type failingPuts struct {
 	ingest.ObjectStore
 	mu      sync.Mutex
