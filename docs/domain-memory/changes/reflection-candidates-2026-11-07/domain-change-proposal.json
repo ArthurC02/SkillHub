@@ -3,11 +3,11 @@
   "proposal_id": "reflection-candidates-2026-11-07",
   "proposer": "coding-agent",
   "requirement_id": "reflection-candidates",
-  "status": "verified",
+  "status": "superseded",
   "change_classification": "material",
   "submitted_at": "2026-11-07T11:47:07.323362Z",
   "verified_at": "2026-11-07T11:49:47.799060Z",
-  "finalized_at": null,
+  "finalized_at": "2026-11-07T11:49:59.168229Z",
   "applied_at": null,
   "proposal_revision": 1,
   "base_registry_revision": {
@@ -274,5 +274,9 @@
   "supersedes": [
     "batch-reflection-recited-2026-11-07",
     "batch-reflection-aggregate-2026-11-07"
-  ]
+  ],
+  "superseded_from_status": "approved",
+  "superseded_at": "2026-11-07T11:50:56.382973Z",
+  "superseded_reason": "The candidate-focus term in registry_updates has no name, so the approved updates cannot be applied; the redraft adds the name and changes nothing else.",
+  "superseded_by": "reflection-candidates-named-2026-11-07"
 }

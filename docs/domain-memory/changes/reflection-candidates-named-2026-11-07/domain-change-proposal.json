@@ -1,0 +1,281 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "reflection-candidates-named-2026-11-07",
+  "proposer": "coding-agent",
+  "requirement_id": "reflection-candidates",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-11-07T11:51:23.837761Z",
+  "verified_at": "2026-11-07T11:52:39.963435Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "9fb65f8b3c9a62fe2c1897d20bba814e0551a253",
+    "registry_digest": "sha256:b415caaf41069cd58ff3146e0047ea9274dd897b1eeda9fba7c753da006d1a3d",
+    "committed_digest": "sha256:b415caaf41069cd58ff3146e0047ea9274dd897b1eeda9fba7c753da006d1a3d"
+  },
+  "affected_contexts": [
+    "eval"
+  ],
+  "rule_ids": [
+    "a-batch-reflection-is-paid-for-by-its-requester"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "eval",
+    "invariant": "A batch improvement round is admitted once, before its first model call, and debited once for the usage of the calls that answered; each candidate's focus and outcome are frozen with the round.",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "eval reads the round policy from its own evaluation_settings, asks credit for the start quote and the one debit through the injected billing functions, and asks the llm capability once per candidate with a focus.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "One suggestion set gives one idea of the fix; several sets looking at different parts give the creator something to compare.",
+      "K model calls cost about K times one, so the operator must bound a round before it can ask for more than one.",
+      "A call that failed says nothing about the skill and must not be charged, while the other candidates' answers must not be wasted."
+    ],
+    "decision": "Billing.admit takes the round policy and refuses while the cap is unset for K>1, or when the threshold times K exceeds the cap or the balance; reflect makes the K calls in parallel with focuses in order; settleRound keeps answered candidates and charges once with roundUsage; RecordReflection derives each candidate's outcome and the best for the round and writes the candidate index on each suggestion.",
+    "invariants_preserved": [
+      "A round of one candidate makes one unfocused call, records no candidates and is charged as before.",
+      "A round is written once and never updated.",
+      "Every suggestion has exactly one owner, an evaluation or a round."
+    ],
+    "rejected_alternatives": [
+      "One debit per call, which would admit a round that cannot pay for all its calls.",
+      "Admitting each call separately, which can stop a round halfway after charging.",
+      "Storing candidates in their own table, which adds a join for a fixed set of at most four values frozen with the round."
+    ],
+    "proof_obligations": [
+      "rule-a-batch-reflection-is-paid-for-by-its-requester",
+      "one-debit-for-answered-calls",
+      "three-candidates-one-debit",
+      "cap-unset-refused",
+      "candidates-frozen-with-the-round"
+    ],
+    "counterfactual_check": "Drop the candidate factor from the estimate: the 139-credit rows of the admit table must fail. Write the candidate arrays for one candidate: the one-candidate round must fail on the CHECK. Invert the outcome ranking: the mixed round must fail."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "vocabulary",
+      "record": {
+        "id": "candidate-focus",
+        "name": "Candidate focus",
+        "definition": "Where one candidate of a batch improvement round is told to look first for the fix: instructions (SKILL.md, its description and when it is used), scripts_and_tools (the bundled scripts and how the instructions call tools and scripts), references_and_examples (the references, examples and data files the instructions point to) or free (anywhere, preferring a change of a different kind). A round of one candidate is asked with no focus.",
+        "contexts": [
+          "eval"
+        ],
+        "evidence": [
+          {
+            "path": "contracts/openapi/llm-internal.yaml",
+            "lines": {
+              "start": 2160,
+              "end": 2166
+            },
+            "excerpt_sha256": "sha256:82fc08685aeaf19772f3e70434a595f6714c1b23db5a23aa6e29e6ca221dc854"
+          },
+          {
+            "path": "apps/llm/src/skillhub_llm/evaluate.py",
+            "lines": {
+              "start": 531,
+              "end": 547
+            },
+            "excerpt_sha256": "sha256:f8731f7f9c7d118dcc7a63afa4087d250e887e7ab04a768fd3180a82087a13c5"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-batch-reflection-is-paid-for-by-its-requester",
+        "statement": "An improvement round over an evaluation batch is a model call the user starts, so it is open only to invited accounts and is admitted once, before its first model call: it is refused when model calls are halted, with 409 when it asks for more than one candidate while the operator has set no round credit cap, and with 422 when its estimate, the batch_reflection start threshold times its candidates, exceeds a set round credit cap or the owner's balance. Its model calls are one debit of the usage the gateway reported, summed over the calls that answered; a round in which no call answered is not charged.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "With no batch_reflection statistics a balance of 69 credits is refused with 422, the model is not called and nothing is charged.",
+          "At a threshold of 70, two candidates fit a cap of exactly 140 and are refused at a cap of 139 or a balance of 139.",
+          "Two candidates with no cap set are refused with 409 naming reflection_round_credit_cap, before any model call.",
+          "Three candidates whose calls report 20 prompt tokens each are one debit of 60 prompt tokens."
+        ],
+        "evidence": [
+          {
+            "path": "db/migrations/0150_reflection_candidates.sql",
+            "lines": {
+              "start": 1,
+              "end": 12
+            },
+            "content_sha256": "sha256:fff636c8be4dc44d71dfeb160ff3facaadc27f44feb9f93a4884eb04aa935689",
+            "excerpt_sha256": "sha256:eee93e69affd89b58bc515bb09df2875b22506df96bbd45ba2cd8a0d2cf8724b"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/reflection/reflection.go",
+            "lines": {
+              "start": 70,
+              "end": 92
+            },
+            "content_sha256": "sha256:7e467cd5f4b89aa97200751fcddc06256ed51f86184153630f83c4be27996b65",
+            "excerpt_sha256": "sha256:d5501e022c23cd3ac644e34567567290d58280453ae27eb174674f185724a4d3"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/reflection/reflection.go",
+            "lines": {
+              "start": 302,
+              "end": 326
+            },
+            "content_sha256": "sha256:7e467cd5f4b89aa97200751fcddc06256ed51f86184153630f83c4be27996b65",
+            "excerpt_sha256": "sha256:9da7d5f3ae841315a5e79427c61f86dc1bae453c802971d61f4dbd2b215c1e0a"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/reflection/reflection.go",
+            "lines": {
+              "start": 328,
+              "end": 352
+            },
+            "content_sha256": "sha256:7e467cd5f4b89aa97200751fcddc06256ed51f86184153630f83c4be27996b65",
+            "excerpt_sha256": "sha256:03854542fe716a64cc7b477d998b2f597ae9331e0e5366b117671df2eb5be040"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/reflection/round_test.go",
+            "lines": {
+              "start": 17,
+              "end": 53
+            },
+            "content_sha256": "sha256:6205e4257feaaeba084eac6d25dfb035eab7d2284d154c92e480a5ec49dc5fc1",
+            "excerpt_sha256": "sha256:d02e53ea7388f59ea9c3636f6524152989ceed6425abd0c89e4f24056b1159df"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/reflection/round_test.go",
+            "lines": {
+              "start": 87,
+              "end": 114
+            },
+            "content_sha256": "sha256:6205e4257feaaeba084eac6d25dfb035eab7d2284d154c92e480a5ec49dc5fc1",
+            "excerpt_sha256": "sha256:1b51e609c70c36fc84e6928c636f27471bf23e8be6afed8bc6d412e8fc6f14d5"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/reflection_integration_test.go",
+            "lines": {
+              "start": 367,
+              "end": 383
+            },
+            "content_sha256": "sha256:139cb6e8d165d4d15b31789c09623a597c0c82c09984f2c925034ff2ece13423",
+            "excerpt_sha256": "sha256:e9f743c971e08aac0206b46204cdcf8e8215aa5689e83a5e3c65ad7dd82b031d"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/reflection_integration_test.go",
+            "lines": {
+              "start": 495,
+              "end": 528
+            },
+            "content_sha256": "sha256:139cb6e8d165d4d15b31789c09623a597c0c82c09984f2c925034ff2ece13423",
+            "excerpt_sha256": "sha256:5062c6d5d53b73e69257c875ef208fb3cd0d7adb271b18ad27582650e3b32795"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/reflection_integration_test.go",
+            "lines": {
+              "start": 530,
+              "end": 548
+            },
+            "content_sha256": "sha256:139cb6e8d165d4d15b31789c09623a597c0c82c09984f2c925034ff2ece13423",
+            "excerpt_sha256": "sha256:e95295bdc83fe5d143160439bcaa2c26e9b453486d4d536d810d76e5b481b58d"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "aggregates",
+      "record": {
+        "id": "batch-reflection",
+        "root": "Batch Reflection",
+        "context": "eval",
+        "invariants": [
+          "A round is stored once in batch_reflections and never updated or deleted outside an account purge; its outcome, its development test cases and its counts of runs read and not read are decided before it is written.",
+          "A round names at least one development test case and records the skill version of its batch, which the composite foreign key to evaluation_batches keeps equal to the batch version.",
+          "Every suggestion in evaluation_suggestions has exactly one owner, an evaluation or a round, so a round suggestion never appears under a run.",
+          "A round of several candidates records each candidate's focus and outcome in candidate order, in two arrays of equal length, at most four, with no focus repeated; a round of one candidate records both arrays empty, and its outcome is the round's.",
+          "With several candidates the round's outcome is the best of its candidates': kept, then none_kept, then none_proposed, then unavailable.",
+          "Every round suggestion records the index of the candidate that wrote it, from 0 to 3; a suggestion on one run's evaluation records 0."
+        ],
+        "evidence": [
+          {
+            "path": "db/migrations/0149_batch_reflections.sql",
+            "lines": {
+              "start": 1,
+              "end": 29
+            },
+            "excerpt_sha256": "sha256:4f4695e40ce56f0cd765e1fc39fc22fce49f8b39ca2d510e93855fac8d2bd64d"
+          },
+          {
+            "path": "db/migrations/0149_batch_reflections.sql",
+            "lines": {
+              "start": 50,
+              "end": 58
+            },
+            "excerpt_sha256": "sha256:0192f39e0005784a382c33c56fac57435579fde3cf2317a9cfd09f6bdb43a7e7"
+          },
+          {
+            "path": "db/migrations/0150_reflection_candidates.sql",
+            "lines": {
+              "start": 23,
+              "end": 46
+            },
+            "content_sha256": "sha256:fff636c8be4dc44d71dfeb160ff3facaadc27f44feb9f93a4884eb04aa935689",
+            "excerpt_sha256": "sha256:946ae8a6f18a6ed43a9921c4b8818bd04defc181424f1fac461741dc80ae4c25"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/reflection_store.go",
+            "lines": {
+              "start": 227,
+              "end": 270
+            },
+            "content_sha256": "sha256:0b4c2052b1212259b83147f4e33f6789b05b6b57244be5c940e8b142ced102c9",
+            "excerpt_sha256": "sha256:684de5f180f181d4ce8cf6f5900357f76d237e91a21d987c181a64ae4bcf8d10"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/reflection_integration_test.go",
+            "lines": {
+              "start": 566,
+              "end": 589
+            },
+            "content_sha256": "sha256:139cb6e8d165d4d15b31789c09623a597c0c82c09984f2c925034ff2ece13423",
+            "excerpt_sha256": "sha256:666213e4bfa3ff97d19e3da7c3419a708cb7e533405de1de115145cb00cd1382"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-11-07T11:52:39.625583Z",
+      "scope": "proposal",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "9fb65f8b3c9a62fe2c1897d20bba814e0551a253",
+        "registry_digest": "sha256:b415caaf41069cd58ff3146e0047ea9274dd897b1eeda9fba7c753da006d1a3d",
+        "committed_digest": "sha256:b415caaf41069cd58ff3146e0047ea9274dd897b1eeda9fba7c753da006d1a3d"
+      }
+    }
+  ],
+  "supersedes": [
+    "batch-reflection-aggregate-2026-11-07",
+    "batch-reflection-recited-2026-11-07",
+    "reflection-candidates-2026-11-07"
+  ],
+  "redrafted_at": "2026-11-07T11:50:56.585461Z"
+}
