@@ -14,7 +14,9 @@ type statisticsLedger struct {
 	err   error
 }
 
-func (statisticsLedger) CreditsForUSD(usd float64) (int64, bool) { return int64(math.Round(usd * 1000)), true }
+func (statisticsLedger) CreditsForUSD(usd float64) (int64, bool) {
+	return int64(math.Round(usd * 1000)), true
+}
 
 func (l statisticsLedger) RunCostStatistics(context.Context) (RunCostStatistics, error) {
 	return l.stats, l.err
