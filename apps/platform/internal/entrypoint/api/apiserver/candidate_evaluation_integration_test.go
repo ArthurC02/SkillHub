@@ -277,6 +277,12 @@ func TestAHeldCandidateThatWasNeverAdoptedCannotStartARound(t *testing.T) {
 	if code != http.StatusConflict || !strings.Contains(raw, "已經不是這個小工具正式路線上的最新版") {
 		t.Errorf("reflecting on the unadopted candidate's batch: got %d %s, want 409 saying it is not the line's newest", code, raw)
 	}
+	registerPublisher(t, alice, freshName("evaluate-unadopted"))
+	held := *evaluated.Evaluation.Candidates[0].SkillVersionID
+	if code, body := publish(t, alice, f.skillID, `{"rights_attested":true,"version_id":"`+held+`"}`); code != http.StatusUnprocessableEntity ||
+		body["reason"] != "held_for_evaluation" {
+		t.Errorf("publishing the unadopted candidate: %d %v, want 422 held_for_evaluation", code, body)
+	}
 }
 
 func TestARejectedSuggestionIsLeftOutSoACandidateOfOnlyRejectedOnesIsUnavailable(t *testing.T) {
