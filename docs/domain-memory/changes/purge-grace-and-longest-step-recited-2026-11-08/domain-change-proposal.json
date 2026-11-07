@@ -3,12 +3,12 @@
   "proposal_id": "purge-grace-and-longest-step-recited-2026-11-08",
   "proposer": "coding-agent",
   "requirement_id": "purge-grace-and-longest-step-recited",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-11-07T22:25:43.059480Z",
   "verified_at": "2026-11-07T22:26:21.749571Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-11-07T22:26:24.440325Z",
+  "applied_at": "2026-11-07T22:26:37.297541Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "9411cf8e0725c2955fcb5504f9cb7f3e26a39464",
@@ -155,5 +155,9 @@
   ],
   "supersedes": [
     "shifted-recite-2026-10-24"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "2e937e97ee5617e40fead324124f0ce4b1b5babb",
+    "registry_digest": "sha256:0c62c36003a8710c7645e7e444bd1f6c8f8341366d497bbdd86d9edb712dbad7"
+  }
 }
