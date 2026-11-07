@@ -206,14 +206,14 @@ const (
 	baselineMaxUSD    = 0.2367
 )
 
-func (s *Service) costEstimateFor(ctx context.Context, held *heldInputs) (CostEstimate, error) {
-	if s.Ledger == nil {
+func costEstimateFor(ctx context.Context, ledger CreditLedger, held *heldInputs) (CostEstimate, error) {
+	if ledger == nil {
 		return CostEstimate{}, errors.New("run: no credit conversion wired; the pre-run screen cannot state a cost")
 	}
 	if held != nil {
-		return defaultCostEstimate(s.Ledger.CreditsForUSD)
+		return defaultCostEstimate(ledger.CreditsForUSD)
 	}
-	return runCostEstimate(ctx, s.Ledger)
+	return runCostEstimate(ctx, ledger)
 }
 
 func runCostEstimate(ctx context.Context, l CreditLedger) (CostEstimate, error) {
@@ -393,7 +393,7 @@ func (s *Service) permissionSummaryFor(
 		}
 	}
 
-	estimate, err := s.costEstimateFor(ctx, held)
+	estimate, err := costEstimateFor(ctx, s.Ledger, held)
 	if err != nil {
 		return PermissionSummary{}, err
 	}
