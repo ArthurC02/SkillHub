@@ -9,7 +9,7 @@
     "foreign_keys": 133,
     "types": 2,
     "registry_records": 772,
-    "unparsed_statements": 1,
+    "unparsed_statements": 0,
     "dynamic_ddl_statements": 1
   },
   "metrics": {

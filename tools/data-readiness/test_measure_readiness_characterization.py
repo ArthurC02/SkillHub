@@ -602,6 +602,22 @@ def test_main_writes_the_json_report_and_exits_zero_even_with_unread_statements(
     assert set(written) == {"inventory", "metrics", "details"}
 
 
+def test_a_comment_on_a_constraint_is_read_and_records_nothing():
+    import sql_schema
+    schema = sql_schema.Schema()
+    sql_schema.read_statement(schema, "db/migrations/0001_init.sql", 4,
+                              "COMMENT ON CONSTRAINT runs_key ON runs IS 'only a foreign key target';")
+    assert schema == sql_schema.Schema()
+
+
+def test_a_comment_on_a_function_is_read_and_records_nothing():
+    import sql_schema
+    schema = sql_schema.Schema()
+    sql_schema.read_statement(schema, "db/migrations/0001_init.sql", 4,
+                              "COMMENT ON FUNCTION bigint_array_sum(bigint[]) IS 'the sum of an array';")
+    assert schema == sql_schema.Schema()
+
+
 if __name__ == "__main__":
     failed = 0
     for name, fn in sorted(globals().items()):
@@ -613,11 +629,3 @@ if __name__ == "__main__":
                 failed += 1
                 print(f"FAIL {name}: {exc}")
     sys.exit(1 if failed else 0)
-
-
-def test_a_comment_on_a_constraint_is_read_and_records_nothing():
-    import sql_schema
-    schema = sql_schema.Schema()
-    sql_schema.read_statement(schema, "db/migrations/0001_init.sql", 4,
-                              "COMMENT ON CONSTRAINT runs_key ON runs IS 'only a foreign key target';")
-    assert schema == sql_schema.Schema()
