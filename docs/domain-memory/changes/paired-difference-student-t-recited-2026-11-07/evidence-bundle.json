@@ -1,0 +1,29 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "paired-difference-verdict",
+  "proposal_id": "paired-difference-student-t-recited-2026-11-07",
+  "registry_revision": {
+    "observed_commit": "0b763afeaedaaaa493deeba6e1d6c0a036bcdcc3",
+    "registry_digest": "sha256:42e810e1a341f0461c194f002485b0ec10ecc1665eb2ec88d81b49459e6d6725",
+    "committed_digest": "sha256:42e810e1a341f0461c194f002485b0ec10ecc1665eb2ec88d81b49459e6d6725"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": ".domain-memory/domain-memory.exe verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/paired-difference-student-t-recited-2026-11-07 --path apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_integration_test.go --path apps/platform/internal/trial/batch/batch_comparison.go --path apps/platform/internal/trial/batch/batch_test.go",
+      "command_profile": "architecture",
+      "exit_code": 0,
+      "output_sha256": "sha256:43ee335058cf89f804cc94ac9ee26729a544990e1229fe14eae55237acab87c1",
+      "finished_at": "2026-11-07T10:01:24.939860Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

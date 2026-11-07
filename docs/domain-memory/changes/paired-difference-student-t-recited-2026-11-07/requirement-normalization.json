@@ -1,0 +1,23 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "paired-difference-verdict",
+  "status": "draft",
+  "intent": "Re-cite rules/a-paired-difference-is-called-better-only-when-its-interval-excludes-zero, rules/batches-are-compared-only-on-test-cases-both-judged, rules/a-paired-difference-needs-two-pairs-for-an-interval after the code they cite moved or changed; the facts they state are unchanged.",
+  "actor": "coding-agent",
+  "observable_outcome": "verify-evidence reports every citation of the updated records current.",
+  "acceptance_criteria": [
+    {
+      "id": "citations-current",
+      "statement": "Every citation in the updated records matches the lines it cites."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_integration_test.go",
+    "apps/platform/internal/trial/batch/batch_comparison.go",
+    "apps/platform/internal/trial/batch/batch_test.go"
+  ]
+}

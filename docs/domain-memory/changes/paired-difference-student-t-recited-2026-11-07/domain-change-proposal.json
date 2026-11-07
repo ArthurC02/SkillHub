@@ -1,0 +1,156 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "paired-difference-student-t-recited-2026-11-07",
+  "proposer": "coding-agent",
+  "requirement_id": "paired-difference-verdict",
+  "status": "verified",
+  "change_classification": "routine",
+  "submitted_at": "2026-11-07T10:01:24.701969Z",
+  "verified_at": "2026-11-07T10:01:25.331635Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "0b763afeaedaaaa493deeba6e1d6c0a036bcdcc3",
+    "registry_digest": "sha256:42e810e1a341f0461c194f002485b0ec10ecc1665eb2ec88d81b49459e6d6725",
+    "committed_digest": "sha256:42e810e1a341f0461c194f002485b0ec10ecc1665eb2ec88d81b49459e6d6725"
+  },
+  "affected_contexts": [
+    "batch"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "<context-id>",
+    "invariant": "<falsifiable-rule>",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "<existing-or-proposed-collaboration>",
+    "consistency": "<synchronous-or-eventual>",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": null,
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-paired-difference-is-called-better-only-when-its-interval-excludes-zero",
+        "statement": "A paired difference between two batches, or between a batch and its skill-withheld arm, is presented as better or worse only when its interval excludes zero: improved or worse when the 99.9% interval does, likely improved or likely worse when only the 95% interval does, no clear difference when the 95% interval includes zero, and too few pairs below two pairs; nothing short of likely improved is presented as an improvement.",
+        "contexts": [
+          "batch"
+        ],
+        "examples": [
+          "A mean of +0.19 with a standard error of 0.1 has a 95% interval that includes zero, so the comparison says there is no clear difference rather than better.",
+          "A mean of +0.2 with a standard error of 0.1 is likely improved; +0.33 is improved.",
+          "One paired test case gives a difference but too few pairs for a verdict."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/batch/batch_comparison.go",
+            "lines": {
+              "start": 91,
+              "end": 154
+            },
+            "content_sha256": "sha256:aaf3e20fa47d29f5095a0524b9dda6b4911031be3537e3aa5411e38c29daa59b",
+            "excerpt_sha256": "sha256:a5b0a5001663cc90d1ef05502b9efae0da906da8d2393986a0e9d78b600e832f",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/trial/batch/batch_test.go",
+            "lines": {
+              "start": 150,
+              "end": 227
+            },
+            "content_sha256": "sha256:a38ec24d769d5aa3b645b592565148320789c9e4c5459ec14a824f9bcb7f31ac",
+            "excerpt_sha256": "sha256:fd4a67e98e9b4ca1f93116574b5fdea8625ec0cc39bca23eace9fd1e9d2f5f54",
+            "source_kind": "tests"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "batches-are-compared-only-on-test-cases-both-judged",
+        "statement": "Two batches are compared only on test cases judged in both; a test case judged in only one counts as unpaired, not as better, worse or tied.",
+        "contexts": [
+          "batch"
+        ],
+        "examples": [
+          "A test case judged in the candidate but not the reference adds to unpaired."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/batch/batch_comparison.go",
+            "lines": {
+              "start": 42,
+              "end": 77
+            },
+            "excerpt_sha256": "sha256:7c8767e568418548ba47be6eaeb6df116d7d1a19af372e49e365f0fab72c83d3"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_integration_test.go",
+            "lines": {
+              "start": 584,
+              "end": 625
+            },
+            "content_sha256": "sha256:f66c35827a12553c1a7af1c5f106af22e44072d59f98c7677d6dea94716f80af",
+            "excerpt_sha256": "sha256:f953bea0816cad65fcd0c0f3e7ab1bf18a8f18f9ff8b32282fbfab36f3395d01",
+            "source_kind": "tests"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-paired-difference-needs-two-pairs-for-an-interval",
+        "statement": "A paired difference gets a confidence interval only from two or more pairs; one pair gives the difference alone.",
+        "contexts": [
+          "batch"
+        ],
+        "examples": [
+          "One pair gives a difference with no interval."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/batch/batch_comparison.go",
+            "lines": {
+              "start": 129,
+              "end": 131
+            },
+            "content_sha256": "sha256:aaf3e20fa47d29f5095a0524b9dda6b4911031be3537e3aa5411e38c29daa59b",
+            "excerpt_sha256": "sha256:5357a08d524b6b250c2c6c0b48d8f57c47cc5d16933e98addf275a6b65bd6338",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/trial/batch/batch_test.go",
+            "lines": {
+              "start": 134,
+              "end": 148
+            },
+            "content_sha256": "sha256:a38ec24d769d5aa3b645b592565148320789c9e4c5459ec14a824f9bcb7f31ac",
+            "excerpt_sha256": "sha256:d389308c82fc9f2a8cdad17992a31dd4b9e1cee86464f7cd37c9dda41abb7e3a",
+            "source_kind": "tests"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [],
+  "supersedes": [
+    "paired-difference-verdict-2026-11-07"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "paired-difference-verdict",
+  "proposal_id": "paired-difference-student-t-recited-2026-11-07",
+  "obligations": [
+    {
+      "id": "evidence-current",
+      "source_type": "acceptance-criterion",
+      "source_id": "citations-current",
+      "expected_outcome": "verify-evidence reports current for every citation of the updated records.",
+      "level": "architecture",
+      "status": "planned",
+      "check": ".domain-memory/domain-memory.exe verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/paired-difference-student-t-recited-2026-11-07 --path apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_integration_test.go --path apps/platform/internal/trial/batch/batch_comparison.go --path apps/platform/internal/trial/batch/batch_test.go"
+    }
+  ]
+}
