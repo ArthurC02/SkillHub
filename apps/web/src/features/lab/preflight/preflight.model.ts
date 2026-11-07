@@ -61,7 +61,7 @@ export const BLOCKED_SENTENCE: Record<NonNullable<PreflightResponse["blocked"]>,
   platform_model_budget:
     "平台的模型總額度今天剩下的不夠這次試跑的上限,所以現在不能開始,也不會扣點。額度在台北時間每天上午 8 點恢復,之後重新整理這一頁就能開始。",
   workspace_concurrency:
-    "這個工作區還有一次試跑沒有結束,一次只能跑一個,所以現在不能開始。等它結束或到試跑清單取消它,再重新整理這一頁。",
+    "這個工作區同時進行中的試跑已經達到上限,所以現在不能開始。等它結束或到試跑清單取消它,再重新整理這一頁。",
   quota_daily:
     "今天的試跑次數已經用完,所以現在不能開始,也不會扣點。從今天最早那一次算起 24 小時後恢復。",
   quota_window:

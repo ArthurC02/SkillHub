@@ -152,7 +152,7 @@ test("a platform budget that cannot cover the run names when it recovers and off
 });
 
 for (const [blocked, says] of [
-  ["workspace_concurrency", "這個工作區還有一次試跑沒有結束,一次只能跑一個"],
+  ["workspace_concurrency", "這個工作區同時進行中的試跑已經達到上限"],
   ["quota_daily", "今天的試跑次數已經用完"],
   ["quota_window", "這段期間的試跑次數已經用完"],
   ["quota_unavailable", "現在算不出這個工作區還剩幾次試跑"],
