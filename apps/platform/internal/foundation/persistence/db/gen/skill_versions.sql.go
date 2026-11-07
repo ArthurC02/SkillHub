@@ -88,33 +88,6 @@ func (q *Queries) GetHighestVersionNumber(ctx context.Context, arg GetHighestVer
 	return column_1, err
 }
 
-const getNewestSkillVersion = `-- name: GetNewestSkillVersion :one
-SELECT id, version_number, license_expression, license_source
-FROM skill_line_versions
-WHERE skill_id = $1
-ORDER BY version_number DESC
-LIMIT 1
-`
-
-type GetNewestSkillVersionRow struct {
-	ID                pgtype.UUID
-	VersionNumber     int32
-	LicenseExpression *string
-	LicenseSource     *string
-}
-
-func (q *Queries) GetNewestSkillVersion(ctx context.Context, skillID pgtype.UUID) (GetNewestSkillVersionRow, error) {
-	row := q.db.QueryRow(ctx, getNewestSkillVersion, skillID)
-	var i GetNewestSkillVersionRow
-	err := row.Scan(
-		&i.ID,
-		&i.VersionNumber,
-		&i.LicenseExpression,
-		&i.LicenseSource,
-	)
-	return i, err
-}
-
 const getSkillRuntimeCompatibility = `-- name: GetSkillRuntimeCompatibility :one
 SELECT capability, runtime, runtime_image, measured_at
 FROM skill_runtime_compatibility

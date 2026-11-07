@@ -379,7 +379,6 @@ scope:
   ListDispatchHaltsOverlapping: user
   InsertDispatchHalt: user
   RedeclareDispatchHalt: user
-  GetNewestSkillVersion: user
   LiftDispatchHalt: user
   ListPlatformAuditEvents: user
   LockSkillForOperatorWrite: operator

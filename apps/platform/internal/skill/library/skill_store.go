@@ -89,7 +89,9 @@ func loadNewestVersion(ctx context.Context, q *gen.Queries, root *SkillRoot) err
 	if err != nil {
 		return err
 	}
-	row, err := q.GetNewestSkillVersion(ctx, root.row.ID)
+	row, err := q.GetLatestSkillVersion(ctx, gen.GetLatestSkillVersionParams{
+		SkillID: root.row.ID, WorkspaceID: root.row.WorkspaceID,
+	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil
 	}

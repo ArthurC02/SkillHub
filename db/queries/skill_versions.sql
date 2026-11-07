@@ -54,13 +54,6 @@ WHERE skill_version_id = $1
 ORDER BY measured_at DESC
 LIMIT 1;
 
--- name: GetNewestSkillVersion :one
-SELECT id, version_number, license_expression, license_source
-FROM skill_line_versions
-WHERE skill_id = $1
-ORDER BY version_number DESC
-LIMIT 1;
-
 -- name: GetHighestVersionNumber :one
 SELECT coalesce(max(version_number), 0)::int FROM skill_versions WHERE skill_id = @skill_id AND workspace_id = @workspace_id;
 
