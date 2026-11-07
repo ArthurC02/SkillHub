@@ -3,12 +3,12 @@
   "proposal_id": "paired-difference-student-t-recited-2026-11-07",
   "proposer": "coding-agent",
   "requirement_id": "paired-difference-verdict",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-11-07T10:01:24.701969Z",
   "verified_at": "2026-11-07T10:01:25.331635Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-11-07T10:01:39.571275Z",
+  "applied_at": "2026-11-07T10:01:45.274839Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "0b763afeaedaaaa493deeba6e1d6c0a036bcdcc3",
@@ -152,5 +152,9 @@
   "approvals": [],
   "supersedes": [
     "paired-difference-verdict-2026-11-07"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "b4f5bb8f602626213a099f655f6df602ec6cf9db",
+    "registry_digest": "sha256:d619ea8969d1189b834e3d66376123d7c72fb13dac28e083f9eaf63f96a0fe19"
+  }
 }
