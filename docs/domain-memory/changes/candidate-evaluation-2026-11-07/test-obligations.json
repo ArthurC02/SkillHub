@@ -1,0 +1,101 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "candidate-evaluation",
+  "proposal_id": "candidate-evaluation-2026-11-07",
+  "obligations": [
+    {
+      "id": "rule-a-held-version-stays-outside-its-skills-line-until-promoted",
+      "source_type": "rule",
+      "source_id": "a-held-version-stays-outside-its-skills-line-until-promoted",
+      "also_covers": [
+        {
+          "source_type": "acceptance-criterion",
+          "source_id": "held-outside-the-line"
+        }
+      ],
+      "expected_outcome": "TestAHeldVersionTakesTheNextNumberWithoutBecomingTheNewestOrDescribingTheSkill: a held version takes the next number, the newest stays the line's and the Skill is not described.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestAHeldVersionTakesTheNextNumberWithoutBecomingTheNewestOrDescribingTheSkill$ ./internal/skill/library/"
+    },
+    {
+      "id": "held-not-released-and-no-round",
+      "source_type": "acceptance-criterion",
+      "source_id": "held-outside-the-line",
+      "expected_outcome": "TestAHeldCandidateThatWasNeverAdoptedCannotStartARound: a round from the held candidate's batch answers 409 naming the line, and publishing it answers 422 held_for_evaluation.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestAHeldCandidateThatWasNeverAdoptedCannotStartARound$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "evaluate-then-adopt",
+      "source_type": "acceptance-criterion",
+      "source_id": "promoted-onto-its-base",
+      "also_covers": [
+        {
+          "source_type": "acceptance-criterion",
+          "source_id": "adopts-one-built"
+        },
+        {
+          "source_type": "acceptance-criterion",
+          "source_id": "accepts-pending-leaves-rejected"
+        }
+      ],
+      "expected_outcome": "TestEvaluatingCandidatesHoldsOneVersionEachAndAdoptingPromotesOnlyThatOne: two held versions, no enrichment and an untouched search document while held; adopting twice makes one enrichment, one debit and re-indexes; adopting another answers 409; both suggestions are accepted by the clicker.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestEvaluatingCandidatesHoldsOneVersionEachAndAdoptingPromotesOnlyThatOne$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-held-version-is-promoted-only-while-the-line-still-ends-at-its-base",
+      "source_type": "rule",
+      "source_id": "a-held-version-is-promoted-only-while-the-line-still-ends-at-its-base",
+      "expected_outcome": "TestPromotingAHeldVersionMakesItTheNewestOnlyWhileTheLineStillEndsAtItsBase: on its base it is promoted and describes the Skill; already newest records nothing; a moved line, a never-held and a foreign version are refused.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestPromotingAHeldVersionMakesItTheNewestOnlyWhileTheLineStillEndsAtItsBase$ ./internal/skill/library/"
+    },
+    {
+      "id": "rule-a-round-keeps-a-candidate-on-development-cases-and-recommends-one-on-held-out-cases",
+      "source_type": "rule",
+      "source_id": "a-round-keeps-a-candidate-on-development-cases-and-recommends-one-on-held-out-cases",
+      "also_covers": [
+        {
+          "source_type": "acceptance-criterion",
+          "source_id": "kept-and-recommended"
+        }
+      ],
+      "expected_outcome": "TestACandidateIsKeptOnlyWhenItLeadsADevCaseAndBeatsTheSourceThere and TestOnlyAKeptCandidateLikelyImprovedOnHeldOutCasesIsRecommended: ties above the source are both kept, a tie with the source is not; an unsettled batch or a missing standing recommends none; an unavailable candidate does not block.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^(TestACandidateIsKeptOnlyWhenItLeadsADevCaseAndBeatsTheSourceThere|TestOnlyAKeptCandidateLikelyImprovedOnHeldOutCasesIsRecommended)$ ./internal/trial/improvement/reflection/"
+    },
+    {
+      "id": "rule-evaluating-a-rounds-candidates-accepts-its-pending-suggestions",
+      "source_type": "rule",
+      "source_id": "evaluating-a-rounds-candidates-accepts-its-pending-suggestions",
+      "expected_outcome": "TestARejectedSuggestionIsLeftOutSoACandidateOfOnlyRejectedOnesIsUnavailable: candidate 0 is built, candidate 1 is unavailable with its rejected suggestion skipped and still rejected, and only one version is held.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestARejectedSuggestionIsLeftOutSoACandidateOfOnlyRejectedOnesIsUnavailable$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-round-adopts-at-most-one-built-candidate",
+      "source_type": "rule",
+      "source_id": "a-round-adopts-at-most-one-built-candidate",
+      "expected_outcome": "TestALostAdoptionRowAfterThePromotionIsHealedByAdoptingAgain: with the adoption row refused after the promotion, adopting again records it.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestALostAdoptionRowAfterThePromotionIsHealedByAdoptingAgain$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "retries-heal",
+      "source_type": "acceptance-criterion",
+      "source_id": "retries-heal",
+      "expected_outcome": "TestACrashAfterTwoOfFourCandidatesIsHealedByRetryingWithOneVersionEach and TestACrashBetweenACandidateBatchAndItsLinkIsHealedByRetryingWithNoOrphan: a retry leaves one version and one linked batch per candidate.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^(TestACrashAfterTwoOfFourCandidatesIsHealedByRetryingWithOneVersionEach|TestACrashBetweenACandidateBatchAndItsLinkIsHealedByRetryingWithNoOrphan)$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

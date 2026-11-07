@@ -1,0 +1,573 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "candidate-evaluation-2026-11-07",
+  "proposer": "coding-agent",
+  "requirement_id": "candidate-evaluation",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-11-07T15:28:00.707364Z",
+  "verified_at": "2026-11-07T15:32:47.862860Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "dea9cf5a56ad753894831a92390721b0ab2e2994",
+    "registry_digest": "sha256:39ba68ce14d53b69f54c49c1973d7fe3327aec882561fc57dd42945c58bbbc9a",
+    "committed_digest": "sha256:a7cc6f54678ebdc0dd2c7355bc4403d6d0170cd25edcdb87564b155e14e0dabb"
+  },
+  "affected_contexts": [
+    "eval",
+    "ingest",
+    "publishing",
+    "registry"
+  ],
+  "rule_ids": [
+    "a-held-version-stays-outside-its-skills-line-until-promoted",
+    "a-held-version-is-promoted-only-while-the-line-still-ends-at-its-base",
+    "a-round-keeps-a-candidate-on-development-cases-and-recommends-one-on-held-out-cases",
+    "evaluating-a-rounds-candidates-accepts-its-pending-suggestions",
+    "a-round-adopts-at-most-one-built-candidate"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "eval",
+    "invariant": "registry owns the Skill's line: held versions and their write-once promotions, read through skill_line_versions. eval owns the candidate evaluation of a round: one write-once record per candidate naming its held version and batch, and at most one write-once adoption of a built candidate.",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "eval builds a held version through ingest's existing SaveImprovedVersion with HeldForEvaluation, and adopts by calling ingest's PromoteVersion before writing the adoption row; ingest promotes through the registry SkillRoot. The candidate-versions read takes the Skill's version ids from a registry port injected at the composition root. No new import between Contexts.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [
+      "eval must not write skill_versions or skill_version_promotions",
+      "registry must not read reflection tables"
+    ],
+    "evidence": []
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A candidate must run as a real, immutable version to be compared on the round's test cases.",
+      "Until it is adopted a candidate must not become the Skill's face: newest, release, summary, search.",
+      "Enrichment costs credits, so it is paid once, for the adopted candidate only.",
+      "The adoption crosses two Contexts and cannot share one transaction."
+    ],
+    "decision": "skill_versions.held_for_evaluation marks a candidate's version; skill_line_versions is the line every newest read uses; promotion is a write-once row checked by a trigger and done by SkillRoot.Promote only on the round's base. eval records one row per candidate in reflection_candidate_batches under an idempotent batch origin key, and one adoption row whose foreign key requires a built candidate, written after the promotion so a retry heals a lost row.",
+    "invariants_preserved": [
+      "Skill versions stay immutable and numbered in order.",
+      "A round's suggestions keep one owner and the existing decide ledger.",
+      "Model calls and debits stay in Go through the gateway."
+    ],
+    "rejected_alternatives": [
+      "Keeping candidates outside skill_versions, which would need a second run and download path.",
+      "An origin key on held versions, redundant with content-hash dedup inside the save transaction.",
+      "Writing the adoption before the promotion, which could name a candidate the line never took."
+    ],
+    "proof_obligations": [
+      "rule-a-held-version-stays-outside-its-skills-line-until-promoted",
+      "held-not-released-and-no-round",
+      "evaluate-then-adopt",
+      "rule-a-held-version-is-promoted-only-while-the-line-still-ends-at-its-base",
+      "rule-a-round-keeps-a-candidate-on-development-cases-and-recommends-one-on-held-out-cases",
+      "rule-evaluating-a-rounds-candidates-accepts-its-pending-suggestions",
+      "rule-a-round-adopts-at-most-one-built-candidate",
+      "retries-heal"
+    ],
+    "counterfactual_check": "Let a held save index the Skill; evaluate-then-adopt must fail. Drop the publishing held check; held-not-released-and-no-round must fail. Let Promote ignore the base; the promotion rule must fail. Stop recording rejected ids for an unbuilt candidate; the accept rule must fail."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "aggregates",
+      "record": {
+        "id": "skill-line",
+        "root": "Skill Line",
+        "context": "registry",
+        "invariants": [
+          "Every version in skill_versions takes its Skill's next version number, held or not, and is never rewritten.",
+          "A Skill's line, the view skill_line_versions, is its versions that were not held for evaluation plus the held ones with a row in skill_version_promotions; the Skill's newest, latest and previous versions are read only from the line.",
+          "A row in skill_version_promotions is written once, only for a held version of the same workspace, and is never updated or deleted, so a promoted version stays in the line."
+        ],
+        "evidence": [
+          {
+            "path": "db/migrations/0151_candidate_evaluation.sql",
+            "lines": {
+              "start": 1,
+              "end": 14
+            },
+            "excerpt_sha256": "sha256:3076ed5f889c6886b350200f2c7a7e8f275ab05237b3112729b3a21a848d6b4c"
+          },
+          {
+            "path": "db/migrations/0151_candidate_evaluation.sql",
+            "lines": {
+              "start": 16,
+              "end": 36
+            },
+            "excerpt_sha256": "sha256:9c454ba93960d791b3a3b7c0b7d44a4133f0dbf3e550e475e38761ae0c358dea"
+          },
+          {
+            "path": "db/migrations/0151_candidate_evaluation.sql",
+            "lines": {
+              "start": 49,
+              "end": 52
+            },
+            "excerpt_sha256": "sha256:7c0c917e2c93318b2dd7c99a9b622db5b2b382b451c8711f4dc95bb708227d61"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/skill_root.go",
+            "lines": {
+              "start": 362,
+              "end": 377
+            },
+            "excerpt_sha256": "sha256:12dd2195eab1c66bc2742ac9bbedaa3f025c7606aa9927b40a05dae3134ef2c4"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/skill_root.go",
+            "lines": {
+              "start": 379,
+              "end": 396
+            },
+            "excerpt_sha256": "sha256:dd32260327940f219dd784801b7c578151c68d0c2e9768f1783a34a20b91bdb6"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/skill_root_test.go",
+            "lines": {
+              "start": 514,
+              "end": 527
+            },
+            "content_sha256": "sha256:8d5372f7251375fbccf18e162f4c05d07a11ca6d0e3a0db1886f23b2d998b059",
+            "excerpt_sha256": "sha256:b203735c35d40eca6ed1f485cc57f472deca446193dbdfeb6c243ac92ff44f4f"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/skill_root_test.go",
+            "lines": {
+              "start": 529,
+              "end": 573
+            },
+            "content_sha256": "sha256:8d5372f7251375fbccf18e162f4c05d07a11ca6d0e3a0db1886f23b2d998b059",
+            "excerpt_sha256": "sha256:7faa748ef6e24e0eaceb54158037d7b518412949703064c738e9ae9f6a72db84"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "aggregates",
+      "record": {
+        "id": "candidate-evaluation",
+        "root": "Candidate Evaluation",
+        "context": "eval",
+        "invariants": [
+          "Evaluating a round's candidates writes one row per candidate in reflection_candidate_batches, once: a built candidate names its held version and the batch that ran it, which the composite foreign key to evaluation_batches keeps on that version; an unavailable candidate names neither, and a batch belongs to at most one candidate.",
+          "A candidate's batch is launched under the origin key batch-reflection/<round>/candidate/<k>, unique per workspace in evaluation_batches, so a retried evaluation returns the batch it already made.",
+          "A round adopts at most one candidate: reflection_adoptions is keyed by the round, written once, and its foreign key to reflection_candidate_batches carries a skill_version_id that is NOT NULL, so only a built candidate can be adopted.",
+          "A suggestion's decided_by in evaluation_suggestions is set only once it is decided."
+        ],
+        "evidence": [
+          {
+            "path": "db/migrations/0151_candidate_evaluation.sql",
+            "lines": {
+              "start": 57,
+              "end": 62
+            },
+            "excerpt_sha256": "sha256:5a89e8b4a9378ac6615fad8f340f582066ffb31d7218cd58022bfacbce1471af"
+          },
+          {
+            "path": "db/migrations/0151_candidate_evaluation.sql",
+            "lines": {
+              "start": 67,
+              "end": 70
+            },
+            "excerpt_sha256": "sha256:7ba1141632ee754949c0276c1c1fb3b634b4af39ecf9ff385e2b649cd91f0244"
+          },
+          {
+            "path": "db/migrations/0151_candidate_evaluation.sql",
+            "lines": {
+              "start": 82,
+              "end": 101
+            },
+            "excerpt_sha256": "sha256:58fb168c072cf52caede67f2a82722f41fbba8c67e4fd435c7a4d86517ae29d5"
+          },
+          {
+            "path": "db/migrations/0151_candidate_evaluation.sql",
+            "lines": {
+              "start": 126,
+              "end": 140
+            },
+            "excerpt_sha256": "sha256:aff53fbbf99e09386af8bdc72d746d2a6412b7145d675e9ec2704cc657c03172"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/candidate_evaluation.go",
+            "lines": {
+              "start": 208,
+              "end": 242
+            },
+            "excerpt_sha256": "sha256:697afeba9ce0fc55de008550ec98aea9701967606d16e8de30910da606bfbc49"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/candidate_evaluation_integration_test.go",
+            "lines": {
+              "start": 432,
+              "end": 453
+            },
+            "content_sha256": "sha256:fc940fcbbbd613918477b9c2f0ba5750fc6c951716735d1f19aa7846e267802b",
+            "excerpt_sha256": "sha256:f28f5e66c6c8176b4d7c2079d54c24d54632da3a9fb89157aceeb62cb24a80a2"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/candidate_evaluation_integration_test.go",
+            "lines": {
+              "start": 188,
+              "end": 220
+            },
+            "content_sha256": "sha256:fc940fcbbbd613918477b9c2f0ba5750fc6c951716735d1f19aa7846e267802b",
+            "excerpt_sha256": "sha256:b2cbc6fe5cd0a56b661a6a910ae5cda880c338932cc2ed8bf61730dc8d4182c5"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/candidate_evaluation_integration_test.go",
+            "lines": {
+              "start": 222,
+              "end": 237
+            },
+            "content_sha256": "sha256:fc940fcbbbd613918477b9c2f0ba5750fc6c951716735d1f19aa7846e267802b",
+            "excerpt_sha256": "sha256:2d1c8d8438117bc2049361f6b7e109951b9f00c53bb7a0afb03461a8e5637401"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-held-version-stays-outside-its-skills-line-until-promoted",
+        "statement": "A version built only to evaluate a candidate of an improvement round is held: it takes its Skill's next version number and runs by its own id, but it is outside the Skill's line, so until it is promoted it is never the Skill's newest version, never describes the Skill, is never released, and is neither enriched nor written to the search index; every query that orders versions to find a newest, latest or previous one reads the line.",
+        "contexts": [
+          "registry",
+          "ingest",
+          "publishing"
+        ],
+        "examples": [
+          "A Skill at v2 that holds two candidates as v3 and v4 still lists v2 as its newest, and a round started from v3's batch is refused with 409.",
+          "Publishing a held v3 answers 422 held_for_evaluation.",
+          "Holding two candidates makes no enrichment call and leaves the Skill's search document untouched."
+        ],
+        "evidence": [
+          {
+            "path": "db/migrations/0151_candidate_evaluation.sql",
+            "lines": {
+              "start": 49,
+              "end": 52
+            },
+            "excerpt_sha256": "sha256:7c0c917e2c93318b2dd7c99a9b622db5b2b382b451c8711f4dc95bb708227d61"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/skill_root.go",
+            "lines": {
+              "start": 362,
+              "end": 377
+            },
+            "excerpt_sha256": "sha256:12dd2195eab1c66bc2742ac9bbedaa3f025c7606aa9927b40a05dae3134ef2c4"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/skill_root.go",
+            "lines": {
+              "start": 398,
+              "end": 403
+            },
+            "excerpt_sha256": "sha256:5cecfbdc795b820e04d8710839246ad60fc1b0c9553d49e9195a5cb25c88089d"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/service.go",
+            "lines": {
+              "start": 432,
+              "end": 435
+            },
+            "excerpt_sha256": "sha256:6ec240c233093ce5e7c542614015c68228fe756c0ab2d8fe2280f0f077f1d4a7"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/service.go",
+            "lines": {
+              "start": 537,
+              "end": 539
+            },
+            "excerpt_sha256": "sha256:d95c00f3a76a2176bc10f6bdfa8ec1618974a2e71caba70873313d2980d6c9ed"
+          },
+          {
+            "path": "apps/platform/internal/skill/publishing/service.go",
+            "lines": {
+              "start": 319,
+              "end": 322
+            },
+            "excerpt_sha256": "sha256:e04ba97296ec5cf9d6b24ebce243c7114dab6545683f6e0c9268b8c6f5245fbc"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/skill_root_test.go",
+            "lines": {
+              "start": 514,
+              "end": 527
+            },
+            "content_sha256": "sha256:8d5372f7251375fbccf18e162f4c05d07a11ca6d0e3a0db1886f23b2d998b059",
+            "excerpt_sha256": "sha256:b203735c35d40eca6ed1f485cc57f472deca446193dbdfeb6c243ac92ff44f4f"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/candidate_evaluation_integration_test.go",
+            "lines": {
+              "start": 147,
+              "end": 186
+            },
+            "content_sha256": "sha256:fc940fcbbbd613918477b9c2f0ba5750fc6c951716735d1f19aa7846e267802b",
+            "excerpt_sha256": "sha256:fcaa903701a106f86a25f1356f7ecdd0d567e6969e25a190f84ac8fe1c090ad3"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/candidate_evaluation_integration_test.go",
+            "lines": {
+              "start": 281,
+              "end": 303
+            },
+            "content_sha256": "sha256:fc940fcbbbd613918477b9c2f0ba5750fc6c951716735d1f19aa7846e267802b",
+            "excerpt_sha256": "sha256:41a6cde0293a0230406c1c0c0eb48fd5aa1fe16c3145d86531625614a12ba586"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-held-version-is-promoted-only-while-the-line-still-ends-at-its-base",
+        "statement": "Adopting a candidate promotes its held version into the Skill's line only while the line's newest version is still the version the round read; promoting it again changes nothing, a version that was never held cannot be promoted, and the promoted version is enriched, indexed and describes the Skill once.",
+        "contexts": [
+          "registry",
+          "ingest"
+        ],
+        "examples": [
+          "A held v3 built from v2 is promoted while v2 is the newest and becomes the newest; a second adoption of it records nothing new.",
+          "After a v4 was uploaded the adoption is refused because the line moved on, and v3 stays held.",
+          "Adopting the same candidate twice makes exactly one enrichment call and one debit."
+        ],
+        "evidence": [
+          {
+            "path": "db/migrations/0151_candidate_evaluation.sql",
+            "lines": {
+              "start": 16,
+              "end": 32
+            },
+            "excerpt_sha256": "sha256:edbda295ccde891102dcd00c650e45a8af90d61943bced7a5c1d5dd0c02355cb"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/promote.go",
+            "lines": {
+              "start": 20,
+              "end": 62
+            },
+            "excerpt_sha256": "sha256:4b702d940e7c3f8319e961270ed01dc41847f97825e81004d4fe43816a84c303"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/skill_root.go",
+            "lines": {
+              "start": 379,
+              "end": 396
+            },
+            "excerpt_sha256": "sha256:dd32260327940f219dd784801b7c578151c68d0c2e9768f1783a34a20b91bdb6"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/skill_root_test.go",
+            "lines": {
+              "start": 529,
+              "end": 573
+            },
+            "content_sha256": "sha256:8d5372f7251375fbccf18e162f4c05d07a11ca6d0e3a0db1886f23b2d998b059",
+            "excerpt_sha256": "sha256:7faa748ef6e24e0eaceb54158037d7b518412949703064c738e9ae9f6a72db84"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/candidate_evaluation_integration_test.go",
+            "lines": {
+              "start": 147,
+              "end": 186
+            },
+            "content_sha256": "sha256:fc940fcbbbd613918477b9c2f0ba5750fc6c951716735d1f19aa7846e267802b",
+            "excerpt_sha256": "sha256:fcaa903701a106f86a25f1356f7ecdd0d567e6969e25a190f84ac8fe1c090ad3"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-round-keeps-a-candidate-on-development-cases-and-recommends-one-on-held-out-cases",
+        "statement": "A candidate of a round is kept when, on a development test case, it has the best rate among the candidates and beats the source version's rate there; the round recommends the kept candidate with the highest mean on the held-out cases among those at least likely improved, and recommends none while it has fewer standings than candidates or while any built candidate's batch is not settled.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "Two candidates tied at the best development rate above the source are both kept; one equal to the source is not.",
+          "While one candidate's batch is still running no candidate is recommended, even if another is likely improved.",
+          "An unavailable candidate with no batch does not hold the recommendation back."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/improvement/reflection/candidates.go",
+            "lines": {
+              "start": 14,
+              "end": 29
+            },
+            "excerpt_sha256": "sha256:29e8678b08c4e47ef92a779e552774ba7364996715a4d90a90411a2b108f124c"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/reflection/candidates.go",
+            "lines": {
+              "start": 41,
+              "end": 59
+            },
+            "excerpt_sha256": "sha256:c53f24e71ad7e8d458a15eb41ad421595a23724161e75a5546112e4fa6bf8bc8"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/reflection/candidates_test.go",
+            "lines": {
+              "start": 14,
+              "end": 36
+            },
+            "content_sha256": "sha256:abaac13a697b12737b696b16407941f9f73bf3900e8b1b981aa037a8a2c9733a",
+            "excerpt_sha256": "sha256:acf5214b7fad3d013ede5b8b78375f9347bf6d960002071ae2976765399b99bf"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/reflection/candidates_test.go",
+            "lines": {
+              "start": 40,
+              "end": 70
+            },
+            "content_sha256": "sha256:abaac13a697b12737b696b16407941f9f73bf3900e8b1b981aa037a8a2c9733a",
+            "excerpt_sha256": "sha256:0a8ba080a01dc1a16fc216d1459dcdb746e72ad899cda50bcfc7d1301b6d369d"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "evaluating-a-rounds-candidates-accepts-its-pending-suggestions",
+        "statement": "Asking for a round's candidates to be evaluated accepts each candidate's pending suggestions in the name of the user who asked, and leaves the rejected ones out of its version, recorded as skipped; a candidate with only rejected suggestions is not built and is unavailable.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "Evaluating a round of two candidates with one pending suggestion each records both as accepted by the user who clicked.",
+          "With candidate 1's only suggestion rejected, candidate 0 is built, candidate 1 is unavailable, and its record lists that suggestion as skipped while it stays rejected."
+        ],
+        "evidence": [
+          {
+            "path": "db/migrations/0151_candidate_evaluation.sql",
+            "lines": {
+              "start": 67,
+              "end": 70
+            },
+            "excerpt_sha256": "sha256:7ba1141632ee754949c0276c1c1fb3b634b4af39ecf9ff385e2b649cd91f0244"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/candidate_evaluation.go",
+            "lines": {
+              "start": 91,
+              "end": 125
+            },
+            "excerpt_sha256": "sha256:4f110cd8fc6308215f5d940fe79534fb0ee7761a160a1be3828feea2660dd376"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/reflection/evaluate.go",
+            "lines": {
+              "start": 119,
+              "end": 127
+            },
+            "excerpt_sha256": "sha256:d738dfcdfe77bd451ae8c6630effc48eb32aa448b7098cbd8a21b74af1af67b1"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/candidate_evaluation_integration_test.go",
+            "lines": {
+              "start": 188,
+              "end": 220
+            },
+            "content_sha256": "sha256:fc940fcbbbd613918477b9c2f0ba5750fc6c951716735d1f19aa7846e267802b",
+            "excerpt_sha256": "sha256:b2cbc6fe5cd0a56b661a6a910ae5cda880c338932cc2ed8bf61730dc8d4182c5"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/candidate_evaluation_integration_test.go",
+            "lines": {
+              "start": 305,
+              "end": 341
+            },
+            "content_sha256": "sha256:fc940fcbbbd613918477b9c2f0ba5750fc6c951716735d1f19aa7846e267802b",
+            "excerpt_sha256": "sha256:095334910c4753a3feac39edccde995455158f8a5f96f946f3185650a49c2548"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-round-adopts-at-most-one-built-candidate",
+        "statement": "A round adopts at most one of its candidates and only one that was built; adopting it again answers the same adoption, adopting another is refused with 409, and the promotion is written before the adoption so a lost adoption row is healed by adopting again.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "Adopting candidate 0 twice answers 200 both times; adopting candidate 1 afterwards answers 409.",
+          "When the adoption row is lost after the promotion, adopting again records it without a second promotion."
+        ],
+        "evidence": [
+          {
+            "path": "db/migrations/0151_candidate_evaluation.sql",
+            "lines": {
+              "start": 126,
+              "end": 140
+            },
+            "excerpt_sha256": "sha256:aff53fbbf99e09386af8bdc72d746d2a6412b7145d675e9ec2704cc657c03172"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/candidate_evaluation.go",
+            "lines": {
+              "start": 208,
+              "end": 242
+            },
+            "excerpt_sha256": "sha256:697afeba9ce0fc55de008550ec98aea9701967606d16e8de30910da606bfbc49"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/candidate_evaluation_integration_test.go",
+            "lines": {
+              "start": 222,
+              "end": 237
+            },
+            "content_sha256": "sha256:fc940fcbbbd613918477b9c2f0ba5750fc6c951716735d1f19aa7846e267802b",
+            "excerpt_sha256": "sha256:2d1c8d8438117bc2049361f6b7e109951b9f00c53bb7a0afb03461a8e5637401"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/candidate_evaluation_integration_test.go",
+            "lines": {
+              "start": 402,
+              "end": 430
+            },
+            "content_sha256": "sha256:fc940fcbbbd613918477b9c2f0ba5750fc6c951716735d1f19aa7846e267802b",
+            "excerpt_sha256": "sha256:d6109295ddcdadadf5abdf888e6018aca3f9a54b17e033ac3f380699cc8bc183"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-11-07T15:32:47.518774Z",
+      "scope": "proposal",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "dea9cf5a56ad753894831a92390721b0ab2e2994",
+        "registry_digest": "sha256:39ba68ce14d53b69f54c49c1973d7fe3327aec882561fc57dd42945c58bbbc9a",
+        "committed_digest": "sha256:a7cc6f54678ebdc0dd2c7355bc4403d6d0170cd25edcdb87564b155e14e0dabb"
+      }
+    }
+  ]
+}

@@ -1,0 +1,142 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "candidate-evaluation",
+  "proposal_id": "candidate-evaluation-2026-11-07",
+  "registry_revision": {
+    "observed_commit": "dea9cf5a56ad753894831a92390721b0ab2e2994",
+    "registry_digest": "sha256:39ba68ce14d53b69f54c49c1973d7fe3327aec882561fc57dd42945c58bbbc9a",
+    "committed_digest": "sha256:a7cc6f54678ebdc0dd2c7355bc4403d6d0170cd25edcdb87564b155e14e0dabb"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "held-not-released-and-no-round",
+      "mutated_protection": "apps/platform/internal/skill/publishing/service.go:319: if version.HeldOutsideLine { -> if false {",
+      "failure_evidence": "=== RUN   TestAHeldCandidateThatWasNeverAdoptedCannotStartARound\n2026/11/07 23:29:39 INFO improvement proposals batch_id=9640958a-0fa7-427c-a1a0-2dc29aa67100 proposed=1 stored=1 dropped_no_evidence=0 dropped_unstorable=0 dropped_write_failed=0 dropped_over_cap=0\n    candidate_evaluation_integration_test.go:301: publishing the unadopted candidate: 200 map[acquisition:map[available:true note:登入後可以下載這一版的標準 Agent Skill 套件；下載會記在你自己的工作區，保存期限與下載紀錄照你自己打包的套件一樣。] address:/p/evaluate-unadopted-330941fb10/evaluate-unadopted availability:map[label:提供中 note: value:available] kind:skill name:evaluate-unadopted publisher:evaluate-unadopted-330941fb10 releases:[map[content_hash:d749f4dc965e76c48e1d432d3499e6e6105e2852908b7e5e6bf6e1ed5246027e findings:map[errors:[] infos:[] warnings:[]] released_at:2026-11-07T15:29:40Z rights_attested:true version_id:10e502dc-bfee-43df-9fcc-da9fc18358b0 version_number:2]] status:published status_changed_at:2026-11-07T15:29:40Z], want 422 held_for_evaluation\n--- FAIL: TestAHeldCandidateThatWasNeverAdoptedCannotStartARound (0.62s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t3.032s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "evaluate-then-adopt",
+      "mutated_protection": "apps/platform/internal/skill/admission/service.go:537: if src.Held { -> if false && src.Held {",
+      "failure_evidence": "=== RUN   TestEvaluatingCandidatesHoldsOneVersionEachAndAdoptingPromotesOnlyThatOne\n2026/11/07 23:29:53 INFO improvement proposals batch_id=d0194a2e-f2a0-4b99-8a6a-1cf06405c0fc proposed=1 stored=1 dropped_no_evidence=0 dropped_unstorable=0 dropped_write_failed=0 dropped_over_cap=0\n2026/11/07 23:29:53 INFO improvement proposals batch_id=d0194a2e-f2a0-4b99-8a6a-1cf06405c0fc proposed=1 stored=1 dropped_no_evidence=0 dropped_unstorable=0 dropped_write_failed=0 dropped_over_cap=0\n    candidate_evaluation_integration_test.go:170: holding two candidates re-indexed the skill at 2026-11-07 15:29:53.268271+00, want its index left at 2026-11-07 15:29:52.916171+00\n2026/11/07 23:29:53 WARN enrichment embedding failed; the enriched document waits for its vector skill=evaluate-candidates error=\"llmclient: /embed returned 404: 404 page not found\\n\"\n--- FAIL: TestEvaluatingCandidatesHoldsOneVersionEachAndAdoptingPromotesOnlyThatOne (0.96s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t3.298s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-round-keeps-a-candidate-on-development-cases-and-recommends-one-on-held-out-cases",
+      "mutated_protection": "apps/platform/internal/trial/improvement/reflection/candidates.go:47: if s.BatchID.Valid && !s.Settled { -> if false {",
+      "failure_evidence": "=== RUN   TestOnlyAKeptCandidateLikelyImprovedOnHeldOutCasesIsRecommended\n    candidates_test.go:67: a batch has not settled: recommended 0, want -1\n--- FAIL: TestOnlyAKeptCandidateLikelyImprovedOnHeldOutCasesIsRecommended (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/reflection\t1.892s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-evaluating-a-rounds-candidates-accepts-its-pending-suggestions",
+      "mutated_protection": "apps/platform/internal/trial/improvement/reflection/evaluate.go:83: builds[candidate].Skipped = rejectedSuggestions(round, candidate) -> _ = rejectedSuggestions(round, candidate)",
+      "failure_evidence": "=== RUN   TestARejectedSuggestionIsLeftOutSoACandidateOfOnlyRejectedOnesIsUnavailable\n2026/11/07 23:30:24 INFO improvement proposals batch_id=505fb87c-050c-418f-a527-5ffa47c707ad proposed=1 stored=1 dropped_no_evidence=0 dropped_unstorable=0 dropped_write_failed=0 dropped_over_cap=0\n2026/11/07 23:30:24 INFO improvement proposals batch_id=505fb87c-050c-418f-a527-5ffa47c707ad proposed=1 stored=1 dropped_no_evidence=0 dropped_unstorable=0 dropped_write_failed=0 dropped_over_cap=0\n    candidate_evaluation_integration_test.go:336: rejected suggestion = rejected, skipped \"\"; want still rejected and skipped as 5a54696c-6a07-4f00-afea-5d99c459ea04\n--- FAIL: TestARejectedSuggestionIsLeftOutSoACandidateOfOnlyRejectedOnesIsUnavailable (0.64s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t2.934s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-held-version-stays-outside-its-skills-line-until-promoted",
+      "mutated_protection": "apps/platform/internal/skill/library/skill_root.go:370: if !content.held { -> if true {",
+      "failure_evidence": "=== RUN   TestAHeldVersionTakesTheNextNumberWithoutBecomingTheNewestOrDescribingTheSkill\n    skill_root_test.go:525: newest =  with {Expression: Source:}, want the line's 01000000-0000-0000-0000-000000000000 with {Expression:MIT Source:LICENSE}\n--- FAIL: TestAHeldVersionTakesTheNextNumberWithoutBecomingTheNewestOrDescribingTheSkill (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/library\t1.631s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-round-adopts-at-most-one-built-candidate",
+      "mutated_protection": "apps/platform/internal/skill/admission/promote.go:25: if err != nil || inLine { -> if err != nil || inLine && false {",
+      "failure_evidence": "=== RUN   TestALostAdoptionRowAfterThePromotionIsHealedByAdoptingAgain\n2026/11/07 23:31:40 INFO improvement proposals batch_id=a9c24391-8119-4d74-a7c8-524e4287760f proposed=1 stored=1 dropped_no_evidence=0 dropped_unstorable=0 dropped_write_failed=0 dropped_over_cap=0\n2026/11/07 23:31:40 WARN enrichment embedding failed; the enriched document waits for its vector skill=adopt-crash error=\"llmclient: /embed returned 404: 404 page not found\\n\"\n2026/11/07 23:31:40 ERROR request failed on the server method=POST path=/skills/8f8325c6-1b64-4f81-8ad0-9d164ae81f85/evaluation-batches/a9c24391-8119-4d74-a7c8-524e4287760f/reflections/6ab0326b-812c-415c-9c76-231f458e8b46/adopt status=500\n    candidate_evaluation_integration_test.go:425: adopt again: got 409 {\"error\":\"這一輪讀的版本已經不是這個小工具正式路線上的最新版，候選是對舊內容做的改法；請先用最新版跑一批評估、再找改進\"}\n        , want candidate 0 adopted\n--- FAIL: TestALostAdoptionRowAfterThePromotionIsHealedByAdoptingAgain (0.64s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t2.901s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-held-version-is-promoted-only-while-the-line-still-ends-at-its-base",
+      "mutated_protection": "apps/platform/internal/skill/library/skill_root.go:389: case s.newest.id != base: -> case s.newest.id != base && false:",
+      "failure_evidence": " registry.SkillDescribed{}}, want []registry.Event{registry.Refused{Reason:\"line_moved_on\", Recorded:registry.LicenseClaim{Expression:\"\", Source:\"\"}}}\n=== RUN   TestPromotingAHeldVersionMakesItTheNewestOnlyWhileTheLineStillEndsAtItsBase/the_version_was_never_held\n=== RUN   TestPromotingAHeldVersionMakesItTheNewestOnlyWhileTheLineStillEndsAtItsBase/the_version_is_another_skill's\n--- FAIL: TestPromotingAHeldVersionMakesItTheNewestOnlyWhileTheLineStillEndsAtItsBase (0.00s)\n    --- PASS: TestPromotingAHeldVersionMakesItTheNewestOnlyWhileTheLineStillEndsAtItsBase/the_line_still_ends_at_the_base (0.00s)\n    --- PASS: TestPromotingAHeldVersionMakesItTheNewestOnlyWhileTheLineStillEndsAtItsBase/the_version_is_already_the_newest (0.00s)\n    --- FAIL: TestPromotingAHeldVersionMakesItTheNewestOnlyWhileTheLineStillEndsAtItsBase/the_line_has_moved_on (0.00s)\n    --- PASS: TestPromotingAHeldVersionMakesItTheNewestOnlyWhileTheLineStillEndsAtItsBase/the_version_was_never_held (0.00s)\n    --- PASS: TestPromotingAHeldVersionMakesItTheNewestOnlyWhileTheLineStillEndsAtItsBase/the_version_is_another_skill's (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/skill/library\t1.692s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-held-version-stays-outside-its-skills-line-until-promoted",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestAHeldVersionTakesTheNextNumberWithoutBecomingTheNewestOrDescribingTheSkill$ ./internal/skill/library/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:1d957213799226d83121b77c6ee18921f049fdf6a7c8186c8de8e51ec7b360cd",
+      "finished_at": "2026-11-07T15:28:05.206590Z"
+    },
+    {
+      "obligation_id": "held-not-released-and-no-round",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestAHeldCandidateThatWasNeverAdoptedCannotStartARound$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "integration",
+      "exit_code": 0,
+      "output_sha256": "sha256:dcb9769f3342367c507c5e254ba4e990920e8529dfa37d2709089ed7c3ad836f",
+      "finished_at": "2026-11-07T15:28:11.500167Z"
+    },
+    {
+      "obligation_id": "evaluate-then-adopt",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestEvaluatingCandidatesHoldsOneVersionEachAndAdoptingPromotesOnlyThatOne$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "integration",
+      "exit_code": 0,
+      "output_sha256": "sha256:e16b9c66ac973283e216fe44383aa229c471e04a5e7e288d2ccd1200baa23775",
+      "finished_at": "2026-11-07T15:28:18.075502Z"
+    },
+    {
+      "obligation_id": "rule-a-held-version-is-promoted-only-while-the-line-still-ends-at-its-base",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestPromotingAHeldVersionMakesItTheNewestOnlyWhileTheLineStillEndsAtItsBase$ ./internal/skill/library/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:0a6f261791c82afeec3ead49257778734c29abde5cfc5a3c93a299e5e469b90e",
+      "finished_at": "2026-11-07T15:28:21.530889Z"
+    },
+    {
+      "obligation_id": "rule-a-round-keeps-a-candidate-on-development-cases-and-recommends-one-on-held-out-cases",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^(TestACandidateIsKeptOnlyWhenItLeadsADevCaseAndBeatsTheSourceThere|TestOnlyAKeptCandidateLikelyImprovedOnHeldOutCasesIsRecommended)$ ./internal/trial/improvement/reflection/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:6966eaff3aa28757a6da2cdee1f1e78f2399e81ecb89e09010aeb6c42440d35f",
+      "finished_at": "2026-11-07T15:28:25.851858Z"
+    },
+    {
+      "obligation_id": "rule-evaluating-a-rounds-candidates-accepts-its-pending-suggestions",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestARejectedSuggestionIsLeftOutSoACandidateOfOnlyRejectedOnesIsUnavailable$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "integration",
+      "exit_code": 0,
+      "output_sha256": "sha256:8d45acab085b36f0a6448c918ff1b0f3c4281746baffbfedf9de04684195888d",
+      "finished_at": "2026-11-07T15:28:32.050154Z"
+    },
+    {
+      "obligation_id": "rule-a-round-adopts-at-most-one-built-candidate",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestALostAdoptionRowAfterThePromotionIsHealedByAdoptingAgain$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "integration",
+      "exit_code": 0,
+      "output_sha256": "sha256:50b64bbed2a641afdd34e659386c3cd1d21bd4e777fc0a55caa87582c3e5636a",
+      "finished_at": "2026-11-07T15:28:38.415756Z"
+    },
+    {
+      "obligation_id": "retries-heal",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^(TestACrashAfterTwoOfFourCandidatesIsHealedByRetryingWithOneVersionEach|TestACrashBetweenACandidateBatchAndItsLinkIsHealedByRetryingWithNoOrphan)$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "integration",
+      "exit_code": 0,
+      "output_sha256": "sha256:f2ffc2b050e63c7af7d50aaaef4271508bd6a57e83b5231f696bcd833620b072",
+      "finished_at": "2026-11-07T15:28:45.510053Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

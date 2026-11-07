@@ -1,0 +1,47 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "candidate-evaluation",
+  "status": "draft",
+  "intent": "A creator whose improvement round proposed several candidates can try each candidate as a real version on the round's test cases, see which one is recommended, and adopt one into the Skill, without any candidate becoming the Skill's face before it is adopted.",
+  "actor": "skill-creator",
+  "observable_outcome": "POST .../reflections/{id}/evaluate builds one held version per candidate and launches one batch each on the round's test cases; POST .../adopt promotes one candidate's version into the Skill's line; the version list marks held and promoted versions and GET /skills/{id}/candidate-versions names each held version's round and candidate.",
+  "acceptance_criteria": [
+    {
+      "id": "held-outside-the-line",
+      "statement": "A held candidate takes the next version number but the Skill's newest stays the round's base; it is not released, enriched or indexed, and a round cannot be started from its batch."
+    },
+    {
+      "id": "promoted-onto-its-base",
+      "statement": "Adopting a candidate makes its version the Skill's newest only while the newest is still the round's base, once, with one enrichment."
+    },
+    {
+      "id": "kept-and-recommended",
+      "statement": "A candidate is kept on development cases and recommended on held-out cases only after every built candidate's batch settles."
+    },
+    {
+      "id": "accepts-pending-leaves-rejected",
+      "statement": "Evaluating accepts each candidate's pending suggestions by the user who asked and records rejected ones as skipped; a candidate with only rejected suggestions is unavailable."
+    },
+    {
+      "id": "adopts-one-built",
+      "statement": "A round adopts at most one built candidate; adopting another answers 409; a lost adoption row is healed by adopting again."
+    },
+    {
+      "id": "retries-heal",
+      "statement": "A crash during evaluation is healed by retrying with one version and one batch per candidate and no orphan batch."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "db/migrations/0151_candidate_evaluation.sql",
+    "apps/platform/internal/skill/library/skill_root.go",
+    "apps/platform/internal/skill/admission/promote.go",
+    "apps/platform/internal/trial/improvement/candidate_evaluation.go",
+    "apps/platform/internal/trial/improvement/reflection/evaluate.go",
+    "apps/platform/internal/trial/improvement/reflection/candidates.go",
+    "contracts/openapi/public.yaml"
+  ]
+}
