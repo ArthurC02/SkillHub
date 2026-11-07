@@ -237,6 +237,27 @@ test("applying a round's suggestions names the round and links a re-run of the h
   });
 });
 
+test.each([
+  ["not yet evaluated", () => reflection(), true],
+  [
+    "already evaluated",
+    () => evaluated({ candidates: [standing(0)], recommended: 0, adopted: null }),
+    false,
+  ],
+])(
+  "building from accepted suggestions points to comparing the candidates only while a round is %s",
+  async (_name, round, pointsToCandidates) => {
+    const page = app();
+    withTwoCases(page, [round()]);
+    await page.goto(BATCH_PAGE);
+    const build = "以已接受的 1 項建議建立新版本";
+    await page.eventually(() => expect(reasonOf(page, build)).toContain("覆寫這一批跑過的版本"));
+    expect((reasonOf(page, build) ?? "").includes("想先比較各候選，用下方的「評估候選」")).toBe(
+      pointsToCandidates,
+    );
+  },
+);
+
 test("a re-run from a round prefills only the held-out cases", async () => {
   const page = app();
   withTwoCases(page, [reflection()]);

@@ -124,6 +124,10 @@ function reflectFailureSentence(error: Error): string {
   return "找改進失敗，可以再試一次。";
 }
 
+const APPLY_EFFECT = "會建立一個新版本，不會覆寫這一批跑過的版本。";
+const APPLY_OR_EVALUATE =
+  "只用你接受的建議建一個新版本，不先試跑，也不覆寫這一批跑過的版本；想先比較各候選，用下方的「評估候選」。";
+
 function ReflectionResult({
   skillId,
   batchId,
@@ -209,7 +213,7 @@ function ReflectionResult({
             </button>
           </p>
           <p className="note" role="status" id="batch-improvement-apply-hold">
-            {applyHold ?? "會建立一個新版本，不會覆寫這一批跑過的版本。"}
+            {applyHold ?? (reflection.evaluation ? APPLY_EFFECT : APPLY_OR_EVALUATE)}
           </p>
         </>
       )}
