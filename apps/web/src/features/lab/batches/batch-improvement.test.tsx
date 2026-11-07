@@ -240,13 +240,13 @@ test("a re-run from a round prefills only the held-out cases", async () => {
   await page.goto(
     `/skills/${SKILL}/evaluation-batches?version=${VERSION}&rerun=${BATCH}&reflection=${REFLECTION}`,
   );
-  await page.eventually(() =>
-    expect(page.getByRole("status").filter({ hasText: "沒給模型看的 1 題" }).count()).toBe(1),
-  );
   const box = (name: string) =>
     (page.getByRole("checkbox", { name }).element() as HTMLInputElement).checked;
-  expect(box("合併儲存格")).toBe(true);
-  expect(box("去重複列")).toBe(false);
+  await page.eventually(() => {
+    expect(page.getByRole("status").filter({ hasText: "沒給模型看的 1 題" }).count()).toBe(1);
+    expect(box("合併儲存格")).toBe(true);
+    expect(box("去重複列")).toBe(false);
+  });
 });
 
 test("a re-run from a round that cannot be found prefills nothing", async () => {
