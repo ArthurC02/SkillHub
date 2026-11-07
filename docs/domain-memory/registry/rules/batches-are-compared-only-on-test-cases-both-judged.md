@@ -3,12 +3,12 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-24T10:35:00.265291Z"
+    at: "2026-11-07T09:48:10.339614Z"
 sources:
-  - resource: "apps/platform/internal/trial/batch/batch_comparison.go#L41-76"
-    excerpt_sha256: "sha256:289ea79783d392a422187574d2ecaae36382cfd20626f8283a53d5220aa9edb6"
-  - resource: "apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_integration_test.go#L584-624"
-    excerpt_sha256: "sha256:250e1b3f1c63f2f11b7e19e47ad5d8af3de9494a054b646dcc39a83f35724e2c"
+  - resource: "apps/platform/internal/trial/batch/batch_comparison.go#L42-77"
+    excerpt_sha256: "sha256:7c8767e568418548ba47be6eaeb6df116d7d1a19af372e49e365f0fab72c83d3"
+  - resource: "apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_integration_test.go#L584-625"
+    excerpt_sha256: "sha256:be958287f9a866c0b2b004bc4e8a7c40acdd29f230c6d25f0ec218b98f22387c"
 ---
 Two batches are compared only on test cases judged in both; a test case judged in only one counts as unpaired, not as better, worse or tied.
 

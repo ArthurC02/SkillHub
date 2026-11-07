@@ -3,12 +3,12 @@
   "proposal_id": "paired-difference-verdict-2026-11-07",
   "proposer": "coding-agent",
   "requirement_id": "paired-difference-verdict",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-11-07T09:47:53.801149Z",
   "verified_at": "2026-11-07T09:48:10.684550Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-11-07T09:48:35.581881Z",
+  "applied_at": "2026-11-07T09:48:40.247903Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "52bd74f915da87dd7fb5381b69d0eea823bc64a2",
@@ -185,5 +185,9 @@
   "supersedes": [
     "batch-report-counting-and-scope-rules-2026-10-19",
     "shifted-recite-2026-10-24"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "26f014232315878738f443348ecf5ea322954b68",
+    "registry_digest": "sha256:42e810e1a341f0461c194f002485b0ec10ecc1665eb2ec88d81b49459e6d6725"
+  }
 }

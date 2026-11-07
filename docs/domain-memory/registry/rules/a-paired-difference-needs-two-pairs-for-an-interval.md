@@ -3,12 +3,12 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-18T20:31:55.890891Z"
+    at: "2026-11-07T09:48:10.339614Z"
 sources:
-  - resource: "apps/platform/internal/trial/batch/batch_comparison.go#L98-100"
-    excerpt_sha256: "sha256:d8f1c068053ccd8e9733a22ebce9d557d5da5bcbfb94e06f9adcd9e83ced0fb8"
-  - resource: "apps/platform/internal/trial/batch/batch_test.go#L134-145"
-    excerpt_sha256: "sha256:333793f45297c1fac3f3a31a4c3f10dd5adbc015f6fb81408ca3a335da684702"
+  - resource: "apps/platform/internal/trial/batch/batch_comparison.go#L110-112"
+    excerpt_sha256: "sha256:5357a08d524b6b250c2c6c0b48d8f57c47cc5d16933e98addf275a6b65bd6338"
+  - resource: "apps/platform/internal/trial/batch/batch_test.go#L134-148"
+    excerpt_sha256: "sha256:006809a5dd8211f277ac548a072b08303147719ed40d41e3f78dafff320fd8d3"
 ---
 A paired difference gets a confidence interval only from two or more pairs; one pair gives the difference alone.
 
