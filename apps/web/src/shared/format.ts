@@ -6,3 +6,9 @@ export function bytes(n: number): string {
   if (n >= 1024) return `${oneDecimal(n / 1024)} KB`;
   return `${n} B`;
 }
+
+export const points = (n: number) => `${n} 點`;
+
+export const credits = (value: number | null) => (value === null ? "未測量" : points(value));
+
+export const ESTIMATE_MARK = "（估計值）";

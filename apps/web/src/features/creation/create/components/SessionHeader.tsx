@@ -4,9 +4,10 @@ import type { CreationLimits, CreationSession, CreationSnapshot } from "../../cr
 import { creationStateLabel } from "../../creation.service";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
 import { useDeadlinePassed } from "../../../../shared/useDeadlinePassed";
-import { nextStepBudget, points, raiseBudgetProblem } from "../create.model";
+import { nextStepBudget, raiseBudgetProblem } from "../create.model";
 import type { Perform } from "../create.commands";
 import { AgentAvatar } from "./ConversationLog";
+import { points } from "../../../../shared/format";
 
 function NextStep({
   costCredits,

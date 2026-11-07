@@ -7,7 +7,3 @@ export function costNote(side: ComparisonSide): string {
     side.cost.authoritative_source
   }`;
 }
-
-export function credits(value: number | null): string {
-  return value === null ? "未測量" : `${value} 點`;
-}

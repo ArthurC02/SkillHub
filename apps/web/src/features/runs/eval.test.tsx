@@ -1264,6 +1264,25 @@ test("04 丙-147 an unreported cost shows 未測量 and never claims 模型閘�
   expect(text).not.toContain("模型閘道實付");
 });
 
+test("an estimated evaluation cost carries the same 估計值 mark the pre-run screen uses", async () => {
+  vi.stubGlobal("fetch", (input: string) => {
+    const url = String(input);
+    if (url.endsWith("/runs/" + RUN)) return runRead();
+    if (url.includes("/evaluation/revisions")) return json({ revisions: [] });
+    if (url.includes("/evaluation")) {
+      return json({
+        ...evaluation,
+        cost: { evaluation_credits: 9, source: "estimated", note: "這次以估計值計。" },
+      });
+    }
+    if (url.includes("/suggestions")) return json({ evaluation_id: "eval-1", suggestions: [] });
+    return json({ error: "not found" }, 404);
+  });
+
+  await render("succeeded");
+  expect(container.textContent ?? "").toContain("9 點（估計值）");
+});
+
 test.each([
   ["restricted", "這個小工具的來源授權還在審查中，審查期間不產生改善建議。"],
   ["not_needed", "這次判定為符合，也沒有需要處理的發現，所以沒有改善建議。"],

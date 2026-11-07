@@ -86,7 +86,7 @@ export const FINDING_CATEGORY_LABEL: Record<DeterministicFinding["category"], st
 export const SEVERITY_LABEL: Record<DeterministicFinding["severity"], string> = {
   error: "錯誤",
   warning: "警告",
-  info: "資訊",
+  info: "提示",
 };
 
 export const SUGGESTION_CATEGORY_LABEL: Record<ImprovementSuggestion["category"], string> = {

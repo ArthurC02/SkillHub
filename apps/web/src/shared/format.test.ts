@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { bytes } from "./format";
+import { bytes, credits } from "./format";
 
 test.each([
   [1023, "1023 B"],
@@ -13,4 +13,12 @@ test.each([
   [1024 ** 3, "1 GB"],
 ])("%i bytes read as %s", (n, want) => {
   expect(bytes(n)).toBe(want);
+});
+
+test.each([
+  [null, "未測量"],
+  [0, "0 點"],
+  [12, "12 點"],
+])("credits %s reads as %s", (value, want) => {
+  expect(credits(value)).toBe(want);
 });

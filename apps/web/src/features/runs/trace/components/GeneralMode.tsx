@@ -9,6 +9,7 @@ import { FailureClass } from "./FailureClass";
 import { RunCleanupStatus } from "./RunCleanupStatus";
 import { Reveal } from "../../../../shared/ui/Reveal";
 import { isInAppWords } from "../../../../core/api/client";
+import { credits, ESTIMATE_MARK } from "../../../../shared/format";
 
 export function GeneralMode({
   runId,
@@ -105,11 +106,10 @@ export function GeneralMode({
           </li>
           <li>
             成本：
-            {trace.usage.cost_credits === null
-              ? "未測量"
-              : `${trace.usage.cost_credits} 點${
-                  trace.usage.cost_source === "estimated" ? "（估算值）" : ""
-                }`}
+            {credits(trace.usage.cost_credits)}
+            {trace.usage.cost_credits !== null &&
+              trace.usage.cost_source === "estimated" &&
+              ESTIMATE_MARK}
           </li>
           <li className="note">
             這是<strong>下界</strong>，不是總額：合計自 Trace 的用量事件， 權威來源是模型閘道對這個

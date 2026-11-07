@@ -4,7 +4,8 @@ import { RunErrorDetails } from "../../components/RunErrorDetails";
 import { runStatusLabel } from "../../runs.model";
 import { verdictCell } from "./ComparisonLead.model";
 import { RerunCell } from "./RerunCell";
-import { SIDE_LABEL, costNote, credits } from "./ComparisonTables.model";
+import { SIDE_LABEL, costNote } from "./ComparisonTables.model";
+import { credits } from "../../../../shared/format";
 import { Reveal } from "../../../../shared/ui/Reveal";
 
 function RunStatusHeader({ sides }: { sides: ComparisonSide[] }) {

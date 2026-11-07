@@ -3,11 +3,10 @@ import { Timestamp } from "../../../shared/ui/Timestamp";
 import { ActionForm } from "../components/ActionForm";
 import { SettingsResult } from "./SettingsResult";
 import { useSettingDraft } from "../components/useSettingDraft";
+import { points } from "../../../shared/format";
 
 type Budget = RunSettings["model_budget"];
 type RunModelBudgetProps = { setting: Budget; readable: boolean; refreshing: boolean };
-
-const points = (credits: number) => `${credits} 點`;
 
 function BudgetFacts({ setting }: { setting: Budget }) {
   return (

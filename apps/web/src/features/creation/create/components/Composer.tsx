@@ -2,7 +2,8 @@ import type { ReactNode, RefObject } from "react";
 import { CreationActionReferenceSkillIdsMaxItems } from "@skillhub/api-client-ts/limits";
 import type { CreditBalance } from "../../../../core/session/credits.service";
 import { ReferencePicker } from "../../components/ReferencePicker";
-import { CREATION_DIAGRAM_LIMIT, MAX_MESSAGE_RUNES, points } from "../create.model";
+import { CREATION_DIAGRAM_LIMIT, MAX_MESSAGE_RUNES } from "../create.model";
+import { ESTIMATE_MARK, points } from "../../../../shared/format";
 
 type Reference = { id: string; name: string };
 
@@ -194,7 +195,7 @@ function BudgetPicker({
         <span className="creation-fact">
           餘額 {credits.balance_credits} 點 · 這場約 {credits.estimated_session.low_credits}–
           {credits.estimated_session.high_credits} 點
-          {credits.estimated_session.estimated && "（估計）"}
+          {credits.estimated_session.estimated && ESTIMATE_MARK}
         </span>
       )}
     </fieldset>

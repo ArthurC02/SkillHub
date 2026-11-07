@@ -6,16 +6,13 @@ import { ExecutionState } from "./ExecutionState";
 import { CriterionSection } from "./CriterionSection";
 import { MatchLegend } from "./MatchLegend";
 import { EvidenceList } from "./EvidenceList";
+import { credits, ESTIMATE_MARK } from "../../../../shared/format";
 
 const INJECTION_CHECK_LINE = {
   flagged: "注入檢查：輸出裡有疑似對評審下指令的文字",
   clear: "注入檢查：沒有發現對評審下指令的文字",
   unchecked: "注入檢查：這次沒有回答，結果不明",
 } as const;
-
-function credits(value: number | null): string {
-  return value === null ? "未測量" : `${value} 點`;
-}
 
 export function EvaluationReport({
   evaluation,
@@ -93,7 +90,7 @@ export function EvaluationReport({
       <p>
         {credits(evaluation.cost.evaluation_credits)}
         {evaluation.cost.source === "gateway" && "（模型閘道實付）"}
-        {evaluation.cost.source === "estimated" && "（估算值）"}
+        {evaluation.cost.source === "estimated" && ESTIMATE_MARK}
       </p>
       <p className="note">
         {evaluation.cost.note}

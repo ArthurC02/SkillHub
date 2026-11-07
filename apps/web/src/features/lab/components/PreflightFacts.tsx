@@ -1,6 +1,6 @@
 import "./PreflightFacts.css";
 import { Timestamp } from "../../../shared/ui/Timestamp";
-import { bytes } from "../../../shared/format";
+import { bytes, ESTIMATE_MARK } from "../../../shared/format";
 import type { CostEstimate, PreflightSummary, RunQuota } from "../lab.service";
 import { SCRIPT_LABEL } from "../preflight/preflight.model";
 import { ResourceLimitsFacts } from "./ResourceLimitsFacts";
@@ -28,7 +28,7 @@ export function PreflightFacts({
 }) {
   return (
     <dl className="preflight-facts" data-role="evidence">
-      <dt>預估點數（估計值）</dt>
+      <dt>預估點數{ESTIMATE_MARK}</dt>
       <dd>
         {cost ? (
           <>
