@@ -44,7 +44,7 @@ func TestTheRecoverySweepSparesAnAttemptStillWithinItsCallDeadline(t *testing.T)
 	rec := &jobRecorder{}
 	svc := &creation.Service{Pool: pool, Limits: creationLimits(), Insert: rec.insert}
 	inFlight := workingAttempt(t, pool, svc, rec, ws, "1 hour")
-	overdue := workingAttempt(t, pool, svc, rec, ws, "-1 minute")
+	overdue := workingAttempt(t, pool, svc, rec, ws, "-5 minutes")
 
 	if err := svc.Recover(context.Background()); err != nil {
 		t.Fatal(err)
@@ -90,5 +90,25 @@ func TestTheRecoverySweepLeavesAnAttemptStillWrappingUpItsFinishedCall(t *testin
 	}
 	if got := creationState(t, pool, wrappingUp); got != "working" {
 		t.Errorf("an attempt 30s past a 2s call, still within revoke, search and settle, was swept to %s; its late result would be charged and thrown away", got)
+	}
+}
+
+func TestTheRecoverySweepJudgesAnAttemptByTheLimitsItStartedUnder(t *testing.T) {
+	pool := requireDB(t)
+	ws := newCreationWorkspace(t, pool)
+	removeCreationWorkspace(t, pool, ws)
+	rec := &jobRecorder{}
+	svc := &creation.Service{Pool: pool, Limits: creationLimits(), Insert: rec.insert}
+	settling := workingAttempt(t, pool, svc, rec, ws, "-30 seconds")
+	pastItsWrapUp := workingAttempt(t, pool, svc, rec, ws, "-70 seconds")
+
+	if err := svc.Recover(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if got := creationState(t, pool, settling); got != "working" {
+		t.Errorf("an attempt whose own call ended 30s ago, still within its wrap-up, was swept to %s because today's call timeout is shorter", got)
+	}
+	if got := creationState(t, pool, pastItsWrapUp); got != "failed" {
+		t.Errorf("an attempt 70s past its own call deadline, beyond revoke, search and settle, is still %s", got)
 	}
 }

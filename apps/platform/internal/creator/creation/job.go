@@ -24,7 +24,7 @@ type JobArgs struct {
 
 func (s *Service) RecoverExpired(ctx context.Context) error {
 	recoverErr := s.Recover(ctx)
-	_, purgeErr := PurgeExpired(ctx, s.Pool, s.Limits.Retention)
+	_, purgeErr := PurgeExpired(ctx, s.Pool)
 	return errors.Join(recoverErr, purgeErr)
 }
 

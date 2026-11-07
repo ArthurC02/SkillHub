@@ -142,9 +142,13 @@ func (s *Service) InterruptedTransient(ctx context.Context, a JobArgs) error {
 
 func nothingSpared(State, envelope) bool { return false }
 
-func stillWithinCallDeadline(state State, e envelope) bool {
-	return state == StateWorking && e.ActiveDeadline.After(time.Now())
+func stillWithinItsStep(state State, e envelope) bool {
+	return state == StateWorking && e.ActiveDeadline.Add(attemptWrapUp+recoverySlack).After(time.Now())
 }
+
+const recoverySlack = 5 * time.Second
+
+func stalledAfter(l Limits) time.Duration { return l.activeStep() + attemptWrapUp + recoverySlack }
 
 func (s *Service) recoverAttempt(ctx context.Context, a JobArgs, spared func(State, envelope) bool) error {
 	tx, err := s.Pool.Begin(ctx)
@@ -198,7 +202,7 @@ func (s *Service) Recover(ctx context.Context) error {
 	}
 	rows, err := gen.New(s.Pool).ListStalledCreationSessions(ctx, gen.ListStalledCreationSessionsParams{
 		States:        statesAwaitingTheModel(),
-		StalledBefore: pgtype.Timestamptz{Time: time.Now().Add(-s.Limits.CallTimeout - 15*time.Second - attemptWrapUp), Valid: true},
+		StalledBefore: pgtype.Timestamptz{Time: time.Now().Add(-stalledAfter(s.Limits)), Valid: true},
 		BatchSize:     stalledSessionBatch,
 	})
 	if err != nil {
@@ -225,7 +229,7 @@ func (s *Service) recoverStalled(ctx context.Context, row gen.CreationSession) e
 	if State(row.State) == StateQueued && e.Deadline.After(time.Now()) {
 		return nil
 	}
-	if err = s.recoverAttempt(ctx, JobArgs{row.ID, row.WorkspaceID, row.Revision, e.ActiveReceipt}, stillWithinCallDeadline); err != nil {
+	if err = s.recoverAttempt(ctx, JobArgs{row.ID, row.WorkspaceID, row.Revision, e.ActiveReceipt}, stillWithinItsStep); err != nil {
 		return err
 	}
 	if s.RevokeKey != nil && e.ActiveReceipt.Valid {
