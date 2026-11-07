@@ -48,6 +48,7 @@ echo
 set +e
 fail=0
 escaped=0
+TAINTED_BEFORE="\$(cat /proc/sys/kernel/tainted 2>/dev/null)"
 
 # Each probe prints one word rather than relying on its exit code, so a
 # broken probe stays distinguishable from a refused attempt.
@@ -123,14 +124,15 @@ else
 fi
 
 # Reads the integer flag directly rather than grepping dmesg text: a clean
-# kernel's own crash-trace header contains the literal word "taint".
+# kernel's own crash-trace header contains the literal word "taint". Only bits
+# set during the attempts count; a shared runner may boot already tainted.
 TAINTED="\$(cat /proc/sys/kernel/tainted 2>/dev/null)"
-if [ -z "\$TAINTED" ]; then
+if [ -z "\$TAINTED" ] || [ -z "\$TAINTED_BEFORE" ]; then
   printf '  %-36s UNKNOWN /proc/sys/kernel/tainted not readable here\n' 'no kernel taint'; [ \$fail -eq 0 ] && fail=2
-elif [ "\$TAINTED" != 0 ]; then
-  printf '  %-36s FAIL    tainted=%s\n' 'no kernel taint' "\$TAINTED"; fail=2
+elif [ \$(( TAINTED & ~TAINTED_BEFORE )) -ne 0 ]; then
+  printf '  %-36s FAIL    tainted=%s before=%s\n' 'no kernel taint' "\$TAINTED" "\$TAINTED_BEFORE"; fail=2
 else
-  printf '  %-36s PASS\n' 'no kernel taint'
+  printf '  %-36s PASS    tainted=%s before=%s\n' 'no kernel taint' "\$TAINTED" "\$TAINTED_BEFORE"
 fi
 
 echo
