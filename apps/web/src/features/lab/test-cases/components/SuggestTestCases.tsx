@@ -10,12 +10,13 @@ import {
 } from "../../testcases.service";
 import { MutationError } from "./MutationError";
 
+const CREDIT_REFUSED = "點數不足，這次沒有呼叫模型、也沒有扣點。請管理者加點後再試。";
+
 function suggestFailureSentence(error: unknown) {
   const status = error instanceof ApiError ? error.status : 0;
   if (status === 503) return userFacingReason(error) ?? "目前無法自動建議測試題，請自己手動寫。";
   if (status === 403) return "自動建議只開放給封測受邀帳號，測試題可以自己手動寫。";
-  if (status === 422)
-    return "點數不足，這次沒有呼叫模型、也沒有扣點。測試題可以自己手動寫，或請管理者加點後再試。";
+  if (status === 422) return `${userFacingReason(error) ?? CREDIT_REFUSED}測試題可以自己手動寫。`;
   return userFacingReason(error) ?? "無法取得建議，可以再試一次。";
 }
 

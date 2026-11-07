@@ -11,6 +11,8 @@ import { CriterionRow } from "./CriterionRow";
 import { textLengthReason } from "../test-cases.model";
 import { useRevealOnChange } from "../../../../shared/ui/useRevealOnChange";
 
+const CREDIT_REFUSED = "點數不足，這次沒有呼叫模型、也沒有扣點。請管理者加點後再試。";
+
 const MAX_CRITERIA = 20; // one-number: maxCriteria
 
 function Suggestions({
@@ -82,7 +84,7 @@ function suggestFailureSentence(error: unknown) {
   if (status === 403) return "自動建議只開放給封測受邀帳號，驗收條件可以自己手動輸入。";
   if (status === 413) return `${FULL_SENTENCE}這次沒有呼叫模型、也沒有扣點。`;
   if (status === 422)
-    return "點數不足，這次沒有呼叫模型、也沒有扣點。驗收條件可以自己手動輸入，或請管理者加點後再試。";
+    return `${userFacingReason(error) ?? CREDIT_REFUSED}驗收條件可以自己手動輸入。`;
   return userFacingReason(error) ?? "無法取得建議，可以再試一次。";
 }
 

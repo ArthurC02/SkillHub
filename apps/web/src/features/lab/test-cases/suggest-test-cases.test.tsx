@@ -125,8 +125,14 @@ test("an empty answer says there was nothing usable", async () => {
 for (const { status, json, sentence } of [
   {
     status: 422,
-    json: { error: "點數不足" },
-    sentence: "點數不足，這次沒有呼叫模型、也沒有扣點。",
+    json: { error: "點數不足，無法開始建議測試題，沒有呼叫模型。請聯絡管理者為這個帳號加點。" },
+    sentence:
+      "點數不足，無法開始建議測試題，沒有呼叫模型。請聯絡管理者為這個帳號加點。測試題可以自己手動寫。",
+  },
+  {
+    status: 422,
+    json: { error: "insufficient credit" },
+    sentence: "點數不足，這次沒有呼叫模型、也沒有扣點。請管理者加點後再試。測試題可以自己手動寫。",
   },
   { status: 403, json: { error: "封測" }, sentence: "自動建議只開放給封測受邀帳號" },
   {
@@ -140,7 +146,7 @@ for (const { status, json, sentence } of [
     sentence: "無法取得建議，可以再試一次。",
   },
 ]) {
-  test(`a ${status} suggestion answer${status === 200 ? " of the wrong shape" : ""} explains itself`, async () => {
+  test(`a ${status} suggestion answer${status === 200 ? " of the wrong shape" : ""} (${JSON.stringify(json)}) explains itself`, async () => {
     const page = await suggestedPage({ status, json });
     await page.eventually(() => expect(page.getByRole("alert").text()).toContain(sentence));
     expect(page.getByRole("button", { name: "採納", exact: true }).count()).toBe(0);
