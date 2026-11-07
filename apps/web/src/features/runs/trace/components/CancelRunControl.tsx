@@ -13,7 +13,15 @@ function cancelFailureSentence(error: unknown): string {
   return "取消要求沒有送出，可以再按一次。";
 }
 
-export function CancelRunControl({ runId, status }: { runId: string; status?: string }) {
+export function CancelRunControl({
+  runId,
+  status,
+  cancelRequested = false,
+}: {
+  runId: string;
+  status?: string;
+  cancelRequested?: boolean;
+}) {
   const [confirming, setConfirming] = useState(false);
   const [message, setMessage] = useState("");
   const cancel = useCancelRun(runId);
@@ -35,6 +43,7 @@ export function CancelRunControl({ runId, status }: { runId: string; status?: st
         {message && <p role="status">{message}</p>}
       </>
     );
+  if (cancelRequested) return <p role="status">已要求取消，等待停止。</p>;
   if (!confirming) {
     return (
       <p>

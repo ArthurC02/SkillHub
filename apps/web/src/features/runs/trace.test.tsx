@@ -505,6 +505,21 @@ test("設計 §3 第 4 條：結束的試跑在自己的頁面上說出平台寫
   expect(container.textContent).toContain(reason);
 });
 
+test("a running run the server has recorded a cancel for shows it is stopping, with no cancel button", async () => {
+  stubTrace({ ...summary, status: "running" }, advanced, {
+    run_id: summary.run_id,
+    skill_id: "skill-1",
+    skill_version_id: "version-2",
+    test_case_snapshot_id: "snapshot-3",
+    cancel_requested_at: "2026-11-08T01:00:00Z",
+  });
+  await render();
+  await waitFor(() => (container.textContent ?? "").includes("已要求取消，等待停止。"));
+
+  const buttons = Array.from(container.querySelectorAll("button"), (b) => b.textContent);
+  expect(buttons).not.toContain("取消這次試跑");
+});
+
 test("取消試跑只有最後確認使用破壞性語意", async () => {
   stubTrace({ ...summary, status: "running" }, advanced);
   await render();

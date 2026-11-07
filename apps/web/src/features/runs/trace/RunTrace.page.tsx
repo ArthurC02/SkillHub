@@ -60,10 +60,12 @@ function RunWorkspaceRail({
   runId,
   status,
   versionId,
+  cancelRequested,
 }: {
   runId: string;
   status?: string;
   versionId?: string;
+  cancelRequested: boolean;
 }) {
   return (
     <aside className="run-workspace-rail" aria-label="試跑紀錄操作與區段導覽">
@@ -87,7 +89,7 @@ function RunWorkspaceRail({
             與另一個試跑比較
           </Link>
         </p>
-        <CancelRunControl runId={runId} status={status} />
+        <CancelRunControl runId={runId} status={status} cancelRequested={cancelRequested} />
         <SaveAsTestCase runId={runId} versionId={versionId} />
       </section>
     </aside>
@@ -201,6 +203,7 @@ function RunWorkspaceBody({
           runId={runId}
           status={readableTrace?.status}
           versionId={readableRun?.skill_version_id}
+          cancelRequested={Boolean(readableRun?.cancel_requested_at)}
         />
 
         <div className="run-workspace-main">

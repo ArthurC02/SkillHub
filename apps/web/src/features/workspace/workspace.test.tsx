@@ -1426,6 +1426,22 @@ test("a run in a terminal status shows no cancel button and no confirm dialog", 
   expect(text()).not.toContain("確定要取消？");
 });
 
+test("a running run whose cancel was already requested says it is stopping and offers no second cancel", async () => {
+  await render(<CancelRunControl runId={RUN} status="running" cancelRequested />, () => true);
+
+  expect(button("取消這次試跑")).toBeUndefined();
+  expect(text()).toContain("已要求取消，等待停止。");
+});
+
+test("a running run with no cancel request still offers to cancel", async () => {
+  await render(
+    <CancelRunControl runId={RUN} status="running" cancelRequested={false} />,
+    () => button("取消這次試跑") !== undefined,
+  );
+
+  expect(text()).not.toContain("已要求取消");
+});
+
 test("CORE-007 cancelling a deletion request invalidates /me, so the badge goes away", async () => {
   const invalidated = vi.spyOn(queryClient, "invalidateQueries");
   stubAccountFetch((_input: string, init?: RequestInit) => {
