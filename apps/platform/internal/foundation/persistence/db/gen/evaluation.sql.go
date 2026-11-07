@@ -779,25 +779,6 @@ func (q *Queries) InsertReflectionCandidateBatch(ctx context.Context, arg Insert
 	return err
 }
 
-const isAdoptedCandidateVersion = `-- name: IsAdoptedCandidateVersion :one
-SELECT EXISTS (
-    SELECT 1 FROM reflection_adoptions a
-    WHERE a.workspace_id = $1 AND a.skill_version_id = $2
-)
-`
-
-type IsAdoptedCandidateVersionParams struct {
-	WorkspaceID    pgtype.UUID
-	SkillVersionID pgtype.UUID
-}
-
-func (q *Queries) IsAdoptedCandidateVersion(ctx context.Context, arg IsAdoptedCandidateVersionParams) (bool, error) {
-	row := q.db.QueryRow(ctx, isAdoptedCandidateVersion, arg.WorkspaceID, arg.SkillVersionID)
-	var exists bool
-	err := row.Scan(&exists)
-	return exists, err
-}
-
 const listBatchReflections = `-- name: ListBatchReflections :many
 SELECT id, workspace_id, batch_id, skill_version_id, dev_test_case_ids, outcome, runs_read, runs_not_read, created_by, created_at, candidate_focuses, candidate_outcomes FROM batch_reflections
 WHERE workspace_id = $1 AND batch_id = $2

@@ -288,9 +288,3 @@ RETURNING *;
 
 -- name: GetReflectionAdoption :one
 SELECT * FROM reflection_adoptions WHERE reflection_id = @reflection_id AND workspace_id = @workspace_id;
-
--- name: IsAdoptedCandidateVersion :one
-SELECT EXISTS (
-    SELECT 1 FROM reflection_adoptions a
-    WHERE a.workspace_id = @workspace_id AND a.skill_version_id = @skill_version_id
-);
