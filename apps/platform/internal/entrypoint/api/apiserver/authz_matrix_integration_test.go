@@ -176,7 +176,6 @@ var anonymousRoutes = []anonCase{
 	{pattern: "POST /skills/{id}/runs/preflight/confirm", want: http.StatusUnauthorized},
 	{pattern: "POST /skills/{id}/runs", want: http.StatusUnauthorized},
 
-
 	{pattern: "GET /me/credits", want: http.StatusUnauthorized},
 	{pattern: "GET /me/credits/entries", want: http.StatusUnauthorized},
 	{pattern: "GET /me/activity", want: http.StatusUnauthorized},
