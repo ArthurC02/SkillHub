@@ -3,12 +3,12 @@
   "proposal_id": "per-call-cost-samples-2026-11-07",
   "proposer": "coding-agent",
   "requirement_id": "per-call-cost-samples",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-11-07T12:21:25.775101Z",
   "verified_at": "2026-11-07T12:24:49.039420Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-11-07T12:25:12.295658Z",
+  "applied_at": "2026-11-07T12:25:29.368336Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "77e6be2a29d684be0da5214276d28e65e7828df4",
@@ -293,5 +293,9 @@
   "supersedes": [
     "reflection-candidates-named-2026-11-07",
     "suggest-test-cases-2026-11-06"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "661b76d008b349e9542f162293f07b0e65af179a",
+    "registry_digest": "sha256:e06465ee914eb3293cdf52e70ca1795ddd828c8eb25770291603e2183ca384ea"
+  }
 }

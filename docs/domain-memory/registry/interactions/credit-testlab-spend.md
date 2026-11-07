@@ -5,10 +5,10 @@ consistency: synchronous
 delivery: composition-root hook
 verified:
   - by: "human:ArthurC"
-    at: "2026-11-06T08:43:09.009606Z"
+    at: "2026-11-07T12:24:47.744656Z"
 sources:
-  - resource: "apps/platform/internal/entrypoint/api/apiserver/credit_wiring.go#L93-135"
-    excerpt_sha256: "sha256:bd0e270bd9d8736a00405369761a94aecd8756f1c978c01eb3faa52e26cd4708"
+  - resource: "apps/platform/internal/entrypoint/api/apiserver/credit_wiring.go#L98-139"
+    excerpt_sha256: "sha256:89ebde5a3472ee06b2653cb3e886cea7656ee9779ede4c3ff2c5f4d5cc579691"
 ---
 # Relations
 - Producer context: [credit](/contexts/credit)
