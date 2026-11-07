@@ -3,14 +3,14 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-17T13:12:23.581261Z"
+    at: "2026-11-07T19:36:24.856168Z"
 sources:
-  - resource: "apps/platform/internal/trial/improvement/apply.go#L35-35"
-    excerpt_sha256: "sha256:e8102a52cf248cb2f57c4663818b428e7ff0cf344c5f60b8e8275459a466b76d"
-  - resource: "apps/platform/internal/trial/improvement/apply.go#L219-221"
-    excerpt_sha256: "sha256:387c2ba24e0a9768ded1c7997f07c973ed0e8afaa906ae7f41f86ed8e8f51b0c"
-  - resource: "apps/platform/internal/trial/improvement/apply_limits_characterization_test.go#L57-69"
-    excerpt_sha256: "sha256:ea5f7dbfb033392e15780b03b031dadcc21abb867373a6a452479e8833371863"
+  - resource: "apps/platform/internal/shared/skillpkg/skillpkg.go#L994-994"
+    excerpt_sha256: "sha256:5dbdb75edec1a3a8e8f7fb69365c02b7fc488fa1aefe9a138059dc64921f88c6"
+  - resource: "apps/platform/internal/trial/improvement/apply.go#L241-243"
+    excerpt_sha256: "sha256:bb47a3c61f4d6f44328e70b203c9860b51b7773b4f3169ba7c9ba2e443ca3cdf"
+  - resource: "apps/platform/internal/trial/improvement/apply_limits_characterization_test.go#L58-70"
+    excerpt_sha256: "sha256:3be1479879fd1a4d545bd19eebc128f5d7ee995e105eaafc9d8c8f908565e31b"
 ---
 A file a suggestion targets is read for a reviewable diff only up to 1 MiB; a larger file is refused before any content check.
 
