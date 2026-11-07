@@ -1245,7 +1245,7 @@ Skill 在 `allowed-tools` 宣告營運者清單上的 MCP 工具時，試跑以�
 
 四項在 `-26` 的 digest 上跑過之後移動：`apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`（與它 `docker tag` 成的本地 tag）、`p02_docker_test.go` 的常數，以及 `automation.md` 的實跑範例。
 
-## `2026.08-26` → `2026.08-27`（2026-11-06）— **安全性修補：`apt`／`libapt-pkg6.0`**
+## `2026.08-26` → `2026.08-27`（2026-11-06）— **安全性修補：`apt`／`libapt-pkg6.0`；四項實測通過，預設映像移到 `-27`**
 
 `Runtime Image` 的 I-06 在 [run #42204098123](https://github.com/ArthurC02/SkillHub/actions/runs/42204098123) 擋下 `-26` 的一筆 fixable High。觸發那次的 commit 動的是 `infra/images/devtools/`，與這個映像無關，紅燈是路徑比對順帶照出來的。以同一版 grype（`v0.121.0`）在本機對 `-26` 重現：
 
@@ -1275,3 +1275,24 @@ id -u → 65532；node --version → v22.23.4；python --version → Python 3.11
 version label → 2026.08-27；.Size → 1,358,773,304 bytes
 anchore/grype:v0.121.0 <image> --only-fixed --fail-on high → No vulnerabilities found（exit 0）
 ```
+
+### 2026-11-07：四項測項，全部跑在 CI 發佈的 digest 上
+
+| 欄位 | 值 |
+| --- | --- |
+| 映像 digest | `sha256:042d9b91cbacc7c9718a1d3a20800777e48895c227d9a1b01c9e1c95c90aafaa`（`ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-27`，於 commit `e252810b` 發佈；以 digest `docker pull`，label → `2026.08-27`） |
+| 環境 | 與 `-26` 相同：本機 LiteLLM（`skillhub-litellm-1`）＋ `skillhub_egress`；`sandboxd` 以 HEAD 交叉編譯、在 `debian:12-slim` 容器跑，`SKILLHUB_SANDBOX_IMAGE` **直接指上面那個 digest**；兩支測試二進位交叉編譯後在容器裡跑；允許清單只在暫存副本裡填 litellm 的 egress IP 與服務名，committed 的那份一字未動 |
+| 費用 | 合計 **$0.114210**（`gpt-5.4-mini`，30 筆，以閘道 `LiteLLM_SpendLogs` 加總）：端到端五次 Run $0.022287＋$0.018088＋$0.022149＋$0.022785＋$0.018358；harness 兩支 $0.010543；撤銷探測與被換掉的套件 $0 |
+
+| 項次 | 狀態 | 實測輸出 / 判定 |
+| --- | --- | --- |
+| **1. Skill 載入條件** | ✅ **通過，三種形狀各跑一次** | `TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey` PASS（20.37s）、`TestEndToEndRunOfASkillInsideAPluginInstallsThatDirectoryAlone` PASS（17.22s）、`TestEndToEndRunOfAPluginInsideARepositoryDirectoryInstallsItsSkill` PASS（17.23s）；`TestEndToEndRunHandsAQuestionOnlyThePersonCanAnswerBackAndStops` PASS（13.22s）；`TestEndToEndRunAnswersADeclaredListedMCPToolWithAStandIn` PASS（14.26s） |
+| **2. 全數經閘道；金鑰撤銷後回 401** | ✅ **通過** | 每次 Run 的模型呼叫都在該 Run 自己的 Virtual Key 下（`skillhub-attempt-<id>` 五把，6／4／6／6／4 筆）。撤銷：新開一把限 `gpt-5.4-mini`、0.5 USD、6 小時的 Virtual Key 打 `/v1/models` → **200**，`/key/delete` → 200，同一把再打 → **401** |
+| **3. Prompt caching 計費欄位與對帳** | ✅ **通過，五次 Run 全數對上** | `usage_object.prompt_tokens_details.cached_tokens`：Run 的 26 筆中 16 筆有值，合計 290,816。對帳：五次 Run 回報 $0.022287、$0.018088、$0.022149、$0.022785、$0.018358，與各自 Virtual Key 的 `LiteLLM_SpendLogs` 加總到小數第六位全部相同 |
+| **4. `usage` 事件的發出條件** | ✅ **通過** | `TestHarnessReportsUsageForACompletedTurn` PASS（15.15s，`in=8151 out=24 token_source=result`）；`TestHarnessStopsAtTheTokenCeilingAndStillReportsUsage` PASS（15.62s，撞上限仍回報 `in=2011 out=32`，provider 錯誤指向 `token_budget_exceeded`）。harness 以 master key 當 grant，`cost` 為 `null`，與 `-26` 相同 |
+
+**套件位元組核對（不在四項清單上，同批驗證）**：`TestEndToEndRunRefusesAPackageWhoseStoredBytesAreNotTheAdmittedOnes` PASS（11.20s），沒有呼叫模型。
+
+### 預設映像從 `-26` 移到 `-27`
+
+四項在 `-27` 的 digest 上跑過之後移動：`apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`（與它 `docker tag` 成的本地 tag）、`p02_docker_test.go` 的常數，以及 `automation.md` 的實跑範例。
