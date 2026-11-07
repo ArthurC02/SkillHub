@@ -3,12 +3,12 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-11-07T12:24:47.744656Z"
+    at: "2026-11-07T15:07:58.144675Z"
 sources:
   - resource: "db/migrations/0150_reflection_candidates.sql#L1-12"
     excerpt_sha256: "sha256:eee93e69affd89b58bc515bb09df2875b22506df96bbd45ba2cd8a0d2cf8724b"
-  - resource: "apps/platform/internal/trial/improvement/reflection/reflection.go#L70-92"
-    excerpt_sha256: "sha256:d5501e022c23cd3ac644e34567567290d58280453ae27eb174674f185724a4d3"
+  - resource: "apps/platform/internal/trial/improvement/reflection/reflection.go#L78-104"
+    excerpt_sha256: "sha256:9408b4033d02272149fdccdfacb9c37a4e8384c66ec291e7208144f2a063e835"
   - resource: "apps/platform/internal/trial/improvement/reflection/reflection.go#L302-326"
     excerpt_sha256: "sha256:9da7d5f3ae841315a5e79427c61f86dc1bae453c802971d61f4dbd2b215c1e0a"
   - resource: "apps/platform/internal/trial/improvement/reflection/round_test.go#L17-53"

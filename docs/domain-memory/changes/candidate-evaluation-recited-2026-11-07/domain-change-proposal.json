@@ -3,12 +3,12 @@
   "proposal_id": "candidate-evaluation-recited-2026-11-07",
   "proposer": "agent:coding-agent",
   "requirement_id": "candidate-evaluation-recited",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-11-07T15:07:58.050949Z",
   "verified_at": "2026-11-07T15:07:58.676062Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-11-07T15:08:23.556957Z",
+  "applied_at": "2026-11-07T15:08:32.071146Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "c4296e662c381cde0338f220719109c5f6211701",
@@ -512,5 +512,9 @@
     "paired-difference-student-t-recited-2026-11-07",
     "per-call-cost-samples-2026-11-07",
     "shifted-recite-2026-10-24"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "273a26715967f13cc733569c0792f6f4a45f51c7",
+    "registry_digest": "sha256:a7cc6f54678ebdc0dd2c7355bc4403d6d0170cd25edcdb87564b155e14e0dabb"
+  }
 }

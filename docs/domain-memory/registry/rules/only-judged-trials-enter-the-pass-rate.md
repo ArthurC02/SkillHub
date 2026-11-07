@@ -3,12 +3,12 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-18T20:31:55.890891Z"
+    at: "2026-11-07T15:07:58.144675Z"
 sources:
   - resource: "apps/platform/internal/trial/batch/batch_report.go#L220-222"
     excerpt_sha256: "sha256:9fb83e409f4f0db918960f56a6fe4b7cce739cf0f7e00dbee09b071aa116093a"
-  - resource: "apps/platform/internal/trial/batch/batch_test.go#L147-181"
-    excerpt_sha256: "sha256:24cd351a1c08ff938035fb610be92d984aef28aed25026fc63801de5d9114834"
+  - resource: "apps/platform/internal/trial/batch/batch_test.go#L148-182"
+    excerpt_sha256: "sha256:38b4d36ff1ac9750788bb312e9e57051b2694d17c3fb51659177d4d77ac9b233"
 ---
 Only judged trials enter a pass rate; running, pending, awaiting-answer and not-evaluated trials count in neither its numerator nor its denominator.
 
