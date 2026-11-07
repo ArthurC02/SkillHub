@@ -1,0 +1,21 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "per-call-cost-samples",
+  "status": "draft",
+  "intent": "Keep the reviewed rule that an unpriced charge debits nothing cited to the code that now holds it, after the charge's amount check moved into its own method.",
+  "actor": "platform-operator",
+  "observable_outcome": "A charge with no known cost still records an estimated cost event and leaves the balance unchanged.",
+  "acceptance_criteria": [
+    {
+      "id": "unknown-cost-not-debited",
+      "statement": "A charge whose cost is unknown records an estimated event and debits no credits."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/creator/credit/service.go"
+  ]
+}

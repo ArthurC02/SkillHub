@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "per-call-cost-samples",
+  "proposal_id": "charge-input-recited-2026-11-07",
+  "obligations": [
+    {
+      "id": "rule-usage-with-unknown-cost-is-recorded-but-never-debited",
+      "source_type": "rule",
+      "source_id": "usage-with-unknown-cost-is-recorded-but-never-debited",
+      "also_covers": [
+        {
+          "source_type": "acceptance-criterion",
+          "source_id": "unknown-cost-not-debited"
+        }
+      ],
+      "expected_outcome": "TestUnknownUsageIsRecordedAndNeverDebited: an unpriced charge records an estimated cost event and leaves the balance unchanged.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestUnknownUsageIsRecordedAndNeverDebited$ ./internal/creator/credit/"
+    }
+  ]
+}

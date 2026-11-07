@@ -1,0 +1,128 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "charge-input-recited-2026-11-07",
+  "proposer": "coding-agent",
+  "requirement_id": "per-call-cost-samples",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-11-07T12:27:50.442090Z",
+  "verified_at": "2026-11-07T12:28:18.483269Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "f246f9aaacc98dc0ef9762906d71617bdbf22e44",
+    "registry_digest": "sha256:e06465ee914eb3293cdf52e70ca1795ddd828c8eb25770291603e2183ca384ea",
+    "committed_digest": "sha256:e06465ee914eb3293cdf52e70ca1795ddd828c8eb25770291603e2183ca384ea"
+  },
+  "affected_contexts": [
+    "credit"
+  ],
+  "rule_ids": [
+    "usage-with-unknown-cost-is-recorded-but-never-debited"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "credit",
+    "invariant": "A charge whose actual cost is unknown is recorded as an estimated cost event and debits no credits.",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "unchanged; credit's Charge only.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "The amount check of Charge moved into ChargeInput.billing to add the per-call list check without growing Charge."
+    ],
+    "decision": "Re-cite the rule to ChargeInput, billing and the estimated branch of Charge; the rule text is unchanged.",
+    "invariants_preserved": [
+      "An unpriced charge debits no credits and is recorded as estimated."
+    ],
+    "rejected_alternatives": [
+      "Leaving the stale citation, which would fail verify-evidence."
+    ],
+    "proof_obligations": [
+      "rule-usage-with-unknown-cost-is-recorded-but-never-debited"
+    ],
+    "counterfactual_check": "Treat an unknown cost as known in billing: the unpriced charge must debit and the test must fail."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "usage-with-unknown-cost-is-recorded-but-never-debited",
+        "statement": "A charge whose actual cost is unknown is recorded as an estimated cost event and debits no credits; the reserved ceiling is never billed as the cost.",
+        "contexts": [
+          "credit"
+        ],
+        "examples": [
+          "An unpriced call leaves the balance unchanged and records an estimated cost event."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/credit/service.go",
+            "lines": {
+              "start": 95,
+              "end": 112
+            },
+            "content_sha256": "sha256:ca373a996028a88272e4482493f243c111a937d7bbef6b2c956bc3947027294c",
+            "excerpt_sha256": "sha256:d964d35b41fa167f4e9f60969912b2ed11a5c5a652d1554b5f276a660e1b7954"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/service.go",
+            "lines": {
+              "start": 155,
+              "end": 162
+            },
+            "content_sha256": "sha256:ca373a996028a88272e4482493f243c111a937d7bbef6b2c956bc3947027294c",
+            "excerpt_sha256": "sha256:8a0e5c729dc2ac07aff5309d092f73cda6edf0e33985fa8c62a647b4c241942e"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/service.go",
+            "lines": {
+              "start": 537,
+              "end": 544
+            },
+            "content_sha256": "sha256:ca373a996028a88272e4482493f243c111a937d7bbef6b2c956bc3947027294c",
+            "excerpt_sha256": "sha256:abc1c8c606a978a6550b64ece4af92f170a0971628cc1d15b504494b1efb3550"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/service_test.go",
+            "lines": {
+              "start": 144,
+              "end": 169
+            },
+            "content_sha256": "sha256:722348e8e24defa55993edbb261321bb2560fba85bdd63c35beafd0050697cb3",
+            "excerpt_sha256": "sha256:6152f0ffdcdf942ab68bfb6437f197ac9a063f357feaa2f4edc112141bebbbb2"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-11-07T12:28:17.483821Z",
+      "scope": "proposal",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "f246f9aaacc98dc0ef9762906d71617bdbf22e44",
+        "registry_digest": "sha256:e06465ee914eb3293cdf52e70ca1795ddd828c8eb25770291603e2183ca384ea",
+        "committed_digest": "sha256:e06465ee914eb3293cdf52e70ca1795ddd828c8eb25770291603e2183ca384ea"
+      }
+    }
+  ],
+  "supersedes": [
+    "shifted-recite-2026-10-24"
+  ]
+}

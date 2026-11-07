@@ -1,0 +1,37 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "per-call-cost-samples",
+  "proposal_id": "charge-input-recited-2026-11-07",
+  "registry_revision": {
+    "observed_commit": "f246f9aaacc98dc0ef9762906d71617bdbf22e44",
+    "registry_digest": "sha256:e06465ee914eb3293cdf52e70ca1795ddd828c8eb25770291603e2183ca384ea",
+    "committed_digest": "sha256:e06465ee914eb3293cdf52e70ca1795ddd828c8eb25770291603e2183ca384ea"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-usage-with-unknown-cost-is-recorded-but-never-debited",
+      "mutated_protection": "apps/platform/internal/creator/credit/service.go:538: estimated = in.UsdMicros == nil -> estimated = false",
+      "failure_evidence": "--- FAIL: TestUnknownUsageIsRecordedAndNeverDebited (0.00s)\npanic: runtime error: invalid memory address or nil pointer dereference [recovered, repanicked]\n...\nwindows-amd64/src/runtime/panic.go:859 +0x125\ngithub.com/ArthurC02/skillhub/apps/platform/internal/creator/credit.ChargeInput.billing(...)\n\tC:/src/SkillHub/.claude/worktrees/feature-194794/apps/platform/internal/creator/credit/service.go:541\ngithub.com/ArthurC02/skillhub/apps/platform/internal/creator/credit.(*Service).Charge(0x7ff736318dc0?, {0x7ff736c32130?, 0x7ff736ceea40?}, {0x0?, 0x0?}, {{0x7ff7366c4297, 0xd}, {0x0, 0x0}, {0x0, ...}, ...})\n\tC:/src/SkillHub/.claude/worktrees/feature-194794/apps/platform/internal/creator/credit/service.go:130 +0x85\ngithub.com/ArthurC02/skillhub/apps/platform/internal/creator/credit.TestUnknownUsageIsRecordedAndNeverDebited(0x21bec7c5e800)\n\tC:/src/SkillHub/.claude/worktrees/feature-194794/apps/platform/internal/creator/credit/service_test.go:149 +0x365\ntesting.tRunner(0x21bec7c5e800, 0x7ff736c346d8)\n\tC:/Users/a8022/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.windows-amd64/src/testing/testing.go:2195 +0xc3\ncreated by testing.(*T).Run in goroutine 1\n\tC:/Users/a8022/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.27.3.windows-amd64/src/testing/testing.go:2260 +0x4b4\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/credit\t3.292s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "rule-usage-with-unknown-cost-is-recorded-but-never-debited",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestUnknownUsageIsRecordedAndNeverDebited$ ./internal/creator/credit/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:0ae03283da45f1c43f95294c8ce9f277765c05297b4b5d9e744b7f2f41a1b6be",
+      "finished_at": "2026-11-07T12:27:56.880434Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}
