@@ -112,6 +112,8 @@ func writeAutomationCheckRepoScanFixture(t *testing.T, root string) {
 	writeTestFile(t, root, contextMapDoc, "packages:\n")
 	writeTestFile(t, root, registryContextsFile+".json", `{"contexts": []}`)
 	writeTestFile(t, root, dependencyPoliciesFile+".json", `{"dependencies": []}`)
+	writeTestFile(t, root, "tools/sample/test_sample_characterization.py",
+		"if __name__ == \"__main__\":\n    pass\n\ndef test_never_collected():\n    pass\n")
 }
 
 func writeAutomationCheckGeneratedCodeFixture(t *testing.T, root string) {
