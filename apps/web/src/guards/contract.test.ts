@@ -338,3 +338,14 @@ test("04 丙-43: 進行中 ∪ 終態 is exactly the contract's RunStatus", asyn
     "a status that is both in flight and terminal",
   ).toEqual([]);
 });
+
+test("every contract run status is classified on purpose: a new one is neither in flight nor terminal until someone says which", async () => {
+  const { IN_FLIGHT_RUN_STATUSES, TERMINAL_RUN_STATUSES } =
+    await import("../features/runs/trace.service");
+  const endsTheRun = new Set(["succeeded", "failed", "cancelled", "timed_out"]);
+  const unclassified = Object.values(generated.RunStatusEnum).filter(
+    (s) => !IN_FLIGHT_RUN_STATUSES.has(s) && !endsTheRun.has(s),
+  );
+  expect(unclassified, "a contract status the web would silently treat as terminal").toEqual([]);
+  expect(TERMINAL_RUN_STATUSES).toEqual(endsTheRun);
+});
