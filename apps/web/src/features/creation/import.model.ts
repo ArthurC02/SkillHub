@@ -1,11 +1,8 @@
 import type { SkillImportLimits } from "./import.service";
-
-export function mb(bytes: number): string {
-  return (bytes / (1 << 20)).toFixed(1).replace(/\.0$/, "") + " MB";
-}
+import { bytes } from "../../shared/format";
 
 function sizesApart(size: number, ceiling: number): [string, string] {
-  if (mb(size) !== mb(ceiling)) return [mb(size), mb(ceiling)];
+  if (bytes(size) !== bytes(ceiling)) return [bytes(size), bytes(ceiling)];
   return [`${size.toLocaleString("en-US")} 位元組`, `${ceiling.toLocaleString("en-US")} 位元組`];
 }
 

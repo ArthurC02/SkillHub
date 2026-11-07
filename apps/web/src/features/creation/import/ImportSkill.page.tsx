@@ -17,7 +17,8 @@ import {
   type SkillImportLimits,
 } from "../import.service";
 import type { ImportResult, ImportedSkill, RefusedSkill } from "../../../core/api/types";
-import { importRefusal, mb } from "../import.model";
+import { importRefusal } from "../import.model";
+import { bytes } from "../../../shared/format";
 import "./ImportSkill.page.css";
 
 export function ImportSkill() {
@@ -299,8 +300,8 @@ function ImportRules({ rules }: { rules: SkillImportLimits | undefined }) {
       {rules && (
         <>
           <li>
-            zip 最大 {mb(rules.max_zip_bytes)}，解壓後總量最大 {mb(rules.max_unpacked_bytes)}；最多{" "}
-            {rules.max_files} 個檔案、 單一檔案最大 {mb(rules.max_file_bytes)}、路徑最深{" "}
+            zip 最大 {bytes(rules.max_zip_bytes)}，解壓後總量最大 {bytes(rules.max_unpacked_bytes)}
+            ；最多 {rules.max_files} 個檔案、 單一檔案最大 {bytes(rules.max_file_bytes)}、路徑最深{" "}
             {rules.max_path_depth} 層。
           </li>
           <li>

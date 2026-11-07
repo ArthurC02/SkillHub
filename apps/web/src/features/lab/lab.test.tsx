@@ -308,8 +308,8 @@ test("02:TEST-005 the fields inside summary_hash are all on screen, the quiet on
   const text = details?.textContent ?? "";
   expect(text).toContain("256");
   expect(text).toContain("1024");
-  expect(text).toContain("100.0 MB");
-  expect(text).toContain("25.0 MB");
+  expect(text).toContain("100 MB");
+  expect(text).toContain("25 MB");
   expect(text).toContain("600 秒");
   expect(text).toContain("rootless：否");
   expect(text).toContain("未測量");

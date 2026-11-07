@@ -2,7 +2,8 @@ import { useEffect, useRef } from "react";
 import type { SessionNotReadyError } from "../../../../core/api/client";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { isWriteResultUnknown, type Dataset } from "../../lab.service";
-import { roundedBytes, uploadErrorSentence } from "../upload.model";
+import { uploadErrorSentence } from "../upload.model";
+import { bytes } from "../../../../shared/format";
 import "./UploadFailure.css";
 
 export function UploadFailure({
@@ -53,7 +54,7 @@ export function UploadFailure({
                   <ul className="file-tree" data-role="evidence">
                     {datasets.map((dataset) => (
                       <li key={dataset.dataset_id}>
-                        {dataset.file_name}（{roundedBytes(dataset.size_bytes)}）
+                        {dataset.file_name}（{bytes(dataset.size_bytes)}）
                       </li>
                     ))}
                   </ul>

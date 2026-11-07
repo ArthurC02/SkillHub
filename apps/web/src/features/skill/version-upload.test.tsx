@@ -170,10 +170,10 @@ test("version upload shows the deployment archive limits before choosing a file"
   const rule = container.querySelector("ul.note");
   expect(rule, "找不到規則句的 <ul class=note>").not.toBeNull();
   expect(rule!.textContent).toContain("SKILL.md");
-  await waitFor(() => text().includes("zip 最大 10.0 MB"));
-  expect(rule!.textContent).toContain("解壓後總量最大 100.0 MB");
+  await waitFor(() => text().includes("zip 最大 10 MB"));
+  expect(rule!.textContent).toContain("解壓後總量最大 100 MB");
   expect(rule!.textContent).toContain("最多 100 個檔案");
-  expect(rule!.textContent).toContain("單一檔案最大 1.0 MB");
+  expect(rule!.textContent).toContain("單一檔案最大 1 MB");
   expect(rule!.textContent).toContain("路徑最深 8 層");
 
   const input = container.querySelector("#skill-version-file")!;

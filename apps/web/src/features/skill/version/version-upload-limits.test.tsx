@@ -42,7 +42,7 @@ test("an offline version upload withholds cached limits and preserves the file",
   const page = app();
   page.route("**/skills/import/limits", () => ({ json: RULES }));
   await page.goto(`/skills/${SKILL}/versions/${VERSION}`);
-  await expect(page.getByText(/平台限制：zip 最大 6.0 MB/)).toHaveCount(1);
+  await expect(page.getByText(/平台限制：zip 最大 6 MB/)).toHaveCount(1);
   await page.getByRole("link", { name: "Skill Hub", exact: true }).click();
   await expect(page.getByRole("heading", { name: UPLOAD_HEADING, exact: true })).toHaveCount(0);
   try {
@@ -59,7 +59,7 @@ test("an offline version upload withholds cached limits and preserves the file",
     await page.setOffline(false);
     await page.eventually(() => {
       expect(submit.isDisabled()).toBe(false);
-      expect(page.getByText(/平台限制：zip 最大 6.0 MB/).count()).toBe(1);
+      expect(page.getByText(/平台限制：zip 最大 6 MB/).count()).toBe(1);
     });
     expect(chosenName(page)).toBe("offline.zip");
     expect(await page.axeViolations("main")).toEqual([]);
@@ -86,7 +86,7 @@ for (const fault of ["server", "unreadable limits"] as const) {
       const submit = page.getByRole("button", { name: SUBMIT, exact: true });
       if (reread) {
         await page.eventually(() => {
-          expect(section.text()).toContain("zip 最大 6.0 MB");
+          expect(section.text()).toContain("zip 最大 6 MB");
           expect(submit.isDisabled()).toBe(false);
         });
         fail = true;
@@ -112,10 +112,10 @@ for (const fault of ["server", "unreadable limits"] as const) {
       await page.eventually(() => {
         expect(submit.isDisabled()).toBe(false);
         expect(section.getByRole("heading", { name: UPLOAD_HEADING }).isFocused()).toBe(true);
-        expect(section.text()).toContain("平台限制：zip 最大 6.0 MB");
-        expect(section.text()).toContain("解壓後總量最大 48.0 MB");
+        expect(section.text()).toContain("平台限制：zip 最大 6 MB");
+        expect(section.text()).toContain("解壓後總量最大 48 MB");
         expect(section.text()).toContain("最多 37 個檔案");
-        expect(section.text()).toContain("單一檔案最大 2.0 MB");
+        expect(section.text()).toContain("單一檔案最大 2 MB");
         expect(section.text()).toContain("路徑最深 5 層");
       });
       expect(chosenName(page)).toBe("draft.zip");

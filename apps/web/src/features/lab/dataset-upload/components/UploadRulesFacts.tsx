@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import type { DatasetLimits } from "../../lab.service";
-import { roundedBytes, type TestCaseUsage } from "../upload.model";
+import type { TestCaseUsage } from "../upload.model";
+import { bytes } from "../../../../shared/format";
 
 export function UploadRulesFacts({
   limits,
@@ -17,14 +18,14 @@ export function UploadRulesFacts({
     <dl data-role="evidence">
       <dt>大小限制</dt>
       <dd>
-        單一檔案最大 {roundedBytes(limits.max_file_bytes)};同一個測試題合計最大{" "}
-        {roundedBytes(limits.max_test_case_bytes)}、最多 {limits.max_files_per_test_case} 個檔案。
+        單一檔案最大 {bytes(limits.max_file_bytes)};同一個測試題合計最大{" "}
+        {bytes(limits.max_test_case_bytes)}、最多 {limits.max_files_per_test_case} 個檔案。
         {used ? (
           <p className="note">
             這個測試題已經用掉 {used.fileCount} 個檔案、
-            {roundedBytes(used.totalBytes)}，還可以再上傳{" "}
-            {limits.max_files_per_test_case - used.fileCount} 個檔案、
-            {roundedBytes(limits.max_test_case_bytes - used.totalBytes)}。 每個檔案在{" "}
+            {bytes(used.totalBytes)}，還可以再上傳 {limits.max_files_per_test_case - used.fileCount}{" "}
+            個檔案、
+            {bytes(limits.max_test_case_bytes - used.totalBytes)}。 每個檔案在{" "}
             {testCase === "" ? (
               "測試題頁的「測試資料」那一節"
             ) : (

@@ -1,6 +1,8 @@
+const oneDecimal = (n: number) => n.toFixed(1).replace(/\.0$/, "");
+
 export function bytes(n: number): string {
-  if (n >= 1024 ** 3) return `${(n / 1024 ** 3).toFixed(1)} GB`;
-  if (n >= 1024 ** 2) return `${(n / 1024 ** 2).toFixed(1)} MB`;
-  if (n >= 1024) return `${(n / 1024).toFixed(1)} KB`;
+  if (n >= 1024 ** 3) return `${oneDecimal(n / 1024 ** 3)} GB`;
+  if (n >= 1024 ** 2) return `${oneDecimal(n / 1024 ** 2)} MB`;
+  if (n >= 1024) return `${oneDecimal(n / 1024)} KB`;
   return `${n} B`;
 }

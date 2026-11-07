@@ -1,11 +1,6 @@
 import { isWriteResultUnknown, type DatasetLimits } from "../lab.service";
 import { ApiError, SessionNotReadyError } from "../../../core/api/client";
-
-export function roundedBytes(n: number): string {
-  if (n >= 1 << 20) return `${Math.round(n / (1 << 20))} MB`;
-  if (n >= 1 << 10) return `${Math.round(n / (1 << 10))} KB`;
-  return `${n} B`;
-}
+import { bytes } from "../../../shared/format";
 
 export interface TestCaseUsage {
   fileCount: number;
@@ -31,7 +26,7 @@ export function uploadRefusal(
   used: TestCaseUsage,
 ): string {
   if (file.size > limits.max_file_bytes) {
-    return `${file.name} 是 ${roundedBytes(file.size)}，超過單一檔案上限 ${roundedBytes(
+    return `${file.name} 是 ${bytes(file.size)}，超過單一檔案上限 ${bytes(
       limits.max_file_bytes,
     )}，沒有送出。`;
   }
@@ -40,7 +35,7 @@ export function uploadRefusal(
   }
   const remaining = limits.max_test_case_bytes - used.totalBytes;
   if (file.size > remaining) {
-    return `這個測試題還剩 ${roundedBytes(remaining)} 可用，${file.name} 是 ${roundedBytes(
+    return `這個測試題還剩 ${bytes(remaining)} 可用，${file.name} 是 ${bytes(
       file.size,
     )}，沒有送出。請先刪掉一些檔案再上傳。`;
   }

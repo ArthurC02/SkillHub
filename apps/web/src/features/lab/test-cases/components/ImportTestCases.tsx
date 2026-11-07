@@ -8,6 +8,7 @@ import {
   type ImportRow,
 } from "../test-case-import.model";
 import { MutationError } from "./MutationError";
+import { bytes } from "../../../../shared/format";
 
 type Imported = { created: number; criteriaMissing: number };
 
@@ -24,9 +25,7 @@ export function ImportTestCases({ skillId }: { skillId: string }) {
     setPending([]);
     if (!file) return setProblems([]);
     if (file.size > MAX_IMPORT_BYTES)
-      return setProblems([
-        { line: 0, reason: `檔案超過 ${MAX_IMPORT_BYTES / 1_000_000} MB，沒有讀。` },
-      ]);
+      return setProblems([{ line: 0, reason: `檔案超過 ${bytes(MAX_IMPORT_BYTES)}，沒有讀。` }]);
     const parsed = parseTestCaseFile(file.name, await file.text());
     setPending(parsed.rows);
     setProblems(parsed.problems);

@@ -143,7 +143,7 @@ test("a file over 2 MB is refused before it is read", async () => {
   await page.goto(`/lab/test-cases?skill=${SKILL}&version=${VERSION}`);
   await pick(page, "big.jsonl", new Uint8Array(2_000_001));
   await page.eventually(() =>
-    expect(page.getByRole("alert").text()).toContain("檔案超過 2 MB，沒有讀。"),
+    expect(page.getByRole("alert").text()).toContain("檔案超過 1.9 MB，沒有讀。"),
   );
   expect(page.getByRole("button", { name: /^匯入這/ }).count()).toBe(0);
 });

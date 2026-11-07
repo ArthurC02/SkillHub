@@ -12,7 +12,8 @@ import {
   type DatasetLimits,
 } from "../lab.service";
 import { useTestCase, useTestCaseDatasets, type TestCase } from "../testcases.service";
-import { roundedBytes, uploadRefusal, type TestCaseUsage } from "./upload.model";
+import { uploadRefusal, type TestCaseUsage } from "./upload.model";
+import { bytes } from "../../../shared/format";
 import { UploadRulesFacts } from "./components/UploadRulesFacts";
 import { UploadFailure } from "./components/UploadFailure";
 import { SkillWorkspaceNav } from "../../skill";
@@ -249,7 +250,7 @@ function DatasetIntake({
           <ul>
             {uploaded.map((d) => (
               <li key={d.dataset_id}>
-                已上傳 {d.file_name}（{roundedBytes(d.size_bytes)}）
+                已上傳 {d.file_name}（{bytes(d.size_bytes)}）
               </li>
             ))}
           </ul>

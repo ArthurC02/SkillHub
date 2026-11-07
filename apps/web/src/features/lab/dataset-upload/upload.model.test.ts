@@ -91,3 +91,10 @@ test("a blocked session operation is known not to have been sent", () => {
   expect(isWriteResultUnknown(error)).toBe(false);
   expect(uploadErrorSentence(error)).toBe("這次操作尚未送出。請先確認頁首的登入狀態，再自行送出。");
 });
+
+test("a refused file's size reads the same as everywhere else, to one decimal", () => {
+  const limits = { ...LIMITS, max_file_bytes: 1 << 20 };
+  expect(uploadRefusal(file(1.5 * (1 << 20)), limits, { fileCount: 0, totalBytes: 0 })).toBe(
+    "rows.csv 是 1.5 MB，超過單一檔案上限 1 MB，沒有送出。",
+  );
+});

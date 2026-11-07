@@ -1,9 +1,10 @@
 import type { GenerationFailure } from "../../core/api/types";
+import { bytes } from "../../shared/format";
 
 export const GENERATE_DIAGRAM_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;
 
 export const GENERATE_MAX_DIAGRAM_BYTES = 4000000; // one-number: generateMaxDiagramBytes
-export const GENERATE_DIAGRAM_LIMIT = `${GENERATE_MAX_DIAGRAM_BYTES.toLocaleString("en-US")} 位元組（約 ${(GENERATE_MAX_DIAGRAM_BYTES / 1024 / 1024).toFixed(1)} MB）`;
+export const GENERATE_DIAGRAM_LIMIT = `${GENERATE_MAX_DIAGRAM_BYTES.toLocaleString("en-US")} 位元組（約 ${bytes(GENERATE_MAX_DIAGRAM_BYTES)}）`;
 
 export const GENERATE_MAX_REFERENCES = 3; // one-number: generateMaxReferences
 

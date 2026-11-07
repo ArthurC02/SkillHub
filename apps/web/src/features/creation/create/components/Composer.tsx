@@ -2,7 +2,7 @@ import type { ReactNode, RefObject } from "react";
 import { CreationActionReferenceSkillIdsMaxItems } from "@skillhub/api-client-ts/limits";
 import type { CreditBalance } from "../../../../core/session/credits.service";
 import { ReferencePicker } from "../../components/ReferencePicker";
-import { MAX_MESSAGE_RUNES, points } from "../create.model";
+import { CREATION_DIAGRAM_LIMIT, MAX_MESSAGE_RUNES, points } from "../create.model";
 
 type Reference = { id: string; name: string };
 
@@ -152,8 +152,8 @@ export function Composer({
         )}
       </div>
       <span id="composer-limits">
-        Enter 送出，Shift＋Enter 換行。流程圖可以貼上或拖進來：PNG、JPEG、WebP，最多 4,000,000
-        位元組（約 3.8 MB）；參考小工具最多三個。
+        Enter 送出，Shift＋Enter 換行。流程圖可以貼上或拖進來：PNG、JPEG、WebP，最多{" "}
+        {CREATION_DIAGRAM_LIMIT}；參考小工具最多三個。
       </span>
     </div>
   );
