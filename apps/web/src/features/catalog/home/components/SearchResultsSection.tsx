@@ -1,6 +1,6 @@
 import type { PublicSearchResponse, SearchCorrection } from "../../../../core/api/types";
 import { IntentInterpretation } from "./IntentInterpretation";
-import { NoResultsPanel } from "./NoResultsPanel";
+import { NoResultsPanel, type GenerationEntry } from "./NoResultsPanel";
 import { SearchResultsList } from "./SearchResultsList";
 import { MAX_COMPARE } from "../../../skill";
 
@@ -9,7 +9,7 @@ export function SearchResultsSection({
   confirmed,
   selected,
   loggedIn,
-  generateExposed,
+  generation,
   onCorrect,
   onClearFilters,
   onToggle,
@@ -18,7 +18,7 @@ export function SearchResultsSection({
   confirmed: boolean;
   selected: string[];
   loggedIn: boolean;
-  generateExposed: boolean;
+  generation: GenerationEntry;
   onCorrect: (correction: SearchCorrection) => void;
   onClearFilters: () => void;
   onToggle: (skillId: string) => void;
@@ -71,7 +71,7 @@ export function SearchResultsSection({
           degraded={data.degraded}
           querySuggestion={data.query_suggestion}
           loggedIn={loggedIn}
-          generateExposed={generateExposed}
+          generation={generation}
         />
       )}
 

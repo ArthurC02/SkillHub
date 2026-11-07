@@ -2,20 +2,22 @@ import { Link } from "@tanstack/react-router";
 import { SignInAction } from "../../../../shared/ui/SignIn";
 import { GenerateSkill } from "../../../creation";
 
+export type GenerationEntry = { exposed: boolean; studio: boolean };
+
 export function NoResultsPanel({
   confirmed,
   query,
   degraded,
   querySuggestion,
   loggedIn,
-  generateExposed,
+  generation,
 }: {
   confirmed: boolean;
   query: string;
   degraded: boolean;
   querySuggestion: string | undefined;
   loggedIn: boolean;
-  generateExposed: boolean;
+  generation: GenerationEntry;
 }) {
   return (
     <div>
@@ -50,7 +52,18 @@ export function NoResultsPanel({
           </>
         )}
       </div>
-      {generateExposed && <GenerateSkill initialTask={query} />}
+      {generation.exposed &&
+        (generation.studio ? (
+          <p className="note">
+            也可以
+            <Link to="/workspace/creations" search={{ task: query }}>
+              到 Studio 用這段描述開始創作
+            </Link>
+            ，一步步和模型把它做成小工具。
+          </p>
+        ) : (
+          <GenerateSkill initialTask={query} />
+        ))}
     </div>
   );
 }

@@ -8,7 +8,7 @@ import { CreationSession } from "./components/CreationSession";
 export function CreateSkill() {
   const generateExposed = useGenerateEntryPoint();
   const creationExposed = useCreationEntryPoint();
-  const { session } = useSearch({ from: "/workspace/creations" });
+  const { session, task } = useSearch({ from: "/workspace/creations" });
   const navigate = useNavigate({ from: "/workspace/creations" });
   const selectSession = (id: string) => {
     void navigate({ search: id ? { session: id } : {} });
@@ -49,13 +49,14 @@ export function CreateSkill() {
           sessionId={session}
           onSessionChange={selectSession}
           onSessionCreated={adoptCreatedSession}
+          openingTask={task}
         />
       ) : (
         <>
           <nav>
             <Link to="/library">← 回到資產庫</Link>
           </nav>
-          <GenerateSkill />
+          <GenerateSkill initialTask={task} />
         </>
       )}
     </>

@@ -32,6 +32,7 @@ type CreationSessionProps = {
   sessionId?: string;
   onSessionChange?: (id: string) => void;
   onSessionCreated?: (id: string) => void;
+  openingTask?: string;
 };
 
 function useSessionSelection({ sessionId, onSessionChange }: CreationSessionProps) {
@@ -71,7 +72,7 @@ export function CreationSession(props: CreationSessionProps) {
   const [budget, setBudget] = useState(""),
     [diagramAnswers, setDiagramAnswers] = useState<Record<string, string>>({});
   const { error, setError, busy, lastAttempt, attempt } = useCreationAttempt();
-  const composer = useComposer(budget, setError);
+  const composer = useComposer(budget, setError, props.openingTask);
   const commands = useCreationCommands(props.onSessionCreated ?? setID);
   const sessions = useCreationSessions();
   const limits = useCreationLimits();

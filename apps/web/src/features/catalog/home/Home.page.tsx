@@ -8,7 +8,7 @@ import {
 } from "../../skill";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Loading } from "../../../shared/ui/Loading";
-import { useGenerateEntryPoint } from "../../creation";
+import { useCreationEntryPoint, useGenerateEntryPoint } from "../../creation";
 import { useMe } from "../../../core/session/me.service";
 import type { HomeSearch } from "../../../app/router";
 import type { SearchCorrection, SearchFilters } from "../../../core/api/types";
@@ -62,7 +62,7 @@ export function Home() {
   const [draft, setDraft] = useSearchDraft(search.q);
   const [queryError, setQueryError] = useState("");
   const selected = parseSelection(search.compare);
-  const generateExposed = useGenerateEntryPoint();
+  const generation = { exposed: useGenerateEntryPoint(), studio: useCreationEntryPoint() };
   const loggedIn = !!useMe().data;
 
   const filters: SearchFilters = filtersFromSearch(search);
@@ -178,7 +178,7 @@ export function Home() {
           confirmed={result.fetchStatus === "idle"}
           selected={selected}
           loggedIn={loggedIn}
-          generateExposed={generateExposed}
+          generation={generation}
           onCorrect={applyCorrection}
           onClearFilters={clearFilters}
           onToggle={toggleSelected}

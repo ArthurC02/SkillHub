@@ -5,6 +5,7 @@ import {
   lazyRouteComponent,
   redirect,
 } from "@tanstack/react-router";
+import { CreationActionMessageMaxLength } from "@skillhub/api-client-ts/limits";
 import { RootLayout } from "./RootLayout";
 import { RouteNotFound } from "../shared/ui/RouteNotFound";
 import { RouteError } from "../shared/ui/RouteError";
@@ -28,6 +29,13 @@ const AGENT_RUNTIMES: AgentRuntime[] = ["native", "transpiled", "failed", "unver
 const CATEGORIES: SkillCategory[] = ["documents", "writing", "data"];
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const openingTask = (value: unknown) =>
+  typeof value === "string" &&
+  value.trim() !== "" &&
+  [...value].length <= CreationActionMessageMaxLength
+    ? value
+    : undefined;
 const PUBLICATION_REFERENCE = /^[^/]+\/[^/]+$/;
 
 export type PublishingWorkspaceSearch = {
@@ -229,9 +237,10 @@ const createSkillRoute = createRoute({
     () => import("../features/creation/create/CreateSkill.page"),
     "CreateSkill",
   ),
-  validateSearch: (search: Record<string, unknown>): { session?: string } => ({
+  validateSearch: (search: Record<string, unknown>): { session?: string; task?: string } => ({
     session:
       typeof search.session === "string" && UUID.test(search.session) ? search.session : undefined,
+    task: openingTask(search.task),
   }),
 });
 

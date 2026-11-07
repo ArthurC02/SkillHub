@@ -11,10 +11,14 @@ import {
 
 type Reference = { id: string; name: string };
 
-export function useComposer(budget: string, onProblem: (error: Error | undefined) => void) {
+export function useComposer(
+  budget: string,
+  onProblem: (error: Error | undefined) => void,
+  openingTask = "",
+) {
   const [picking, setPicking] = useState(false),
     [dragging, setDragging] = useState(false),
-    [message, setMessage] = useState(""),
+    [message, setMessage] = useState(openingTask),
     [file, setFile] = useState<File>(),
     [refs, setRefs] = useState<Reference[]>([]);
   const fileInput = useRef<HTMLInputElement>(null);
