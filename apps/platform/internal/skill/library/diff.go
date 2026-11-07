@@ -24,8 +24,6 @@ type FileDiff struct {
 	Diff string `json:"diff,omitempty"`
 }
 
-const maxDiffFileBytes = 1 << 20
-
 var ErrContentWithheld = errors.New("此 Skill 的來源授權正在審查中：審查結論出來前，平台不提供它的版本內容與差異")
 
 type VersionRange struct {
@@ -135,28 +133,16 @@ func listFiles(fsys fs.FS) (map[string]bool, error) {
 	return files, err
 }
 
-const diffContextLines = 3
-
 func textDiff(path string, a, b []byte) string {
-	if len(a) > maxDiffFileBytes || len(b) > maxDiffFileBytes || isBinary(a) || isBinary(b) {
+	if len(a) > skillpkg.MaxDiffFileBytes || len(b) > skillpkg.MaxDiffFileBytes || skillpkg.IsBinary(a) || skillpkg.IsBinary(b) {
 		return ""
 	}
 	text, err := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
 		A: difflib.SplitLines(string(a)), B: difflib.SplitLines(string(b)),
-		FromFile: path, ToFile: path, Context: diffContextLines,
+		FromFile: path, ToFile: path, Context: skillpkg.DiffContextLines,
 	})
 	if err != nil {
 		return ""
 	}
 	return text
-}
-
-func isBinary(data []byte) bool {
-	n := min(len(data), skillpkg.BinarySniffBytes)
-	for _, c := range data[:n] {
-		if c == 0 {
-			return true
-		}
-	}
-	return false
 }

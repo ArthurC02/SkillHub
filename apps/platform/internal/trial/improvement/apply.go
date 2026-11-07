@@ -32,13 +32,6 @@ const (
 	BlockedDiffUnavailable  = "diff_unavailable"
 )
 
-const maxTargetFileBytes = 1 << 20
-
-const (
-	diffContextLines = 3
-	binaryProbeBytes = 8000
-)
-
 type Blocked struct {
 	SuggestionID string `json:"suggestion_id"`
 	Reason       string `json:"blocked_reason"`
@@ -227,7 +220,7 @@ func check(sc suggestionCtx) (string, *Blocked) {
 
 	diff, err := difflib.GetUnifiedDiffString(difflib.UnifiedDiff{
 		A: difflib.SplitLines(origin), B: difflib.SplitLines(sug.ProposedContent),
-		FromFile: target, ToFile: target, Context: diffContextLines,
+		FromFile: target, ToFile: target, Context: skillpkg.DiffContextLines,
 	})
 	if err != nil || diff == "" {
 		return block(BlockedDiffUnavailable,
@@ -245,10 +238,10 @@ func readTarget(fsys fs.FS, target string) (string, error) {
 	if err != nil {
 		return "", errors.New("it could not be read from the archive")
 	}
-	if len(data) > maxTargetFileBytes {
-		return "", fmt.Errorf("it is larger than the %d byte limit for a reviewable diff", maxTargetFileBytes)
+	if len(data) > skillpkg.MaxDiffFileBytes {
+		return "", fmt.Errorf("it is larger than the %d byte limit for a reviewable diff", skillpkg.MaxDiffFileBytes)
 	}
-	if bytes.IndexByte(data[:min(len(data), binaryProbeBytes)], 0) >= 0 {
+	if skillpkg.IsBinary(data) {
 		return "", errors.New("it is not text, so there is no diff a user could approve")
 	}
 	return string(data), nil

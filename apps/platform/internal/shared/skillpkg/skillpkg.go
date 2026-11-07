@@ -894,7 +894,7 @@ func (r *Report) scanContent(path string, size int64, data []byte, deps *depScan
 			"檔案超過內容分析上限 %d bytes；網址與依賴只分析了前 %d bytes，憑證比對涵蓋了 %d bytes",
 			maxScanBytes, len(analyzed), len(data)))
 	}
-	if isBinary(analyzed) {
+	if IsBinary(analyzed) {
 		return
 	}
 	content := string(analyzed)
@@ -989,9 +989,13 @@ func readCapped(fsys fs.FS, path string, limit int64) ([]byte, error) {
 	return io.ReadAll(io.LimitReader(f, limit))
 }
 
-const BinarySniffBytes = 8000
+const (
+	BinarySniffBytes = 8000
+	MaxDiffFileBytes = 1 << 20
+	DiffContextLines = 3
+)
 
-func isBinary(data []byte) bool {
+func IsBinary(data []byte) bool {
 	n := min(len(data), BinarySniffBytes)
 	for _, b := range data[:n] {
 		if b == 0 {

@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
 type unreachableStore struct{}
@@ -74,8 +75,8 @@ func TestADiffRefusesAVersionOfAnotherSkill(t *testing.T) {
 }
 
 func TestATextDiffStopsAtOneMiBPerFile(t *testing.T) {
-	atCap := strings.Repeat("a", maxDiffFileBytes)
-	if textDiff("big.txt", []byte(atCap), []byte(atCap[:maxDiffFileBytes-1]+"b")) == "" {
+	atCap := strings.Repeat("a", skillpkg.MaxDiffFileBytes)
+	if textDiff("big.txt", []byte(atCap), []byte(atCap[:skillpkg.MaxDiffFileBytes-1]+"b")) == "" {
 		t.Error("two files of exactly 1 MiB got no diff")
 	}
 	if textDiff("big.txt", []byte(atCap), []byte(atCap+"b")) != "" {

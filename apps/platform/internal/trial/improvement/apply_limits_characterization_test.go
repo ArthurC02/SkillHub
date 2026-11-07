@@ -6,6 +6,7 @@ import (
 	"testing/fstest"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
 func TestReadTargetLooksForANulByteOnlyInTheFirst8000Bytes(t *testing.T) {
@@ -56,12 +57,12 @@ func TestTheReviewableDiffCarriesThreeLinesOfContext(t *testing.T) {
 
 func TestReadTargetReadsAFileOfExactlyTheReviewableLimitAndRefusesOneByteMore(t *testing.T) {
 	fsys := fstest.MapFS{
-		"at-the-limit.txt":  {Data: []byte(strings.Repeat("a", maxTargetFileBytes))},
-		"one-byte-over.txt": {Data: []byte(strings.Repeat("a", maxTargetFileBytes+1))},
+		"at-the-limit.txt":  {Data: []byte(strings.Repeat("a", skillpkg.MaxDiffFileBytes))},
+		"one-byte-over.txt": {Data: []byte(strings.Repeat("a", skillpkg.MaxDiffFileBytes+1))},
 	}
 
-	if got, err := readTarget(fsys, "at-the-limit.txt"); err != nil || len(got) != maxTargetFileBytes {
-		t.Errorf("a file of exactly %d bytes: got %d bytes, err %v; want it read", maxTargetFileBytes, len(got), err)
+	if got, err := readTarget(fsys, "at-the-limit.txt"); err != nil || len(got) != skillpkg.MaxDiffFileBytes {
+		t.Errorf("a file of exactly %d bytes: got %d bytes, err %v; want it read", skillpkg.MaxDiffFileBytes, len(got), err)
 	}
 	if _, err := readTarget(fsys, "one-byte-over.txt"); err == nil || !strings.Contains(err.Error(), "byte limit for a reviewable diff") {
 		t.Errorf("a file one byte over the limit: err = %v, want the size refusal", err)
