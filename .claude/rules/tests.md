@@ -15,3 +15,4 @@ paths:
 這一區會擋你的檢查：
 
 - 需要資料庫的 Go 測試在沒有 `SKILLHUB_TEST_DATABASE_URL` 時跳過——那個 ok 不算跑過；直接跑 `go test` 時加 `-count=1`，不然會重播沒接資料庫時的快取結果（`task test:*` 的 `test-report` 已經一律不用快取）。會因缺環境停用的套件必須認 `SKILLHUB_REQUIRE_DB`／`SKILLHUB_REQUIRE_OBJSTORE`（`automation-check` 的 `require-db-guard`／`require-objstore-guard`）。
+- `tools/*/test_*_characterization.py` 以 `python <檔>` 執行，`if __name__ == "__main__":` 區塊之後定義的 `test_*` 永遠不會被收集、腳本照樣 exit 0；新測試寫在該區塊之前，並在輸出裡看到 `ok   <名稱>` 那一行（`automation-check` 的 `characterization-main`）。
