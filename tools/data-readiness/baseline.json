@@ -1,14 +1,14 @@
 {
   "inventory": {
-    "migrations": 149,
+    "migrations": 150,
     "tables": 75,
     "partitions": 4,
-    "columns": 693,
-    "queries": 536,
-    "constraints": 326,
+    "columns": 700,
+    "queries": 537,
+    "constraints": 335,
     "foreign_keys": 133,
     "types": 2,
-    "registry_records": 769,
+    "registry_records": 771,
     "unparsed_statements": 0,
     "dynamic_ddl_statements": 1
   },
@@ -19,9 +19,9 @@
       "ratio": 1.0
     },
     "meaning.columns_described": {
-      "numerator": 603,
-      "denominator": 693,
-      "ratio": 0.87
+      "numerator": 610,
+      "denominator": 700,
+      "ratio": 0.871
     },
     "meaning.enum_columns_whose_comment_names_every_value": {
       "numerator": 51,
@@ -39,8 +39,8 @@
       "ratio": 0.2
     },
     "meaning.queried_columns_described": {
-      "numerator": 592,
-      "denominator": 592,
+      "numerator": 599,
+      "denominator": 599,
       "ratio": 1.0
     },
     "ownership.tables_with_exactly_one_declared_owner": {
@@ -69,9 +69,9 @@
       "ratio": 1.0
     },
     "rules.constraints_cited_by_a_record": {
-      "numerator": 19,
-      "denominator": 315,
-      "ratio": 0.06
+      "numerator": 28,
+      "denominator": 324,
+      "ratio": 0.086
     },
     "rules.cross_context_foreign_keys_with_a_recorded_collaboration": {
       "numerator": 82,
@@ -79,8 +79,8 @@
       "ratio": 1.0
     },
     "access.queries_with_an_owner": {
-      "numerator": 536,
-      "denominator": 536,
+      "numerator": 537,
+      "denominator": 537,
       "ratio": 1.0
     },
     "sensitivity.candidate_columns_classified": {
@@ -99,9 +99,9 @@
       "ratio": 0.983
     },
     "provenance.migrations_cited_by_a_record": {
-      "numerator": 4,
-      "denominator": 149,
-      "ratio": 0.027
+      "numerator": 5,
+      "denominator": 150,
+      "ratio": 0.033
     },
     "provenance.immutable_tables_known_to_registry": {
       "numerator": 1,
