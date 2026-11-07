@@ -1,0 +1,23 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "diff-limits-recited",
+  "status": "draft",
+  "intent": "Keep the reviewed diff limits cited to the code that now holds them, after the version diff and the suggestion preview moved their 1 MiB cap, context lines and NUL sniff into one shared source.",
+  "actor": "skill-creator",
+  "observable_outcome": "A version diff still stops at 1 MiB per file, a suggestion target over 1 MiB or with a NUL byte in its first 8000 bytes still gets no diff.",
+  "acceptance_criteria": [
+    {
+      "id": "limits-unchanged",
+      "statement": "The three diff limits behave as before at and one past their bounds."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/shared/skillpkg/skillpkg.go",
+    "apps/platform/internal/skill/library/diff.go",
+    "apps/platform/internal/trial/improvement/apply.go"
+  ]
+}

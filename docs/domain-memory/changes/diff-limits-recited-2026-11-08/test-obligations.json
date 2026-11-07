@@ -1,0 +1,40 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "diff-limits-recited",
+  "proposal_id": "diff-limits-recited-2026-11-08",
+  "obligations": [
+    {
+      "id": "rule-a-text-diff-stops-at-one-mib-per-file",
+      "source_type": "rule",
+      "source_id": "a-text-diff-stops-at-one-mib-per-file",
+      "also_covers": [
+        {
+          "source_type": "acceptance-criterion",
+          "source_id": "limits-unchanged"
+        }
+      ],
+      "expected_outcome": "TestATextDiffStopsAtOneMiBPerFile: a file of exactly 1 MiB is diffed and one past it is not.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestATextDiffStopsAtOneMiBPerFile$ ./internal/skill/library/"
+    },
+    {
+      "id": "rule-a-suggestion-target-file-is-at-most-1-mib",
+      "source_type": "rule",
+      "source_id": "a-suggestion-target-file-is-at-most-1-mib",
+      "expected_outcome": "TestReadTargetReadsAFileOfExactlyTheReviewableLimitAndRefusesOneByteMore: a target of exactly 1 MiB is read and one byte more is refused.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestReadTargetReadsAFileOfExactlyTheReviewableLimitAndRefusesOneByteMore$ ./internal/trial/improvement/"
+    },
+    {
+      "id": "rule-a-binary-target-gets-no-diff",
+      "source_type": "rule",
+      "source_id": "a-binary-target-gets-no-diff",
+      "expected_outcome": "TestReadTargetLooksForANulByteOnlyInTheFirst8000Bytes: a NUL byte inside the first 8000 bytes refuses the target and one after it does not.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestReadTargetLooksForANulByteOnlyInTheFirst8000Bytes$ ./internal/trial/improvement/"
+    }
+  ]
+}

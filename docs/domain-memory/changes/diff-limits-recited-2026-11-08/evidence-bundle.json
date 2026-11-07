@@ -1,0 +1,55 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "diff-limits-recited",
+  "proposal_id": "diff-limits-recited-2026-11-08",
+  "registry_revision": {
+    "observed_commit": "579e1efdbd57ba4f25ebc4823b69d54f2d293f82",
+    "registry_digest": "sha256:403a3161bdf781d126b9c633b51371b42d5da3ea4e55e09fc921e5bde16146e8",
+    "committed_digest": "sha256:403a3161bdf781d126b9c633b51371b42d5da3ea4e55e09fc921e5bde16146e8"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-binary-target-gets-no-diff",
+      "mutated_protection": "apps/platform/internal/shared/skillpkg/skillpkg.go:999: n := min(len(data), BinarySniffBytes) -> n := min(len(data), 0)",
+      "failure_evidence": "=== RUN   TestReadTargetLooksForANulByteOnlyInTheFirst8000Bytes\n    apply_limits_characterization_test.go:22: a NUL byte at offset 7999: err = <nil>, want the not-text refusal\n--- FAIL: TestReadTargetLooksForANulByteOnlyInTheFirst8000Bytes (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement\t2.595s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-text-diff-stops-at-one-mib-per-file",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestATextDiffStopsAtOneMiBPerFile$ ./internal/skill/library/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:3abdcfc6c3f6934654cba699ef84bb956b7ab15081dd652b25be06cc51970d20",
+      "finished_at": "2026-11-07T19:35:39.733619Z"
+    },
+    {
+      "obligation_id": "rule-a-suggestion-target-file-is-at-most-1-mib",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestReadTargetReadsAFileOfExactlyTheReviewableLimitAndRefusesOneByteMore$ ./internal/trial/improvement/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:2074cd45164f948611801bc0031a087bb1e85eeea893586e36ad0f6d82a3236f",
+      "finished_at": "2026-11-07T19:35:46.576853Z"
+    },
+    {
+      "obligation_id": "rule-a-binary-target-gets-no-diff",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestReadTargetLooksForANulByteOnlyInTheFirst8000Bytes$ ./internal/trial/improvement/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:c3f11ebf1a9b3e941da179ef1e76bf2494ead811d243d796ea149f6808428bbf",
+      "finished_at": "2026-11-07T19:35:52.019703Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

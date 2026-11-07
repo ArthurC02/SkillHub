@@ -1,0 +1,203 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "diff-limits-recited-2026-11-08",
+  "proposer": "coding-agent",
+  "requirement_id": "diff-limits-recited",
+  "status": "verified",
+  "change_classification": "routine",
+  "submitted_at": "2026-11-07T19:35:31.620027Z",
+  "verified_at": "2026-11-07T19:36:25.425092Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "579e1efdbd57ba4f25ebc4823b69d54f2d293f82",
+    "registry_digest": "sha256:403a3161bdf781d126b9c633b51371b42d5da3ea4e55e09fc921e5bde16146e8",
+    "committed_digest": "sha256:403a3161bdf781d126b9c633b51371b42d5da3ea4e55e09fc921e5bde16146e8"
+  },
+  "affected_contexts": [
+    "eval",
+    "registry"
+  ],
+  "rule_ids": [
+    "a-text-diff-stops-at-one-mib-per-file",
+    "a-suggestion-target-file-is-at-most-1-mib",
+    "a-binary-target-gets-no-diff"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "eval",
+    "invariant": "A reviewable diff covers a text file of at most 1 MiB with three context lines, and a file with a NUL byte in its first 8000 bytes gets none.",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "unchanged; registry and eval each keep their own failure reporting and read the shared limits from the skillpkg shared kernel.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "The version diff and the suggestion preview held two copies of the same limits, one with a hand-copied 8000."
+    ],
+    "decision": "Re-cite the three rules to MaxDiffFileBytes and IsBinary in skillpkg and to the callers that read them; the rule text is unchanged.",
+    "invariants_preserved": [
+      "A version diff stops at 1 MiB per file.",
+      "A suggestion target over 1 MiB or binary gets no diff."
+    ],
+    "rejected_alternatives": [
+      "Leaving the stale citations, which would fail verify-evidence."
+    ],
+    "proof_obligations": [
+      "rule-a-text-diff-stops-at-one-mib-per-file",
+      "rule-a-suggestion-target-file-is-at-most-1-mib",
+      "rule-a-binary-target-gets-no-diff"
+    ],
+    "counterfactual_check": "Force skillpkg.IsBinary to false: the binary target rule's test must fail."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-binary-target-gets-no-diff",
+        "statement": "A target file with a NUL byte in its first 8000 bytes is not diffable, so its suggestion is blocked as diff_unavailable rather than applied unseen.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "A target with a NUL at offset 7999 is refused as not text."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/improvement/apply.go",
+            "lines": {
+              "start": 241,
+              "end": 246
+            },
+            "content_sha256": "sha256:fd9d8c2abff88e9bae5b40d4390acdf0c1adf5f1e19d6df66f5c35c6bf9cced4",
+            "excerpt_sha256": "sha256:49b9adc2e6092ce09d12d265adae9b22deac7a8987c982fa985dab0d7e79c25a",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/apply_limits_characterization_test.go",
+            "lines": {
+              "start": 11,
+              "end": 26
+            },
+            "excerpt_sha256": "sha256:f6543c327f6a0e2382e9b4190b13b59de84fb524a176273fb020a6cc9e2232b5"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-suggestion-target-file-is-at-most-1-mib",
+        "statement": "A file a suggestion targets is read for a reviewable diff only up to 1 MiB; a larger file is refused before any content check.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "A file of exactly 1048576 bytes is read; 1048577 bytes is refused as larger than the byte limit for a reviewable diff."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/shared/skillpkg/skillpkg.go",
+            "lines": {
+              "start": 994,
+              "end": 994
+            },
+            "content_sha256": "sha256:6ad281d3f954d71e6de6e67f1674b172e94efd3c616b6c84f6cf8b4f08d48877",
+            "excerpt_sha256": "sha256:5dbdb75edec1a3a8e8f7fb69365c02b7fc488fa1aefe9a138059dc64921f88c6",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/apply.go",
+            "lines": {
+              "start": 241,
+              "end": 243
+            },
+            "content_sha256": "sha256:fd9d8c2abff88e9bae5b40d4390acdf0c1adf5f1e19d6df66f5c35c6bf9cced4",
+            "excerpt_sha256": "sha256:bb47a3c61f4d6f44328e70b203c9860b51b7773b4f3169ba7c9ba2e443ca3cdf",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/apply_limits_characterization_test.go",
+            "lines": {
+              "start": 58,
+              "end": 70
+            },
+            "content_sha256": "sha256:44c5ce16a8801a6399de1554b4fd44ed5ff89005b696d5209983e82a50a984fc",
+            "excerpt_sha256": "sha256:3be1479879fd1a4d545bd19eebc128f5d7ee995e105eaafc9d8c8f908565e31b",
+            "source_kind": "tests"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-text-diff-stops-at-one-mib-per-file",
+        "statement": "A file larger than 1 MiB on either side gets no text diff; exactly 1 MiB is diffed.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "Two 1 MiB files are diffed; a file one byte over is not."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/diff.go",
+            "lines": {
+              "start": 136,
+              "end": 139
+            },
+            "content_sha256": "sha256:164272c33df040042896f37c49715a6e68129129c0a868018d636aa4053a328e",
+            "excerpt_sha256": "sha256:e0cfc6f388e76452a82c3d81ce58b35850f8488420e113c44b8b0444aa33695b",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/content_guards_test.go",
+            "lines": {
+              "start": 77,
+              "end": 85
+            },
+            "content_sha256": "sha256:6c946d90efc57b805f7b64b7fda5e4ae952bf7054af3d294dafce67e7bdade2b",
+            "excerpt_sha256": "sha256:c9ae40206ec9e25a98e073da3be1e249c9d274e438269e7f640daffd8d8037a6",
+            "source_kind": "tests"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-11-07T19:36:24.856168Z",
+      "scope": "proposal",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "579e1efdbd57ba4f25ebc4823b69d54f2d293f82",
+        "registry_digest": "sha256:403a3161bdf781d126b9c633b51371b42d5da3ea4e55e09fc921e5bde16146e8",
+        "committed_digest": "sha256:403a3161bdf781d126b9c633b51371b42d5da3ea4e55e09fc921e5bde16146e8"
+      }
+    }
+  ],
+  "supersedes": [
+    "eval-harvest-rules-2026-10-17",
+    "eval-target-size-rule-2026-10-17",
+    "registry-curation-fork-and-content-rules-2026-10-18"
+  ]
+}
