@@ -132,6 +132,41 @@ test("the version picker marks the line's newest and names each held candidate",
   ]);
 });
 
+function versionFacts(page: ReturnType<typeof app>) {
+  return page.getByRole("heading").filter({ hasText: /^v\d+，/ });
+}
+
+test("an adopted candidate's own page is the newest and compares with the line version before it, not the held one", async () => {
+  const page = app();
+  withVersions(page, WITH_CANDIDATES);
+  await page.goto(`/skills/${SKILL}/versions/${ADOPTED}`);
+  await page.eventually(() => expect(versionFacts(page).text()).toBe("v4，最新版本"));
+  await page.eventually(() =>
+    expect(
+      page.requests.some(
+        (r) =>
+          r.url.pathname === `/skills/${SKILL}/diff` &&
+          r.url.searchParams.get("from") === VERSION &&
+          r.url.searchParams.get("to") === ADOPTED,
+      ),
+    ).toBe(true),
+  );
+  expect(
+    page.requests.some(
+      (r) => r.url.pathname === `/skills/${SKILL}/diff` && r.url.searchParams.get("from") === HELD,
+    ),
+  ).toBe(false);
+});
+
+test("a held candidate's own page says it is held, and the line's version below it stays the newest", async () => {
+  const page = app();
+  withVersions(page, { versions: [listed(HELD, 3, true, false), ...SKILL_VERSIONS.versions] });
+  await page.goto(`/skills/${SKILL}/versions/${HELD}`);
+  await page.eventually(() => expect(versionFacts(page).text()).toBe("v3，評估中的候選，保留中"));
+  await page.goto(`/skills/${SKILL}/versions/${VERSION}`);
+  await page.eventually(() => expect(versionFacts(page).text()).toBe("v2，最新版本"));
+});
+
 const NEW_BATCH = `/skills/${SKILL}/evaluation-batches?version=${VERSION}`;
 const BATCH_PAGE = `/skills/${SKILL}/evaluation-batches/${BATCH}`;
 

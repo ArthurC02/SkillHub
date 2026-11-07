@@ -1,6 +1,6 @@
 import { Link, useParams } from "@tanstack/react-router";
 import { ApiError, canRetainLoadedPage, isLastingReadFailure } from "../../../core/api/client";
-import type { SkillDetail, SkillVersionSummary } from "../../../core/api/types";
+import type { ListedSkillVersion, SkillDetail, SkillVersionSummary } from "../../../core/api/types";
 import { unauthenticated } from "../../../shared/ui/LoginRequired.model";
 import { Loading } from "../../../shared/ui/Loading";
 import { PageReadFailure, ReadFailure } from "../../../shared/ui/LoginRequired";
@@ -25,6 +25,7 @@ import {
 import { SkillWorkspaceNav } from "../components/SkillWorkspaceNav";
 import { unreadableSkillSentence } from "../skills.service";
 import { useSkillDetail, useSkillVersions, skillDiffUrl } from "../skills.service";
+import { inLine, lineNewest } from "../versions.model";
 import { VersionUpload } from "./components/VersionUpload";
 import "./SkillVersion.page.css";
 
@@ -154,9 +155,9 @@ function VersionReadStatus({
 
 type VersionContext = {
   skill: SkillDetail;
-  selected: SkillVersionSummary;
+  selected: ListedSkillVersion;
   selectedIndex: number;
-  list: SkillVersionSummary[];
+  list: ListedSkillVersion[];
   confirmed: boolean;
 };
 
@@ -193,13 +194,13 @@ function VersionContent({
   versionId: string;
 }) {
   const { selected, selectedIndex, list, skill } = context;
-  const previous = list[selectedIndex + 1];
+  const previous = list.slice(selectedIndex + 1).find(inLine);
   const gate = packagingGate(skill);
   return (
     <>
       <VersionFacts
         version={selected}
-        isLatest={context.confirmed ? selectedIndex === 0 : undefined}
+        standing={context.confirmed ? versionStanding(selected, list) : undefined}
       />
       <VersionActions
         skillId={skillId}
@@ -450,14 +451,33 @@ function VersionRunRow({ run }: { run: RunListItem }) {
   );
 }
 
-function VersionFacts({ version, isLatest }: { version: SkillVersionSummary; isLatest?: boolean }) {
+type VersionStanding = "newest" | "history" | "held";
+
+function versionStanding(version: ListedSkillVersion, list: ListedSkillVersion[]): VersionStanding {
+  if (!inLine(version)) return "held";
+  return lineNewest(list)?.version_id === version.version_id ? "newest" : "history";
+}
+
+const STANDING_SUFFIX: Record<VersionStanding, string> = {
+  newest: "，最新版本",
+  history: "，歷史版本",
+  held: "，評估中的候選，保留中",
+};
+
+function VersionFacts({
+  version,
+  standing,
+}: {
+  version: SkillVersionSummary;
+  standing?: VersionStanding;
+}) {
   return (
     <section className="version-facts" aria-labelledby="version-facts-title" data-role="evidence">
       <div>
         <p className="note">目前脈絡</p>
         <h2 id="version-facts-title">
           v{version.version_number}
-          {isLatest === undefined ? "，是否最新尚未確認" : isLatest ? "，最新版本" : "，歷史版本"}
+          {standing === undefined ? "，是否最新尚未確認" : STANDING_SUFFIX[standing]}
         </h2>
       </div>
       <dl>
