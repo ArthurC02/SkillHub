@@ -1,0 +1,32 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "per-call-cost-samples",
+  "status": "draft",
+  "intent": "An operator setting several candidates per round gets a start estimate that stays right for any number of candidates, because the statistic it multiplies is the cost of one call.",
+  "actor": "platform-operator",
+  "observable_outcome": "A K = 3 round with reported costs writes one cost event listing three call costs, and the batch_reflection statistics count three samples for it.",
+  "acceptance_criteria": [
+    {
+      "id": "one-debit-three-samples",
+      "statement": "A debit of three reported calls is one cost_events row and three samples in its statistics window."
+    },
+    {
+      "id": "other-kinds-unchanged",
+      "statement": "A window of single-call events gives the same samples and percentiles as before."
+    },
+    {
+      "id": "list-sums-to-debit",
+      "statement": "A list of one call, calls not summing to the debit, a negative call or calls on an estimated event are refused."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "db/migrations/0150_reflection_candidates.sql",
+    "db/queries/cost.sql",
+    "apps/platform/internal/creator/credit/service.go",
+    "apps/platform/internal/entrypoint/api/apiserver/credit_wiring.go"
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "per-call-cost-samples",
+  "proposal_id": "per-call-cost-samples-2026-11-07",
+  "obligations": [
+    {
+      "id": "rule-a-start-statistic-samples-model-calls-not-debits",
+      "source_type": "rule",
+      "source_id": "a-start-statistic-samples-model-calls-not-debits",
+      "also_covers": [
+        {
+          "source_type": "acceptance-criterion",
+          "source_id": "one-debit-three-samples"
+        }
+      ],
+      "expected_outcome": "TestADebitOfThreeCallsIsOneEventAndThreeStatisticSamples: one event listing 1000, 2000 and 3000 beside a single-call 4000 gives 4 samples, p50 2500, p95 3850, max 4000.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestADebitOfThreeCallsIsOneEventAndThreeStatisticSamples$ ./internal/creator/credit/"
+    },
+    {
+      "id": "single-call-kinds-unchanged",
+      "source_type": "acceptance-criterion",
+      "source_id": "other-kinds-unchanged",
+      "expected_outcome": "TestAWindowOfSingleCallEventsCountsEachEventOnce: creation_step events of 100 to 400 give 4 samples, p50 250, p95 385, max 400.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestAWindowOfSingleCallEventsCountsEachEventOnce$ ./internal/creator/credit/"
+    },
+    {
+      "id": "calls-list-constraint",
+      "source_type": "acceptance-criterion",
+      "source_id": "list-sums-to-debit",
+      "expected_outcome": "TestTheCallsOfAnEventMustBeTwoOrMoreReportedCostsSummingToItsDebit and TestAChargeListingItsCallsIsRefusedUnlessTwoOrMoreCallsSumToAKnownCost: one call, a short or over sum, a negative call and an estimated event are refused.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^(TestTheCallsOfAnEventMustBeTwoOrMoreReportedCostsSummingToItsDebit|TestAChargeListingItsCallsIsRefusedUnlessTwoOrMoreCallsSumToAKnownCost)$ ./internal/creator/credit/"
+    },
+    {
+      "id": "rule-a-batch-reflection-is-paid-for-by-its-requester",
+      "source_type": "rule",
+      "source_id": "a-batch-reflection-is-paid-for-by-its-requester",
+      "expected_outcome": "TestARoundIsChargedOnceForTheSumOfItsAnsweredCalls: answered calls of 20 and 30 prompt tokens costing 0.01 and 0.02 are one charge of 50 tokens listing both costs.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestARoundIsChargedOnceForTheSumOfItsAnsweredCalls$ ./internal/trial/improvement/reflection/"
+    },
+    {
+      "id": "priced-round-lists-its-calls",
+      "source_type": "acceptance-criterion",
+      "source_id": "one-debit-three-samples",
+      "expected_outcome": "TestARoundWhoseCallsReportTheirCostListsEachCallOnItsOneDebit: three calls reporting 0.002 USD are one batch_reflection event of 6000 micros listing 2000 three times.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestARoundWhoseCallsReportTheirCostListsEachCallOnItsOneDebit$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

@@ -1,0 +1,297 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "per-call-cost-samples-2026-11-07",
+  "proposer": "coding-agent",
+  "requirement_id": "per-call-cost-samples",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-11-07T12:21:25.775101Z",
+  "verified_at": "2026-11-07T12:24:49.039420Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "77e6be2a29d684be0da5214276d28e65e7828df4",
+    "registry_digest": "sha256:a464dc46f93833c59fe58bb680da32def19213f9d28dbda39f47d06fb2b520f4",
+    "committed_digest": "sha256:99e6809e3109402e640d66c0e4e097389cb41bac9b180be78269c2187493bcb1"
+  },
+  "affected_contexts": [
+    "credit",
+    "eval",
+    "testlab"
+  ],
+  "rule_ids": [
+    "a-start-statistic-samples-model-calls-not-debits",
+    "a-batch-reflection-is-paid-for-by-its-requester"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "credit",
+    "invariant": "The start statistics of a cost kind sample its model calls; a debit covering several reported calls lists their costs, which sum to it.",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "eval hands each answered call's reported cost to credit through the testlab charge hook in the composition root; credit stores and aggregates the samples in its own cost_events and never reads an eval table.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [
+      "credit reading batch_reflections"
+    ],
+    "evidence": []
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A round of K calls is one debit, so p95 over debits grows with K and threshold times K would count the calls twice.",
+      "The samples belong to the context that computes the statistic.",
+      "A call whose cost the gateway did not report has no measured sample."
+    ],
+    "decision": "cost_events.call_usd_micros lists the calls of a debit of two or more fully reported calls; AggregateCostEventsWindow unnests coalesce(call_usd_micros, ARRAY[usd_micros]); Charge and a CHECK refuse a list that is not two or more non-negative costs summing to a gateway-measured usd_micros; roundUsage carries the per-call costs and the charge hook converts each with BillableMicros.",
+    "invariants_preserved": [
+      "A round is still one debit.",
+      "Every event without a list is one sample, so other kinds and earlier rounds keep their statistics.",
+      "A round with any unreported call is charged by the token estimate as before."
+    ],
+    "rejected_alternatives": [
+      "Storing per-call usage on batch_reflections candidate outcomes, which would make credit read an eval table.",
+      "A separate per-call sample table, which adds a write for a list that is frozen with its one event.",
+      "Dividing a round's debit by K, which hides the spread between calls."
+    ],
+    "proof_obligations": [
+      "rule-a-start-statistic-samples-model-calls-not-debits",
+      "single-call-kinds-unchanged",
+      "calls-list-constraint",
+      "rule-a-batch-reflection-is-paid-for-by-its-requester",
+      "priced-round-lists-its-calls"
+    ],
+    "counterfactual_check": "Unnest only the first two listed calls: the window must report 3 samples and fail. Allow one listed call in Charge: the decision table must fail. Drop the list in the charge hook: the priced K = 3 round must fail."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-start-statistic-samples-model-calls-not-debits",
+        "statement": "The start statistics of a cost kind are taken over its model calls, not over its debits: a gateway-measured event that lists its calls in call_usd_micros contributes one sample per call, and any other gateway-measured event contributes one sample. A list, when present, holds two or more non-negative costs that sum to the event's usd_micros, and only on a gateway-measured event; a charge that would break this is refused as invalid.",
+        "contexts": [
+          "credit"
+        ],
+        "examples": [
+          "One batch reflection debit of 6000 micros listing calls of 1000, 2000 and 3000, beside a single-call event of 4000, is four samples with p50 2500 and p95 3850.",
+          "Four single-call creation_step events of 100, 200, 300 and 400 micros are four samples with p95 385, the same as before calls were listed.",
+          "A list of one call, calls summing to 29 of a 30-micro debit, or calls on an estimated event are refused."
+        ],
+        "evidence": [
+          {
+            "path": "db/migrations/0150_reflection_candidates.sql",
+            "lines": {
+              "start": 56,
+              "end": 67
+            },
+            "excerpt_sha256": "sha256:3a4716ec55b384493b73181778115e5c9b67aef14ca04bd59289d7650e3734f2"
+          },
+          {
+            "path": "db/queries/cost.sql",
+            "lines": {
+              "start": 14,
+              "end": 24
+            },
+            "excerpt_sha256": "sha256:b5cb92e68210ce403effe39ee882ddbe19460f5b15a1ceceffaced8b6748139f"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/service.go",
+            "lines": {
+              "start": 520,
+              "end": 535
+            },
+            "excerpt_sha256": "sha256:9bd35ddad68e8dc8f4191de3a65f2f8e7f60a67f15772630ade65bb0ef5d04af"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/postgres_integration_test.go",
+            "lines": {
+              "start": 306,
+              "end": 343
+            },
+            "excerpt_sha256": "sha256:f99edf8496eeab0636c1aff7ded3449c616c997aa0872001eff140bcf0ed328f"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/postgres_integration_test.go",
+            "lines": {
+              "start": 345,
+              "end": 366
+            },
+            "content_sha256": "sha256:96feac1b8e0f7b8a1964bdae463164ca9ed4e101e8935682c3e82c1d2d0a518e",
+            "excerpt_sha256": "sha256:51bd5d12e05554d4a281ca07b5d1cadefaea07f3564469271381a0dd472d93f0"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/postgres_integration_test.go",
+            "lines": {
+              "start": 368,
+              "end": 405
+            },
+            "content_sha256": "sha256:96feac1b8e0f7b8a1964bdae463164ca9ed4e101e8935682c3e82c1d2d0a518e",
+            "excerpt_sha256": "sha256:bb2978940a69a97bc3645df1f6f209a183f4dbf2108b85f3dde6a5a99037bc3d"
+          },
+          {
+            "path": "apps/platform/internal/creator/credit/service_test.go",
+            "lines": {
+              "start": 753,
+              "end": 778
+            },
+            "content_sha256": "sha256:722348e8e24defa55993edbb261321bb2560fba85bdd63c35beafd0050697cb3",
+            "excerpt_sha256": "sha256:b87046c6e89cb91c72f0d70b8b9bf049cbb6047e5c464ba52976992f0ca5bde5"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-batch-reflection-is-paid-for-by-its-requester",
+        "statement": "An improvement round over an evaluation batch is a model call the user starts, so it is open only to invited accounts and is admitted once, before its first model call: it is refused when model calls are halted, with 409 when it asks for more than one candidate while the operator has set no round credit cap, and with 422 when its estimate, the batch_reflection start threshold for one call times its candidates, exceeds a set round credit cap or the owner's balance. Its model calls are one debit of the usage the gateway reported, summed over the calls that answered, which lists each call's cost when every answered call of two or more reported it; a round in which no call answered is not charged.",
+        "contexts": [
+          "eval"
+        ],
+        "examples": [
+          "With no batch_reflection statistics a balance of 69 credits is refused with 422, the model is not called and nothing is charged.",
+          "At a threshold of 70, two candidates fit a cap of exactly 140 and are refused at a cap of 139 or a balance of 139.",
+          "Two candidates with no cap set are refused with 409 naming reflection_round_credit_cap, before any model call.",
+          "Three candidates whose calls report 20 prompt tokens each are one debit of 60 prompt tokens.",
+          "Three answered calls each reporting 0.002 USD are one debit of 6000 micros listing 2000, 2000 and 2000."
+        ],
+        "evidence": [
+          {
+            "path": "db/migrations/0150_reflection_candidates.sql",
+            "lines": {
+              "start": 1,
+              "end": 12
+            },
+            "excerpt_sha256": "sha256:eee93e69affd89b58bc515bb09df2875b22506df96bbd45ba2cd8a0d2cf8724b"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/reflection/reflection.go",
+            "lines": {
+              "start": 70,
+              "end": 92
+            },
+            "excerpt_sha256": "sha256:d5501e022c23cd3ac644e34567567290d58280453ae27eb174674f185724a4d3"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/reflection/reflection.go",
+            "lines": {
+              "start": 302,
+              "end": 326
+            },
+            "excerpt_sha256": "sha256:9da7d5f3ae841315a5e79427c61f86dc1bae453c802971d61f4dbd2b215c1e0a"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/reflection/round_test.go",
+            "lines": {
+              "start": 17,
+              "end": 53
+            },
+            "excerpt_sha256": "sha256:d02e53ea7388f59ea9c3636f6524152989ceed6425abd0c89e4f24056b1159df"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/reflection/reflection.go",
+            "lines": {
+              "start": 328,
+              "end": 357
+            },
+            "content_sha256": "sha256:84fd85938d081d41092fb342d92ba4557684d08c054d5701aef0a22a823ca6d7",
+            "excerpt_sha256": "sha256:492074fbbd20a25c354a392e5ccb3ab789eeb5d8a4eafe8dde241df1ddf49c3f"
+          },
+          {
+            "path": "apps/platform/internal/trial/improvement/reflection/round_test.go",
+            "lines": {
+              "start": 87,
+              "end": 117
+            },
+            "content_sha256": "sha256:26e6d2f363144fc09170d5bbe21bb9d0185ce677e14cc2d46d180e7bdf3a6a2f",
+            "excerpt_sha256": "sha256:039df8bf1d873fe3f82a4dacdc40e35e49412264399656e4e473cf8bc9d7dc52"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/reflection_integration_test.go",
+            "lines": {
+              "start": 368,
+              "end": 384
+            },
+            "content_sha256": "sha256:695cc742b2b40fd5b184ad7ef36e2030e68330844961e455642e2f6951345585",
+            "excerpt_sha256": "sha256:e9f743c971e08aac0206b46204cdcf8e8215aa5689e83a5e3c65ad7dd82b031d"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/reflection_integration_test.go",
+            "lines": {
+              "start": 496,
+              "end": 529
+            },
+            "content_sha256": "sha256:695cc742b2b40fd5b184ad7ef36e2030e68330844961e455642e2f6951345585",
+            "excerpt_sha256": "sha256:5062c6d5d53b73e69257c875ef208fb3cd0d7adb271b18ad27582650e3b32795"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/reflection_integration_test.go",
+            "lines": {
+              "start": 531,
+              "end": 549
+            },
+            "content_sha256": "sha256:695cc742b2b40fd5b184ad7ef36e2030e68330844961e455642e2f6951345585",
+            "excerpt_sha256": "sha256:e95295bdc83fe5d143160439bcaa2c26e9b453486d4d536d810d76e5b481b58d"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/reflection_integration_test.go",
+            "lines": {
+              "start": 628,
+              "end": 651
+            },
+            "content_sha256": "sha256:695cc742b2b40fd5b184ad7ef36e2030e68330844961e455642e2f6951345585",
+            "excerpt_sha256": "sha256:2b9bf7f74f3beb3990a78e9cf30d15553775cbe5176e0d141bbf9acf4ef856e8"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "interactions",
+      "record": {
+        "id": "credit-testlab-spend",
+        "consistency": "synchronous",
+        "delivery": "composition-root hook",
+        "producer_context": "credit",
+        "consumer_context": "testlab",
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/credit_wiring.go",
+            "lines": {
+              "start": 98,
+              "end": 139
+            },
+            "content_sha256": "sha256:ad38b2e0558a0e14044b4cde547728578f5e8279d96e1a1b4a0238d5ede6c3a8",
+            "excerpt_sha256": "sha256:89ebde5a3472ee06b2653cb3e886cea7656ee9779ede4c3ff2c5f4d5cc579691"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-11-07T12:24:47.744656Z",
+      "scope": "proposal",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "77e6be2a29d684be0da5214276d28e65e7828df4",
+        "registry_digest": "sha256:a464dc46f93833c59fe58bb680da32def19213f9d28dbda39f47d06fb2b520f4",
+        "committed_digest": "sha256:99e6809e3109402e640d66c0e4e097389cb41bac9b180be78269c2187493bcb1"
+      }
+    }
+  ],
+  "supersedes": [
+    "reflection-candidates-named-2026-11-07",
+    "suggest-test-cases-2026-11-06"
+  ]
+}

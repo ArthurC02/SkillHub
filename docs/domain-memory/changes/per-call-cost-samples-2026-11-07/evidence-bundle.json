@@ -1,0 +1,101 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "per-call-cost-samples",
+  "proposal_id": "per-call-cost-samples-2026-11-07",
+  "registry_revision": {
+    "observed_commit": "77e6be2a29d684be0da5214276d28e65e7828df4",
+    "registry_digest": "sha256:a464dc46f93833c59fe58bb680da32def19213f9d28dbda39f47d06fb2b520f4",
+    "committed_digest": "sha256:99e6809e3109402e640d66c0e4e097389cb41bac9b180be78269c2187493bcb1"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-start-statistic-samples-model-calls-not-debits",
+      "mutated_protection": "apps/platform/internal/foundation/persistence/db/gen/cost.sql.go:22: unnest(coalesce(e.call_usd_micros, ARRAY[e.usd_micros])) -> unnest(coalesce(e.call_usd_micros[1:2], ARRAY[e.usd_micros]))",
+      "failure_evidence": "=== RUN   TestADebitOfThreeCallsIsOneEventAndThreeStatisticSamples\n    postgres_integration_test.go:341: window = {SampleCount:3 P50UsdMicros:2000 P90UsdMicros:3600 P95UsdMicros:3800 MaxUsdMicros:4000}, want 4 call samples (three listed, one single-call event), p50 2500, p95 3850, max 4000\n--- FAIL: TestADebitOfThreeCallsIsOneEventAndThreeStatisticSamples (0.12s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/credit\t2.306s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "calls-list-constraint",
+      "mutated_protection": "apps/platform/internal/creator/credit/service.go:524: if usdMicros == nil || len(calls) < 2 { -> if usdMicros == nil || len(calls) < 1 {",
+      "failure_evidence": "=== RUN   TestAChargeListingItsCallsIsRefusedUnlessTwoOrMoreCallsSumToAKnownCost\n    service_test.go:775: one listed call: err = <nil>, want accepted false\n--- FAIL: TestAChargeListingItsCallsIsRefusedUnlessTwoOrMoreCallsSumToAKnownCost (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/credit\t3.110s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-batch-reflection-is-paid-for-by-its-requester",
+      "mutated_protection": "apps/platform/internal/trial/improvement/reflection/reflection.go:342: calls = append(calls, *usd) -> calls = append(calls, 0)",
+      "failure_evidence": "=== RUN   TestARoundIsChargedOnceForTheSumOfItsAnsweredCalls\n2026/11/07 20:23:21 WARN batch reflection unavailable batch_id=\"\" focus=scripts_and_tools error=\"gateway 502\"\n    round_test.go:104: call costs = [0 0], want each answered call's 0.01 and 0.02\n--- FAIL: TestARoundIsChargedOnceForTheSumOfItsAnsweredCalls (0.25s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/reflection\t5.174s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "priced-round-lists-its-calls",
+      "mutated_protection": "apps/platform/internal/entrypoint/api/apiserver/credit_wiring.go:131: in.UsdMicros, in.CallUsdMicros = &total, calls -> in.UsdMicros, in.CallUsdMicros = &total, calls[:0:0]",
+      "failure_evidence": "=== RUN   TestARoundWhoseCallsReportTheirCostListsEachCallOnItsOneDebit\n2026/11/07 20:24:04 ERROR reflection: batch reflection not charged error=\"credit: invalid input\"\n2026/11/07 20:24:04 INFO improvement proposals batch_id=057ac577-37c2-435e-8205-42bfc8b38718 proposed=1 stored=1 dropped_no_evidence=0 dropped_unstorable=0 dropped_write_failed=0 dropped_over_cap=0\n2026/11/07 20:24:04 INFO improvement proposals batch_id=057ac577-37c2-435e-8205-42bfc8b38718 proposed=1 stored=1 dropped_no_evidence=0 dropped_unstorable=0 dropped_write_failed=0 dropped_over_cap=0\n2026/11/07 20:24:04 INFO improvement proposals batch_id=057ac577-37c2-435e-8205-42bfc8b38718 proposed=1 stored=1 dropped_no_evidence=0 dropped_unstorable=0 dropped_write_failed=0 dropped_over_cap=0\n    reflection_integration_test.go:646: no rows in result set\n--- FAIL: TestARoundWhoseCallsReportTheirCostListsEachCallOnItsOneDebit (1.06s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.362s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "single-call-kinds-unchanged",
+      "mutated_protection": "apps/platform/internal/foundation/persistence/db/gen/cost.sql.go:22: ARRAY[e.usd_micros])) -> ARRAY[e.usd_micros, e.usd_micros]))",
+      "failure_evidence": "=== RUN   TestAWindowOfSingleCallEventsCountsEachEventOnce\n    postgres_integration_test.go:364: window = {SampleCount:8 P50UsdMicros:250 P90UsdMicros:400 P95UsdMicros:400 MaxUsdMicros:400}, want 4 samples, p50 250, p95 385, max 400\n--- FAIL: TestAWindowOfSingleCallEventsCountsEachEventOnce (0.07s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/credit\t1.511s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-start-statistic-samples-model-calls-not-debits",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestADebitOfThreeCallsIsOneEventAndThreeStatisticSamples$ ./internal/creator/credit/",
+      "command_profile": "integration",
+      "exit_code": 0,
+      "output_sha256": "sha256:76284effa0f3213db42a4032347f91c1f33f734da9eafe6c6189197449e51ee6",
+      "finished_at": "2026-11-07T12:21:34.426994Z"
+    },
+    {
+      "obligation_id": "single-call-kinds-unchanged",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestAWindowOfSingleCallEventsCountsEachEventOnce$ ./internal/creator/credit/",
+      "command_profile": "integration",
+      "exit_code": 0,
+      "output_sha256": "sha256:6ef752ccd73d6f1b072cbf2ee0481da7646f515bba7e208996e4192b903d7fca",
+      "finished_at": "2026-11-07T12:21:44.016227Z"
+    },
+    {
+      "obligation_id": "calls-list-constraint",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^(TestTheCallsOfAnEventMustBeTwoOrMoreReportedCostsSummingToItsDebit|TestAChargeListingItsCallsIsRefusedUnlessTwoOrMoreCallsSumToAKnownCost)$ ./internal/creator/credit/",
+      "command_profile": "integration",
+      "exit_code": 0,
+      "output_sha256": "sha256:bde8b1ff7d38e9d5dc86bd775faaac27d25d7269b865661a7c769f91320c6629",
+      "finished_at": "2026-11-07T12:21:51.634267Z"
+    },
+    {
+      "obligation_id": "rule-a-batch-reflection-is-paid-for-by-its-requester",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestARoundIsChargedOnceForTheSumOfItsAnsweredCalls$ ./internal/trial/improvement/reflection/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:cedc2fa2285c7639a60d76ea0d848e073c8f58a2cc8f8b6379be502f7e42ffda",
+      "finished_at": "2026-11-07T12:22:02.611578Z"
+    },
+    {
+      "obligation_id": "priced-round-lists-its-calls",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestARoundWhoseCallsReportTheirCostListsEachCallOnItsOneDebit$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "integration",
+      "exit_code": 0,
+      "output_sha256": "sha256:c481a4bac4fb55a72f5a57fe444abf34026d94a123198f04a18ae6e505189298",
+      "finished_at": "2026-11-07T12:22:20.945470Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}
