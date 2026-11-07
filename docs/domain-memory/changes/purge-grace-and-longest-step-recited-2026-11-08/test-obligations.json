@@ -1,0 +1,31 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "purge-grace-and-longest-step-recited",
+  "proposal_id": "purge-grace-and-longest-step-recited-2026-11-08",
+  "obligations": [
+    {
+      "id": "rule-a-creation-session-outlives-its-last-step",
+      "source_type": "rule",
+      "source_id": "a-creation-session-outlives-its-last-step",
+      "also_covers": [
+        {
+          "source_type": "acceptance-criterion",
+          "source_id": "rules-unchanged"
+        }
+      ],
+      "expected_outcome": "TestASessionIsKeptUntilAStepStartedAtItsDeadlineHasSettled: a retention of the session plus the longest step is usable and one second less is not.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestASessionIsKeptUntilAStepStartedAtItsDeadlineHasSettled$ ./internal/creator/creation/"
+    },
+    {
+      "id": "rule-deletion-irreversible-once-purge-starts",
+      "source_type": "rule",
+      "source_id": "deletion-irreversible-once-purge-starts",
+      "expected_outcome": "TestADeletionRequestStampsOnlyAFreshRequestAndNeitherChangeReachesAPurgingOrDeletedAccount: a purging or deleted account's deletion can be neither requested nor cancelled.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestADeletionRequestStampsOnlyAFreshRequestAndNeitherChangeReachesAPurgingOrDeletedAccount$ ./internal/creator/workspace/"
+    }
+  ]
+}

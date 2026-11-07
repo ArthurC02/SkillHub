@@ -1,0 +1,46 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "purge-grace-and-longest-step-recited",
+  "proposal_id": "purge-grace-and-longest-step-recited-2026-11-08",
+  "registry_revision": {
+    "observed_commit": "9411cf8e0725c2955fcb5504f9cb7f3e26a39464",
+    "registry_digest": "sha256:3b54c3ce085b09a2fbb26b7e28177d2ce5a65c1b35c0036191cdbe923e02a987",
+    "committed_digest": "sha256:3b54c3ce085b09a2fbb26b7e28177d2ce5a65c1b35c0036191cdbe923e02a987"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-creation-session-outlives-its-last-step",
+      "mutated_protection": "apps/platform/internal/creator/creation/service.go:90: l.Retention >= l.SessionTimeout+l.activeStep()+attemptWrapUp -> l.Retention >= l.SessionTimeout+l.activeStep()",
+      "failure_evidence": "=== RUN   TestASessionIsKeptUntilAStepStartedAtItsDeadlineHasSettled\n    limits_retention_test.go:23: one second short of the last step settling: Valid() = true, want false\n--- FAIL: TestASessionIsKeptUntilAStepStartedAtItsDeadlineHasSettled (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/creation\t1.975s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-creation-session-outlives-its-last-step",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestASessionIsKeptUntilAStepStartedAtItsDeadlineHasSettled$ ./internal/creator/creation/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:812fbbd38fcd2c935b15c1b5ad0a37e0b264bd0b37af78bcf7e45eb8352a2ce0",
+      "finished_at": "2026-11-07T22:25:48.252570Z"
+    },
+    {
+      "obligation_id": "rule-deletion-irreversible-once-purge-starts",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestADeletionRequestStampsOnlyAFreshRequestAndNeitherChangeReachesAPurgingOrDeletedAccount$ ./internal/creator/workspace/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:cd6857204181ac7deb22cb2bb0c56c5a3e6b4de405e40494f3126726c9fa1bac",
+      "finished_at": "2026-11-07T22:25:53.464727Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

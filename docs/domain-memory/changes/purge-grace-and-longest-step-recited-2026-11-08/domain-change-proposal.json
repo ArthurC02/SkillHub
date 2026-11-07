@@ -1,0 +1,159 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "purge-grace-and-longest-step-recited-2026-11-08",
+  "proposer": "coding-agent",
+  "requirement_id": "purge-grace-and-longest-step-recited",
+  "status": "verified",
+  "change_classification": "routine",
+  "submitted_at": "2026-11-07T22:25:43.059480Z",
+  "verified_at": "2026-11-07T22:26:21.749571Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "9411cf8e0725c2955fcb5504f9cb7f3e26a39464",
+    "registry_digest": "sha256:3b54c3ce085b09a2fbb26b7e28177d2ce5a65c1b35c0036191cdbe923e02a987",
+    "committed_digest": "sha256:3b54c3ce085b09a2fbb26b7e28177d2ce5a65c1b35c0036191cdbe923e02a987"
+  },
+  "affected_contexts": [
+    "creation",
+    "identity"
+  ],
+  "rule_ids": [
+    "a-creation-session-outlives-its-last-step",
+    "deletion-irreversible-once-purge-starts"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "creation",
+    "invariant": "A creation session row outlives its last step's settlement, and an account that has started purging cannot have its deletion requested or cancelled.",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "unchanged; the account handler states the purge grace the purger acts on and the creation limits name their longest allowed call, without changing either rule.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "The creation limits now name MaxCallTimeout and the account handler reads the configured purge grace, which moved the cited lines."
+    ],
+    "decision": "Re-cite both rules to their current lines; the rule text is unchanged.",
+    "invariants_preserved": [
+      "Retention must cover the session timeout plus the longest step.",
+      "Deletion is irreversible once purging starts."
+    ],
+    "rejected_alternatives": [
+      "Leaving the stale citations, which would fail verify-evidence."
+    ],
+    "proof_obligations": [
+      "rule-a-creation-session-outlives-its-last-step",
+      "rule-deletion-irreversible-once-purge-starts"
+    ],
+    "counterfactual_check": "Drop the wrap-up from the retention bound in Limits.Valid: the retention rule's test must fail."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-creation-session-outlives-its-last-step",
+        "statement": "Creation limits are usable only when the retention outlasts the session timeout plus the longest step that can start just before it: the call timeout, ten seconds of slack and sixty seconds to revoke the key, search ahead and settle; otherwise a session row could be deleted before its last step's spend is charged.",
+        "contexts": [
+          "creation"
+        ],
+        "examples": [
+          "With a one-minute session and a one-second call timeout, a retention of one minute and seventy-one seconds is usable and one second less is not."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/creation/service.go",
+            "lines": {
+              "start": 89,
+              "end": 91
+            },
+            "content_sha256": "sha256:8a4ba4bd80a8f7cb44d0a56d3d43cfcc50ed15073cf78baf27684653597ab168",
+            "excerpt_sha256": "sha256:9e2a6e89e2413532d8c3ef10a6f98bf138ce42695ae2ea4e2771d9098224b130",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/creator/creation/limits_retention_test.go",
+            "lines": {
+              "start": 8,
+              "end": 26
+            },
+            "excerpt_sha256": "sha256:538dbabc0e0fbd9ce7aece4d83c4f0a1760ae4c610405be82bcccb7401235665"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "deletion-irreversible-once-purge-starts",
+        "statement": "Once an Account has started purging or is deleted, deletion can neither be requested nor cancelled; the user is told it is irreversible (HTTP 409).",
+        "contexts": [
+          "identity"
+        ],
+        "examples": [
+          "Cancelling a deletion whose purge has started answers 409 'deletion is already irreversible'.",
+          "Requesting deletion for an already deleted Account answers 409."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/workspace/account.go",
+            "lines": {
+              "start": 42,
+              "end": 69
+            },
+            "excerpt_sha256": "sha256:f299a7a5956ac36a9374f06b675c2cf5b0a10b91aa65a2ff4c2b9aa2f8ca95f8"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/http.go",
+            "lines": {
+              "start": 613,
+              "end": 643
+            },
+            "content_sha256": "sha256:4501466e24715f95da0862e18a59b541b72b944b91ce5e70769ab5fe1cf6519b",
+            "excerpt_sha256": "sha256:a96b3765e9f71383ac36f9a50c00330d6dca6bc52a8b048d3756199938d97444",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "contracts/openapi/public.yaml",
+            "lines": {
+              "start": 222,
+              "end": 229
+            },
+            "excerpt_sha256": "sha256:c0d734698f112f6a5b072328448d3e936105fd071bf5acf81d324c030b5725a0"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-11-07T22:26:21.075638Z",
+      "scope": "proposal",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "9411cf8e0725c2955fcb5504f9cb7f3e26a39464",
+        "registry_digest": "sha256:3b54c3ce085b09a2fbb26b7e28177d2ce5a65c1b35c0036191cdbe923e02a987",
+        "committed_digest": "sha256:3b54c3ce085b09a2fbb26b7e28177d2ce5a65c1b35c0036191cdbe923e02a987"
+      }
+    }
+  ],
+  "supersedes": [
+    "shifted-recite-2026-10-24"
+  ]
+}

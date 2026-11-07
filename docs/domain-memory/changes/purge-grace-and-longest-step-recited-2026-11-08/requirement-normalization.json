@@ -1,0 +1,22 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "purge-grace-and-longest-step-recited",
+  "status": "draft",
+  "intent": "Keep two reviewed rules cited to the code that holds them after the account handler began stating the configured purge grace and the creation limits named their longest allowed call.",
+  "actor": "skill-creator",
+  "observable_outcome": "Creation limits still need a retention that outlasts the session plus its longest step, and a purging or deleted account still cannot request or cancel deletion.",
+  "acceptance_criteria": [
+    {
+      "id": "rules-unchanged",
+      "statement": "Both rules behave as before at their bounds."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/creator/creation/service.go",
+    "apps/platform/internal/creator/workspace/http.go"
+  ]
+}
