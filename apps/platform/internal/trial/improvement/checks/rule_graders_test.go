@@ -270,3 +270,66 @@ func TestACutAnswerSaysWhereItWasCut(t *testing.T) {
 		t.Errorf("reason = %q, want %q", got.Reason, want)
 	}
 }
+
+func orderedMaterial(complete bool, names ...string) facts.Material {
+	m := ruledMaterial("答完了", nil, "succeeded", complete)
+	for _, name := range names {
+		m.Advanced.Events = append(m.Advanced.Events, trace.EventView{Type: trace.TypeToolCall,
+			Payload: []byte(`{"tool_name":"` + name + `","outcome":"succeeded","duration_ms":1}`)})
+	}
+	return m
+}
+
+func TestAnOrderCheckSaysHowFarTheRunGotAndWhyAPartialTraceCannotDecide(t *testing.T) {
+	cases := []struct {
+		name string
+		m    facts.Material
+		want string
+	}{
+		{"stopped after the first tool", orderedMaterial(true, "Read", "Grep"),
+			"the run called Read, but never called Bash after that"},
+		{"never reached the first tool", orderedMaterial(true, "Grep"),
+			"the run never called Read"},
+		{"a trace cut for the evaluation", func() facts.Material {
+			m := orderedMaterial(false, "Bash")
+			m.Advanced.EvaluationTruncated = true
+			return m
+		}(), "the run never called Read in the calls the trace shows; " + facts.GapTraceTail},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got, _ := treeResult(c.m, criterion("c", "calls_tools_in_order", "Read", "Bash"), nil)
+			if got.Reason != c.want {
+				t.Fatalf("reason = %q, want %q", got.Reason, c.want)
+			}
+		})
+	}
+}
+
+func TestAnOrderCheckDecidesFromTheRunsOrderedCalls(t *testing.T) {
+	cases := []struct {
+		name string
+		m    facts.Material
+		c    testlab.Criterion
+		want string
+	}{
+		{"the run called the named tools in order with other calls between", orderedMaterial(true, "Read", "Grep", "bash"),
+			criterion("c", "calls_tools_in_order", "Read", "Bash"), verdict.ResultPassed},
+		{"the run called the named tools in the other order", orderedMaterial(true, "Bash", "Read"),
+			criterion("c", "calls_tools_in_order", "Read", "Bash"), verdict.ResultFailed},
+		{"the run never called the first named tool", orderedMaterial(true, "Bash"),
+			criterion("c", "calls_tools_in_order", "Read", "Bash"), verdict.ResultFailed},
+		{"an order missing from a partial trace is undetermined", orderedMaterial(false, "Bash", "Read"),
+			criterion("c", "calls_tools_in_order", "Read", "Bash"), verdict.ResultUndetermined},
+		{"an order found in a partial trace is not recorded as passed", orderedMaterial(false, "Read", "Bash"),
+			criterion("c", "calls_tools_in_order", "Read", "Bash"), verdict.ResultUndetermined},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got, decided := treeResult(c.m, c.c, nil)
+			if !decided || got.Result != c.want || got.Source != verdict.SourceRule || got.Reason == "" {
+				t.Fatalf("got %+v (decided %v), want one %s result from the rule with a reason", got, decided, c.want)
+			}
+		})
+	}
+}

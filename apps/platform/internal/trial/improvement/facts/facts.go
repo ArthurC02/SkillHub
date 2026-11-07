@@ -128,13 +128,34 @@ type ToolCall struct {
 }
 
 type ToolCallLog struct {
-	Calls    []ToolCall
-	Complete bool
+	Calls []ToolCall
+	Gap   string
+}
+
+func (l ToolCallLog) Complete() bool { return l.Gap == "" }
+
+const (
+	GapTraceTail      = "the trace kept for evaluation starts partway through the run, so its earlier calls are not visible"
+	GapMorePages      = "the trace has pages that were not read"
+	GapMissingEvents  = "the trace is missing events the run reported"
+	GapUnreadablePart = "a tool call's record could not be read"
+)
+
+func traceGap(view trace.AdvancedView) string {
+	switch {
+	case view.EvaluationTruncated:
+		return GapTraceTail
+	case view.HasMore:
+		return GapMorePages
+	case !view.Complete:
+		return GapMissingEvents
+	}
+	return ""
 }
 
 func (m Material) ToolCalls() ToolCallLog {
 	view := m.Advanced
-	log := ToolCallLog{Complete: view.Complete && !view.HasMore && !view.EvaluationTruncated}
+	log := ToolCallLog{Gap: traceGap(view)}
 	for _, e := range view.Events {
 		if e.Type != trace.TypeToolCall {
 			continue
@@ -146,7 +167,9 @@ func (m Material) ToolCalls() ToolCallLog {
 			Arguments  json.RawMessage `json:"arguments"`
 		}
 		if err := json.Unmarshal(e.Payload, &p); err != nil {
-			log.Complete = false
+			if log.Gap == "" {
+				log.Gap = GapUnreadablePart
+			}
 			continue
 		}
 		call := ToolCall{Name: p.ToolName, Outcome: p.Outcome, DurationMS: p.DurationMS}

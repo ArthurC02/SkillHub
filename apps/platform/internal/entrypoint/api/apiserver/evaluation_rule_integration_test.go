@@ -175,7 +175,7 @@ func TestTheCheckKindsAnEditorCanOfferAreListed(t *testing.T) {
 		got[name] = category
 	}
 	want := map[string]string{
-		"contains_values": "grader", "asks": "grader", "does_not_ask": "grader", "max_chars": "grader", "max_sentences": "grader", "calls_tool": "grader", "avoids_tool": "grader",
+		"contains_values": "grader", "asks": "grader", "does_not_ask": "grader", "max_chars": "grader", "max_sentences": "grader", "calls_tool": "grader", "avoids_tool": "grader", "calls_tools_in_order": "grader",
 		"judge": "grader", "prompt_grader": "grader",
 		"sequence": "composite", "all": "composite", "any": "composite", "if": "composite", "each": "composite",
 	}

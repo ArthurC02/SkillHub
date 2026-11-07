@@ -66,7 +66,7 @@ type valuesValidator interface {
 }
 
 var checkNodeList = []checkNode{
-	containsValuesNode{}, asksNode{}, doesNotAskNode{}, maxCharsNode{}, maxSentencesNode{}, callsToolNode{}, avoidsToolNode{}, judgeNode{}, promptGraderNode{},
+	containsValuesNode{}, asksNode{}, doesNotAskNode{}, maxCharsNode{}, maxSentencesNode{}, callsToolNode{}, avoidsToolNode{}, callsToolsInOrderNode{}, judgeNode{}, promptGraderNode{},
 	sequenceNode{}, allNode{}, anyNode{}, ifNode{}, eachNode{},
 }
 

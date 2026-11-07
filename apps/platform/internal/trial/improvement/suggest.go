@@ -329,15 +329,15 @@ func suggestionDigest(m facts.Material, v assessment) (string, []verdict.Evidenc
 
 const (
 	toolCallsHeading       = "\ntool calls in the order the run made them:\n"
-	toolCallsPartialNotice = "  (the trace does not show every call, so calls may be missing from this list)\n"
+	toolCallsPartialNotice = "  (calls may be missing from this list: %s)\n"
 	maxDigestToolCalls     = 60
 	digestArgumentRunes    = 300
 )
 
 func writeToolCalls(b *strings.Builder, log facts.ToolCallLog) {
 	b.WriteString(toolCallsHeading)
-	if !log.Complete {
-		b.WriteString(toolCallsPartialNotice)
+	if !log.Complete() {
+		fmt.Fprintf(b, toolCallsPartialNotice, log.Gap)
 	}
 	if len(log.Calls) == 0 {
 		b.WriteString("  (none)\n")

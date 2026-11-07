@@ -158,3 +158,35 @@ func (avoidsToolNode) kind() CheckKind {
 func (n avoidsToolNode) evaluate(s checkScope, c testlab.Check, path string) outcome {
 	return gradeRule(s, c, gradeAvoidsTool)
 }
+
+type callsToolsInOrderNode struct{}
+
+func (callsToolsInOrderNode) kind() CheckKind {
+	return CheckKind{Kind: "calls_tools_in_order", Category: CategoryGrader, Label: "依序呼叫指定工具",
+		Description: "Run 依列出的順序呼叫過這些工具，中間可以夾別的呼叫；以工具名稱比對，不分大小寫", Values: Bounds{2, MaxCheckValues}}
+}
+
+func (n callsToolsInOrderNode) evaluate(s checkScope, c testlab.Check, path string) outcome {
+	return gradeRule(s, c, gradeCallsToolsInOrder)
+}
+
+func gradeCallsToolsInOrder(m facts.Material, values []string) (string, string) {
+	log := m.ToolCalls()
+	matched := 0
+	for _, call := range log.Calls {
+		if matched < len(values) && strings.EqualFold(strings.TrimSpace(call.Name), values[matched]) {
+			matched++
+		}
+	}
+	if matched == len(values) {
+		return verdict.ResultPassed, "the run called " + strings.Join(values, ", then ")
+	}
+	reason := "the run never called " + values[matched]
+	if matched > 0 {
+		reason = "the run called " + strings.Join(values[:matched], ", then ") + ", but never called " + values[matched] + " after that"
+	}
+	if !log.Complete() {
+		return verdict.ResultUndetermined, reason + " in the calls the trace shows; " + log.Gap
+	}
+	return verdict.ResultFailed, reason
+}

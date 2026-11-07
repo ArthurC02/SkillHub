@@ -158,8 +158,9 @@ func TestTheDigestSaysWhenTheRunMadeNoToolCalls(t *testing.T) {
 
 func TestTheDigestWarnsThatToolCallsMayBeMissingFromAPartialTrace(t *testing.T) {
 	digest, _ := suggestionDigest(toolCallTrace(t, false, 0, ""), assessment{})
-	if got := toolCallSection(digest); got != toolCallsPartialNotice+"  (none)\n" {
-		t.Fatalf("tool call section = %q, want the partial notice before (none)", got)
+	want := "  (calls may be missing from this list: " + facts.GapMissingEvents + ")\n  (none)\n"
+	if got := toolCallSection(digest); got != want {
+		t.Fatalf("tool call section = %q, want %q", got, want)
 	}
 }
 
