@@ -5841,7 +5841,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [reference, candidate, paired, unpaired, candidate_better, reference_better, tied]
+                required: [reference, candidate, paired, unpaired, verdict, candidate_better, reference_better, tied]
                 properties:
                   reference: { $ref: "#/components/schemas/EvaluationBatch" }
                   candidate: { $ref: "#/components/schemas/EvaluationBatch" }
@@ -5854,6 +5854,7 @@ paths:
                     properties:
                       low: { type: number }
                       high: { type: number }
+                  verdict: { $ref: "#/components/schemas/EvaluationDifferenceVerdict" }
                   candidate_better: { type: integer }
                   reference_better: { type: integer }
                   tied: { type: integer }
@@ -8393,7 +8394,7 @@ components:
         Per test case, one arm's pass rate minus the other's, over the test
         cases both arms judged; the mean with a 95% interval from the paired
         standard error.
-      required: [paired, unpaired, better, worse, tied]
+      required: [paired, unpaired, verdict, better, worse, tied]
       properties:
         paired: { type: integer }
         unpaired: { type: integer, description: Test cases judged in only one arm. }
@@ -8405,9 +8406,19 @@ components:
           properties:
             low: { type: number }
             high: { type: number }
+        verdict: { $ref: "#/components/schemas/EvaluationDifferenceVerdict" }
         better: { type: integer, description: Test cases where the first arm passed more often. }
         worse: { type: integer }
         tied: { type: integer }
+    EvaluationDifferenceVerdict:
+      type: string
+      enum: [improved, likely_improved, no_clear_difference, likely_worse, worse, too_few_pairs]
+      description: |
+        What the paired difference supports. improved or worse when the 99.9%
+        interval excludes zero, likely_improved or likely_worse when only the
+        95% interval does, no_clear_difference when the 95% interval includes
+        zero, too_few_pairs with fewer than two pairs. Nothing short of
+        likely_improved may be presented as an improvement.
     EvaluationBatchArm:
       type: object
       required: [test_cases, passed, judged, test_cases_all_passed, test_cases_decided]

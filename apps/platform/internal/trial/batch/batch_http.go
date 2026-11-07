@@ -81,6 +81,7 @@ type pairedView struct {
 	Unpaired     int           `json:"unpaired"`
 	Difference   *float64      `json:"difference,omitempty"`
 	Difference95 *intervalView `json:"difference_95,omitempty"`
+	Verdict      string        `json:"verdict"`
 	Better       int           `json:"better"`
 	Worse        int           `json:"worse"`
 	Tied         int           `json:"tied"`
@@ -218,6 +219,7 @@ type batchComparisonView struct {
 	Unpaired        int           `json:"unpaired"`
 	Difference      *float64      `json:"difference,omitempty"`
 	Difference95    *intervalView `json:"difference_95,omitempty"`
+	Verdict         string        `json:"verdict"`
 	CandidateBetter int           `json:"candidate_better"`
 	ReferenceBetter int           `json:"reference_better"`
 	Tied            int           `json:"tied"`
@@ -247,6 +249,7 @@ func (h *BatchHandler) CompareBatches(w http.ResponseWriter, r *http.Request) {
 		Reference: reference, Candidate: viewOfBatch(comparison.Candidate),
 		Paired: comparison.Paired, Unpaired: comparison.Unpaired, Difference: comparison.Difference,
 		Difference95:    viewOfInterval(comparison.Difference95),
+		Verdict:         comparison.Verdict,
 		CandidateBetter: comparison.Better, ReferenceBetter: comparison.Worse,
 		Tied: comparison.Tied,
 	}
@@ -308,7 +311,7 @@ func viewOfReport(report BatchReport) batchReportView {
 	if p := report.SkillEffect; p != nil {
 		view.SkillEffect = &pairedView{
 			Paired: p.Paired, Unpaired: p.Unpaired, Difference: p.Difference, Difference95: viewOfInterval(p.Difference95),
-			Better: p.Better, Worse: p.Worse, Tied: p.Tied,
+			Verdict: p.Verdict, Better: p.Better, Worse: p.Worse, Tied: p.Tied,
 		}
 	}
 	return view

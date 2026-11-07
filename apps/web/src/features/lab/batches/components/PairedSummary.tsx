@@ -1,5 +1,5 @@
 import type { PairedDifference } from "../batches.model";
-import { signedPoints } from "../batches.model";
+import { signedPoints, verdictSentence } from "../batches.model";
 
 export function PairedSummary({
   heading,
@@ -18,6 +18,8 @@ export function PairedSummary({
     <section aria-label={heading}>
       {nested ? <h3>{heading}</h3> : <h2>{heading}</h2>}
       <dl data-role="evidence">
+        <dt>結論</dt>
+        <dd>{verdictSentence(difference.verdict, betterLabel, worseLabel)}</dd>
         <dt>平均差距</dt>
         <dd>
           {difference.difference === undefined

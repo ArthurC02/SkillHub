@@ -276,8 +276,8 @@ func expectWithheldArmOfOneTestCase(t *testing.T, report map[string]any) {
 	if _, former := report["without_skill"]; former {
 		t.Errorf("report still carries the former name without_skill: %v", report["without_skill"])
 	}
-	if report["skill_effect"] == nil {
-		t.Error("report has no skill_effect, want the paired difference")
+	if effect, _ := report["skill_effect"].(map[string]any); effect == nil || effect["verdict"] != "too_few_pairs" {
+		t.Errorf("report skill_effect = %v, want the paired difference of one test case, too few pairs for a verdict", report["skill_effect"])
 	}
 }
 
@@ -606,8 +606,9 @@ func TestTwoBatchesAreComparedOnlyOnTheTestCasesBothJudged(t *testing.T) {
 	interval, _ := body["difference_95"].(map[string]any)
 	if code != http.StatusOK || body["paired"] != float64(2) || body["unpaired"] != float64(2) ||
 		body["candidate_better"] != float64(1) || body["tied"] != float64(1) || body["reference_better"] != float64(0) ||
-		!near(body["difference"], 0.5) || !near(interval["low"], -0.48) || !near(interval["high"], 1.48) {
-		t.Fatalf("comparison: got %d %v, want 2 pairs (an awaiting trial leaves its test case unpaired), one better and one tied, 0.5 within [-0.48, 1.48]", code, body)
+		!near(body["difference"], 0.5) || !near(interval["low"], -0.48) || !near(interval["high"], 1.48) ||
+		body["verdict"] != "no_clear_difference" {
+		t.Fatalf("comparison: got %d %v, want 2 pairs (an awaiting trial leaves its test case unpaired), one better and one tied, 0.5 within [-0.48, 1.48], so no clear difference", code, body)
 	}
 	if reference, _ := body["reference"].(map[string]any); reference["id"] != baseline {
 		t.Errorf("comparison reference = %v, want batch %s", body["reference"], baseline)

@@ -106,6 +106,7 @@ export * from './EvaluationBatchReport';
 export * from './EvaluationBatchTestCase';
 export * from './EvaluationBatchTrial';
 export * from './EvaluationCost';
+export * from './EvaluationDifferenceVerdict';
 export * from './EvaluationFeedback';
 export * from './EvaluationGrader';
 export * from './EvaluationGraderDraft';

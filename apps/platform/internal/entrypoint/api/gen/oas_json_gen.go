@@ -5778,6 +5778,10 @@ func (s *CompareEvaluationBatchesOK) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
+		e.FieldStart("verdict")
+		s.Verdict.Encode(e)
+	}
+	{
 		e.FieldStart("candidate_better")
 		e.Int(s.CandidateBetter)
 	}
@@ -5791,16 +5795,17 @@ func (s *CompareEvaluationBatchesOK) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfCompareEvaluationBatchesOK = [9]string{
+var jsonFieldsNameOfCompareEvaluationBatchesOK = [10]string{
 	0: "reference",
 	1: "candidate",
 	2: "paired",
 	3: "unpaired",
 	4: "difference",
 	5: "difference_95",
-	6: "candidate_better",
-	7: "reference_better",
-	8: "tied",
+	6: "verdict",
+	7: "candidate_better",
+	8: "reference_better",
+	9: "tied",
 }
 
 // Decode decodes CompareEvaluationBatchesOK from json.
@@ -5876,8 +5881,18 @@ func (s *CompareEvaluationBatchesOK) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"difference_95\"")
 			}
-		case "candidate_better":
+		case "verdict":
 			requiredBitSet[0] |= 1 << 6
+			if err := func() error {
+				if err := s.Verdict.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"verdict\"")
+			}
+		case "candidate_better":
+			requiredBitSet[0] |= 1 << 7
 			if err := func() error {
 				v, err := d.Int()
 				s.CandidateBetter = int(v)
@@ -5889,7 +5904,7 @@ func (s *CompareEvaluationBatchesOK) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"candidate_better\"")
 			}
 		case "reference_better":
-			requiredBitSet[0] |= 1 << 7
+			requiredBitSet[1] |= 1 << 0
 			if err := func() error {
 				v, err := d.Int()
 				s.ReferenceBetter = int(v)
@@ -5901,7 +5916,7 @@ func (s *CompareEvaluationBatchesOK) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"reference_better\"")
 			}
 		case "tied":
-			requiredBitSet[1] |= 1 << 0
+			requiredBitSet[1] |= 1 << 1
 			if err := func() error {
 				v, err := d.Int()
 				s.Tied = int(v)
@@ -5923,7 +5938,7 @@ func (s *CompareEvaluationBatchesOK) Decode(d *jx.Decoder) error {
 	var failures []validate.FieldError
 	for i, mask := range [2]uint8{
 		0b11001111,
-		0b00000001,
+		0b00000011,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -22959,6 +22974,54 @@ func (s *EvaluationCostSource) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes EvaluationDifferenceVerdict as json.
+func (s EvaluationDifferenceVerdict) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes EvaluationDifferenceVerdict from json.
+func (s *EvaluationDifferenceVerdict) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode EvaluationDifferenceVerdict to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch EvaluationDifferenceVerdict(v) {
+	case EvaluationDifferenceVerdictImproved:
+		*s = EvaluationDifferenceVerdictImproved
+	case EvaluationDifferenceVerdictLikelyImproved:
+		*s = EvaluationDifferenceVerdictLikelyImproved
+	case EvaluationDifferenceVerdictNoClearDifference:
+		*s = EvaluationDifferenceVerdictNoClearDifference
+	case EvaluationDifferenceVerdictLikelyWorse:
+		*s = EvaluationDifferenceVerdictLikelyWorse
+	case EvaluationDifferenceVerdictWorse:
+		*s = EvaluationDifferenceVerdictWorse
+	case EvaluationDifferenceVerdictTooFewPairs:
+		*s = EvaluationDifferenceVerdictTooFewPairs
+	default:
+		*s = EvaluationDifferenceVerdict(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s EvaluationDifferenceVerdict) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *EvaluationDifferenceVerdict) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode implements json.Marshaler.
 func (s *EvaluationFeedback) Encode(e *jx.Encoder) {
 	e.ObjStart()
@@ -23884,6 +23947,10 @@ func (s *EvaluationPairedDifference) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
+		e.FieldStart("verdict")
+		s.Verdict.Encode(e)
+	}
+	{
 		e.FieldStart("better")
 		e.Int(s.Better)
 	}
@@ -23897,14 +23964,15 @@ func (s *EvaluationPairedDifference) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfEvaluationPairedDifference = [7]string{
+var jsonFieldsNameOfEvaluationPairedDifference = [8]string{
 	0: "paired",
 	1: "unpaired",
 	2: "difference",
 	3: "difference_95",
-	4: "better",
-	5: "worse",
-	6: "tied",
+	4: "verdict",
+	5: "better",
+	6: "worse",
+	7: "tied",
 }
 
 // Decode decodes EvaluationPairedDifference from json.
@@ -23960,8 +24028,18 @@ func (s *EvaluationPairedDifference) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"difference_95\"")
 			}
-		case "better":
+		case "verdict":
 			requiredBitSet[0] |= 1 << 4
+			if err := func() error {
+				if err := s.Verdict.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"verdict\"")
+			}
+		case "better":
+			requiredBitSet[0] |= 1 << 5
 			if err := func() error {
 				v, err := d.Int()
 				s.Better = int(v)
@@ -23973,7 +24051,7 @@ func (s *EvaluationPairedDifference) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"better\"")
 			}
 		case "worse":
-			requiredBitSet[0] |= 1 << 5
+			requiredBitSet[0] |= 1 << 6
 			if err := func() error {
 				v, err := d.Int()
 				s.Worse = int(v)
@@ -23985,7 +24063,7 @@ func (s *EvaluationPairedDifference) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"worse\"")
 			}
 		case "tied":
-			requiredBitSet[0] |= 1 << 6
+			requiredBitSet[0] |= 1 << 7
 			if err := func() error {
 				v, err := d.Int()
 				s.Tied = int(v)
@@ -24006,7 +24084,7 @@ func (s *EvaluationPairedDifference) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b01110011,
+		0b11110011,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

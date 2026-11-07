@@ -132,18 +132,55 @@ func TestATerminalRunAsksForABatchAdvanceOnlyWhereABatchIsUnsettled(t *testing.T
 }
 
 func TestThePairedDifferenceCarriesItsStandardErrorInterval(t *testing.T) {
-	if mean, interval := pairedDifference(nil); mean != nil || interval != nil {
-		t.Errorf("no pair: %v %v, want neither", mean, interval)
+	if mean, interval, verdict := pairedDifference(nil); mean != nil || interval != nil || verdict != "too_few_pairs" {
+		t.Errorf("no pair: %v %v %q, want neither and too_few_pairs", mean, interval, verdict)
 	}
-	if mean, interval := pairedDifference([]float64{0.5}); mean == nil || *mean != 0.5 || interval != nil {
-		t.Errorf("one pair: %v %v, want the difference without an interval", mean, interval)
+	if mean, interval, verdict := pairedDifference([]float64{0.5}); mean == nil || *mean != 0.5 || interval != nil || verdict != "too_few_pairs" {
+		t.Errorf("one pair: %v %v %q, want the difference without an interval and too_few_pairs", mean, interval, verdict)
 	}
-	mean, interval := pairedDifference([]float64{1, 0, 0.5, -0.5})
+	mean, interval, verdict := pairedDifference([]float64{1, 0, 0.5, -0.5})
 	if math.Abs(*mean-0.25) > 1e-9 || math.Abs(interval.Low+0.3826) > 5e-4 || math.Abs(interval.High-0.8826) > 5e-4 {
 		t.Errorf("four pairs: mean %v interval %+v, want 0.25 [-0.3826, 0.8826]", *mean, *interval)
 	}
+	if verdict != "no_clear_difference" {
+		t.Errorf("four pairs whose interval includes zero: verdict %q, want no_clear_difference", verdict)
+	}
 }
 
+func TestTheVerdictNeedsTheIntervalAtEachLevelToExcludeZero(t *testing.T) {
+	const standardError = 0.1
+	cases := []struct {
+		name string
+		mean float64
+		want string
+	}{
+		{"the 99.9% interval just excludes zero", 0.33, "improved"},
+		{"the 99.9% interval just includes zero", 0.32, "likely_improved"},
+		{"the 95% interval just excludes zero", 0.2, "likely_improved"},
+		{"the 95% interval just includes zero", 0.19, "no_clear_difference"},
+		{"no difference at all", 0, "no_clear_difference"},
+		{"the 95% interval just includes zero below", -0.19, "no_clear_difference"},
+		{"the 95% interval just excludes zero below", -0.2, "likely_worse"},
+		{"the 99.9% interval just includes zero below", -0.32, "likely_worse"},
+		{"the 99.9% interval just excludes zero below", -0.33, "worse"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := differenceVerdict(c.mean, standardError); got != c.want {
+				t.Fatalf("verdict = %q, want %q", got, c.want)
+			}
+		})
+	}
+}
+
+func TestEveryPairedCaseMovingTheSameWayIsAClearDifference(t *testing.T) {
+	if _, _, got := pairedDifference([]float64{0.5, 0.5, 0.5}); got != "improved" {
+		t.Errorf("three equal gains: verdict %q, want improved", got)
+	}
+	if _, _, got := pairedDifference([]float64{-1, -1}); got != "worse" {
+		t.Errorf("two equal losses: verdict %q, want worse", got)
+	}
+}
 func TestTheSkillEffectPairsEachTestCaseWithItsOwnTrialsWithoutTheSkill(t *testing.T) {
 	cases := distinctTestCases(3)
 	outcomes := map[pgtype.UUID]resolvedTrial{}

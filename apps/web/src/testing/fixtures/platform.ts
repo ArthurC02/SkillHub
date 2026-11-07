@@ -1664,7 +1664,15 @@ export const BATCH_REPORT: BatchReport = {
     test_cases_all_passed: 0,
     test_cases_decided: 1,
   },
-  skill_effect: { paired: 1, unpaired: 0, difference: 0.5, better: 1, worse: 0, tied: 0 },
+  skill_effect: {
+    paired: 1,
+    unpaired: 0,
+    difference: 0.5,
+    verdict: "too_few_pairs",
+    better: 1,
+    worse: 0,
+    tied: 0,
+  },
 };
 
 export const BATCH_COMPARISON: BatchComparison = {
@@ -1676,6 +1684,7 @@ export const BATCH_COMPARISON: BatchComparison = {
   paired: 1,
   unpaired: 0,
   difference: 0.25,
+  verdict: "too_few_pairs",
   candidate_better: 1,
   reference_better: 0,
   tied: 0,

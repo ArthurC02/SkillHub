@@ -1086,6 +1086,17 @@ func (s *CompareEvaluationBatchesOK) Validate() error {
 			Error: err,
 		})
 	}
+	if err := func() error {
+		if err := s.Verdict.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "verdict",
+			Error: err,
+		})
+	}
 	if len(failures) > 0 {
 		return &validate.Error{Fields: failures}
 	}
@@ -4499,6 +4510,25 @@ func (s EvaluationCostSource) Validate() error {
 	}
 }
 
+func (s EvaluationDifferenceVerdict) Validate() error {
+	switch s {
+	case "improved":
+		return nil
+	case "likely_improved":
+		return nil
+	case "no_clear_difference":
+		return nil
+	case "likely_worse":
+		return nil
+	case "worse":
+		return nil
+	case "too_few_pairs":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
+}
+
 func (s *EvaluationFeedback) Validate() error {
 	if s == nil {
 		return validate.ErrNilPointer
@@ -4865,6 +4895,17 @@ func (s *EvaluationPairedDifference) Validate() error {
 	}(); err != nil {
 		failures = append(failures, validate.FieldError{
 			Name:  "difference_95",
+			Error: err,
+		})
+	}
+	if err := func() error {
+		if err := s.Verdict.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "verdict",
 			Error: err,
 		})
 	}

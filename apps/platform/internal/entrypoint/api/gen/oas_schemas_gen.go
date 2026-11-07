@@ -2335,6 +2335,7 @@ type CompareEvaluationBatchesOK struct {
 	// Mean of candidate minus reference pass rate per test case.
 	Difference      OptFloat64                                `json:"difference"`
 	Difference95    OptCompareEvaluationBatchesOKDifference95 `json:"difference_95"`
+	Verdict         EvaluationDifferenceVerdict               `json:"verdict"`
 	CandidateBetter int                                       `json:"candidate_better"`
 	ReferenceBetter int                                       `json:"reference_better"`
 	Tied            int                                       `json:"tied"`
@@ -2368,6 +2369,11 @@ func (s *CompareEvaluationBatchesOK) GetDifference() OptFloat64 {
 // GetDifference95 returns the value of Difference95.
 func (s *CompareEvaluationBatchesOK) GetDifference95() OptCompareEvaluationBatchesOKDifference95 {
 	return s.Difference95
+}
+
+// GetVerdict returns the value of Verdict.
+func (s *CompareEvaluationBatchesOK) GetVerdict() EvaluationDifferenceVerdict {
+	return s.Verdict
 }
 
 // GetCandidateBetter returns the value of CandidateBetter.
@@ -2413,6 +2419,11 @@ func (s *CompareEvaluationBatchesOK) SetDifference(val OptFloat64) {
 // SetDifference95 sets the value of Difference95.
 func (s *CompareEvaluationBatchesOK) SetDifference95(val OptCompareEvaluationBatchesOKDifference95) {
 	s.Difference95 = val
+}
+
+// SetVerdict sets the value of Verdict.
+func (s *CompareEvaluationBatchesOK) SetVerdict(val EvaluationDifferenceVerdict) {
+	s.Verdict = val
 }
 
 // SetCandidateBetter sets the value of CandidateBetter.
@@ -9519,6 +9530,80 @@ func (s *EvaluationCostSource) UnmarshalText(data []byte) error {
 	}
 }
 
+// What the paired difference supports. improved or worse when the 99.9% interval excludes zero,
+// likely_improved or likely_worse when only the 95% interval does, no_clear_difference when the 95%
+// interval includes zero, too_few_pairs with fewer than two pairs. Nothing short of likely_improved
+// may be presented as an improvement.
+// Ref: #/components/schemas/EvaluationDifferenceVerdict
+type EvaluationDifferenceVerdict string
+
+const (
+	EvaluationDifferenceVerdictImproved          EvaluationDifferenceVerdict = "improved"
+	EvaluationDifferenceVerdictLikelyImproved    EvaluationDifferenceVerdict = "likely_improved"
+	EvaluationDifferenceVerdictNoClearDifference EvaluationDifferenceVerdict = "no_clear_difference"
+	EvaluationDifferenceVerdictLikelyWorse       EvaluationDifferenceVerdict = "likely_worse"
+	EvaluationDifferenceVerdictWorse             EvaluationDifferenceVerdict = "worse"
+	EvaluationDifferenceVerdictTooFewPairs       EvaluationDifferenceVerdict = "too_few_pairs"
+)
+
+// AllValues returns all EvaluationDifferenceVerdict values.
+func (EvaluationDifferenceVerdict) AllValues() []EvaluationDifferenceVerdict {
+	return []EvaluationDifferenceVerdict{
+		EvaluationDifferenceVerdictImproved,
+		EvaluationDifferenceVerdictLikelyImproved,
+		EvaluationDifferenceVerdictNoClearDifference,
+		EvaluationDifferenceVerdictLikelyWorse,
+		EvaluationDifferenceVerdictWorse,
+		EvaluationDifferenceVerdictTooFewPairs,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s EvaluationDifferenceVerdict) MarshalText() ([]byte, error) {
+	switch s {
+	case EvaluationDifferenceVerdictImproved:
+		return []byte(s), nil
+	case EvaluationDifferenceVerdictLikelyImproved:
+		return []byte(s), nil
+	case EvaluationDifferenceVerdictNoClearDifference:
+		return []byte(s), nil
+	case EvaluationDifferenceVerdictLikelyWorse:
+		return []byte(s), nil
+	case EvaluationDifferenceVerdictWorse:
+		return []byte(s), nil
+	case EvaluationDifferenceVerdictTooFewPairs:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *EvaluationDifferenceVerdict) UnmarshalText(data []byte) error {
+	switch EvaluationDifferenceVerdict(data) {
+	case EvaluationDifferenceVerdictImproved:
+		*s = EvaluationDifferenceVerdictImproved
+		return nil
+	case EvaluationDifferenceVerdictLikelyImproved:
+		*s = EvaluationDifferenceVerdictLikelyImproved
+		return nil
+	case EvaluationDifferenceVerdictNoClearDifference:
+		*s = EvaluationDifferenceVerdictNoClearDifference
+		return nil
+	case EvaluationDifferenceVerdictLikelyWorse:
+		*s = EvaluationDifferenceVerdictLikelyWorse
+		return nil
+	case EvaluationDifferenceVerdictWorse:
+		*s = EvaluationDifferenceVerdictWorse
+		return nil
+	case EvaluationDifferenceVerdictTooFewPairs:
+		*s = EvaluationDifferenceVerdictTooFewPairs
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 // The user's own answer about this judgement (EVAL-001 第 4 條). Absent means nobody answered, which
 // is not the same as "not helpful".
 type EvaluationFeedback struct {
@@ -9908,6 +9993,7 @@ type EvaluationPairedDifference struct {
 	Difference OptFloat64 `json:"difference"`
 	// Absent with fewer than two pairs.
 	Difference95 OptEvaluationPairedDifferenceDifference95 `json:"difference_95"`
+	Verdict      EvaluationDifferenceVerdict               `json:"verdict"`
 	// Test cases where the first arm passed more often.
 	Better int `json:"better"`
 	Worse  int `json:"worse"`
@@ -9932,6 +10018,11 @@ func (s *EvaluationPairedDifference) GetDifference() OptFloat64 {
 // GetDifference95 returns the value of Difference95.
 func (s *EvaluationPairedDifference) GetDifference95() OptEvaluationPairedDifferenceDifference95 {
 	return s.Difference95
+}
+
+// GetVerdict returns the value of Verdict.
+func (s *EvaluationPairedDifference) GetVerdict() EvaluationDifferenceVerdict {
+	return s.Verdict
 }
 
 // GetBetter returns the value of Better.
@@ -9967,6 +10058,11 @@ func (s *EvaluationPairedDifference) SetDifference(val OptFloat64) {
 // SetDifference95 sets the value of Difference95.
 func (s *EvaluationPairedDifference) SetDifference95(val OptEvaluationPairedDifferenceDifference95) {
 	s.Difference95 = val
+}
+
+// SetVerdict sets the value of Verdict.
+func (s *EvaluationPairedDifference) SetVerdict(val EvaluationDifferenceVerdict) {
+	s.Verdict = val
 }
 
 // SetBetter sets the value of Better.

@@ -223,6 +223,12 @@ test("choosing a reference batch puts it in the address and shows the paired dif
     expect(page.search()).toBe(`?against=${OTHER_BATCH}`);
     expect(page.getByText("+25 個百分點").count()).toBe(1);
     expect(
+      page
+        .getByRole("region", { name: "這個批次減去比較基準" })
+        .getByText("配對的題目不到兩題，下不了結論")
+        .count(),
+    ).toBe(1);
+    expect(
       page.getByText("這個批次比較常通過 1 題、比較基準比較常通過 0 題、一樣 0 題").count(),
     ).toBe(1);
   });

@@ -18,6 +18,7 @@ type PairedDifference struct {
 	Unpaired     int
 	Difference   *float64
 	Difference95 *Interval
+	Verdict      string
 	Better       int
 	Worse        int
 	Tied         int
@@ -61,7 +62,7 @@ func pairArms(first, second ArmReport) PairedDifference {
 			p.Tied++
 		}
 	}
-	p.Difference, p.Difference95 = pairedDifference(differences)
+	p.Difference, p.Difference95, p.Verdict = pairedDifference(differences)
 	return p
 }
 
@@ -85,10 +86,21 @@ func unionOfTestCases(reports ...ArmReport) map[pgtype.UUID]bool {
 	return union
 }
 
-func pairedDifference(differences []float64) (*float64, *Interval) {
+const normalZ999 = 3.290526731491926
+
+const (
+	VerdictImproved          = "improved"
+	VerdictLikelyImproved    = "likely_improved"
+	VerdictNoClearDifference = "no_clear_difference"
+	VerdictLikelyWorse       = "likely_worse"
+	VerdictWorse             = "worse"
+	VerdictTooFewPairs       = "too_few_pairs"
+)
+
+func pairedDifference(differences []float64) (*float64, *Interval, string) {
 	n := float64(len(differences))
 	if n == 0 {
-		return nil, nil
+		return nil, nil, VerdictTooFewPairs
 	}
 	var sum float64
 	for _, d := range differences {
@@ -96,12 +108,27 @@ func pairedDifference(differences []float64) (*float64, *Interval) {
 	}
 	mean := sum / n
 	if n < 2 {
-		return &mean, nil
+		return &mean, nil, VerdictTooFewPairs
 	}
 	var squares float64
 	for _, d := range differences {
 		squares += (d - mean) * (d - mean)
 	}
 	standardError := math.Sqrt(squares/(n-1)) / math.Sqrt(n)
-	return &mean, &Interval{Low: mean - normalZ95*standardError, High: mean + normalZ95*standardError}
+	interval := &Interval{Low: mean - normalZ95*standardError, High: mean + normalZ95*standardError}
+	return &mean, interval, differenceVerdict(mean, standardError)
+}
+
+func differenceVerdict(mean, standardError float64) string {
+	switch {
+	case mean-normalZ999*standardError > 0:
+		return VerdictImproved
+	case mean-normalZ95*standardError > 0:
+		return VerdictLikelyImproved
+	case mean+normalZ999*standardError < 0:
+		return VerdictWorse
+	case mean+normalZ95*standardError < 0:
+		return VerdictLikelyWorse
+	}
+	return VerdictNoClearDifference
 }

@@ -11,6 +11,7 @@
  * Do not edit it manually.
  */
 
+import type { EvaluationDifferenceVerdict } from './EvaluationDifferenceVerdict';
 import type { EvaluationPairedDifferenceDifference95 } from './EvaluationPairedDifferenceDifference95';
 
 /**
@@ -39,6 +40,10 @@ export interface EvaluationPairedDifference {
      */
     difference95?: EvaluationPairedDifferenceDifference95;
     /**
+     * 
+     */
+    verdict: EvaluationDifferenceVerdict;
+    /**
      * Test cases where the first arm passed more often.
      */
     better: number;
@@ -51,4 +56,6 @@ export interface EvaluationPairedDifference {
      */
     tied: number;
 }
+
+
 

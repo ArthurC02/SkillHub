@@ -60,6 +60,7 @@ export type PairedDifference = {
   unpaired: number;
   difference?: number;
   difference_95?: Interval;
+  verdict: DifferenceVerdict;
   better: number;
   worse: number;
   tied: number;
@@ -78,6 +79,7 @@ export type BatchComparison = {
   unpaired: number;
   difference?: number;
   difference_95?: Interval;
+  verdict: DifferenceVerdict;
   candidate_better: number;
   reference_better: number;
   tied: number;
@@ -132,6 +134,7 @@ export function pairedFromComparison(c: BatchComparison): PairedDifference {
     unpaired: c.unpaired,
     difference: c.difference,
     difference_95: c.difference_95,
+    verdict: c.verdict,
     better: c.candidate_better,
     worse: c.reference_better,
     tied: c.tied,
@@ -268,6 +271,7 @@ function isPairedDifference(value: unknown): value is PairedDifference {
     isCount(value.unpaired) &&
     isOptionalRate(value.difference) &&
     isOptionalInterval(value.difference_95) &&
+    isVerdict(value.verdict) &&
     isCount(value.better) &&
     isCount(value.worse) &&
     isCount(value.tied)
@@ -305,6 +309,7 @@ export function isBatchComparison(
     isCount(value.unpaired) &&
     isOptionalRate(value.difference) &&
     isOptionalInterval(value.difference_95) &&
+    isVerdict(value.verdict) &&
     isCount(value.candidate_better) &&
     isCount(value.reference_better) &&
     isCount(value.tied)
@@ -315,4 +320,46 @@ export function unconfirmedTestCases(body: unknown): string[] | undefined {
   if (!isRecord(body) || !Array.isArray(body.unconfirmed_test_case_ids)) return undefined;
   const ids = body.unconfirmed_test_case_ids.filter((id): id is string => typeof id === "string");
   return ids.length > 0 ? ids : undefined;
+}
+
+export type DifferenceVerdict =
+  | "improved"
+  | "likely_improved"
+  | "no_clear_difference"
+  | "likely_worse"
+  | "worse"
+  | "too_few_pairs";
+
+const VERDICTS = new Set<string>([
+  "improved",
+  "likely_improved",
+  "no_clear_difference",
+  "likely_worse",
+  "worse",
+  "too_few_pairs",
+]);
+
+export function verdictSentence(
+  verdict: DifferenceVerdict,
+  betterLabel: string,
+  worseLabel: string,
+): string {
+  switch (verdict) {
+    case "improved":
+      return `${betterLabel}，差距明顯`;
+    case "likely_improved":
+      return `${betterLabel}，但差距只勉強排除巧合`;
+    case "likely_worse":
+      return `${worseLabel}，但差距只勉強排除巧合`;
+    case "worse":
+      return `${worseLabel}，差距明顯`;
+    case "too_few_pairs":
+      return "配對的題目不到兩題，下不了結論";
+    case "no_clear_difference":
+      return "看不出差別：差距可能只是巧合，不能說哪一邊比較好";
+  }
+}
+
+function isVerdict(value: unknown): value is DifferenceVerdict {
+  return typeof value === "string" && VERDICTS.has(value);
 }

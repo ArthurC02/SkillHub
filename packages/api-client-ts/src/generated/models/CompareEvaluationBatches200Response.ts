@@ -13,6 +13,7 @@
 
 import type { CompareEvaluationBatches200ResponseDifference95 } from './CompareEvaluationBatches200ResponseDifference95';
 import type { EvaluationBatch } from './EvaluationBatch';
+import type { EvaluationDifferenceVerdict } from './EvaluationDifferenceVerdict';
 
 /**
  * 
@@ -47,6 +48,10 @@ export interface CompareEvaluationBatches200Response {
     /**
      * 
      */
+    verdict: EvaluationDifferenceVerdict;
+    /**
+     * 
+     */
     candidateBetter: number;
     /**
      * 
@@ -57,4 +62,6 @@ export interface CompareEvaluationBatches200Response {
      */
     tied: number;
 }
+
+
 
