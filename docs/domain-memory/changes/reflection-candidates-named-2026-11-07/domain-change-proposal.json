@@ -3,12 +3,12 @@
   "proposal_id": "reflection-candidates-named-2026-11-07",
   "proposer": "coding-agent",
   "requirement_id": "reflection-candidates",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-11-07T11:51:23.837761Z",
   "verified_at": "2026-11-07T11:52:39.963435Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-11-07T11:52:52.648969Z",
+  "applied_at": "2026-11-07T11:52:57.488458Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "9fb65f8b3c9a62fe2c1897d20bba814e0551a253",
@@ -277,5 +277,9 @@
     "batch-reflection-recited-2026-11-07",
     "reflection-candidates-2026-11-07"
   ],
-  "redrafted_at": "2026-11-07T11:50:56.585461Z"
+  "redrafted_at": "2026-11-07T11:50:56.585461Z",
+  "applied_registry_revision": {
+    "observed_commit": "7f78eba0b33df056c74806cfea1742f23f62a9de",
+    "registry_digest": "sha256:99e6809e3109402e640d66c0e4e097389cb41bac9b180be78269c2187493bcb1"
+  }
 }

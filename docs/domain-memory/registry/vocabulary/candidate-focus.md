@@ -1,6 +1,10 @@
 ---
 type: Term
-status: draft
+title: Candidate focus
+status: stable
+verified:
+  - by: "human:ArthurC"
+    at: "2026-11-07T11:52:39.625583Z"
 sources:
   - resource: "contracts/openapi/llm-internal.yaml#L2160-2166"
     excerpt_sha256: "sha256:82fc08685aeaf19772f3e70434a595f6714c1b23db5a23aa6e29e6ca221dc854"
