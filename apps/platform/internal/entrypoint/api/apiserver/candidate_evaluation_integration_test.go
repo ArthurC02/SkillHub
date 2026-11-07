@@ -109,6 +109,16 @@ func candidateLine(t *testing.T, pool *pgxpool.Pool, skillID string) (all, held 
 	return all, held, newest
 }
 
+func searchIndexedAt(t *testing.T, pool *pgxpool.Pool, skillID string) string {
+	t.Helper()
+	var at string
+	if err := pool.QueryRow(context.Background(),
+		`SELECT updated_at::text FROM search_documents WHERE skill_id = $1`, mustUUID(t, skillID)).Scan(&at); err != nil {
+		t.Fatal(err)
+	}
+	return at
+}
+
 func candidateBatches(t *testing.T, pool *pgxpool.Pool, reflectionID string) (made, linked int) {
 	t.Helper()
 	if err := pool.QueryRow(context.Background(), `
@@ -139,6 +149,7 @@ func TestEvaluatingCandidatesHoldsOneVersionEachAndAdoptingPromotesOnlyThatOne(t
 	a := newAPI(t, pool)
 	alice, f, round := reflectOnCandidates(t, a, pool, "evaluate-candidates", 2)
 	enriched := countEnrichCalls(t, a)
+	indexed := searchIndexedAt(t, pool, f.skillID)
 
 	code, refused, raw := alice.roundAction(t, f, round, "evaluate", "")
 	if code != http.StatusUnprocessableEntity || len(refused.UnconfirmedPairs) != 4 {
@@ -155,10 +166,16 @@ func TestEvaluatingCandidatesHoldsOneVersionEachAndAdoptingPromotesOnlyThatOne(t
 	if n, d := enriched.Load(), enrichDebits(t, alice); n != 0 || d != 0 {
 		t.Errorf("holding two candidates made %d enrichment calls and %d debits, want none", n, d)
 	}
+	if at := searchIndexedAt(t, pool, f.skillID); at != indexed {
+		t.Errorf("holding two candidates re-indexed the skill at %s, want its index left at %s", at, indexed)
+	}
 	chosen := *evaluated.Evaluation.Candidates[0].SkillVersionID
 	assertAdoptingPromotesOnlyThatCandidate(t, pool, alice, f, round, chosen)
 	if n, d := enriched.Load(), enrichDebits(t, alice); n != 1 || d != 1 {
 		t.Errorf("adopting twice made %d enrichment calls and %d debits, want exactly one", n, d)
+	}
+	if at := searchIndexedAt(t, pool, f.skillID); at == indexed {
+		t.Errorf("adopting left the skill's index at %s, want it re-indexed", at)
 	}
 	other := *evaluated.Evaluation.Candidates[1].SkillVersionID
 	assertListedStandings(t, alice, f.skillID, map[string][2]bool{
