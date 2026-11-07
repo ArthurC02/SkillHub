@@ -1,6 +1,9 @@
 ---
 type: Business Rule
-status: draft
+status: stable
+verified:
+  - by: "human:ArthurC"
+    at: "2026-11-07T15:32:47.518774Z"
 sources:
   - resource: "db/migrations/0151_candidate_evaluation.sql#L49-52"
     excerpt_sha256: "sha256:7c0c917e2c93318b2dd7c99a9b622db5b2b382b451c8711f4dc95bb708227d61"
@@ -14,6 +17,12 @@ sources:
     excerpt_sha256: "sha256:d95c00f3a76a2176bc10f6bdfa8ec1618974a2e71caba70873313d2980d6c9ed"
   - resource: "apps/platform/internal/skill/publishing/service.go#L319-322"
     excerpt_sha256: "sha256:e04ba97296ec5cf9d6b24ebce243c7114dab6545683f6e0c9268b8c6f5245fbc"
+  - resource: "apps/platform/internal/skill/library/skill_root_test.go#L514-527"
+    excerpt_sha256: "sha256:b203735c35d40eca6ed1f485cc57f472deca446193dbdfeb6c243ac92ff44f4f"
+  - resource: "apps/platform/internal/entrypoint/api/apiserver/candidate_evaluation_integration_test.go#L147-186"
+    excerpt_sha256: "sha256:fcaa903701a106f86a25f1356f7ecdd0d567e6969e25a190f84ac8fe1c090ad3"
+  - resource: "apps/platform/internal/entrypoint/api/apiserver/candidate_evaluation_integration_test.go#L281-303"
+    excerpt_sha256: "sha256:41a6cde0293a0230406c1c0c0eb48fd5aa1fe16c3145d86531625614a12ba586"
 ---
 A version built only to evaluate a candidate of an improvement round is held: it takes its Skill's next version number and runs by its own id, but it is outside the Skill's line, so until it is promoted it is never the Skill's newest version, never describes the Skill, is never released, and is neither enriched nor written to the search index; every query that orders versions to find a newest, latest or previous one reads the line.
 

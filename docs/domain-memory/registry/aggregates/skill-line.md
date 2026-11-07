@@ -1,7 +1,10 @@
 ---
 type: Aggregate
-status: draft
+status: stable
 root: Skill Line
+verified:
+  - by: "human:ArthurC"
+    at: "2026-11-07T15:32:47.518774Z"
 sources:
   - resource: "db/migrations/0151_candidate_evaluation.sql#L1-14"
     excerpt_sha256: "sha256:3076ed5f889c6886b350200f2c7a7e8f275ab05237b3112729b3a21a848d6b4c"
@@ -13,6 +16,10 @@ sources:
     excerpt_sha256: "sha256:12dd2195eab1c66bc2742ac9bbedaa3f025c7606aa9927b40a05dae3134ef2c4"
   - resource: "apps/platform/internal/skill/library/skill_root.go#L379-396"
     excerpt_sha256: "sha256:dd32260327940f219dd784801b7c578151c68d0c2e9768f1783a34a20b91bdb6"
+  - resource: "apps/platform/internal/skill/library/skill_root_test.go#L514-527"
+    excerpt_sha256: "sha256:b203735c35d40eca6ed1f485cc57f472deca446193dbdfeb6c243ac92ff44f4f"
+  - resource: "apps/platform/internal/skill/library/skill_root_test.go#L529-573"
+    excerpt_sha256: "sha256:7faa748ef6e24e0eaceb54158037d7b518412949703064c738e9ae9f6a72db84"
 ---
 # Relations
 - Context: [registry](/contexts/registry)
