@@ -399,23 +399,6 @@ func (h *Handler) Continue(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusCreated, resp)
 }
 
-func (h *Handler) Quota(w http.ResponseWriter, r *http.Request) {
-	ws, _, ok := h.workspace(w, r)
-	if !ok {
-		return
-	}
-	state, enforced, err := h.Svc.QuotaFor(r.Context(), ws.ID)
-	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "quota lookup failed")
-		return
-	}
-	if !enforced {
-		httpx.WriteError(w, http.StatusNotFound, "no run allowance is configured")
-		return
-	}
-	httpx.WriteJSON(w, http.StatusOK, state.View())
-}
-
 type runListItem struct {
 	RunID          string    `json:"run_id"`
 	Status         string    `json:"status"`

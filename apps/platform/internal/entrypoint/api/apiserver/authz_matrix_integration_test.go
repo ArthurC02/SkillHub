@@ -11,7 +11,6 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
-	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 )
 
@@ -177,7 +176,6 @@ var anonymousRoutes = []anonCase{
 	{pattern: "POST /skills/{id}/runs/preflight/confirm", want: http.StatusUnauthorized},
 	{pattern: "POST /skills/{id}/runs", want: http.StatusUnauthorized},
 
-	{pattern: "GET /me/quota", want: http.StatusNotFound, conditional: "policy.QuotaLimits.Enforced()"},
 
 	{pattern: "GET /me/credits", want: http.StatusUnauthorized},
 	{pattern: "GET /me/credits/entries", want: http.StatusUnauthorized},
@@ -254,12 +252,6 @@ func TestAnonymousCallersGetThePublicSurfaceAndNothingElse(t *testing.T) {
 		if got := anon.status(t, method, path); got != tc.want {
 			t.Errorf("%s: got %d, want %d", tc.pattern, got, tc.want)
 		}
-	}
-
-	quota := betaAPI(t, pool, policy.DefaultQuotaLimits(), nil, 0)
-	quotaAnon := &client{Client: http.DefaultClient, base: quota.URL}
-	if got := quotaAnon.status(t, http.MethodGet, "/me/quota"); got != http.StatusUnauthorized {
-		t.Errorf("GET /me/quota with an allowance enforced: got %d, want 401", got)
 	}
 }
 

@@ -264,47 +264,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-  /me/quota:
-    get:
-      operationId: getRunQuota
-      summary: How much of the free run allowance is left (PDM-010)
-      description: |
-        The beta's cost ceiling as the account holder sees it: runs left today,
-        runs left in the rolling window, when the window resets, and the four
-        limits in force.
-
-        Served from the same counters POST /skills/{id}/runs enforces, never
-        from a stored balance. A balance column drifts and a refund would be a
-        write that can be missed; the count is a time-window query over the runs
-        themselves, so a refund is a predicate excluding a failure class rather
-        than a row nobody remembered to add back.
-
-        This endpoint exists only because the enforcement point does. Showing an
-        allowance the platform does not apply is the exact mistake PDM-005 made
-        once already: a ceiling displayed on the preflight screen and enforced
-        nowhere, which NFR-001 forbids. Read that order as binding —
-        the numbers here are a report on a rule, not the rule.
-      responses:
-        "200":
-          description: The allowance as it stands right now.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/RunQuota" }
-        "401":
-          description: No valid session.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "404":
-          description: |
-            This deployment enforces no allowance, so there is none to report. The
-            route is not mounted at all in that build — the same answer the mux
-            gives for a path nobody wrote — because an endpoint that served zeroes
-            or nulls would be a claim that a ceiling exists. The pre-run
-            permission summary omits its `quota` block in the same builds.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
   /me/credits:
     get:
       operationId: getCreditBalance
@@ -320,7 +279,7 @@ paths:
 
         The threshold `can_start` is measured against is the same one the
         domain gate blocks on — one definition, computed once — for the reason
-        GET /me/quota never recomputes PDM-010's counters: a display with its
+        the pre-run quota block never recomputes PDM-010's counters: a display with its
         own arithmetic can disagree with the rule it is showing.
 
         `estimated_session.estimated` true means fewer than 20 cost samples
@@ -5214,7 +5173,7 @@ paths:
               next free date and time in Taipei time. Enforced in the same transaction that would have
               inserted the run and under the same advisory lock as the
               concurrency limit, so a refusal leaves no run behind.
-              The counters are the same ones GET /me/quota reports.
+              The counters are the same ones the pre-run summary's `quota` block reports.
             - The workspace already has as many runs in flight as it may have
               (SEC-002 gate B). Unlike the allowance above this one clears by
               itself, in about as long as a run takes, so the message says wait

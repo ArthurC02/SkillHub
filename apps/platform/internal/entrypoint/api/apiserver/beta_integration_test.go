@@ -95,16 +95,24 @@ type quotaView struct {
 	} `json:"limits"`
 }
 
-func (c *client) quota(t *testing.T) (int, quotaView) {
+func (f fixture) quota(t *testing.T) (int, quotaView) {
 	t.Helper()
-	resp, err := c.Get(c.base + "/me/quota")
+	resp, err := f.Get(f.base + "/skills/" + f.skillID + "/runs/preflight?version_id=" + f.versionID + "&test_case_id=" + f.testCaseID)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer resp.Body.Close()
-	var out quotaView
+	var out struct {
+		Quota *quotaView `json:"quota"`
+	}
 	_ = json.NewDecoder(resp.Body).Decode(&out)
-	return resp.StatusCode, out
+	if resp.StatusCode == http.StatusOK && out.Quota == nil {
+		t.Fatal("the pre-run summary carries no quota block in a build that enforces one")
+	}
+	if out.Quota == nil {
+		return resp.StatusCode, quotaView{}
+	}
+	return resp.StatusCode, *out.Quota
 }
 
 func (c *client) analyticsSession(t *testing.T) string {
@@ -159,7 +167,7 @@ func TestFirstWindowUsesTheLowerAllowance(t *testing.T) {
 
 	code, q := f.quota(t)
 	if code != http.StatusOK {
-		t.Fatalf("GET /me/quota: got %d", code)
+		t.Fatalf("GET preflight: got %d", code)
 	}
 	if q.Limits.Window != 3 {
 		t.Errorf("first window ceiling: got %d, want the first-window value 3", q.Limits.Window)
@@ -298,9 +306,6 @@ func TestQuotaIsNotShownWhereItIsNotEnforced(t *testing.T) {
 	a := betaAPI(t, pool, policy.QuotaLimits{}, nil, 0)
 	f := newFixture(t, a, pool, "alice-no-quota")
 
-	if code := f.status(t, http.MethodGet, "/me/quota"); code != http.StatusNotFound {
-		t.Errorf("GET /me/quota with no allowance configured: got %d, want 404", code)
-	}
 	code, body := f.doJSON(t, http.MethodGet, "/skills/"+f.skillID+"/runs/preflight"+
 		"?version_id="+f.versionID+"&test_case_id="+f.testCaseID, "")
 	if code != http.StatusOK {

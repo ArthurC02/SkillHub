@@ -13809,14 +13809,6 @@ type GetRunPreflightUnauthorized Error
 
 func (*GetRunPreflightUnauthorized) getRunPreflightRes() {}
 
-type GetRunQuotaNotFound Error
-
-func (*GetRunQuotaNotFound) getRunQuotaRes() {}
-
-type GetRunQuotaUnauthorized Error
-
-func (*GetRunQuotaUnauthorized) getRunQuotaRes() {}
-
 type GetRunTraceBadRequest Error
 
 func (*GetRunTraceBadRequest) getRunTraceRes() {}
@@ -31033,8 +31025,6 @@ func (s *RunQuota) SetWindowResetsAt(val time.Time) {
 func (s *RunQuota) SetLimits(val RunQuotaLimits) {
 	s.Limits = val
 }
-
-func (*RunQuota) getRunQuotaRes() {}
 
 type RunQuotaLimits struct {
 	Daily      int `json:"daily"`

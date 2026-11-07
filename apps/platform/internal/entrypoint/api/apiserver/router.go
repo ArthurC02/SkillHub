@@ -302,10 +302,6 @@ func mountRunRoutes(mux *http.ServeMux, d Deps) {
 	mux.HandleFunc("POST /skills/{id}/runs/preflight/confirm", auth.RequireSession(auth.RequireInvited(d.Runs.ConfirmPreflight)))
 	mux.HandleFunc("POST /skills/{id}/runs", auth.RequireSession(auth.RequireInvited(d.Runs.Create)))
 
-	if d.Runs.Svc.Quota.Enforced() {
-		mux.HandleFunc("GET /me/quota", auth.RequireSession(d.Runs.Quota))
-	}
-
 	if d.Credits != nil {
 		mux.HandleFunc("GET /me/credits", auth.RequireSession(d.Credits.Get))
 		mux.HandleFunc("GET /me/credits/entries", auth.RequireSession(d.Credits.Statement))

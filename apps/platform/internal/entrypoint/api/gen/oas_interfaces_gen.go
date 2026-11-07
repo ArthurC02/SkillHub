@@ -301,10 +301,6 @@ type GetRunPreflightRes interface {
 	getRunPreflightRes()
 }
 
-type GetRunQuotaRes interface {
-	getRunQuotaRes()
-}
-
 type GetRunRes interface {
 	getRunRes()
 }

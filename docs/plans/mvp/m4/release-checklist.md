@@ -170,7 +170,7 @@ psql -Atqc "SELECT count(*) FROM information_schema.columns
 | `ANALYTICS_RETENTION` | **不設 cookie、不寫任何一列** ⇒ `BETA-002` 的漏斗量不到任何東西；**且 `maintenance rotate-partitions` 整個 job 拒絕執行**（§2.6） | **PDM-006 追認**（[產品分析與稽核邊界](../../../adr/README.md#產品分析與稽核邊界)提案 180 天） |
 | `TRACE_RETENTION` | **`maintenance rotate-partitions` 整個 job 拒絕執行**（兩個保存期在任何語句之前一起讀）⇒ **`trace_events` 與 `analytics_events` 的月分割既不會被預先建立，也不會被丟棄**。Trace 寫入本身不受影響，事件照收，只是全部落進 `trace_events_default`（§2.6） | **PDM-006 追認**（`0004` 註解寫的 90 天是提案，至今沒有任何東西在執行它） |
 | `BETA_ALLOWLIST` | 閘門關閉，**任何有 GitHub 帳號的人都能用** | PDM-009 追認後的 12 個 GitHub 帳號 |
-| `RUN_QUOTA` | **未設＝以 PDM-010 的四個值強制**；只有字面值 `off` 會關掉次數額度，同時 `GET /me/quota` 不掛載、preflight 不帶配額區塊 | 封測設 `off`（負責人裁定封測不限制次數；每 Run 的閘道預算、TPM 與 token 上限照常強制） |
+| `RUN_QUOTA` | **未設＝以 PDM-010 的四個值強制**；只有字面值 `off` 會關掉次數額度，同時 preflight 不帶配額區塊 | 封測設 `off`（負責人裁定封測不限制次數；每 Run 的閘道預算、TPM 與 token 上限照常強制） |
 | `RATE_LIMIT`（2026-08-24 新增） | **只有 `off` 會關掉它**；未設或填任何其他值（含填一個數字）都是啟用預設 60/min、burst 30。方向與上面幾列**相反**：未設＝有保護 | 保持未設 |
 | `FEEDBACK_RETENTION`（2026-08-29 新增） | **fail-closed，比照 `AUDIT_RETENTION`**：未設或非法時 `maintenance purge-feedback` 拒絕啟動 ⇒ `feedback_reports` 的自由文字**沒有保存期、沒有清除**。這是本 repo 唯一一個「在收、卻沒有期限也沒有 sweep」的資料類別，而它收的是受測者用自己的話寫的東西 | **PDM-006 追認**（與其餘保存期同一批） |
 | `OPERATOR_USER_IDS` | 沒有人能操作 `/admin/dispatch*`（P1 停派送只能改 DB） | 負責人自己 |
@@ -328,7 +328,7 @@ python tools/content/curate_seed.py --api http://127.0.0.1:18080 --user seed-imp
 - [ ] §2 與 §3 全部成立（尤其 `SEC-009` 46 項全 pass、0 unknown）
 - [ ] 12 個 GitHub 帳號填入 `BETA_ALLOWLIST` 並重啟；**驗 `beta.roster` audit event 真的寫成了**（寫不成 ⇒ 誰都進不來）
 - [ ] 未受邀者的路徑走一次：可搜尋、可看詳情、Fork／Run／下載回 403 並指向 `POST /feedback`
-- [ ] 配額：`RUN_QUOTA=off` 時 `GET /me/quota` 回 404、畫面上沒有任何剩餘次數。**有一天打開 `RUN_QUOTA` 時才改走**：剩餘次數看得到、用完會擋、重置時間顯示得出來
+- [ ] 配額：`RUN_QUOTA=off` 時 preflight 不帶配額區塊、畫面上沒有任何剩餘次數。**有一天打開 `RUN_QUOTA` 時才改走**：剩餘次數看得到、用完會擋、重置時間顯示得出來
 - [ ] 停派送開關走一次：`PUT /admin/dispatch/halt` → 建立 Run 回 503 → `DELETE` 解除 → 恢復（**解除不會自己發生**）
 
 ---
