@@ -111,7 +111,8 @@
 | `skill.categorized` | 擁有者指定或清除分類（`SetSkillCategory`） | `category`、`category_source`（皆可為 null） | |
 | `skill.deleted` | 擁有者刪除（`SoftDeleteSkill`） | 空物件 | 版本快照照舊凍結 |
 | `skill.created` | 匯入、生成或 Fork 建立一個 Skill（`CreateSkill`） | `redistribution`、`forked_from_skill_id`、`forked_from_version_id`（不是 Fork 時為 null） | 同一工作區內名稱唯一由 unique index 守 |
-| `skill.version_added` | 匯入、存新版本、生成或 Fork 加上一個版本（`CreateSkillVersion`） | `version_id`、`version_number`、`content_hash`、`improved_by`（套用改善建議建成時為 `evaluation_id` 或 `reflection_id` 其中之一、`suggestion_ids`，否則 null；`reflection_id` 只在來自批次改善時出現） | 版本號由 query 配發；相同內容不成為第二版（unique index）；generated 的 Skill 只收生成的內容 |
+| `skill.version_added` | 匯入、存新版本、生成或 Fork 加上一個版本（`CreateSkillVersion`） | `version_id`、`version_number`、`content_hash`、`improved_by`（套用改善建議建成時為 `evaluation_id` 或 `reflection_id` 其中之一、`suggestion_ids`，否則 null；`reflection_id` 只在來自批次改善時出現）、`held_for_evaluation`（為了評估候選而建、還不在 Skill 正式路線上的版本為 true） | 版本號由 query 配發，保留版本也佔號；相同內容不成為第二版（unique index）；generated 的 Skill 只收生成的內容；保留版本不改 Skill 摘要、不進搜尋文件 |
+| `skill.version_promoted` | 採用某一輪的候選，把保留版本帶進 Skill 的正式路線（`InsertSkillVersionPromotion`） | `version_id` | 只能升保留版本，且只在正式路線最新版仍是那一輪的來源版本時；升過的版本不會再退出路線；升版當下才更新摘要與搜尋文件 |
 | `skill.described` | 存新版本時，Skill 的說明換成新版本宣告的那一句（`UpdateSkillSummary`） | 空物件 | 說明是人寫的文字，不進 payload |
 
 ### 概念名對照

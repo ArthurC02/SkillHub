@@ -20,6 +20,7 @@ func newReflectionHandler(cfg Config, app *App, creditSvc *credit.Service) *refl
 	svc := &reflection.Service{
 		Eval:            app.EvalSvc,
 		ReadBatchTrials: batchTrialsReader(app.EvalBatches),
+		Candidates:      candidatePorts(app, creditSvc),
 		Policy: func(ctx context.Context) (reflection.RoundPolicy, error) {
 			policy, err := settings.ReflectionPolicy(ctx)
 			return reflection.RoundPolicy{Candidates: policy.Count, RoundCreditCap: policy.RoundCreditCap}, err
@@ -62,6 +63,7 @@ func batchTrialsReader(batches *batch.BatchService) batchTrialsRead {
 		out := reflection.BatchTrials{
 			SkillID: report.Batch.SkillID, VersionID: report.Batch.VersionID,
 			Launching: report.Batch.Status == batch.BatchLaunching,
+			Trials:    report.Batch.Trials, WithSkillWithheld: report.Batch.WithSkillWithheld,
 		}
 		for _, tc := range report.TestCases {
 			cases := reflection.BatchTestCaseTrials{TestCaseID: tc.TestCaseID}
@@ -72,4 +74,97 @@ func batchTrialsReader(batches *batch.BatchService) batchTrialsRead {
 		}
 		return out, true, nil
 	}
+}
+
+func candidatePorts(app *App, creditSvc *credit.Service) reflection.CandidatePorts {
+	batches := app.EvalBatches
+	return reflection.CandidatePorts{
+		Versions: func(ctx context.Context, workspaceID, skillID pgtype.UUID) ([]pgtype.UUID, error) {
+			versions, err := app.Deps.Registry.Svc.Versions(ctx, workspaceID, skillID)
+			ids := make([]pgtype.UUID, len(versions))
+			for i, v := range versions {
+				ids[i] = v.ID
+			}
+			return ids, err
+		},
+		Confirmed: func(ctx context.Context, workspaceID, skillID, versionID, testCaseID pgtype.UUID) (bool, error) {
+			_, confirmed, err := batches.Ports.ConfirmedSummaryHash(ctx, workspaceID, skillID, versionID, testCaseID)
+			return confirmed, err
+		},
+		Launch: func(ctx context.Context, l reflection.CandidateLaunch) (pgtype.UUID, error) {
+			key := l.OriginKey
+			created, err := batches.CreateBatch(ctx, batch.NewBatch{
+				WorkspaceID: l.WorkspaceID, Actor: l.Actor, SkillID: l.SkillID, VersionID: l.VersionID,
+				TestCaseIDs: l.TestCaseIDs, Trials: l.Trials, WithSkillWithheld: l.WithSkillWithheld, OriginKey: &key,
+			})
+			return created.ID, err
+		},
+		RunQuote: func(ctx context.Context, workspaceID pgtype.UUID) (reflection.StartQuote, error) {
+			userID, err := app.Auth.Service.WorkspaceOwner(ctx, workspaceID)
+			if err != nil {
+				return reflection.StartQuote{}, err
+			}
+			check, err := creditSvc.CanStart(ctx, userID, credit.KindRun)
+			return reflection.StartQuote{Balance: check.Balance, Threshold: check.Threshold}, err
+		},
+		Compare: func(ctx context.Context, workspaceID, candidateBatch, sourceBatch pgtype.UUID, dev []pgtype.UUID) (reflection.CandidateComparison, error) {
+			return candidateComparer{batches}.compare(ctx, workspaceID, candidateBatch, sourceBatch, dev)
+		},
+	}
+}
+
+type candidateComparer struct{ batches *batch.BatchService }
+
+func (c candidateComparer) compare(
+	ctx context.Context, workspaceID, candidateBatch, sourceBatch pgtype.UUID, dev []pgtype.UUID,
+) (reflection.CandidateComparison, error) {
+	batches := c.batches
+	candidate, err := batches.ReportOfBatch(ctx, workspaceID, candidateBatch)
+	if err != nil {
+		return reflection.CandidateComparison{}, err
+	}
+	source, err := batches.ReportOfBatch(ctx, workspaceID, sourceBatch)
+	if err != nil {
+		return reflection.CandidateComparison{}, err
+	}
+	devCases, heldOut := map[pgtype.UUID]bool{}, map[pgtype.UUID]bool{}
+	for _, id := range dev {
+		devCases[id] = true
+	}
+	for _, tc := range source.TestCases {
+		if !devCases[tc.TestCaseID] {
+			heldOut[tc.TestCaseID] = true
+		}
+	}
+	return reflection.CandidateComparison{
+		Settled: everyTrialSettled(candidate),
+		Rates:   batch.JudgedRates(candidate.ArmReport), Source: batch.JudgedRates(source.ArmReport),
+		Dev:     pairedVerdict(batch.PairArms(candidate.On(devCases), source.On(devCases))),
+		HeldOut: pairedVerdict(batch.PairArms(candidate.On(heldOut), source.On(heldOut))),
+	}, nil
+}
+
+func everyTrialSettled(report batch.BatchReport) bool {
+	if report.Batch.Status == batch.BatchStopped {
+		return true
+	}
+	for _, tc := range report.TestCases {
+		for _, trial := range tc.Trials {
+			if !trial.Outcome.Settled() {
+				return false
+			}
+		}
+	}
+	return report.Batch.Status != batch.BatchLaunching
+}
+
+func pairedVerdict(p batch.PairedDifference) reflection.PairedVerdict {
+	out := reflection.PairedVerdict{
+		Mean: p.Difference, Verdict: p.Verdict,
+		AtLeastLikelyImproved: p.Verdict == batch.VerdictImproved || p.Verdict == batch.VerdictLikelyImproved,
+	}
+	if p.Difference95 != nil {
+		out.Low, out.High = &p.Difference95.Low, &p.Difference95.High
+	}
+	return out
 }

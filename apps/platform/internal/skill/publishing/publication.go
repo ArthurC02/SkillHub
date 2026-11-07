@@ -40,6 +40,7 @@ const (
 	RefusedFileRemoved        Refusal = "file_removed_by_packager"
 	RefusedMemberWithdrawn    Refusal = "member_withdrawn"
 	RefusedLicenseNotDeclared Refusal = "license_not_declarable"
+	RefusedHeldForEvaluation  Refusal = "held_for_evaluation"
 )
 
 var (

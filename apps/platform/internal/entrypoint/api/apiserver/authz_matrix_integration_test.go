@@ -210,6 +210,9 @@ var anonymousRoutes = []anonCase{
 	{pattern: "POST /skills/{id}/evaluation-batches/{batchId}/resume", want: http.StatusUnauthorized},
 	{pattern: "POST /skills/{id}/evaluation-batches/{batchId}/reflections", want: http.StatusUnauthorized},
 	{pattern: "GET /skills/{id}/evaluation-batches/{batchId}/reflections", want: http.StatusUnauthorized},
+	{pattern: "GET /skills/{id}/candidate-versions", want: http.StatusUnauthorized},
+	{pattern: "POST /skills/{id}/evaluation-batches/{batchId}/reflections/{reflectionId}/evaluate", want: http.StatusUnauthorized},
+	{pattern: "POST /skills/{id}/evaluation-batches/{batchId}/reflections/{reflectionId}/adopt", want: http.StatusUnauthorized},
 
 	{pattern: "GET /packaging/targets", want: http.StatusUnauthorized},
 	{pattern: "GET /skills/{id}/versions/{versionId}/packaging/preview",

@@ -155,6 +155,7 @@ func documentCheckers() []namedChecker {
 		{"gvisor-pins", gvisorPinProblems},
 		{"query-owner", queryOwnerProblems},
 		{"query-scope", queryScopeProblems},
+		{"skill-line", skillLineProblems},
 		{"sql-logic", sqlLogicProblems},
 		{"context-map", contextMapProblems},
 		{"milestone-tally", milestoneTallyProblems},

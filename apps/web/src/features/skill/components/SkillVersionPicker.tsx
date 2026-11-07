@@ -1,4 +1,5 @@
-import { useSkillVersions } from "../skills.service";
+import { useCandidateVersions, useSkillVersions } from "../skills.service";
+import { heldLabel, inLine, lineNewest } from "../versions.model";
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { formatAt } from "../../../shared/ui/Timestamp.model";
@@ -14,6 +15,8 @@ export function SkillVersionPicker({
 }) {
   const versions = useSkillVersions(skillId);
   const list = versions.error ? [] : (versions.data?.versions ?? []);
+  const candidates = useCandidateVersions(skillId, !list.every(inLine));
+  const newest = lineNewest(list);
   const unreadable = versions.isPending || Boolean(versions.error);
   const unknown = value !== "" && !list.some((v) => v.version_id === value);
   const id = `skill-version-${skillId}`;
@@ -37,10 +40,12 @@ export function SkillVersionPicker({
             {value}（{unreadable ? "清單尚未確認" : "不在下面的清單裡"}）
           </option>
         )}
-        {list.map((v, i) => (
+        {list.map((v) => (
           <option key={v.version_id} value={v.version_id}>
             v{v.version_number}
-            {i === 0 ? "（最新）" : ""}・{formatAt(v.created_at)}
+            {v === newest ? "（最新）" : ""}
+            {heldLabel(v, candidates.data ?? []) && `（${heldLabel(v, candidates.data ?? [])}）`}・
+            {formatAt(v.created_at)}
           </option>
         ))}
       </select>{" "}

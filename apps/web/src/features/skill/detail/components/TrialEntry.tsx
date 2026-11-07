@@ -2,6 +2,7 @@ import { Loading } from "../../../../shared/ui/Loading";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { Link } from "@tanstack/react-router";
 import { useOwnCopiesOf, useSkillVersions } from "../../skills.service";
+import { lineNewest } from "../../versions.model";
 import { SignInAction } from "../../../../shared/ui/SignIn";
 
 // Ownership signal is the (workspace-scoped) versions list, empty for a non-owner —
@@ -37,7 +38,7 @@ export function TrialEntry({ skillId, isLoggedIn }: { skillId: string; isLoggedI
       </section>
     );
 
-  const versionId = versions.data?.versions[0]?.version_id;
+  const versionId = lineNewest(versions.data?.versions ?? [])?.version_id;
   if (!versionId && copies.length > 0)
     return (
       <section>

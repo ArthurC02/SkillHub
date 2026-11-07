@@ -13,6 +13,7 @@
 
 import type { ImprovementSuggestion } from './ImprovementSuggestion';
 import type { ReflectionCandidate } from './ReflectionCandidate';
+import type { ReflectionEvaluation } from './ReflectionEvaluation';
 
 /**
  * One improvement round read from an evaluation batch's development
@@ -70,6 +71,10 @@ export interface BatchReflection {
      * 
      */
     candidates: Array<ReflectionCandidate>;
+    /**
+     * The candidates' versions and batches once they were evaluated; null before.
+     */
+    evaluation: ReflectionEvaluation | null;
 }
 
 

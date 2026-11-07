@@ -252,7 +252,7 @@ func TestTheSkillEffectPairsEachTestCaseWithItsOwnTrialsWithoutTheSkill(t *testi
 	if with.Passed != 5 || with.Judged != 6 || without.Passed != 1 || without.Judged != 4 {
 		t.Fatalf("arms = %d/%d with and %d/%d without, want 5/6 and 1/4", with.Passed, with.Judged, without.Passed, without.Judged)
 	}
-	effect := pairArms(with, without)
+	effect := PairArms(with, without)
 	if effect.Paired != 2 || effect.Unpaired != 1 || effect.Better != 2 || effect.Worse != 0 || effect.Tied != 0 {
 		t.Errorf("effect = %+v, want two pairs both better and the unjudged test case unpaired", effect)
 	}
@@ -307,7 +307,7 @@ func TestEachPairedTestCaseCountsOnceAsBetterWorseOrTied(t *testing.T) {
 		{TestCaseID: cases[1], Passed: 2, Judged: 2},
 		{TestCaseID: cases[2], Passed: 1, Judged: 2},
 	}}
-	p := pairArms(candidate, reference)
+	p := PairArms(candidate, reference)
 	if p.Paired != 3 || p.Unpaired != 1 || p.Better != 1 || p.Worse != 1 || p.Tied != 1 {
 		t.Errorf("pairing = %+v, want one better, one worse, one tied and one unpaired", p)
 	}

@@ -31,7 +31,12 @@ func newPublishingService(cfg Config, registrySvc *registry.Service, packagingSv
 	svc.ReadSkills = publishingSkillsReader(registrySvc)
 	svc.ReadVersion = func(ctx context.Context, workspaceID, versionID pgtype.UUID) (publishing.VersionFacts, bool, error) {
 		version, found, err := registrySvc.WorkspaceVersion(ctx, workspaceID, versionID)
-		return publishingVersionFacts(version), found, err
+		facts := publishingVersionFacts(version)
+		if err == nil && found && version.HeldForEvaluation {
+			inLine, lineErr := registry.VersionInLine(ctx, registrySvc.Pool, workspaceID, versionID)
+			facts.HeldOutsideLine, err = !inLine, lineErr
+		}
+		return facts, found, err
 	}
 	svc.LatestVersion = func(ctx context.Context, workspaceID, skillID pgtype.UUID) (publishing.VersionFacts, bool, error) {
 		version, found, err := registrySvc.LatestVersion(ctx, workspaceID, skillID)

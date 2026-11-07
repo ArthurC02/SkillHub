@@ -42,6 +42,7 @@ type VersionFacts struct {
 	SourcePath        string
 	LicenseExpression string
 	LicenseSource     string
+	HeldOutsideLine   bool
 }
 
 type PackageStore interface {
@@ -314,6 +315,10 @@ func (s *Service) versionToRelease(ctx context.Context, ws identity.Workspace, s
 	}
 	if !found {
 		return VersionFacts{}, ErrNotFound
+	}
+	if version.HeldOutsideLine {
+		return VersionFacts{}, &RefusedError{RefusedHeldForEvaluation,
+			"這一版是評估中的候選，還沒在那一輪被採用、進入正式路線，所以不能發佈；先採用它再發佈"}
 	}
 	return version, nil
 }

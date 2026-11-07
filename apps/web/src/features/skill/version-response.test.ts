@@ -47,6 +47,8 @@ test.each([
   ["non-text hash", { versions: [{ ...current, content_hash: 123 }] }],
   ["absent date", { versions: [{ ...current, created_at: undefined }] }],
   ["invalid date", { versions: [{ ...current, created_at: "yesterday" }] }],
+  ["absent held flag", { versions: [{ ...current, held_for_evaluation: undefined }] }],
+  ["text promoted flag", { versions: [{ ...current, promoted: "false" }] }],
   ["partial list", { versions: [current, null] }],
   ["oldest first", { versions: [older, current] }],
   ["duplicate identity", { versions: [current, { ...older, version_id: current.version_id }] }],

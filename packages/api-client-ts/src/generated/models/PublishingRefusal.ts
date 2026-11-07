@@ -45,6 +45,7 @@ export const PublishingRefusalReasonEnum = {
     ValidationBlocked: 'validation_blocked',
     RightsNotAttested: 'rights_not_attested',
     LicenseNotDeclarable: 'license_not_declarable',
+    HeldForEvaluation: 'held_for_evaluation',
     FileRemovedByPackager: 'file_removed_by_packager',
     MemberWithdrawn: 'member_withdrawn',
     VersionShape: 'version_shape',

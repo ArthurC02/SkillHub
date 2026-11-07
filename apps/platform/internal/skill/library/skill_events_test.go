@@ -15,7 +15,8 @@ func TestEverySkillEventHasACatalogueNameAndAFixedPayloadShape(t *testing.T) {
 		keys  []string
 	}{
 		{SkillCreated{}, outbox.SkillCreated, []string{"forked_from_skill_id", "forked_from_version_id", "redistribution"}},
-		{SkillVersionAdded{}, outbox.SkillVersionAdded, []string{"content_hash", "improved_by", "version_id", "version_number"}},
+		{SkillVersionAdded{}, outbox.SkillVersionAdded, []string{"content_hash", "held_for_evaluation", "improved_by", "version_id", "version_number"}},
+		{SkillVersionPromoted{}, outbox.SkillVersionPromoted, []string{"version_id"}},
 		{SkillDescribed{}, outbox.SkillDescribed, []string{}},
 		{SkillTakenDown{}, outbox.SkillTakenDown, []string{}},
 		{AccessRestricted{}, outbox.SkillAccessRestricted, []string{"reason"}},

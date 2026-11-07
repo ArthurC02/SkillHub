@@ -27,6 +27,7 @@ type reflectionModel struct {
 	failing map[string]bool
 	silent  map[string]bool
 	costUSD *float64
+	byFocus bool
 }
 
 func (m *reflectionModel) record(attribution, digest, focus string) {
@@ -38,10 +39,24 @@ func (m *reflectionModel) record(attribution, digest, focus string) {
 	}
 }
 
-func (m *reflectionModel) answerTo(focus string) (fails, silent bool, costUSD *float64) {
+func (m *reflectionModel) answerTo(focus string) (fails, silent, byFocus bool, costUSD *float64) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return m.failing[focus], m.silent[focus], m.costUSD
+	return m.failing[focus], m.silent[focus], m.byFocus, m.costUSD
+}
+
+func (m *reflectionModel) answerEachFocusDifferently() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.byFocus = true
+}
+
+func proposalsFor(focus string, proposals []llmclient.ImprovementProposal) []llmclient.ImprovementProposal {
+	out := slices.Clone(proposals)
+	for i := range out {
+		out[i].ProposedContent += "\nFocus on " + focus + ".\n"
+	}
+	return out
 }
 
 func (m *reflectionModel) answerFocuses(failing, silent map[string]bool) {
@@ -84,12 +99,15 @@ func reflectionLLM(t *testing.T, proposals []llmclient.ImprovementProposal) (*ll
 			return
 		}
 		model.record(req.EvaluationID, req.EvaluationDigest, req.Focus)
-		fails, silent, cost := model.answerTo(req.Focus)
+		fails, silent, byFocus, cost := model.answerTo(req.Focus)
 		if fails {
 			http.Error(w, `{"detail":"upstream"}`, http.StatusInternalServerError)
 			return
 		}
 		answer := proposals
+		if byFocus {
+			answer = proposalsFor(req.Focus, proposals)
+		}
 		if silent {
 			answer = nil
 		}

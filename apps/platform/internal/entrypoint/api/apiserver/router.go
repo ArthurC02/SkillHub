@@ -349,6 +349,9 @@ func mountEvaluationRoutes(mux *http.ServeMux, d Deps) {
 	mux.HandleFunc("GET /skills/{id}/evaluation-batches/{batchId}/comparison", auth.RequireSession(d.EvalBatches.CompareBatches))
 	mux.HandleFunc("POST /skills/{id}/evaluation-batches/{batchId}/reflections", auth.RequireSession(auth.RequireInvited(d.Reflections.Reflect)))
 	mux.HandleFunc("GET /skills/{id}/evaluation-batches/{batchId}/reflections", auth.RequireSession(d.Reflections.List))
+	mux.HandleFunc("GET /skills/{id}/candidate-versions", auth.RequireSession(d.Reflections.CandidateVersions))
+	mux.HandleFunc("POST /skills/{id}/evaluation-batches/{batchId}/reflections/{reflectionId}/evaluate", auth.RequireSession(auth.RequireInvited(d.Reflections.Evaluate)))
+	mux.HandleFunc("POST /skills/{id}/evaluation-batches/{batchId}/reflections/{reflectionId}/adopt", auth.RequireSession(auth.RequireInvited(d.Reflections.Adopt)))
 }
 
 func mountPackagingRoutes(mux *http.ServeMux, d Deps) {

@@ -20,6 +20,8 @@ const CURRENT = {
       version_number: 3,
       content_hash: "hash-new",
       created_at: "2026-10-15T12:00:00Z",
+      held_for_evaluation: false,
+      promoted: false,
     },
     ...SKILL_VERSIONS.versions,
   ],

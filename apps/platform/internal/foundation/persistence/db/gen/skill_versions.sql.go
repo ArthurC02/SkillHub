@@ -14,12 +14,14 @@ import (
 const createSkillVersion = `-- name: CreateSkillVersion :one
 INSERT INTO skill_versions (
     workspace_id, skill_id, source_id, version_number,
-    content_hash, package_object_key, source_path, manifest, license_expression, license_source
+    content_hash, package_object_key, source_path, manifest, license_expression, license_source,
+    held_for_evaluation
 ) VALUES (
     $1, $2, $3, $4,
-    $5, $6, $7, $8, $9, $10
+    $5, $6, $7, $8, $9, $10,
+    $11
 )
-RETURNING id, workspace_id, skill_id, source_id, version_number, content_hash, package_object_key, manifest, license_expression, created_at, license_source, source_path, content_erased_at
+RETURNING id, workspace_id, skill_id, source_id, version_number, content_hash, package_object_key, manifest, license_expression, created_at, license_source, source_path, content_erased_at, held_for_evaluation
 `
 
 type CreateSkillVersionParams struct {
@@ -33,6 +35,7 @@ type CreateSkillVersionParams struct {
 	Manifest          []byte
 	LicenseExpression *string
 	LicenseSource     *string
+	HeldForEvaluation bool
 }
 
 func (q *Queries) CreateSkillVersion(ctx context.Context, arg CreateSkillVersionParams) (SkillVersion, error) {
@@ -47,6 +50,7 @@ func (q *Queries) CreateSkillVersion(ctx context.Context, arg CreateSkillVersion
 		arg.Manifest,
 		arg.LicenseExpression,
 		arg.LicenseSource,
+		arg.HeldForEvaluation,
 	)
 	var i SkillVersion
 	err := row.Scan(
@@ -63,13 +67,30 @@ func (q *Queries) CreateSkillVersion(ctx context.Context, arg CreateSkillVersion
 		&i.LicenseSource,
 		&i.SourcePath,
 		&i.ContentErasedAt,
+		&i.HeldForEvaluation,
 	)
 	return i, err
 }
 
+const getHighestVersionNumber = `-- name: GetHighestVersionNumber :one
+SELECT coalesce(max(version_number), 0)::int FROM skill_versions WHERE skill_id = $1 AND workspace_id = $2
+`
+
+type GetHighestVersionNumberParams struct {
+	SkillID     pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+func (q *Queries) GetHighestVersionNumber(ctx context.Context, arg GetHighestVersionNumberParams) (int32, error) {
+	row := q.db.QueryRow(ctx, getHighestVersionNumber, arg.SkillID, arg.WorkspaceID)
+	var column_1 int32
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const getNewestSkillVersion = `-- name: GetNewestSkillVersion :one
 SELECT id, version_number, license_expression, license_source
-FROM skill_versions
+FROM skill_line_versions
 WHERE skill_id = $1
 ORDER BY version_number DESC
 LIMIT 1
@@ -122,7 +143,7 @@ func (q *Queries) GetSkillRuntimeCompatibility(ctx context.Context, skillVersion
 }
 
 const getSkillVersion = `-- name: GetSkillVersion :one
-SELECT id, workspace_id, skill_id, source_id, version_number, content_hash, package_object_key, manifest, license_expression, created_at, license_source, source_path, content_erased_at FROM skill_versions
+SELECT id, workspace_id, skill_id, source_id, version_number, content_hash, package_object_key, manifest, license_expression, created_at, license_source, source_path, content_erased_at, held_for_evaluation FROM skill_versions
 WHERE skill_versions.id = $1 AND skill_versions.workspace_id = $2
   AND EXISTS (
       SELECT 1 FROM skills sk
@@ -152,8 +173,50 @@ func (q *Queries) GetSkillVersion(ctx context.Context, arg GetSkillVersionParams
 		&i.LicenseSource,
 		&i.SourcePath,
 		&i.ContentErasedAt,
+		&i.HeldForEvaluation,
 	)
 	return i, err
+}
+
+const insertSkillVersionPromotion = `-- name: InsertSkillVersionPromotion :one
+INSERT INTO skill_version_promotions (version_id, workspace_id, promoted_by)
+VALUES ($1, $2, $3)
+ON CONFLICT (version_id) DO NOTHING
+RETURNING version_id, workspace_id, promoted_by, promoted_at
+`
+
+type InsertSkillVersionPromotionParams struct {
+	VersionID   pgtype.UUID
+	WorkspaceID pgtype.UUID
+	PromotedBy  pgtype.UUID
+}
+
+func (q *Queries) InsertSkillVersionPromotion(ctx context.Context, arg InsertSkillVersionPromotionParams) (SkillVersionPromotion, error) {
+	row := q.db.QueryRow(ctx, insertSkillVersionPromotion, arg.VersionID, arg.WorkspaceID, arg.PromotedBy)
+	var i SkillVersionPromotion
+	err := row.Scan(
+		&i.VersionID,
+		&i.WorkspaceID,
+		&i.PromotedBy,
+		&i.PromotedAt,
+	)
+	return i, err
+}
+
+const isVersionInLine = `-- name: IsVersionInLine :one
+SELECT EXISTS (SELECT 1 FROM skill_line_versions WHERE id = $1 AND workspace_id = $2)
+`
+
+type IsVersionInLineParams struct {
+	VersionID   pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+func (q *Queries) IsVersionInLine(ctx context.Context, arg IsVersionInLineParams) (bool, error) {
+	row := q.db.QueryRow(ctx, isVersionInLine, arg.VersionID, arg.WorkspaceID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const listSkillSourcesInVersions = `-- name: ListSkillSourcesInVersions :many
@@ -181,7 +244,9 @@ func (q *Queries) ListSkillSourcesInVersions(ctx context.Context, sourceIds []pg
 }
 
 const listSkillVersions = `-- name: ListSkillVersions :many
-SELECT id, workspace_id, skill_id, source_id, version_number, content_hash, package_object_key, manifest, license_expression, created_at, license_source, source_path, content_erased_at FROM skill_versions
+SELECT skill_versions.id, skill_versions.workspace_id, skill_versions.skill_id, skill_versions.source_id, skill_versions.version_number, skill_versions.content_hash, skill_versions.package_object_key, skill_versions.manifest, skill_versions.license_expression, skill_versions.created_at, skill_versions.license_source, skill_versions.source_path, skill_versions.content_erased_at, skill_versions.held_for_evaluation,
+       EXISTS (SELECT 1 FROM skill_version_promotions p WHERE p.version_id = skill_versions.id) AS promoted
+FROM skill_versions
 WHERE skill_versions.workspace_id = $1 AND skill_versions.skill_id = $2
   AND EXISTS (
       SELECT 1 FROM skills sk
@@ -195,29 +260,36 @@ type ListSkillVersionsParams struct {
 	SkillID     pgtype.UUID
 }
 
-func (q *Queries) ListSkillVersions(ctx context.Context, arg ListSkillVersionsParams) ([]SkillVersion, error) {
+type ListSkillVersionsRow struct {
+	SkillVersion SkillVersion
+	Promoted     bool
+}
+
+func (q *Queries) ListSkillVersions(ctx context.Context, arg ListSkillVersionsParams) ([]ListSkillVersionsRow, error) {
 	rows, err := q.db.Query(ctx, listSkillVersions, arg.WorkspaceID, arg.SkillID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []SkillVersion
+	var items []ListSkillVersionsRow
 	for rows.Next() {
-		var i SkillVersion
+		var i ListSkillVersionsRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.WorkspaceID,
-			&i.SkillID,
-			&i.SourceID,
-			&i.VersionNumber,
-			&i.ContentHash,
-			&i.PackageObjectKey,
-			&i.Manifest,
-			&i.LicenseExpression,
-			&i.CreatedAt,
-			&i.LicenseSource,
-			&i.SourcePath,
-			&i.ContentErasedAt,
+			&i.SkillVersion.ID,
+			&i.SkillVersion.WorkspaceID,
+			&i.SkillVersion.SkillID,
+			&i.SkillVersion.SourceID,
+			&i.SkillVersion.VersionNumber,
+			&i.SkillVersion.ContentHash,
+			&i.SkillVersion.PackageObjectKey,
+			&i.SkillVersion.Manifest,
+			&i.SkillVersion.LicenseExpression,
+			&i.SkillVersion.CreatedAt,
+			&i.SkillVersion.LicenseSource,
+			&i.SkillVersion.SourcePath,
+			&i.SkillVersion.ContentErasedAt,
+			&i.SkillVersion.HeldForEvaluation,
+			&i.Promoted,
 		); err != nil {
 			return nil, err
 		}
@@ -264,7 +336,7 @@ func (q *Queries) ListSourcePaths(ctx context.Context, sourceIds []pgtype.UUID) 
 const listVersionSummaries = `-- name: ListVersionSummaries :many
 SELECT sv.id, sv.skill_id, sv.version_number, sk.name AS skill_name,
        sk.access_restriction, sk.redistribution, (sk.takedown_at IS NOT NULL)::bool AS taken_down,
-       (SELECT max(v2.version_number) FROM skill_versions v2
+       (SELECT max(v2.version_number) FROM skill_line_versions v2
          WHERE v2.skill_id = sv.skill_id)::int AS latest_version_number
 FROM skill_versions sv
 JOIN skills sk ON sk.id = sv.skill_id
@@ -319,7 +391,7 @@ func (q *Queries) ListVersionSummaries(ctx context.Context, arg ListVersionSumma
 const listVersionSummariesByID = `-- name: ListVersionSummariesByID :many
 SELECT sv.id, sv.skill_id, sv.version_number, sk.name AS skill_name,
        sk.access_restriction, sk.redistribution, (sk.takedown_at IS NOT NULL)::bool AS taken_down,
-       (SELECT max(v2.version_number) FROM skill_versions v2
+       (SELECT max(v2.version_number) FROM skill_line_versions v2
          WHERE v2.skill_id = sv.skill_id)::int AS latest_version_number
 FROM skill_versions sv
 JOIN skills sk ON sk.id = sv.skill_id

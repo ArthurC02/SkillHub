@@ -841,12 +841,16 @@ export const SKILL_VERSIONS = {
       version_number: 2,
       content_hash: "sha256:bbbb",
       created_at: "2026-08-17T00:00:00Z",
+      held_for_evaluation: false,
+      promoted: false,
     },
     {
       version_id: "22222222-2222-2222-2222-111111111111",
       version_number: 1,
       content_hash: "sha256:aaaa",
       created_at: "2026-08-01T10:00:00Z",
+      held_for_evaluation: false,
+      promoted: false,
     },
   ],
 } satisfies SkillVersions;

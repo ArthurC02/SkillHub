@@ -706,6 +706,8 @@ type EvaluationBatch struct {
 	SettledAt pgtype.Timestamptz
 	// When the batch was paused so no further runs are started; set exactly while status is paused and null otherwise.
 	PausedAt pgtype.Timestamptz
+	// The idempotency key of the platform action that launched the batch, so a repeated launch returns the batch it already made; NULL for a batch a user started by hand.
+	OriginKey *string
 }
 
 // One trial of one test case in a batch; the run is linked once the batch starts it.
@@ -840,6 +842,8 @@ type EvaluationSuggestion struct {
 	ReflectionID pgtype.UUID
 	// Which candidate of its batch improvement round wrote the suggestion, counted from 0; always 0 for a suggestion on one run's evaluation.
 	Candidate int16
+	// The user whose action recorded the decision; NULL while pending, for a decision recorded before this was kept, or after that user was deleted.
+	DecidedBy pgtype.UUID
 }
 
 // The link between an accepted evaluation suggestion and the new skill version created from it. Immutable and append-only: later applications never overwrite an earlier source.
@@ -1251,6 +1255,42 @@ type ReconcilerOrphanSighting struct {
 	Rounds int32
 }
 
+// The one candidate of a batch improvement round the user adopted; written once, so the line of versions a next round may start from never forks.
+type ReflectionAdoption struct {
+	// The improvement round whose candidate was adopted.
+	ReflectionID pgtype.UUID
+	// Workspace that owns the round.
+	WorkspaceID pgtype.UUID
+	// The adopted candidate, counted from 0.
+	Candidate int16
+	// The adopted candidate's built version; NOT NULL, so an unavailable candidate, which has none, can never be adopted.
+	SkillVersionID pgtype.UUID
+	// The user who adopted it; cleared when that user is deleted.
+	AdoptedBy pgtype.UUID
+	// When the candidate was adopted.
+	AdoptedAt pgtype.Timestamptz
+}
+
+// The version built from one candidate of a batch improvement round and the batch that ran it on all of the round's test cases; written once when the candidates were evaluated.
+type ReflectionCandidateBatch struct {
+	// Workspace that owns the round and therefore this candidate's evaluation.
+	WorkspaceID pgtype.UUID
+	// The improvement round whose candidate this is.
+	ReflectionID pgtype.UUID
+	// Which candidate of the round, counted from 0; always below the number of candidates the round asked for.
+	Candidate int16
+	// The version built from the candidate's applicable suggestions; NULL with batch_id when none applied, so the candidate is unavailable rather than an empty version.
+	SkillVersionID pgtype.UUID
+	// The batch that ran the candidate's version on the round's test cases with the source batch's trials and arms; NULL with skill_version_id when the candidate is unavailable.
+	BatchID pgtype.UUID
+	// The candidate's suggestions left out of its version: those the user had rejected and those that failed their re-check against the package.
+	SkippedSuggestionIds []pgtype.UUID
+	// The user who asked for the candidates to be evaluated; cleared when that user is deleted.
+	CreatedBy pgtype.UUID
+	// When the candidate's batch was launched or the candidate was found unavailable.
+	CreatedAt pgtype.Timestamptz
+}
+
 // One execution of a skill version against a frozen test case snapshot, with its status, attempt count, provider and cleanup state. The permanent identity of a run; its child rows are archivable.
 type Run struct {
 	ID pgtype.UUID
@@ -1570,6 +1610,24 @@ type Skill struct {
 	TakedownBy *string
 }
 
+// The Skill's line: its versions that were not held for evaluation, plus the held ones that were promoted. Every read of a Skill's newest, latest or previous version reads this view, so a candidate never becomes the face of its Skill before it is adopted.
+type SkillLineVersion struct {
+	ID                pgtype.UUID
+	WorkspaceID       pgtype.UUID
+	SkillID           pgtype.UUID
+	SourceID          pgtype.UUID
+	VersionNumber     int32
+	ContentHash       string
+	PackageObjectKey  string
+	Manifest          []byte
+	LicenseExpression *string
+	CreatedAt         pgtype.Timestamptz
+	LicenseSource     *string
+	SourcePath        string
+	ContentErasedAt   pgtype.Timestamptz
+	HeldForEvaluation bool
+}
+
 // The measured result of whether a skill version activated and ran on a given runtime image, and which run measured it.
 type SkillRuntimeCompatibility struct {
 	// Skill version that was measured; rows are deleted with it.
@@ -1652,6 +1710,20 @@ type SkillVersion struct {
 	SourcePath string
 	// Set once when the owner's account purge erased this version's content (manifest, import source, package object) because only the owner's own Runs still referenced it. The row stays as a tombstone so those Runs keep their identity.
 	ContentErasedAt pgtype.Timestamptz
+	// True for a version built only to be evaluated as a candidate of an improvement round: it runs, forks and downloads by its own id, but it is outside the Skill's line, so it is never the newest version, never released and never indexed, until it is promoted.
+	HeldForEvaluation bool
+}
+
+// The held versions brought into their Skill's line by adoption; written once, so a promoted version stays in the line.
+type SkillVersionPromotion struct {
+	// The held version that was promoted.
+	VersionID pgtype.UUID
+	// Workspace that owns the version.
+	WorkspaceID pgtype.UUID
+	// The user whose adoption promoted it; cleared when that user is deleted.
+	PromotedBy pgtype.UUID
+	// When the version entered the line.
+	PromotedAt pgtype.Timestamptz
 }
 
 // One test scenario for a skill: a user prompt and acceptance criteria that runs are judged against.

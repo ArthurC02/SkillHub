@@ -24,6 +24,8 @@ type sqlQuery struct {
 
 	unscoped  bool
 	decisions []string
+
+	ordersVersionsOutsideLine bool
 }
 
 func queryOwnerProblems(root string) []string {
@@ -427,6 +429,8 @@ func loadSQLQueries(dir string) (map[string]sqlQuery, error) {
 
 				unscoped:  lacksWorkspaceCondition(body),
 				decisions: sqlDecisionsOf(body),
+
+				ordersVersionsOutsideLine: ordersVersionsOutsideLine(body),
 			}
 		}
 	}

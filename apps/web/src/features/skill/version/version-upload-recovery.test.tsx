@@ -31,6 +31,8 @@ const CURRENT = {
       version_number: 3,
       content_hash: "sha256:next",
       created_at: "2026-10-15T00:00:00Z",
+      held_for_evaluation: false,
+      promoted: false,
     },
     ...SKILL_VERSIONS.versions,
   ],

@@ -20,7 +20,7 @@ func assertSkillEvents(t *testing.T, s *SkillRoot, want ...Event) {
 }
 
 func skillMarked(redistribution Redistribution, newest newestVersion) *SkillRoot {
-	return &SkillRoot{row: gen.Skill{Redistribution: string(redistribution)}, newest: newest}
+	return &SkillRoot{row: gen.Skill{Redistribution: string(redistribution)}, newest: newest, highestNumber: newest.number}
 }
 
 func TestTakingDownASkillHidesItOnce(t *testing.T) {
@@ -509,4 +509,65 @@ func (s *SkillRoot) Events() []Event {
 		events[i] = cloneEvent(event)
 	}
 	return events
+}
+
+func TestAHeldVersionTakesTheNextNumberWithoutBecomingTheNewestOrDescribingTheSkill(t *testing.T) {
+	line := pgtype.UUID{Bytes: [16]byte{1}, Valid: true}
+	mit := LicenseClaim{Expression: "MIT", Source: "LICENSE"}
+	s := skillMarked(RedistributionUnknown, newestVersion{id: line, exists: true, number: 4, license: mit})
+	s.highestNumber = 6
+
+	s.AddVersion(packageContent(t, "h", false).HeldForEvaluation())
+	s.AdoptNewestSummary()
+
+	assertSkillEvents(t, s, SkillVersionAdded{VersionNumber: 7, ContentHash: "h", HeldForEvaluation: true})
+	if s.NewestVersionID() != line || s.NewestLicense() != mit {
+		t.Fatalf("newest = %v with %+v, want the line's %v with %+v", s.NewestVersionID(), s.NewestLicense(), line, mit)
+	}
+}
+
+func TestPromotingAHeldVersionMakesItTheNewestOnlyWhileTheLineStillEndsAtItsBase(t *testing.T) {
+	skill := pgtype.UUID{Bytes: [16]byte{9}, Valid: true}
+	base := pgtype.UUID{Bytes: [16]byte{1}, Valid: true}
+	moved := pgtype.UUID{Bytes: [16]byte{2}, Valid: true}
+	candidate := pgtype.UUID{Bytes: [16]byte{3}, Valid: true}
+	apache := "Apache-2.0"
+	held := Version{ID: candidate, SkillID: skill, VersionNumber: 7, HeldForEvaluation: true, Description: "better", LicenseExpression: &apache}
+	notHeld := held
+	notHeld.HeldForEvaluation = false
+	foreign := held
+	foreign.SkillID = pgtype.UUID{Bytes: [16]byte{8}, Valid: true}
+
+	for _, tc := range []struct {
+		name       string
+		newest     pgtype.UUID
+		version    Version
+		base       pgtype.UUID
+		want       []Event
+		wantNewest pgtype.UUID
+	}{
+		{"the line still ends at the base", base, held, base, []Event{SkillVersionPromoted{VersionID: candidate}, SkillDescribed{}}, candidate},
+		{"the version is already the newest", candidate, held, base, nil, candidate},
+		{"the line has moved on", moved, held, base, []Event{Refused{Reason: RefusedLineMovedOn}}, moved},
+		{"the version was never held", base, notHeld, base, []Event{Refused{Reason: RefusedVersionNotHeld}}, base},
+		{"the version is another skill's", base, foreign, base, []Event{Refused{Reason: RefusedNoVersion}}, base},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s := skillMarked(RedistributionUnknown, newestVersion{id: tc.newest, exists: true, number: 5})
+			s.row.ID = skill
+
+			s.Promote(tc.version, tc.base, pgtype.UUID{})
+
+			assertSkillEvents(t, s, tc.want...)
+			if s.NewestVersionID() != tc.wantNewest {
+				t.Errorf("newest = %v, want %v", s.NewestVersionID(), tc.wantNewest)
+			}
+		})
+	}
+	s := skillMarked(RedistributionUnknown, newestVersion{id: base, exists: true, number: 5})
+	s.row.ID = skill
+	s.Promote(held, base, pgtype.UUID{})
+	if got := s.Skill().Summary; got == nil || *got != "better" || s.NewestLicense().Expression != apache {
+		t.Errorf("after promoting: summary %v and licence %+v, want the held version's", got, s.NewestLicense())
+	}
 }

@@ -55,6 +55,8 @@ function currentVersions(number: number) {
               version_number: 4,
               content_hash: "sha256:four",
               created_at: "2026-10-15T01:00:00Z",
+              held_for_evaluation: false,
+              promoted: false,
             },
           ]
         : []),
@@ -63,6 +65,8 @@ function currentVersions(number: number) {
         version_number: 3,
         content_hash: "sha256:three",
         created_at: "2026-10-15T00:00:00Z",
+        held_for_evaluation: false,
+        promoted: false,
       },
       ...SKILL_VERSIONS.versions,
     ],

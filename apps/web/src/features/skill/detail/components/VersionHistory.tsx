@@ -4,7 +4,8 @@ import { ListFreshness } from "../../../../shared/ui/ListFreshness";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
 import { VersionDiff } from "../../../runs";
-import { useSkillVersions, skillDiffUrl } from "../../skills.service";
+import { useCandidateVersions, useSkillVersions, skillDiffUrl } from "../../skills.service";
+import { heldLabel, inLine, lineNewest } from "../../versions.model";
 import { Link } from "@tanstack/react-router";
 
 export function VersionHistory({ skillId }: { skillId: string }) {
@@ -14,6 +15,8 @@ export function VersionHistory({ skillId }: { skillId: string }) {
   const confirmed =
     versions.isSuccess && versions.fetchStatus === "idle" ? versions.data : undefined;
   const list = confirmed?.versions ?? [];
+  const newest = lineNewest(list) ?? list[0];
+  const candidates = useCandidateVersions(skillId, !list.every(inLine));
   const refresh = () => {
     void versions.refetch();
     const heading = document.getElementById("version-history-heading");
@@ -57,14 +60,15 @@ export function VersionHistory({ skillId }: { skillId: string }) {
         ) : (
           <>
             <p>
-              共 {list.length} 版，最新 v{list[0].version_number}（
-              <Timestamp at={list[0].created_at} />）
+              共 {list.length} 版，最新 v{newest.version_number}（
+              <Timestamp at={newest.created_at} />）
             </p>
             <details>
               <summary>每一版與它跟上一版的差異</summary>
               <ul className="search-results">
                 {list.map((version, index) => {
-                  const previous = list[index + 1];
+                  const previous = list.slice(index + 1).find(inLine);
+                  const held = heldLabel(version, candidates.data ?? []);
                   const open = pair?.to === version.version_id;
                   return (
                     <li key={version.version_id} className="search-result">
@@ -77,6 +81,7 @@ export function VersionHistory({ skillId }: { skillId: string }) {
                             v{version.version_number}
                           </Link>
                         </strong>{" "}
+                        {held && <span className="note">（{held}）</span>}{" "}
                         <span className="note">
                           建立時間：
                           <Timestamp at={version.created_at} />

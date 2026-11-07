@@ -245,6 +245,8 @@ const WITH_A_NEWER_VERSION = {
       version_number: 3,
       content_hash: "sha256:cccc",
       created_at: "2026-11-06T00:00:00Z",
+      held_for_evaluation: false,
+      promoted: false,
     },
     ...SKILL_VERSIONS.versions,
   ],

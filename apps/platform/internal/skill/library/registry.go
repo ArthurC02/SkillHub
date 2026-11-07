@@ -231,6 +231,8 @@ var (
 	ErrRestoreNotAllowed      = errors.New("only the owner's own takedown can be restored, within 30 days")
 	ErrAlreadyTakenDown       = errors.New("skill is already taken down")
 	ErrTakedownReasonRequired = errors.New("reason is required")
+	ErrVersionNotHeld         = errors.New("only a version held for evaluation can be promoted into its Skill's line")
+	ErrLineMovedOn            = errors.New("the Skill's line has a newer version than the one this candidate was built from")
 )
 
 const maxForkAttempts = 10

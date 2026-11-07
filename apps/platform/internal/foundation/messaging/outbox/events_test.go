@@ -11,12 +11,12 @@ import (
 )
 
 const (
-	migrationPath = "../../../../../../db/migrations/0149_batch_reflections.sql"
+	migrationPath = "../../../../../../db/migrations/0151_candidate_evaluation.sql"
 	cataloguePath = "../../../../../../contracts/events/domain-events.md"
 )
 
 func TestEventTypesMatchTheMigrationCheck(t *testing.T) {
-	assertSameSet(t, "the DB CHECK in 0149", EventTypes, migrationCheckValues(t))
+	assertSameSet(t, "the DB CHECK in 0151", EventTypes, migrationCheckValues(t))
 }
 
 func TestAnEventOutsideTheClosedSetIsNeverWritten(t *testing.T) {

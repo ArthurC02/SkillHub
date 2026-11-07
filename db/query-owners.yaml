@@ -513,6 +513,7 @@ read_allow:
 immutable:
   evaluation_suggestion_applications: 建議與版本的套用關係只追加，後續套用不得覆寫既有來源
   skill_versions: 版本快照；採納建議＝新版本，不原地覆寫（鐵律 4）
+  skill_version_promotions: 保留評估的版本被採用、進入 Skill 的正式路線；寫一次，進了就不出
   test_case_snapshots: Run 引用的測試資料快照，改了會讓歷史 Run 的輸入說謊
   run_status_transitions: Run 編排與非同步工作流程狀態機的歷史；重寫轉移紀錄等於重寫 Run 發生過的事
   trace_events: TRACE-001 執行事實；保存期到期是 DROP PARTITION，只有落在 default 分割、早於最舊保留月份的列才 DELETE
@@ -529,6 +530,8 @@ immutable:
   evaluation_grader_versions: 一個 check 釘住的評分指示；改了等於改寫已經判過的尺
   exposure_reviews: 曝光審核紀錄；撤銷是新的一筆，舊的判斷與它看過的快照要留著
   batch_reflections: 一輪批次改善讀過哪些開發題；改了等於改寫那幾條建議的依據
+  reflection_candidate_batches: 一個候選建出哪個版本、用哪一批評估；改了等於改寫保留與推薦的依據
+  reflection_adoptions: 一輪採用了哪個候選；只寫一次，下一輪的起點才不會分岔
 
 immutable_allow:
   PurgeSkillsByID: skill_versions
@@ -564,6 +567,7 @@ tables:
   workspaces: identity
   skills: registry
   skill_versions: registry
+  skill_version_promotions: registry
   skill_runtime_compatibility: registry
   object_collection_queue: registry
   skill_sources: ingest
@@ -603,6 +607,8 @@ tables:
   evaluation_batches: batch
   evaluation_batch_items: batch
   batch_reflections: eval
+  reflection_candidate_batches: eval
+  reflection_adoptions: eval
   evaluation_graders: eval
   evaluation_grader_versions: eval
   run_continuations: run
@@ -641,6 +647,7 @@ retention:
   workspaces: keep anonymized by account purge
   skills: with_owner deleted after the deletion grace or by account purge
   skill_versions: with_owner purged with their skill; one only its owner's Runs used keeps a content-erased row
+  skill_version_promotions: with_owner deleted with its version
   skill_runtime_compatibility: with_owner deleted with its skill
   object_collection_queue: transient drained by maintenance collect-objects
   skill_sources: with_owner unreferenced sources deleted by account purge
@@ -668,6 +675,8 @@ retention:
   evaluation_batches: keep the record of which evaluation set ran against which version
   evaluation_batch_items: keep the link from a batch trial to its permanent run
   batch_reflections: keep the record of which development test cases an improvement round read
+  reflection_candidate_batches: keep the record of which version and batch evaluated each candidate of a round
+  reflection_adoptions: keep the record of which candidate of a round was adopted
   evaluation_graders: with_owner deleted with its workspace by account purge; platform graders keep
   evaluation_grader_versions: with_owner deleted with its grader
   artifacts: expire objects past retention, maintenance purge-run-artifacts marks the row

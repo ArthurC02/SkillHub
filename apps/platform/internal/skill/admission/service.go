@@ -164,6 +164,17 @@ type sourceMeta struct {
 
 	ImprovedBy   *registry.Improvement
 	ImprovedFrom pgtype.UUID
+	Held         bool
+}
+
+func (m sourceMeta) mark(content registry.VersionContent) registry.VersionContent {
+	if m.ImprovedBy != nil {
+		content = content.ImprovedBy(*m.ImprovedBy)
+	}
+	if m.Held {
+		content = content.HeldForEvaluation()
+	}
+	return content
 }
 
 func pluginFact(facts *skillpkg.PluginFacts, read func(skillpkg.PluginFacts) string) *string {
@@ -390,10 +401,11 @@ func (s *Service) SaveVersion(ctx context.Context, ws identity.Workspace, skillI
 }
 
 type Improvement struct {
-	EvaluationID  pgtype.UUID
-	ReflectionID  pgtype.UUID
-	SuggestionIDs []pgtype.UUID
-	BaseVersionID pgtype.UUID
+	EvaluationID      pgtype.UUID
+	ReflectionID      pgtype.UUID
+	SuggestionIDs     []pgtype.UUID
+	BaseVersionID     pgtype.UUID
+	HeldForEvaluation bool
 }
 
 var ErrBaseVersionMoved = errors.New("the skill has a newer version than the one these changes were made to")
@@ -403,7 +415,7 @@ func (s *Service) SaveImprovedVersion(
 ) (Result, error) {
 	return s.saveVersion(ctx, ws, skillID, data, sourceMeta{
 		Type: SourceUpload, ImprovedBy: &registry.Improvement{EvaluationID: by.EvaluationID, ReflectionID: by.ReflectionID, SuggestionIDs: by.SuggestionIDs},
-		ImprovedFrom: by.BaseVersionID,
+		ImprovedFrom: by.BaseVersionID, Held: by.HeldForEvaluation,
 	})
 }
 
@@ -417,7 +429,10 @@ func (s *Service) saveVersion(ctx context.Context, ws identity.Workspace, skillI
 	}
 	res := Result{Report: p.report}
 
-	e := s.enrichPackage(ctx, p, ws.ID)
+	e := pendingEnrichment(p)
+	if !src.Held {
+		e = s.enrichPackage(ctx, p, ws.ID)
+	}
 
 	tx, release, err := s.beginPackageWrite(ctx, ws, p.objectKey, data)
 	if err != nil {
@@ -514,13 +529,13 @@ func (s *Service) persistVersion(ctx context.Context, tx pgx.Tx, ws identity.Wor
 	if err != nil {
 		return registry.Version{}, false, err
 	}
-	if src.ImprovedBy != nil {
-		content = content.ImprovedBy(*src.ImprovedBy)
-	}
-	root.AddVersion(content)
+	root.AddVersion(src.mark(content))
 	root.AdoptNewestSummary()
 	if err := registry.SaveSkill(ctx, tx, root); err != nil {
 		return registry.Version{}, false, err
+	}
+	if src.Held {
+		return root.AddedVersion(), false, nil
 	}
 
 	if err := s.IndexSkill(ctx, tx, e.projection(ws.ID, skill.ID, skill.Name)); err != nil {

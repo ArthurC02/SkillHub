@@ -7,6 +7,7 @@ const (
 	AcceptanceCriteriaSuggestionsSuggestionsMaxItems          = 20
 	AcceptanceCriterionTextMaxLength                          = 2000
 	AddAcceptanceCriterionBodyTextMaxLength                   = 2000
+	AdoptReflectionCandidateBodyCandidateMaximum              = 3
 	BatchReflectionCandidatesMaxItems                         = 4
 	BrowseCatalogLimitMaximum                                 = 100
 	ClearModelCallBudgetBodyReasonMaxLength                   = 1000
@@ -75,6 +76,9 @@ const (
 	PublicSearchSkillsLimitMaximum                            = 100
 	PublicSearchSkillsQMaxLength                              = 2000
 	ReflectOnEvaluationBatchBodyDevTestCaseIdsMaxItems        = 49
+	ReflectionAdoptionCandidateMaximum                        = 3
+	ReflectionCandidateStandingCandidateMaximum               = 3
+	ReflectionEvaluationCandidatesMaxItems                    = 4
 	ReleasePlatformAgentBrakeBodyNoteMaxLength                = 1000
 	RubricItemTextMaxLength                                   = 2000
 	RubricItemsMaxItems                                       = 50

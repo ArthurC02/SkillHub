@@ -46,6 +46,7 @@ export const queryKeys = {
     embedded: (skillId: string) => ["skills", skillId, "embedded"],
     files: (skillId: string) => ["skills", skillId, "files"],
     versions: (skillId: string) => ["skills", skillId, "versions"],
+    candidateVersions: (skillId: string) => ["skills", skillId, "candidate-versions"],
     own: ["own-skills"],
     ownPages: (limit: number) => ["own-skills", "pages", limit],
   },

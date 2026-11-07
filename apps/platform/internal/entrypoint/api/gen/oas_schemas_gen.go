@@ -540,6 +540,44 @@ type AddMCPToolNotFound Error
 
 func (*AddMCPToolNotFound) addMCPToolRes() {}
 
+type AdoptReflectionCandidateBadRequest Error
+
+func (*AdoptReflectionCandidateBadRequest) adoptReflectionCandidateRes() {}
+
+type AdoptReflectionCandidateConflict Error
+
+func (*AdoptReflectionCandidateConflict) adoptReflectionCandidateRes() {}
+
+type AdoptReflectionCandidateForbidden Error
+
+func (*AdoptReflectionCandidateForbidden) adoptReflectionCandidateRes() {}
+
+type AdoptReflectionCandidateNotFound Error
+
+func (*AdoptReflectionCandidateNotFound) adoptReflectionCandidateRes() {}
+
+type AdoptReflectionCandidateReq struct {
+	Candidate int `json:"candidate"`
+}
+
+// GetCandidate returns the value of Candidate.
+func (s *AdoptReflectionCandidateReq) GetCandidate() int {
+	return s.Candidate
+}
+
+// SetCandidate sets the value of Candidate.
+func (s *AdoptReflectionCandidateReq) SetCandidate(val int) {
+	s.Candidate = val
+}
+
+type AdoptReflectionCandidateUnauthorized Error
+
+func (*AdoptReflectionCandidateUnauthorized) adoptReflectionCandidateRes() {}
+
+type AdoptReflectionCandidateUnprocessableEntity Error
+
+func (*AdoptReflectionCandidateUnprocessableEntity) adoptReflectionCandidateRes() {}
+
 // Ref: #/components/schemas/AmountTrend
 type AmountTrend struct {
 	From    time.Time     `json:"from"`
@@ -604,6 +642,8 @@ type BatchReflection struct {
 	// whose `outcome` and `suggestions` say everything. With several, `outcome` is the best of the
 	// candidates' outcomes and `suggestions` holds them all.
 	Candidates []ReflectionCandidate `json:"candidates"`
+	// The candidates' versions and batches once they were evaluated; null before.
+	Evaluation NilReflectionEvaluation `json:"evaluation"`
 }
 
 // GetReflectionID returns the value of ReflectionID.
@@ -651,6 +691,11 @@ func (s *BatchReflection) GetCandidates() []ReflectionCandidate {
 	return s.Candidates
 }
 
+// GetEvaluation returns the value of Evaluation.
+func (s *BatchReflection) GetEvaluation() NilReflectionEvaluation {
+	return s.Evaluation
+}
+
 // SetReflectionID sets the value of ReflectionID.
 func (s *BatchReflection) SetReflectionID(val uuid.UUID) {
 	s.ReflectionID = val
@@ -696,7 +741,14 @@ func (s *BatchReflection) SetCandidates(val []ReflectionCandidate) {
 	s.Candidates = val
 }
 
-func (*BatchReflection) reflectOnEvaluationBatchRes() {}
+// SetEvaluation sets the value of Evaluation.
+func (s *BatchReflection) SetEvaluation(val NilReflectionEvaluation) {
+	s.Evaluation = val
+}
+
+func (*BatchReflection) adoptReflectionCandidateRes()     {}
+func (*BatchReflection) evaluateReflectionCandidatesRes() {}
+func (*BatchReflection) reflectOnEvaluationBatchRes()     {}
 
 // Why `suggestions` holds what it holds, so an empty list is never read as "nothing to fix".
 // `restricted`: licence hold, no model call. `not_needed`: every development run passed with nothing
@@ -1818,6 +1870,124 @@ func (*CancelRunNotFound) cancelRunRes() {}
 type CancelRunUnauthorized Error
 
 func (*CancelRunUnauthorized) cancelRunRes() {}
+
+// The paired difference of the candidate's pass rate against the source batch's over one set of cases.
+// Ref: #/components/schemas/CandidatePairedVerdict
+type CandidatePairedVerdict struct {
+	Verdict        CandidatePairedVerdictVerdict `json:"verdict"`
+	MeanDifference NilFloat64                    `json:"mean_difference"`
+	Low            NilFloat64                    `json:"low"`
+	High           NilFloat64                    `json:"high"`
+}
+
+// GetVerdict returns the value of Verdict.
+func (s *CandidatePairedVerdict) GetVerdict() CandidatePairedVerdictVerdict {
+	return s.Verdict
+}
+
+// GetMeanDifference returns the value of MeanDifference.
+func (s *CandidatePairedVerdict) GetMeanDifference() NilFloat64 {
+	return s.MeanDifference
+}
+
+// GetLow returns the value of Low.
+func (s *CandidatePairedVerdict) GetLow() NilFloat64 {
+	return s.Low
+}
+
+// GetHigh returns the value of High.
+func (s *CandidatePairedVerdict) GetHigh() NilFloat64 {
+	return s.High
+}
+
+// SetVerdict sets the value of Verdict.
+func (s *CandidatePairedVerdict) SetVerdict(val CandidatePairedVerdictVerdict) {
+	s.Verdict = val
+}
+
+// SetMeanDifference sets the value of MeanDifference.
+func (s *CandidatePairedVerdict) SetMeanDifference(val NilFloat64) {
+	s.MeanDifference = val
+}
+
+// SetLow sets the value of Low.
+func (s *CandidatePairedVerdict) SetLow(val NilFloat64) {
+	s.Low = val
+}
+
+// SetHigh sets the value of High.
+func (s *CandidatePairedVerdict) SetHigh(val NilFloat64) {
+	s.High = val
+}
+
+type CandidatePairedVerdictVerdict string
+
+const (
+	CandidatePairedVerdictVerdictImproved          CandidatePairedVerdictVerdict = "improved"
+	CandidatePairedVerdictVerdictLikelyImproved    CandidatePairedVerdictVerdict = "likely_improved"
+	CandidatePairedVerdictVerdictNoClearDifference CandidatePairedVerdictVerdict = "no_clear_difference"
+	CandidatePairedVerdictVerdictLikelyWorse       CandidatePairedVerdictVerdict = "likely_worse"
+	CandidatePairedVerdictVerdictWorse             CandidatePairedVerdictVerdict = "worse"
+	CandidatePairedVerdictVerdictTooFewPairs       CandidatePairedVerdictVerdict = "too_few_pairs"
+)
+
+// AllValues returns all CandidatePairedVerdictVerdict values.
+func (CandidatePairedVerdictVerdict) AllValues() []CandidatePairedVerdictVerdict {
+	return []CandidatePairedVerdictVerdict{
+		CandidatePairedVerdictVerdictImproved,
+		CandidatePairedVerdictVerdictLikelyImproved,
+		CandidatePairedVerdictVerdictNoClearDifference,
+		CandidatePairedVerdictVerdictLikelyWorse,
+		CandidatePairedVerdictVerdictWorse,
+		CandidatePairedVerdictVerdictTooFewPairs,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s CandidatePairedVerdictVerdict) MarshalText() ([]byte, error) {
+	switch s {
+	case CandidatePairedVerdictVerdictImproved:
+		return []byte(s), nil
+	case CandidatePairedVerdictVerdictLikelyImproved:
+		return []byte(s), nil
+	case CandidatePairedVerdictVerdictNoClearDifference:
+		return []byte(s), nil
+	case CandidatePairedVerdictVerdictLikelyWorse:
+		return []byte(s), nil
+	case CandidatePairedVerdictVerdictWorse:
+		return []byte(s), nil
+	case CandidatePairedVerdictVerdictTooFewPairs:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *CandidatePairedVerdictVerdict) UnmarshalText(data []byte) error {
+	switch CandidatePairedVerdictVerdict(data) {
+	case CandidatePairedVerdictVerdictImproved:
+		*s = CandidatePairedVerdictVerdictImproved
+		return nil
+	case CandidatePairedVerdictVerdictLikelyImproved:
+		*s = CandidatePairedVerdictVerdictLikelyImproved
+		return nil
+	case CandidatePairedVerdictVerdictNoClearDifference:
+		*s = CandidatePairedVerdictVerdictNoClearDifference
+		return nil
+	case CandidatePairedVerdictVerdictLikelyWorse:
+		*s = CandidatePairedVerdictVerdictLikelyWorse
+		return nil
+	case CandidatePairedVerdictVerdictWorse:
+		*s = CandidatePairedVerdictVerdictWorse
+		return nil
+	case CandidatePairedVerdictVerdictTooFewPairs:
+		*s = CandidatePairedVerdictVerdictTooFewPairs
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
 
 // 02:DISC-006. Four fields and no more: this response is a page of a list, and every field search
 // carries that is missing here is missing because it would have been a constant (see the operation's
@@ -8554,6 +8724,7 @@ func (*Error) getPlatformSettingsRes()             {}
 func (*Error) getPublicPublicationRes()            {}
 func (*Error) getRunSettingsRes()                  {}
 func (*Error) getSkillImportLimitsRes()            {}
+func (*Error) listCandidateVersionsRes()           {}
 func (*Error) listCheckKindsRes()                  {}
 func (*Error) listDownloadArtifactsRes()           {}
 func (*Error) listEvaluationBatchesRes()           {}
@@ -8571,6 +8742,78 @@ func (*Error) listSkillVersionsRes()               {}
 func (*Error) publicSearchSkillsRes()              {}
 func (*Error) searchSkillsWithCorrectedIntentRes() {}
 func (*Error) writeSearchMatchReasonsRes()         {}
+
+type EvaluateReflectionCandidatesConflict Error
+
+func (*EvaluateReflectionCandidatesConflict) evaluateReflectionCandidatesRes() {}
+
+type EvaluateReflectionCandidatesForbidden Error
+
+func (*EvaluateReflectionCandidatesForbidden) evaluateReflectionCandidatesRes() {}
+
+type EvaluateReflectionCandidatesNotFound Error
+
+func (*EvaluateReflectionCandidatesNotFound) evaluateReflectionCandidatesRes() {}
+
+type EvaluateReflectionCandidatesServiceUnavailable Error
+
+func (*EvaluateReflectionCandidatesServiceUnavailable) evaluateReflectionCandidatesRes() {}
+
+type EvaluateReflectionCandidatesUnauthorized Error
+
+func (*EvaluateReflectionCandidatesUnauthorized) evaluateReflectionCandidatesRes() {}
+
+type EvaluateReflectionCandidatesUnprocessableEntity struct {
+	Error            string                                                                `json:"error"`
+	UnconfirmedPairs []EvaluateReflectionCandidatesUnprocessableEntityUnconfirmedPairsItem `json:"unconfirmed_pairs"`
+}
+
+// GetError returns the value of Error.
+func (s *EvaluateReflectionCandidatesUnprocessableEntity) GetError() string {
+	return s.Error
+}
+
+// GetUnconfirmedPairs returns the value of UnconfirmedPairs.
+func (s *EvaluateReflectionCandidatesUnprocessableEntity) GetUnconfirmedPairs() []EvaluateReflectionCandidatesUnprocessableEntityUnconfirmedPairsItem {
+	return s.UnconfirmedPairs
+}
+
+// SetError sets the value of Error.
+func (s *EvaluateReflectionCandidatesUnprocessableEntity) SetError(val string) {
+	s.Error = val
+}
+
+// SetUnconfirmedPairs sets the value of UnconfirmedPairs.
+func (s *EvaluateReflectionCandidatesUnprocessableEntity) SetUnconfirmedPairs(val []EvaluateReflectionCandidatesUnprocessableEntityUnconfirmedPairsItem) {
+	s.UnconfirmedPairs = val
+}
+
+func (*EvaluateReflectionCandidatesUnprocessableEntity) evaluateReflectionCandidatesRes() {}
+
+type EvaluateReflectionCandidatesUnprocessableEntityUnconfirmedPairsItem struct {
+	SkillVersionID uuid.UUID `json:"skill_version_id"`
+	TestCaseID     uuid.UUID `json:"test_case_id"`
+}
+
+// GetSkillVersionID returns the value of SkillVersionID.
+func (s *EvaluateReflectionCandidatesUnprocessableEntityUnconfirmedPairsItem) GetSkillVersionID() uuid.UUID {
+	return s.SkillVersionID
+}
+
+// GetTestCaseID returns the value of TestCaseID.
+func (s *EvaluateReflectionCandidatesUnprocessableEntityUnconfirmedPairsItem) GetTestCaseID() uuid.UUID {
+	return s.TestCaseID
+}
+
+// SetSkillVersionID sets the value of SkillVersionID.
+func (s *EvaluateReflectionCandidatesUnprocessableEntityUnconfirmedPairsItem) SetSkillVersionID(val uuid.UUID) {
+	s.SkillVersionID = val
+}
+
+// SetTestCaseID sets the value of TestCaseID.
+func (s *EvaluateReflectionCandidatesUnprocessableEntityUnconfirmedPairsItem) SetTestCaseID(val uuid.UUID) {
+	s.TestCaseID = val
+}
 
 // One judgement of one run (EVAL-001), and a resource of its own because it answers a question `Run`
 // does not. `Run.status` records what happened during execution; `Evaluation.overall` records whether
@@ -14723,6 +14966,81 @@ func (s *LiftSkillTakedownReq) SetNote(val string) {
 	s.Note = val
 }
 
+type ListCandidateVersionsOK struct {
+	CandidateVersions []ListCandidateVersionsOKCandidateVersionsItem `json:"candidate_versions"`
+}
+
+// GetCandidateVersions returns the value of CandidateVersions.
+func (s *ListCandidateVersionsOK) GetCandidateVersions() []ListCandidateVersionsOKCandidateVersionsItem {
+	return s.CandidateVersions
+}
+
+// SetCandidateVersions sets the value of CandidateVersions.
+func (s *ListCandidateVersionsOK) SetCandidateVersions(val []ListCandidateVersionsOKCandidateVersionsItem) {
+	s.CandidateVersions = val
+}
+
+func (*ListCandidateVersionsOK) listCandidateVersionsRes() {}
+
+type ListCandidateVersionsOKCandidateVersionsItem struct {
+	VersionID    uuid.UUID `json:"version_id"`
+	ReflectionID uuid.UUID `json:"reflection_id"`
+	// The batch the round reflected on.
+	BatchID   uuid.UUID `json:"batch_id"`
+	Round     int       `json:"round"`
+	Candidate int       `json:"candidate"`
+}
+
+// GetVersionID returns the value of VersionID.
+func (s *ListCandidateVersionsOKCandidateVersionsItem) GetVersionID() uuid.UUID {
+	return s.VersionID
+}
+
+// GetReflectionID returns the value of ReflectionID.
+func (s *ListCandidateVersionsOKCandidateVersionsItem) GetReflectionID() uuid.UUID {
+	return s.ReflectionID
+}
+
+// GetBatchID returns the value of BatchID.
+func (s *ListCandidateVersionsOKCandidateVersionsItem) GetBatchID() uuid.UUID {
+	return s.BatchID
+}
+
+// GetRound returns the value of Round.
+func (s *ListCandidateVersionsOKCandidateVersionsItem) GetRound() int {
+	return s.Round
+}
+
+// GetCandidate returns the value of Candidate.
+func (s *ListCandidateVersionsOKCandidateVersionsItem) GetCandidate() int {
+	return s.Candidate
+}
+
+// SetVersionID sets the value of VersionID.
+func (s *ListCandidateVersionsOKCandidateVersionsItem) SetVersionID(val uuid.UUID) {
+	s.VersionID = val
+}
+
+// SetReflectionID sets the value of ReflectionID.
+func (s *ListCandidateVersionsOKCandidateVersionsItem) SetReflectionID(val uuid.UUID) {
+	s.ReflectionID = val
+}
+
+// SetBatchID sets the value of BatchID.
+func (s *ListCandidateVersionsOKCandidateVersionsItem) SetBatchID(val uuid.UUID) {
+	s.BatchID = val
+}
+
+// SetRound sets the value of Round.
+func (s *ListCandidateVersionsOKCandidateVersionsItem) SetRound(val int) {
+	s.Round = val
+}
+
+// SetCandidate sets the value of Candidate.
+func (s *ListCandidateVersionsOKCandidateVersionsItem) SetCandidate(val int) {
+	s.Candidate = val
+}
+
 type ListCheckKindsOK struct {
 	Kinds    []CheckKind `json:"kinds"`
 	MaxNodes int         `json:"max_nodes"`
@@ -15664,6 +15982,12 @@ type ListSkillVersionsOKVersionsItem struct {
 	VersionNumber int       `json:"version_number"`
 	ContentHash   string    `json:"content_hash"`
 	CreatedAt     time.Time `json:"created_at"`
+	// Built only to be evaluated as a candidate of an improvement round. Unless it was also promoted, it
+	// is outside the Skill's line: it runs, forks and downloads by its id but is not the newest version
+	// and cannot be released.
+	HeldForEvaluation bool `json:"held_for_evaluation"`
+	// A held version that was adopted into the Skill's line.
+	Promoted bool `json:"promoted"`
 }
 
 // GetVersionID returns the value of VersionID.
@@ -15686,6 +16010,16 @@ func (s *ListSkillVersionsOKVersionsItem) GetCreatedAt() time.Time {
 	return s.CreatedAt
 }
 
+// GetHeldForEvaluation returns the value of HeldForEvaluation.
+func (s *ListSkillVersionsOKVersionsItem) GetHeldForEvaluation() bool {
+	return s.HeldForEvaluation
+}
+
+// GetPromoted returns the value of Promoted.
+func (s *ListSkillVersionsOKVersionsItem) GetPromoted() bool {
+	return s.Promoted
+}
+
 // SetVersionID sets the value of VersionID.
 func (s *ListSkillVersionsOKVersionsItem) SetVersionID(val uuid.UUID) {
 	s.VersionID = val
@@ -15704,6 +16038,16 @@ func (s *ListSkillVersionsOKVersionsItem) SetContentHash(val string) {
 // SetCreatedAt sets the value of CreatedAt.
 func (s *ListSkillVersionsOKVersionsItem) SetCreatedAt(val time.Time) {
 	s.CreatedAt = val
+}
+
+// SetHeldForEvaluation sets the value of HeldForEvaluation.
+func (s *ListSkillVersionsOKVersionsItem) SetHeldForEvaluation(val bool) {
+	s.HeldForEvaluation = val
+}
+
+// SetPromoted sets the value of Promoted.
+func (s *ListSkillVersionsOKVersionsItem) SetPromoted(val bool) {
+	s.Promoted = val
 }
 
 type ListSkillsBadRequest Error
@@ -16567,6 +16911,96 @@ func (o NilInt64) Get() (v int64, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o NilInt64) Or(d int64) int64 {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewNilReflectionAdoption returns new NilReflectionAdoption with value set to v.
+func NewNilReflectionAdoption(v ReflectionAdoption) NilReflectionAdoption {
+	return NilReflectionAdoption{
+		Value: v,
+	}
+}
+
+// NilReflectionAdoption is nullable ReflectionAdoption.
+type NilReflectionAdoption struct {
+	Value ReflectionAdoption
+	Null  bool
+}
+
+// SetTo sets value to v.
+func (o *NilReflectionAdoption) SetTo(v ReflectionAdoption) {
+	o.Null = false
+	o.Value = v
+}
+
+// IsNull returns true if value is Null.
+func (o NilReflectionAdoption) IsNull() bool { return o.Null }
+
+// SetToNull sets value to null.
+func (o *NilReflectionAdoption) SetToNull() {
+	o.Null = true
+	var v ReflectionAdoption
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o NilReflectionAdoption) Get() (v ReflectionAdoption, ok bool) {
+	if o.Null {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o NilReflectionAdoption) Or(d ReflectionAdoption) ReflectionAdoption {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewNilReflectionEvaluation returns new NilReflectionEvaluation with value set to v.
+func NewNilReflectionEvaluation(v ReflectionEvaluation) NilReflectionEvaluation {
+	return NilReflectionEvaluation{
+		Value: v,
+	}
+}
+
+// NilReflectionEvaluation is nullable ReflectionEvaluation.
+type NilReflectionEvaluation struct {
+	Value ReflectionEvaluation
+	Null  bool
+}
+
+// SetTo sets value to v.
+func (o *NilReflectionEvaluation) SetTo(v ReflectionEvaluation) {
+	o.Null = false
+	o.Value = v
+}
+
+// IsNull returns true if value is Null.
+func (o NilReflectionEvaluation) IsNull() bool { return o.Null }
+
+// SetToNull sets value to null.
+func (o *NilReflectionEvaluation) SetToNull() {
+	o.Null = true
+	var v ReflectionEvaluation
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o NilReflectionEvaluation) Get() (v ReflectionEvaluation, ok bool) {
+	if o.Null {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o NilReflectionEvaluation) Or(d ReflectionEvaluation) ReflectionEvaluation {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -27330,6 +27764,7 @@ const (
 	PublishingRefusalReasonValidationBlocked     PublishingRefusalReason = "validation_blocked"
 	PublishingRefusalReasonRightsNotAttested     PublishingRefusalReason = "rights_not_attested"
 	PublishingRefusalReasonLicenseNotDeclarable  PublishingRefusalReason = "license_not_declarable"
+	PublishingRefusalReasonHeldForEvaluation     PublishingRefusalReason = "held_for_evaluation"
 	PublishingRefusalReasonFileRemovedByPackager PublishingRefusalReason = "file_removed_by_packager"
 	PublishingRefusalReasonMemberWithdrawn       PublishingRefusalReason = "member_withdrawn"
 	PublishingRefusalReasonVersionShape          PublishingRefusalReason = "version_shape"
@@ -27360,6 +27795,7 @@ func (PublishingRefusalReason) AllValues() []PublishingRefusalReason {
 		PublishingRefusalReasonValidationBlocked,
 		PublishingRefusalReasonRightsNotAttested,
 		PublishingRefusalReasonLicenseNotDeclarable,
+		PublishingRefusalReasonHeldForEvaluation,
 		PublishingRefusalReasonFileRemovedByPackager,
 		PublishingRefusalReasonMemberWithdrawn,
 		PublishingRefusalReasonVersionShape,
@@ -27403,6 +27839,8 @@ func (s PublishingRefusalReason) MarshalText() ([]byte, error) {
 	case PublishingRefusalReasonRightsNotAttested:
 		return []byte(s), nil
 	case PublishingRefusalReasonLicenseNotDeclarable:
+		return []byte(s), nil
+	case PublishingRefusalReasonHeldForEvaluation:
 		return []byte(s), nil
 	case PublishingRefusalReasonFileRemovedByPackager:
 		return []byte(s), nil
@@ -27474,6 +27912,9 @@ func (s *PublishingRefusalReason) UnmarshalText(data []byte) error {
 		return nil
 	case PublishingRefusalReasonLicenseNotDeclarable:
 		*s = PublishingRefusalReasonLicenseNotDeclarable
+		return nil
+	case PublishingRefusalReasonHeldForEvaluation:
+		*s = PublishingRefusalReasonHeldForEvaluation
 		return nil
 	case PublishingRefusalReasonFileRemovedByPackager:
 		*s = PublishingRefusalReasonFileRemovedByPackager
@@ -27558,6 +27999,43 @@ func (*ReflectOnEvaluationBatchUnauthorized) reflectOnEvaluationBatchRes() {}
 type ReflectOnEvaluationBatchUnprocessableEntity Error
 
 func (*ReflectOnEvaluationBatchUnprocessableEntity) reflectOnEvaluationBatchRes() {}
+
+// Ref: #/components/schemas/ReflectionAdoption
+type ReflectionAdoption struct {
+	Candidate      int       `json:"candidate"`
+	SkillVersionID uuid.UUID `json:"skill_version_id"`
+	AdoptedAt      time.Time `json:"adopted_at"`
+}
+
+// GetCandidate returns the value of Candidate.
+func (s *ReflectionAdoption) GetCandidate() int {
+	return s.Candidate
+}
+
+// GetSkillVersionID returns the value of SkillVersionID.
+func (s *ReflectionAdoption) GetSkillVersionID() uuid.UUID {
+	return s.SkillVersionID
+}
+
+// GetAdoptedAt returns the value of AdoptedAt.
+func (s *ReflectionAdoption) GetAdoptedAt() time.Time {
+	return s.AdoptedAt
+}
+
+// SetCandidate sets the value of Candidate.
+func (s *ReflectionAdoption) SetCandidate(val int) {
+	s.Candidate = val
+}
+
+// SetSkillVersionID sets the value of SkillVersionID.
+func (s *ReflectionAdoption) SetSkillVersionID(val uuid.UUID) {
+	s.SkillVersionID = val
+}
+
+// SetAdoptedAt sets the value of AdoptedAt.
+func (s *ReflectionAdoption) SetAdoptedAt(val time.Time) {
+	s.AdoptedAt = val
+}
 
 // Ref: #/components/schemas/ReflectionCandidate
 type ReflectionCandidate struct {
@@ -27709,6 +28187,143 @@ func (s *ReflectionCandidateOutcome) UnmarshalText(data []byte) error {
 	default:
 		return errors.Errorf("invalid value: %q", data)
 	}
+}
+
+// Ref: #/components/schemas/ReflectionCandidateStanding
+type ReflectionCandidateStanding struct {
+	Candidate int `json:"candidate"`
+	// The held version built for the candidate; null when it is unavailable.
+	SkillVersionID NilUUID `json:"skill_version_id"`
+	BatchID        NilUUID `json:"batch_id"`
+	// Suggestions left out of the version, because the user rejected them or they failed their re-check.
+	SkippedSuggestionIds []uuid.UUID `json:"skipped_suggestion_ids"`
+	// Every trial of the candidate's batch has a result, or the batch stopped.
+	Settled bool `json:"settled"`
+	// On at least one development case its pass rate is the best of the candidates and above the source
+	// batch's. Decided on development cases only.
+	Kept    bool                   `json:"kept"`
+	Dev     CandidatePairedVerdict `json:"dev"`
+	HeldOut CandidatePairedVerdict `json:"held_out"`
+}
+
+// GetCandidate returns the value of Candidate.
+func (s *ReflectionCandidateStanding) GetCandidate() int {
+	return s.Candidate
+}
+
+// GetSkillVersionID returns the value of SkillVersionID.
+func (s *ReflectionCandidateStanding) GetSkillVersionID() NilUUID {
+	return s.SkillVersionID
+}
+
+// GetBatchID returns the value of BatchID.
+func (s *ReflectionCandidateStanding) GetBatchID() NilUUID {
+	return s.BatchID
+}
+
+// GetSkippedSuggestionIds returns the value of SkippedSuggestionIds.
+func (s *ReflectionCandidateStanding) GetSkippedSuggestionIds() []uuid.UUID {
+	return s.SkippedSuggestionIds
+}
+
+// GetSettled returns the value of Settled.
+func (s *ReflectionCandidateStanding) GetSettled() bool {
+	return s.Settled
+}
+
+// GetKept returns the value of Kept.
+func (s *ReflectionCandidateStanding) GetKept() bool {
+	return s.Kept
+}
+
+// GetDev returns the value of Dev.
+func (s *ReflectionCandidateStanding) GetDev() CandidatePairedVerdict {
+	return s.Dev
+}
+
+// GetHeldOut returns the value of HeldOut.
+func (s *ReflectionCandidateStanding) GetHeldOut() CandidatePairedVerdict {
+	return s.HeldOut
+}
+
+// SetCandidate sets the value of Candidate.
+func (s *ReflectionCandidateStanding) SetCandidate(val int) {
+	s.Candidate = val
+}
+
+// SetSkillVersionID sets the value of SkillVersionID.
+func (s *ReflectionCandidateStanding) SetSkillVersionID(val NilUUID) {
+	s.SkillVersionID = val
+}
+
+// SetBatchID sets the value of BatchID.
+func (s *ReflectionCandidateStanding) SetBatchID(val NilUUID) {
+	s.BatchID = val
+}
+
+// SetSkippedSuggestionIds sets the value of SkippedSuggestionIds.
+func (s *ReflectionCandidateStanding) SetSkippedSuggestionIds(val []uuid.UUID) {
+	s.SkippedSuggestionIds = val
+}
+
+// SetSettled sets the value of Settled.
+func (s *ReflectionCandidateStanding) SetSettled(val bool) {
+	s.Settled = val
+}
+
+// SetKept sets the value of Kept.
+func (s *ReflectionCandidateStanding) SetKept(val bool) {
+	s.Kept = val
+}
+
+// SetDev sets the value of Dev.
+func (s *ReflectionCandidateStanding) SetDev(val CandidatePairedVerdict) {
+	s.Dev = val
+}
+
+// SetHeldOut sets the value of HeldOut.
+func (s *ReflectionCandidateStanding) SetHeldOut(val CandidatePairedVerdict) {
+	s.HeldOut = val
+}
+
+// Ref: #/components/schemas/ReflectionEvaluation
+type ReflectionEvaluation struct {
+	Candidates []ReflectionCandidateStanding `json:"candidates"`
+	// The kept candidate with the highest held-out mean whose held-out verdict is likely_improved or
+	// better, once every candidate batch has settled; null when none qualifies, which means keep the
+	// current version.
+	Recommended NilInt                `json:"recommended"`
+	Adopted     NilReflectionAdoption `json:"adopted"`
+}
+
+// GetCandidates returns the value of Candidates.
+func (s *ReflectionEvaluation) GetCandidates() []ReflectionCandidateStanding {
+	return s.Candidates
+}
+
+// GetRecommended returns the value of Recommended.
+func (s *ReflectionEvaluation) GetRecommended() NilInt {
+	return s.Recommended
+}
+
+// GetAdopted returns the value of Adopted.
+func (s *ReflectionEvaluation) GetAdopted() NilReflectionAdoption {
+	return s.Adopted
+}
+
+// SetCandidates sets the value of Candidates.
+func (s *ReflectionEvaluation) SetCandidates(val []ReflectionCandidateStanding) {
+	s.Candidates = val
+}
+
+// SetRecommended sets the value of Recommended.
+func (s *ReflectionEvaluation) SetRecommended(val NilInt) {
+	s.Recommended = val
+}
+
+// SetAdopted sets the value of Adopted.
+func (s *ReflectionEvaluation) SetAdopted(val NilReflectionAdoption) {
+	s.Adopted = val
 }
 
 // A candidate skill the platform found and did not create. One bad skill does not refuse the rest of a
@@ -36537,9 +37152,11 @@ func (s *TooManyRequestsHeaders) SetResponse(val Error) {
 }
 
 func (*TooManyRequestsHeaders) actOnCreationSessionRes()              {}
+func (*TooManyRequestsHeaders) adoptReflectionCandidateRes()          {}
 func (*TooManyRequestsHeaders) browseCatalogRes()                     {}
 func (*TooManyRequestsHeaders) createCreationSessionRes()             {}
 func (*TooManyRequestsHeaders) createSkillVersionFromSuggestionsRes() {}
+func (*TooManyRequestsHeaders) evaluateReflectionCandidatesRes()      {}
 func (*TooManyRequestsHeaders) generateSkillRes()                     {}
 func (*TooManyRequestsHeaders) importSkillFromURLRes()                {}
 func (*TooManyRequestsHeaders) publicSearchSkillsRes()                {}

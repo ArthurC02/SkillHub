@@ -341,7 +341,7 @@ func (q *Queries) GetLineageSource(ctx context.Context, id pgtype.UUID) (GetLine
 
 const getOldestSkillVersion = `-- name: GetOldestSkillVersion :one
 SELECT id, skill_id, version_number, source_id
-FROM skill_versions
+FROM skill_line_versions
 WHERE skill_id = $1
 ORDER BY version_number
 LIMIT 1
@@ -367,7 +367,7 @@ func (q *Queries) GetOldestSkillVersion(ctx context.Context, skillID pgtype.UUID
 }
 
 const getPreviousSkillVersion = `-- name: GetPreviousSkillVersion :one
-SELECT id, skill_id, version_number FROM skill_versions
+SELECT id, skill_id, version_number FROM skill_line_versions
 WHERE skill_id = $1 AND workspace_id = $2 AND version_number < $3
 ORDER BY version_number DESC
 LIMIT 1

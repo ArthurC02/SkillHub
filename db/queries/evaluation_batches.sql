@@ -1,7 +1,11 @@
 -- name: InsertEvaluationBatch :one
-INSERT INTO evaluation_batches (workspace_id, skill_id, skill_version_id, trials, with_baseline, created_by)
-VALUES (@workspace_id, @skill_id, @skill_version_id, @trials, @with_baseline, @created_by)
+INSERT INTO evaluation_batches (workspace_id, skill_id, skill_version_id, trials, with_baseline, created_by, origin_key)
+VALUES (@workspace_id, @skill_id, @skill_version_id, @trials, @with_baseline, @created_by, sqlc.narg(origin_key))
+ON CONFLICT (workspace_id, origin_key) WHERE origin_key IS NOT NULL DO NOTHING
 RETURNING *;
+
+-- name: GetEvaluationBatchByOriginKey :one
+SELECT * FROM evaluation_batches WHERE workspace_id = @workspace_id AND origin_key = @origin_key;
 
 -- name: InsertEvaluationBatchTrials :exec
 INSERT INTO evaluation_batch_items (batch_id, workspace_id, test_case_id, position, trial, summary_hash, skill_withheld)

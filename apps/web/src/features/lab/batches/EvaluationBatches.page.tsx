@@ -1,7 +1,7 @@
 import { useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
-import { SkillVersionPicker, SkillWorkspaceNav, useSkillVersions } from "../../skill";
+import { SkillVersionPicker, SkillWorkspaceNav, lineNewest, useSkillVersions } from "../../skill";
 import { useBatchReflections, useEvaluationBatchReport } from "./batches.service";
 import { heldOutTestCaseIds } from "./reflection.model";
 import { NewBatchForm, type BatchChoice } from "./components/NewBatchForm";
@@ -21,10 +21,7 @@ export function EvaluationBatches() {
   const versionNumbers = new Map(
     versionRows.map((v) => [v.version_id.toLowerCase(), v.version_number]),
   );
-  const newest = versionRows.reduce<(typeof versionRows)[number] | undefined>(
-    (best, v) => (best === undefined || v.version_number > best.version_number ? v : best),
-    undefined,
-  );
+  const newest = lineNewest(versionRows);
   const { from, waiting: waitingForSource } = rerunSource;
 
   return (

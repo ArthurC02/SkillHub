@@ -2,7 +2,8 @@ import { Link, useParams, useSearch } from "@tanstack/react-router";
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { ApiError } from "../../../core/api/client";
-import { SkillWorkspaceNav, useSkillVersions } from "../../skill";
+import { SkillWorkspaceNav, inLine, useSkillVersions } from "../../skill";
+import type { ListedSkillVersion } from "../../../core/api/types";
 import { useTestCases } from "../testcases.service";
 import { useEvaluationBatchReport } from "./batches.service";
 import { ArmSummary } from "./components/ArmSummary";
@@ -97,13 +98,13 @@ export function EvaluationBatch() {
   );
 }
 
-type VersionRow = { version_id: string; version_number: number };
-
-function newestOtherVersion(rows: VersionRow[], batchVersionId: string, batchNumber = 0) {
+function newestOtherVersion(rows: ListedSkillVersion[], batchVersionId: string, batchNumber = 0) {
   const own = batchVersionId.toLowerCase();
   return rows
-    .filter((v) => v.version_id.toLowerCase() !== own && v.version_number > batchNumber)
-    .reduce<VersionRow | undefined>(
+    .filter(
+      (v) => inLine(v) && v.version_id.toLowerCase() !== own && v.version_number > batchNumber,
+    )
+    .reduce<ListedSkillVersion | undefined>(
       (best, v) => (best === undefined || v.version_number > best.version_number ? v : best),
       undefined,
     );

@@ -29,7 +29,8 @@ import type {
   SkillDeletion,
   SkillDetail,
   SkillFiles,
-  SkillVersionSummary,
+  CandidateVersion,
+  ListedSkillVersion,
   SkillVersions,
 } from "../../core/api/types";
 
@@ -255,9 +256,9 @@ export function useSkillFiles(skillId: string) {
   });
 }
 
-function isVersionSummary(value: unknown): value is SkillVersionSummary {
+function isVersionSummary(value: unknown): value is ListedSkillVersion {
   if (!value || typeof value !== "object") return false;
-  const version = value as Partial<SkillVersionSummary>;
+  const version = value as Partial<ListedSkillVersion>;
   return (
     typeof version.version_id === "string" &&
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(version.version_id) &&
@@ -267,7 +268,9 @@ function isVersionSummary(value: unknown): value is SkillVersionSummary {
     typeof version.content_hash === "string" &&
     version.content_hash.trim().length > 0 &&
     typeof version.created_at === "string" &&
-    Number.isFinite(Date.parse(version.created_at))
+    Number.isFinite(Date.parse(version.created_at)) &&
+    typeof version.held_for_evaluation === "boolean" &&
+    typeof version.promoted === "boolean"
   );
 }
 
@@ -288,6 +291,36 @@ export async function getSkillVersions(skillId: string) {
   const result = await apiFetch<unknown>(`/skills/${skillId}/versions`);
   if (!isVersionList(result)) throw new Error("Invalid skill version list response");
   return result;
+}
+
+function isCandidateVersion(value: unknown): value is CandidateVersion {
+  if (!value || typeof value !== "object") return false;
+  const c = value as Partial<CandidateVersion>;
+  return (
+    typeof c.version_id === "string" &&
+    typeof c.reflection_id === "string" &&
+    typeof c.batch_id === "string" &&
+    Number.isSafeInteger(c.round) &&
+    (c.round ?? 0) >= 1 &&
+    Number.isSafeInteger(c.candidate) &&
+    (c.candidate ?? -1) >= 0
+  );
+}
+
+export async function getCandidateVersions(skillId: string) {
+  const result = await apiFetch<unknown>(`/skills/${skillId}/candidate-versions`);
+  const list = (result as { candidate_versions?: unknown } | null)?.candidate_versions;
+  if (!Array.isArray(list) || !list.every(isCandidateVersion))
+    throw new Error("Invalid candidate version list response");
+  return list;
+}
+
+export function useCandidateVersions(skillId: string, anyHeld: boolean) {
+  return useQuery({
+    queryKey: queryKeys.skills.candidateVersions(skillId),
+    queryFn: () => getCandidateVersions(skillId),
+    enabled: skillId.length > 0 && anyHeld,
+  });
 }
 
 export function useSkillVersions(skillId: string) {

@@ -261,7 +261,7 @@ func writeSuggestionEvent(
 	switch event := event.(type) {
 	case SuggestionDecided:
 		decided, err := q.DecideSuggestion(ctx, gen.DecideSuggestionParams{
-			Decision: string(event.Decision), ID: event.SuggestionID, WorkspaceID: workspaceID,
+			Decision: string(event.Decision), ID: event.SuggestionID, WorkspaceID: workspaceID, DecidedBy: event.by,
 		})
 		if err == nil {
 			ledger.suggestions[event.SuggestionID] = decided

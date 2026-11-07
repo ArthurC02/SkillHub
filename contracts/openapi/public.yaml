@@ -2183,12 +2183,23 @@ paths:
                     type: array
                     items:
                       type: object
-                      required: [version_id, version_number, content_hash, created_at]
+                      required: [version_id, version_number, content_hash, created_at, held_for_evaluation, promoted]
                       properties:
                         version_id: { type: string, format: uuid }
                         version_number: { type: integer }
                         content_hash: { type: string }
                         created_at: { type: string, format: date-time }
+                        held_for_evaluation:
+                          type: boolean
+                          description: |
+                            Built only to be evaluated as a candidate of an
+                            improvement round. Unless it was also promoted, it
+                            is outside the Skill's line: it runs, forks and
+                            downloads by its id but is not the newest version
+                            and cannot be released.
+                        promoted:
+                          type: boolean
+                          description: A held version that was adopted into the Skill's line.
         "401":
           description: No valid session.
           content:
@@ -2249,6 +2260,48 @@ paths:
               schema:
                 $ref: "#/components/schemas/CategorizedFindings"
         "429": { $ref: "#/components/responses/TooManyRequests" }
+  /skills/{id}/candidate-versions:
+    get:
+      operationId: listCandidateVersions
+      summary: Name the improvement round and candidate each evaluated candidate version was built for (EVAL-002)
+      description: |
+        One entry per candidate version an improvement round built and
+        evaluated. `round` numbers the Skill's rounds from 1 in the order
+        they were made, across every batch. A Skill in another workspace
+        answers with an empty list.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The candidate versions, by round then candidate.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [candidate_versions]
+                properties:
+                  candidate_versions:
+                    type: array
+                    items:
+                      type: object
+                      required: [version_id, reflection_id, batch_id, round, candidate]
+                      properties:
+                        version_id: { type: string, format: uuid }
+                        reflection_id: { type: string, format: uuid }
+                        batch_id:
+                          type: string
+                          format: uuid
+                          description: The batch the round reflected on.
+                        round: { type: integer, minimum: 1 }
+                        candidate: { type: integer, minimum: 0, maximum: 3 }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /skills/{id}/versions/from-suggestions:
     post:
       operationId: createSkillVersionFromSuggestions
@@ -5804,9 +5857,10 @@ paths:
         "409":
           description: |
             The batch is still launching, or a development case has a trial
-            that has not finished or not been evaluated yet, or the round asks
-            for several candidates while the operator has set no round credit
-            cap; no model call was made.
+            that has not finished or not been evaluated yet, or the batch's
+            version is no longer the newest version in the Skill's line, or
+            the round asks for several candidates while the operator has set
+            no round credit cap; no model call was made.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -5852,6 +5906,168 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "404":
           description: Not the caller's batch, or not this skill's.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /skills/{id}/evaluation-batches/{batchId}/reflections/{reflectionId}/evaluate:
+    post:
+      operationId: evaluateReflectionCandidates
+      summary: Build one held version per candidate of a round and run each on all of the round's test cases (EVAL-002)
+      description: |
+        The call is the user's decision: it accepts every still-pending
+        suggestion of the round, leaves rejected ones out, and builds one
+        version per candidate from that candidate's applicable suggestions.
+        Each version is held for evaluation: it runs, forks and downloads by
+        its own id but is outside the Skill's line, so it is not the Skill's
+        newest version, is not indexed and cannot be released until it is
+        adopted. A candidate with no applicable suggestion is unavailable and
+        gets no version.
+
+        Each built candidate then gets one batch on all of the round's test
+        cases, with the source batch's trials and arms. Before any batch
+        starts the projected trial cost of every candidate batch is checked
+        against the round credit cap and the balance, and every candidate
+        version must have its run permissions confirmed on every case.
+        Repeating the call after a refusal or a failure reuses the versions
+        and batches already made.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: batchId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: reflectionId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "200":
+          description: The round, with its `evaluation`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BatchReflection" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "403":
+          description: The account is not invited.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not the caller's round, batch or skill.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: |
+            The round's version is no longer the newest version in the
+            Skill's line, or several candidates would be evaluated while the
+            operator has set no round credit cap; no version or batch was made.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: |
+            The credit is short or the candidates' projected trial cost exceeds
+            the round credit cap, so nothing was built; or some candidate
+            versions need their run permissions confirmed on the listed cases,
+            so the versions exist but no batch was started.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error: { type: string }
+                  unconfirmed_pairs:
+                    type: array
+                    items:
+                      type: object
+                      required: [skill_version_id, test_case_id]
+                      properties:
+                        skill_version_id: { type: string, format: uuid }
+                        test_case_id: { type: string, format: uuid }
+        "503":
+          description: Model calls are halted; nothing was built or charged.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /skills/{id}/evaluation-batches/{batchId}/reflections/{reflectionId}/adopt:
+    post:
+      operationId: adoptReflectionCandidate
+      summary: Adopt one evaluated candidate of a round into the Skill's line (EVAL-002)
+      description: |
+        Promotes the candidate's held version into the Skill's line, where it
+        becomes the newest version: the Skill's summary and search document
+        follow it and it can be released. Written once per round; repeating
+        it for the same candidate is a no-op. Refused when the Skill's line
+        has moved on from the round's version.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: batchId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: reflectionId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [candidate]
+              properties:
+                candidate:
+                  type: integer
+                  minimum: 0
+                  maximum: 3
+      responses:
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "200":
+          description: The round, with its `evaluation.adopted`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BatchReflection" }
+        "400":
+          description: Body is not JSON or names no candidate.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "403":
+          description: The account is not invited.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Not the caller's round, or the candidate was not evaluated.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: Another candidate of this round was already adopted, or the Skill's line has a newer version than the round's.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "422":
+          description: The candidate is unavailable, so it has no version to adopt.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -9938,6 +10154,7 @@ components:
             - validation_blocked
             - rights_not_attested
             - license_not_declarable
+            - held_for_evaluation
             - file_removed_by_packager
             - member_withdrawn
             - version_shape
@@ -12766,7 +12983,7 @@ components:
         One improvement round read from an evaluation batch's development
         test cases. Frozen once written; only its suggestions' decisions move.
       type: object
-      required: [reflection_id, batch_id, dev_test_case_ids, outcome, runs_read, runs_not_read, created_at, suggestions, candidates]
+      required: [reflection_id, batch_id, dev_test_case_ids, outcome, runs_read, runs_not_read, created_at, suggestions, candidates, evaluation]
       properties:
         reflection_id: { type: string, format: uuid }
         batch_id: { type: string, format: uuid }
@@ -12807,6 +13024,77 @@ components:
             `suggestions` say everything. With several, `outcome` is the best
             of the candidates' outcomes and `suggestions` holds them all.
           items: { $ref: "#/components/schemas/ReflectionCandidate" }
+        evaluation:
+          description: The candidates' versions and batches once they were evaluated; null before.
+          oneOf:
+            - $ref: "#/components/schemas/ReflectionEvaluation"
+            - type: "null"
+    ReflectionEvaluation:
+      type: object
+      required: [candidates, recommended, adopted]
+      properties:
+        candidates:
+          type: array
+          maxItems: 4
+          items: { $ref: "#/components/schemas/ReflectionCandidateStanding" }
+        recommended:
+          type: [integer, "null"]
+          description: |
+            The kept candidate with the highest held-out mean whose held-out
+            verdict is likely_improved or better, once every candidate batch
+            has settled; null when none qualifies, which means keep the
+            current version.
+        adopted:
+          oneOf:
+            - $ref: "#/components/schemas/ReflectionAdoption"
+            - type: "null"
+    ReflectionCandidateStanding:
+      type: object
+      required: [candidate, skill_version_id, batch_id, skipped_suggestion_ids, settled, kept, dev, held_out]
+      properties:
+        candidate: { type: integer, minimum: 0, maximum: 3 }
+        skill_version_id:
+          type: [string, "null"]
+          format: uuid
+          description: The held version built for the candidate; null when it is unavailable.
+        batch_id:
+          type: [string, "null"]
+          format: uuid
+        skipped_suggestion_ids:
+          type: array
+          items: { type: string, format: uuid }
+          description: Suggestions left out of the version, because the user rejected them or they failed their re-check.
+        settled:
+          type: boolean
+          description: Every trial of the candidate's batch has a result, or the batch stopped.
+        kept:
+          type: boolean
+          description: |
+            On at least one development case its pass rate is the best of the
+            candidates and above the source batch's. Decided on development
+            cases only.
+        dev:
+          $ref: "#/components/schemas/CandidatePairedVerdict"
+        held_out:
+          $ref: "#/components/schemas/CandidatePairedVerdict"
+    CandidatePairedVerdict:
+      type: object
+      description: The paired difference of the candidate's pass rate against the source batch's over one set of cases.
+      required: [verdict, mean_difference, low, high]
+      properties:
+        verdict:
+          type: string
+          enum: [improved, likely_improved, no_clear_difference, likely_worse, worse, too_few_pairs]
+        mean_difference: { type: [number, "null"] }
+        low: { type: [number, "null"] }
+        high: { type: [number, "null"] }
+    ReflectionAdoption:
+      type: object
+      required: [candidate, skill_version_id, adopted_at]
+      properties:
+        candidate: { type: integer, minimum: 0, maximum: 3 }
+        skill_version_id: { type: string, format: uuid }
+        adopted_at: { type: string, format: date-time }
     ReflectionCandidate:
       type: object
       required: [focus, outcome, suggestion_ids]

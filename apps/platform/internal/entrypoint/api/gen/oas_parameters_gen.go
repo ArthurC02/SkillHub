@@ -22,6 +22,13 @@ type AddAcceptanceCriterionParams struct {
 	ID uuid.UUID
 }
 
+// AdoptReflectionCandidateParams is parameters of adoptReflectionCandidate operation.
+type AdoptReflectionCandidateParams struct {
+	ID           uuid.UUID
+	BatchId      uuid.UUID
+	ReflectionId uuid.UUID
+}
+
 // BrowseCatalogParams is parameters of browseCatalog operation.
 type BrowseCatalogParams struct {
 	Limit OptInt `json:",omitempty,omitzero"`
@@ -161,6 +168,13 @@ type DiffSkillVersionsParams struct {
 // DownloadArtifactContentParams is parameters of downloadArtifactContent operation.
 type DownloadArtifactContentParams struct {
 	ArtifactId uuid.UUID
+}
+
+// EvaluateReflectionCandidatesParams is parameters of evaluateReflectionCandidates operation.
+type EvaluateReflectionCandidatesParams struct {
+	ID           uuid.UUID
+	BatchId      uuid.UUID
+	ReflectionId uuid.UUID
 }
 
 // ExpediteAccountErasureParams is parameters of expediteAccountErasure operation.
@@ -356,6 +370,11 @@ type IngestTraceEventsParams struct {
 
 // LiftSkillTakedownParams is parameters of liftSkillTakedown operation.
 type LiftSkillTakedownParams struct {
+	ID uuid.UUID
+}
+
+// ListCandidateVersionsParams is parameters of listCandidateVersions operation.
+type ListCandidateVersionsParams struct {
 	ID uuid.UUID
 }
 

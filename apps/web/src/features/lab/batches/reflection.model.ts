@@ -5,7 +5,12 @@ import type {
 } from "@skillhub/api-client-ts";
 import { contractEnum } from "../../../core/api/contract-enum";
 import { isSuggestion, type ImprovementSuggestion } from "../../runs";
-import type { BatchTestCase, TrialOutcome } from "./batches.model";
+import {
+  isVerdict,
+  type BatchTestCase,
+  type DifferenceVerdict,
+  type TrialOutcome,
+} from "./batches.model";
 
 export type ReflectionOutcome = BatchReflectionOutcomeEnum;
 
@@ -29,7 +34,40 @@ export type BatchReflection = {
   created_at: string;
   suggestions: ImprovementSuggestion[];
   candidates: ReflectionCandidate[];
+  evaluation: ReflectionEvaluation | null;
 };
+
+export type PairedVerdict = {
+  verdict: DifferenceVerdict;
+  mean_difference: number | null;
+  low: number | null;
+  high: number | null;
+};
+
+export type CandidateStanding = {
+  candidate: number;
+  skill_version_id: string | null;
+  batch_id: string | null;
+  skipped_suggestion_ids: string[];
+  settled: boolean;
+  kept: boolean;
+  dev: PairedVerdict;
+  held_out: PairedVerdict;
+};
+
+export type ReflectionAdoption = {
+  candidate: number;
+  skill_version_id: string;
+  adopted_at: string;
+};
+
+export type ReflectionEvaluation = {
+  candidates: CandidateStanding[];
+  recommended: number | null;
+  adopted: ReflectionAdoption | null;
+};
+
+export type UnconfirmedPair = { skill_version_id: string; test_case_id: string };
 
 export type ReflectionCandidate = {
   focus: ReflectionCandidateFocusEnum;
@@ -94,8 +132,67 @@ export function isBatchReflection(value: unknown, batchId: string): value is Bat
     Array.isArray(value.suggestions) &&
     value.suggestions.every(isSuggestion) &&
     Array.isArray(value.candidates) &&
-    value.candidates.every(isCandidate)
+    value.candidates.every(isCandidate) &&
+    (value.evaluation === null || isEvaluation(value.evaluation))
   );
+}
+
+const isNumberOrNull = (value: unknown) => value === null || typeof value === "number";
+const isIdOrNull = (value: unknown) => value === null || typeof value === "string";
+const isCandidateIndex = (value: unknown) =>
+  typeof value === "number" && Number.isInteger(value) && value >= 0 && value <= 3;
+
+function isPaired(value: unknown): value is PairedVerdict {
+  return (
+    isRecord(value) &&
+    isVerdict(value.verdict) &&
+    isNumberOrNull(value.mean_difference) &&
+    isNumberOrNull(value.low) &&
+    isNumberOrNull(value.high)
+  );
+}
+
+function isStanding(value: unknown): value is CandidateStanding {
+  return (
+    isRecord(value) &&
+    isCandidateIndex(value.candidate) &&
+    isIdOrNull(value.skill_version_id) &&
+    isIdOrNull(value.batch_id) &&
+    Array.isArray(value.skipped_suggestion_ids) &&
+    value.skipped_suggestion_ids.every((id) => typeof id === "string") &&
+    typeof value.settled === "boolean" &&
+    typeof value.kept === "boolean" &&
+    isPaired(value.dev) &&
+    isPaired(value.held_out)
+  );
+}
+
+function isAdoption(value: unknown): value is ReflectionAdoption {
+  return (
+    isRecord(value) &&
+    isCandidateIndex(value.candidate) &&
+    typeof value.skill_version_id === "string" &&
+    typeof value.adopted_at === "string"
+  );
+}
+
+function isEvaluation(value: unknown): value is ReflectionEvaluation {
+  return (
+    isRecord(value) &&
+    Array.isArray(value.candidates) &&
+    value.candidates.every(isStanding) &&
+    (value.recommended === null || isCandidateIndex(value.recommended)) &&
+    (value.adopted === null || isAdoption(value.adopted))
+  );
+}
+
+export function unconfirmedPairs(body: unknown): UnconfirmedPair[] | undefined {
+  if (!isRecord(body) || !Array.isArray(body.unconfirmed_pairs)) return undefined;
+  const pairs = body.unconfirmed_pairs.filter(
+    (p): p is UnconfirmedPair =>
+      isRecord(p) && typeof p.skill_version_id === "string" && typeof p.test_case_id === "string",
+  );
+  return pairs.length > 0 ? pairs : undefined;
 }
 
 export function isBatchReflectionList(

@@ -31,6 +31,7 @@ type view struct {
 	CreatedAt      string                `json:"created_at"`
 	Suggestions    []eval.SuggestionView `json:"suggestions"`
 	Candidates     []candidateView       `json:"candidates"`
+	Evaluation     *evaluationView       `json:"evaluation"`
 }
 
 type candidateView struct {
@@ -85,7 +86,7 @@ func (h *Handler) Reflect(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, eval.ErrNotFound.Error())
 	case errors.Is(err, ErrInvalid):
 		httpx.WriteError(w, http.StatusBadRequest, err.Error())
-	case errors.Is(err, ErrNotReady), errors.Is(err, ErrRoundCapUnset):
+	case errors.Is(err, ErrNotReady), errors.Is(err, ErrRoundCapUnset), errors.Is(err, eval.ErrRoundVersionSuperseded):
 		httpx.WriteError(w, http.StatusConflict, err.Error())
 	case errors.Is(err, ErrCreditThreshold), errors.Is(err, ErrRoundOverCap):
 		httpx.WriteError(w, http.StatusUnprocessableEntity, err.Error())
@@ -158,6 +159,11 @@ func (h *Handler) view(ctx context.Context, workspaceID pgtype.UUID, rec eval.Re
 		Suggestions: suggestions,
 		Candidates:  candidatesOf(rec),
 	}
+	standings, err := h.Svc.Standings(ctx, workspaceID, rec)
+	if err != nil {
+		return view{}, err
+	}
+	out.Evaluation = viewOfStandings(standings)
 	for i, id := range row.DevTestCaseIds {
 		out.DevTestCaseIDs[i] = pgconv.UUIDString(id)
 	}

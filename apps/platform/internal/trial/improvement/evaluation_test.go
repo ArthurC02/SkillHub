@@ -218,9 +218,9 @@ func TestADecisionMustBeAChoiceOnAKnownSuggestionAndAcceptingAnAppliedOneIsFinal
 		after   Decision
 	}{
 		{"accepting", false, suggestionID, DecisionAccepted,
-			SuggestionDecided{suggestionID, DecisionAccepted}, DecisionAccepted},
+			SuggestionDecided{SuggestionID: suggestionID, Decision: DecisionAccepted}, DecisionAccepted},
 		{"rejecting", false, suggestionID, DecisionRejected,
-			SuggestionDecided{suggestionID, DecisionRejected}, DecisionRejected},
+			SuggestionDecided{SuggestionID: suggestionID, Decision: DecisionRejected}, DecisionRejected},
 		{"going back to pending is not a choice", false, suggestionID, DecisionPending,
 			Refused{RefusedNotAChoice}, DecisionPending},
 		{"an empty decision is not a choice", false, suggestionID, "",
@@ -232,7 +232,7 @@ func TestADecisionMustBeAChoiceOnAKnownSuggestionAndAcceptingAnAppliedOneIsFinal
 		{"rejecting an applied suggestion", true, suggestionID, DecisionRejected,
 			Refused{RefusedAcceptanceIsFinal}, DecisionAccepted},
 		{"accepting an applied suggestion again", true, suggestionID, DecisionAccepted,
-			SuggestionDecided{suggestionID, DecisionAccepted}, DecisionAccepted},
+			SuggestionDecided{SuggestionID: suggestionID, Decision: DecisionAccepted}, DecisionAccepted},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

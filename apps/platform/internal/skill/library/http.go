@@ -275,6 +275,8 @@ type skillVersionResponse struct {
 	VersionNumber int32  `json:"version_number"`
 	ContentHash   string `json:"content_hash"`
 	CreatedAt     string `json:"created_at"`
+	Held          bool   `json:"held_for_evaluation"`
+	Promoted      bool   `json:"promoted"`
 }
 
 func (h *Handler) Versions(w http.ResponseWriter, r *http.Request) {
@@ -300,6 +302,8 @@ func (h *Handler) Versions(w http.ResponseWriter, r *http.Request) {
 			VersionNumber: v.VersionNumber,
 			ContentHash:   v.ContentHash,
 			CreatedAt:     v.CreatedAt.Time.UTC().Format(time.RFC3339),
+			Held:          v.HeldForEvaluation,
+			Promoted:      v.Promoted,
 		})
 	}
 	httpx.WriteJSON(w, http.StatusOK, skillVersionsResponse{Versions: out})

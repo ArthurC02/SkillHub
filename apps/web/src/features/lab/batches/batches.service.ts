@@ -1,9 +1,14 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../../../core/api/client";
 import { queryKeys } from "../../../core/api/queryKeys";
-import { confirmPreflight } from "../lab.service";
+import { confirmPreflight, getPreflight } from "../lab.service";
 import { createVersionFromSuggestions } from "../../runs";
-import { isBatchReflection, isBatchReflectionList, type BatchReflection } from "./reflection.model";
+import {
+  isBatchReflection,
+  isBatchReflectionList,
+  type BatchReflection,
+  type UnconfirmedPair,
+} from "./reflection.model";
 import {
   isBatchComparison,
   isBatchList,
@@ -146,6 +151,73 @@ export function useApplyReflection(skillId: string, batchId: string) {
     onSettled: () => {
       void client.invalidateQueries({ queryKey: key });
       void client.invalidateQueries({ queryKey: queryKeys.skills.versions(skillId) });
+      void client.invalidateQueries({ queryKey: queryKeys.skills.candidateVersions(skillId) });
+    },
+  });
+}
+
+function replaceRound(held: BatchReflection[] | undefined, round: BatchReflection) {
+  return (held ?? []).map((r) =>
+    r.reflection_id.toLowerCase() === round.reflection_id.toLowerCase() ? round : r,
+  );
+}
+
+function useRoundAction<T>(
+  skillId: string,
+  batchId: string,
+  action: string,
+  body: (input: T) => unknown,
+) {
+  const client = useQueryClient();
+  const key = queryKeys.evaluationBatches.reflections(skillId, batchId);
+  return useMutation({
+    mutationFn: async ({ reflectionId, input }: { reflectionId: string; input: T }) => {
+      const round = await apiFetch<unknown>(
+        `${base(skillId)}/${batchId}/reflections/${reflectionId}/${action}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body(input)),
+        },
+      );
+      if (!isBatchReflection(round, batchId)) throw new Error("Invalid batch reflection");
+      return round;
+    },
+    onSuccess: (round) =>
+      client.setQueryData<BatchReflection[]>(key, (held) => replaceRound(held, round)),
+    onSettled: () => {
+      void client.invalidateQueries({ queryKey: key });
+      void client.invalidateQueries({ queryKey: queryKeys.skills.versions(skillId) });
+      void client.invalidateQueries({ queryKey: queryKeys.credits });
+    },
+  });
+}
+
+export function useEvaluateCandidates(skillId: string, batchId: string) {
+  return useRoundAction<void>(skillId, batchId, "evaluate", () => ({}));
+}
+
+export function useAdoptCandidate(skillId: string, batchId: string) {
+  return useRoundAction<number>(skillId, batchId, "adopt", (candidate) => ({ candidate }));
+}
+
+export function usePairPreflights(skillId: string, pairs: UnconfirmedPair[]) {
+  return useQueries({
+    queries: pairs.map((p) => ({
+      queryKey: queryKeys.lab.preflight(skillId, p.skill_version_id, p.test_case_id),
+      queryFn: () => getPreflight(skillId, p.skill_version_id, p.test_case_id),
+      staleTime: 0,
+      gcTime: 0,
+    })),
+  });
+}
+
+export function useConfirmEveryPair(skillId: string) {
+  return useMutation({
+    mutationFn: async (shown: { pair: UnconfirmedPair; summaryHash: string }[]) => {
+      for (const { pair, summaryHash } of shown) {
+        await confirmPreflight(skillId, pair.skill_version_id, pair.test_case_id, summaryHash);
+      }
     },
   });
 }

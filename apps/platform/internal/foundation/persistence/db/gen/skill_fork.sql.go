@@ -12,10 +12,13 @@ import (
 )
 
 const getLatestSkillVersion = `-- name: GetLatestSkillVersion :one
-SELECT id, workspace_id, skill_id, source_id, version_number, content_hash, package_object_key, manifest, license_expression, created_at, license_source, source_path, content_erased_at FROM skill_versions
-WHERE skill_id = $1 AND workspace_id = $2
-ORDER BY version_number DESC
-LIMIT 1
+SELECT id, workspace_id, skill_id, source_id, version_number, content_hash, package_object_key, manifest, license_expression, created_at, license_source, source_path, content_erased_at, held_for_evaluation FROM skill_versions
+WHERE id = (
+    SELECT line.id FROM skill_line_versions line
+    WHERE line.skill_id = $1 AND line.workspace_id = $2
+    ORDER BY line.version_number DESC
+    LIMIT 1
+)
 `
 
 type GetLatestSkillVersionParams struct {
@@ -40,6 +43,7 @@ func (q *Queries) GetLatestSkillVersion(ctx context.Context, arg GetLatestSkillV
 		&i.LicenseSource,
 		&i.SourcePath,
 		&i.ContentErasedAt,
+		&i.HeldForEvaluation,
 	)
 	return i, err
 }

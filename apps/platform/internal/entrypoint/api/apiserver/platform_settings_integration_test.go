@@ -278,8 +278,8 @@ func TestAnOperatorSetsTheCandidatesPerRoundAndTheirCapWithinBounds(t *testing.T
 	} {
 		expectReflectionCandidatesSaved(t, operator, svc, tc.body, tc.count, tc.cap)
 	}
-	if n := countRow(t, pool, `SELECT count(*) FROM audit_events WHERE action = $1 AND metadata->>'setting' = 'reflection_candidates'`,
-		audit.ActionEvaluationSettingsSet); n != 3 {
+	if n := countRow(t, pool, `SELECT count(*) FROM audit_events WHERE action = $1 AND metadata->>'setting' = 'reflection_candidates' AND actor_user_id = $2`,
+		audit.ActionEvaluationSettingsSet, mustUUID(t, operator.userID)); n != 3 {
 		t.Errorf("three changes wrote %d audit events, want 3", n)
 	}
 }

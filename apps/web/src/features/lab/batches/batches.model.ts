@@ -360,6 +360,6 @@ export function verdictSentence(
   }
 }
 
-function isVerdict(value: unknown): value is DifferenceVerdict {
+export function isVerdict(value: unknown): value is DifferenceVerdict {
   return typeof value === "string" && VERDICTS.has(value);
 }

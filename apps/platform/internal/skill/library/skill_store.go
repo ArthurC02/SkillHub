@@ -82,6 +82,13 @@ func skillRootOf(ctx context.Context, q *gen.Queries, row gen.Skill, err error) 
 }
 
 func loadNewestVersion(ctx context.Context, q *gen.Queries, root *SkillRoot) error {
+	var err error
+	root.highestNumber, err = q.GetHighestVersionNumber(ctx, gen.GetHighestVersionNumberParams{
+		SkillID: root.row.ID, WorkspaceID: root.row.WorkspaceID,
+	})
+	if err != nil {
+		return err
+	}
 	row, err := q.GetNewestSkillVersion(ctx, root.row.ID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil
@@ -143,9 +150,14 @@ func writeSkillEvent(ctx context.Context, q *gen.Queries, root *SkillRoot, event
 			VersionNumber: e.VersionNumber, ContentHash: content.contentHash, PackageObjectKey: content.packageObjectKey,
 			SourcePath: content.sourcePath,
 			Manifest:   content.manifest, LicenseExpression: content.license, LicenseSource: content.licenseSource,
+			HeldForEvaluation: content.held,
 		})
 		e.VersionID = root.added.ID
 		event = e
+	case SkillVersionPromoted:
+		_, err = q.InsertSkillVersionPromotion(ctx, gen.InsertSkillVersionPromotionParams{
+			VersionID: e.VersionID, WorkspaceID: root.row.WorkspaceID, PromotedBy: e.by,
+		})
 	case SkillDescribed:
 		err = q.UpdateSkillSummary(ctx, gen.UpdateSkillSummaryParams{
 			ID: root.row.ID, WorkspaceID: root.row.WorkspaceID, Summary: root.row.Summary,

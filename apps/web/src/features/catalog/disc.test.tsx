@@ -1768,6 +1768,8 @@ function stubSearchAndDetails(
                 version_number: 1,
                 content_hash: "sha256:aa",
                 created_at: "2026-08-01T00:00:00Z",
+                held_for_evaluation: false,
+                promoted: false,
               },
             ],
           }),

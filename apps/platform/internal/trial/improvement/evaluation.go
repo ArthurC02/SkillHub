@@ -74,6 +74,7 @@ type FeedbackRecorded struct {
 type SuggestionDecided struct {
 	SuggestionID pgtype.UUID `json:"suggestion_id"`
 	Decision     Decision    `json:"decision"`
+	by           pgtype.UUID
 }
 
 type SuggestionsApplied struct {

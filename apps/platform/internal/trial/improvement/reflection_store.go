@@ -26,6 +26,15 @@ func (r *Reflection) Decide(suggestionID pgtype.UUID, to Decision) {
 	r.settle(r.decide(suggestionID, to))
 }
 
+func (r *Reflection) DecideBy(suggestionID pgtype.UUID, to Decision, by pgtype.UUID) {
+	event, refusal := r.decide(suggestionID, to)
+	if decided, ok := event.(SuggestionDecided); ok {
+		decided.by = by
+		event = decided
+	}
+	r.settle(event, refusal)
+}
+
 func (r *Reflection) RecordApplied(versionID pgtype.UUID, suggestionIDs []pgtype.UUID) {
 	r.settle(r.recordApplied(versionID, suggestionIDs))
 }

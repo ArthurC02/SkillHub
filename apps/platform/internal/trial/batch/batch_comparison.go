@@ -35,15 +35,15 @@ func (s *BatchService) CompareBatches(ctx context.Context, workspaceID, skillID,
 	}
 	return BatchComparison{
 		Reference: reference.Batch, Candidate: candidate.Batch,
-		PairedDifference: pairArms(candidate.ArmReport, reference.ArmReport),
+		PairedDifference: PairArms(candidate.ArmReport, reference.ArmReport),
 	}, nil
 }
 
-func pairArms(first, second ArmReport) PairedDifference {
+func PairArms(first, second ArmReport) PairedDifference {
 	var p PairedDifference
-	secondRates := judgedRates(second)
+	secondRates := JudgedRates(second)
 	var differences []float64
-	for testCaseID, firstRate := range judgedRates(first) {
+	for testCaseID, firstRate := range JudgedRates(first) {
 		secondRate, both := secondRates[testCaseID]
 		if !both {
 			continue
@@ -66,7 +66,7 @@ func pairArms(first, second ArmReport) PairedDifference {
 	return p
 }
 
-func judgedRates(report ArmReport) map[pgtype.UUID]float64 {
+func JudgedRates(report ArmReport) map[pgtype.UUID]float64 {
 	rates := make(map[pgtype.UUID]float64, len(report.TestCases))
 	for _, tc := range report.TestCases {
 		if tc.Judged > 0 {
@@ -151,4 +151,14 @@ func differenceVerdict(mean, standardError float64, critical criticalValues) str
 		return VerdictLikelyWorse
 	}
 	return VerdictNoClearDifference
+}
+
+func (r ArmReport) On(testCaseIDs map[pgtype.UUID]bool) ArmReport {
+	var only ArmReport
+	for _, tc := range r.TestCases {
+		if testCaseIDs[tc.TestCaseID] {
+			only.TestCases = append(only.TestCases, tc)
+		}
+	}
+	return only
 }

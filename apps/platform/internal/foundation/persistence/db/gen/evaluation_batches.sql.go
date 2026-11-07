@@ -48,7 +48,7 @@ func (q *Queries) ClaimNextBatchItem(ctx context.Context, workspaceID pgtype.UUI
 }
 
 const getEvaluationBatch = `-- name: GetEvaluationBatch :one
-SELECT id, workspace_id, skill_id, skill_version_id, trials, status, stop_reason, created_by, created_at, with_baseline, settled_at, paused_at FROM evaluation_batches WHERE id = $1 AND workspace_id = $2
+SELECT id, workspace_id, skill_id, skill_version_id, trials, status, stop_reason, created_by, created_at, with_baseline, settled_at, paused_at, origin_key FROM evaluation_batches WHERE id = $1 AND workspace_id = $2
 `
 
 type GetEvaluationBatchParams struct {
@@ -72,6 +72,37 @@ func (q *Queries) GetEvaluationBatch(ctx context.Context, arg GetEvaluationBatch
 		&i.WithBaseline,
 		&i.SettledAt,
 		&i.PausedAt,
+		&i.OriginKey,
+	)
+	return i, err
+}
+
+const getEvaluationBatchByOriginKey = `-- name: GetEvaluationBatchByOriginKey :one
+SELECT id, workspace_id, skill_id, skill_version_id, trials, status, stop_reason, created_by, created_at, with_baseline, settled_at, paused_at, origin_key FROM evaluation_batches WHERE workspace_id = $1 AND origin_key = $2
+`
+
+type GetEvaluationBatchByOriginKeyParams struct {
+	WorkspaceID pgtype.UUID
+	OriginKey   *string
+}
+
+func (q *Queries) GetEvaluationBatchByOriginKey(ctx context.Context, arg GetEvaluationBatchByOriginKeyParams) (EvaluationBatch, error) {
+	row := q.db.QueryRow(ctx, getEvaluationBatchByOriginKey, arg.WorkspaceID, arg.OriginKey)
+	var i EvaluationBatch
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.SkillID,
+		&i.SkillVersionID,
+		&i.Trials,
+		&i.Status,
+		&i.StopReason,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.WithBaseline,
+		&i.SettledAt,
+		&i.PausedAt,
+		&i.OriginKey,
 	)
 	return i, err
 }
@@ -91,9 +122,10 @@ func (q *Queries) HasUnsettledBatch(ctx context.Context, workspaceID pgtype.UUID
 }
 
 const insertEvaluationBatch = `-- name: InsertEvaluationBatch :one
-INSERT INTO evaluation_batches (workspace_id, skill_id, skill_version_id, trials, with_baseline, created_by)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, workspace_id, skill_id, skill_version_id, trials, status, stop_reason, created_by, created_at, with_baseline, settled_at, paused_at
+INSERT INTO evaluation_batches (workspace_id, skill_id, skill_version_id, trials, with_baseline, created_by, origin_key)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+ON CONFLICT (workspace_id, origin_key) WHERE origin_key IS NOT NULL DO NOTHING
+RETURNING id, workspace_id, skill_id, skill_version_id, trials, status, stop_reason, created_by, created_at, with_baseline, settled_at, paused_at, origin_key
 `
 
 type InsertEvaluationBatchParams struct {
@@ -103,6 +135,7 @@ type InsertEvaluationBatchParams struct {
 	Trials         int32
 	WithBaseline   bool
 	CreatedBy      pgtype.UUID
+	OriginKey      *string
 }
 
 func (q *Queries) InsertEvaluationBatch(ctx context.Context, arg InsertEvaluationBatchParams) (EvaluationBatch, error) {
@@ -113,6 +146,7 @@ func (q *Queries) InsertEvaluationBatch(ctx context.Context, arg InsertEvaluatio
 		arg.Trials,
 		arg.WithBaseline,
 		arg.CreatedBy,
+		arg.OriginKey,
 	)
 	var i EvaluationBatch
 	err := row.Scan(
@@ -128,6 +162,7 @@ func (q *Queries) InsertEvaluationBatch(ctx context.Context, arg InsertEvaluatio
 		&i.WithBaseline,
 		&i.SettledAt,
 		&i.PausedAt,
+		&i.OriginKey,
 	)
 	return i, err
 }
@@ -233,7 +268,7 @@ func (q *Queries) ListEvaluationBatchItems(ctx context.Context, arg ListEvaluati
 }
 
 const listEvaluationBatches = `-- name: ListEvaluationBatches :many
-SELECT id, workspace_id, skill_id, skill_version_id, trials, status, stop_reason, created_by, created_at, with_baseline, settled_at, paused_at FROM evaluation_batches
+SELECT id, workspace_id, skill_id, skill_version_id, trials, status, stop_reason, created_by, created_at, with_baseline, settled_at, paused_at, origin_key FROM evaluation_batches
 WHERE workspace_id = $1 AND skill_id = $2
 ORDER BY created_at DESC
 LIMIT 50
@@ -266,6 +301,7 @@ func (q *Queries) ListEvaluationBatches(ctx context.Context, arg ListEvaluationB
 			&i.WithBaseline,
 			&i.SettledAt,
 			&i.PausedAt,
+			&i.OriginKey,
 		); err != nil {
 			return nil, err
 		}

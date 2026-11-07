@@ -57,6 +57,7 @@ type VersionContent struct {
 	summary          string
 	generated        bool
 	improvedBy       *Improvement
+	held             bool
 }
 
 func (c VersionContent) licenseClaim() LicenseClaim {
@@ -68,6 +69,11 @@ func (c VersionContent) licenseClaim() LicenseClaim {
 		claim.Source = *c.licenseSource
 	}
 	return claim
+}
+
+func (c VersionContent) HeldForEvaluation() VersionContent {
+	c.held = true
+	return c
 }
 
 func (c VersionContent) ImprovedBy(by Improvement) VersionContent {

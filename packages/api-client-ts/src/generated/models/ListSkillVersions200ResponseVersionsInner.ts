@@ -33,5 +33,18 @@ export interface ListSkillVersions200ResponseVersionsInner {
      * 
      */
     createdAt: Date;
+    /**
+     * Built only to be evaluated as a candidate of an
+     * improvement round. Unless it was also promoted, it
+     * is outside the Skill's line: it runs, forks and
+     * downloads by its id but is not the newest version
+     * and cannot be released.
+     * 
+     */
+    heldForEvaluation: boolean;
+    /**
+     * A held version that was adopted into the Skill's line.
+     */
+    promoted: boolean;
 }
 

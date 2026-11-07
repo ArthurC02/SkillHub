@@ -36,10 +36,12 @@ var (
 )
 
 type BatchTrials struct {
-	SkillID   pgtype.UUID
-	VersionID pgtype.UUID
-	Launching bool
-	TestCases []BatchTestCaseTrials
+	SkillID           pgtype.UUID
+	VersionID         pgtype.UUID
+	Launching         bool
+	TestCases         []BatchTestCaseTrials
+	Trials            int
+	WithSkillWithheld bool
 }
 
 type BatchTestCaseTrials struct {
@@ -67,26 +69,36 @@ type Billing struct {
 	Charge           func(ctx context.Context, workspaceID pgtype.UUID, usage *modelport.ModelUsage) error
 }
 
+type estimator struct {
+	quote func(ctx context.Context, workspaceID pgtype.UUID) (StartQuote, error)
+	units int64
+	short error
+}
+
 func (b Billing) admit(ctx context.Context, workspaceID pgtype.UUID, policy RoundPolicy) error {
+	return b.admitEstimate(ctx, workspaceID, policy, estimator{quote: b.Quote, units: int64(policy.Candidates), short: ErrCreditThreshold})
+}
+
+func (b Billing) admitEstimate(ctx context.Context, workspaceID pgtype.UUID, policy RoundPolicy, e estimator) error {
 	if b.ModelCallsHalted != nil && b.ModelCallsHalted(ctx) {
 		return ErrModelCallsHalted
 	}
 	if policy.Candidates > 1 && policy.RoundCreditCap == nil {
 		return ErrRoundCapUnset
 	}
-	if b.Quote == nil {
+	if e.quote == nil {
 		return nil
 	}
-	quote, err := b.Quote(ctx, workspaceID)
+	quote, err := e.quote(ctx, workspaceID)
 	if err != nil {
 		return err
 	}
-	estimate := quote.Threshold * int64(policy.Candidates)
+	estimate := quote.Threshold * e.units
 	if policy.RoundCreditCap != nil && estimate > *policy.RoundCreditCap {
 		return ErrRoundOverCap
 	}
 	if quote.Balance < estimate {
-		return ErrCreditThreshold
+		return e.short
 	}
 	return nil
 }
@@ -105,6 +117,7 @@ type Service struct {
 	ReadBatchTrials func(ctx context.Context, workspaceID, batchID pgtype.UUID) (BatchTrials, bool, error)
 	Billing         Billing
 	Policy          func(ctx context.Context) (RoundPolicy, error)
+	Candidates      CandidatePorts
 }
 
 type Ask struct {
@@ -118,6 +131,9 @@ func (s *Service) Reflect(ctx context.Context, ws identity.Workspace, ask Ask) (
 	}
 	batch, err := s.batchOfSkill(ctx, ws.ID, ask.SkillID, ask.BatchID)
 	if err != nil {
+		return eval.ReflectionRecord{}, err
+	}
+	if err := s.requireLineNewest(ctx, ws.ID, ask.SkillID, batch.VersionID); err != nil {
 		return eval.ReflectionRecord{}, err
 	}
 	dev, err := devTrials(batch, ask.DevTestCaseIDs)

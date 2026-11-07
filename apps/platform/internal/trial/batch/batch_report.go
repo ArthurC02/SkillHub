@@ -98,7 +98,7 @@ func (s *BatchService) BatchReport(ctx context.Context, workspaceID, skillID, ba
 	report := BatchReport{Batch: batch, ArmReport: armReport(withSkill, outcomes, batch.Trials)}
 	if batch.WithSkillWithheld {
 		without := armReport(withheld, outcomes, batch.Trials)
-		effect := pairArms(report.ArmReport, without)
+		effect := PairArms(report.ArmReport, without)
 		report.SkillWithheld, report.SkillEffect = &without, &effect
 	}
 	return report, nil

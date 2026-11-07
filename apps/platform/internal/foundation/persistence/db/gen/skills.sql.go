@@ -193,7 +193,7 @@ SELECT sk.redistribution, sk.category, sk.category_source, sk.curation_tier, sk.
 FROM skills sk
 LEFT JOIN LATERAL (
     SELECT v.id, v.created_at, v.package_object_key, v.source_path
-    FROM skill_versions v
+    FROM skill_line_versions v
     WHERE v.skill_id = sk.id
     ORDER BY v.version_number DESC
     LIMIT 1
@@ -361,7 +361,7 @@ func (q *Queries) GetSkillSource(ctx context.Context, arg GetSkillSourceParams) 
 const listForkedFromVersions = `-- name: ListForkedFromVersions :many
 SELECT v.id AS version_id, v.content_hash, v.created_at,
        anc.id AS skill_id, anc.workspace_id, anc.name, anc.deleted_at, anc.takedown_at,
-       (NOT EXISTS (SELECT 1 FROM skill_versions later
+       (NOT EXISTS (SELECT 1 FROM skill_line_versions later
                     WHERE later.skill_id = anc.id AND later.version_number > v.version_number))::bool AS still_newest
 FROM skill_versions v
 JOIN skills anc ON anc.id = v.skill_id
@@ -560,7 +560,7 @@ SELECT sk.id, sk.workspace_id, sk.name, sk.summary, sk.forked_from_skill_id, sk.
 FROM skills sk
 LEFT JOIN LATERAL (
     SELECT v.created_at, v.source_id, v.content_hash
-    FROM skill_versions v
+    FROM skill_line_versions v
     WHERE v.skill_id = sk.id
     ORDER BY v.version_number DESC
     LIMIT 1

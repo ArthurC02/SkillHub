@@ -17,6 +17,10 @@ type AddMCPToolRes interface {
 	addMCPToolRes()
 }
 
+type AdoptReflectionCandidateRes interface {
+	adoptReflectionCandidateRes()
+}
+
 type BrowseCatalogRes interface {
 	browseCatalogRes()
 }
@@ -151,6 +155,10 @@ type DownloadArtifactContentRes interface {
 
 type EngagePlatformAgentBrakeRes interface {
 	engagePlatformAgentBrakeRes()
+}
+
+type EvaluateReflectionCandidatesRes interface {
+	evaluateReflectionCandidatesRes()
 }
 
 type ExpediteAccountErasureRes interface {
@@ -351,6 +359,10 @@ type LiftDispatchHaltRes interface {
 
 type LiftSkillTakedownRes interface {
 	liftSkillTakedownRes()
+}
+
+type ListCandidateVersionsRes interface {
+	listCandidateVersionsRes()
 }
 
 type ListCheckKindsRes interface {

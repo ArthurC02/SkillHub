@@ -121,6 +121,40 @@ SELECT must_violate_fk($$
             ARRAY['55555555-5555-5555-5555-555555555555']::uuid[], 'not_needed', 0, 0)
 $$);
 
+INSERT INTO skill_versions (id, workspace_id, skill_id, version_number, content_hash, package_object_key, held_for_evaluation)
+VALUES ('44444444-4444-4444-4444-444444444446', '22222222-2222-2222-2222-222222222222',
+        '33333333-3333-3333-3333-333333333333', 3, 'hash-3', 'ws/22/skill/33/v3.tar.zst', true);
+SELECT must_fail($$UPDATE skill_versions SET held_for_evaluation = false WHERE content_hash = 'hash-3'$$);
+SELECT must_violate_check($$
+    INSERT INTO skill_version_promotions (version_id, workspace_id)
+    VALUES ('44444444-4444-4444-4444-444444444444', '22222222-2222-2222-2222-222222222222')
+$$);
+INSERT INTO skill_version_promotions (version_id, workspace_id)
+VALUES ('44444444-4444-4444-4444-444444444446', '22222222-2222-2222-2222-222222222222');
+SELECT must_fail($$UPDATE skill_version_promotions SET promoted_at = '2000-01-01' WHERE version_id = '44444444-4444-4444-4444-444444444446'$$);
+SELECT must_fail($$DELETE FROM skill_version_promotions WHERE version_id = '44444444-4444-4444-4444-444444444446'$$);
+
+INSERT INTO evaluation_batches (id, workspace_id, skill_id, skill_version_id, trials)
+VALUES ('cccccccc-cccc-4ccc-8ccc-cccccccccccd', '22222222-2222-2222-2222-222222222222',
+        '33333333-3333-3333-3333-333333333333', '44444444-4444-4444-4444-444444444446', 1);
+INSERT INTO reflection_candidate_batches (workspace_id, reflection_id, candidate, skill_version_id, batch_id)
+VALUES ('22222222-2222-2222-2222-222222222222', 'dddddddd-dddd-4ddd-8ddd-dddddddddddd', 0,
+        '44444444-4444-4444-4444-444444444446', 'cccccccc-cccc-4ccc-8ccc-cccccccccccd');
+INSERT INTO reflection_candidate_batches (workspace_id, reflection_id, candidate)
+VALUES ('22222222-2222-2222-2222-222222222222', 'dddddddd-dddd-4ddd-8ddd-dddddddddddd', 1);
+SELECT must_fail($$UPDATE reflection_candidate_batches SET candidate = 2 WHERE candidate = 1$$);
+SELECT must_fail($$DELETE FROM reflection_candidate_batches WHERE candidate = 1$$);
+SELECT must_violate_fk($$
+    INSERT INTO reflection_adoptions (reflection_id, workspace_id, candidate, skill_version_id)
+    VALUES ('dddddddd-dddd-4ddd-8ddd-dddddddddddd', '22222222-2222-2222-2222-222222222222', 1,
+            '44444444-4444-4444-4444-444444444446')
+$$);
+INSERT INTO reflection_adoptions (reflection_id, workspace_id, candidate, skill_version_id)
+VALUES ('dddddddd-dddd-4ddd-8ddd-dddddddddddd', '22222222-2222-2222-2222-222222222222', 0,
+        '44444444-4444-4444-4444-444444444446');
+SELECT must_fail($$UPDATE reflection_adoptions SET candidate = 1 WHERE candidate = 0$$);
+SELECT must_fail($$DELETE FROM reflection_adoptions WHERE candidate = 0$$);
+
 SELECT must_violate_check($$UPDATE runs SET status = 'running'
 WHERE id = '77777777-7777-7777-7777-777777777777'$$);
 UPDATE runs SET status = 'provisioning', started_at = now()

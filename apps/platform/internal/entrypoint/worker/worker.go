@@ -216,7 +216,8 @@ func newEventDispatcher(
 		Ignore("skill facts: no aggregate reacts to them yet, and every reader answers from the skill's own rows",
 			outbox.SkillTakenDown, outbox.SkillAccessRestricted, outbox.SkillAccessRestrictionLifted,
 			outbox.SkillRedistributionSet, outbox.SkillCategorized,
-			outbox.SkillCreated, outbox.SkillDescribed, outbox.SkillCurationSet, outbox.SkillRestored)
+			outbox.SkillCreated, outbox.SkillDescribed, outbox.SkillCurationSet, outbox.SkillRestored,
+			outbox.SkillVersionPromoted)
 }
 
 func newCreationServices(

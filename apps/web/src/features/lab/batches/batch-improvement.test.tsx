@@ -3,6 +3,7 @@ import { expect, test } from "vitest";
 import {
   BATCH,
   BATCH_REPORT,
+  PREFLIGHT,
   RUN,
   SKILL,
   TEST_CASE,
@@ -50,6 +51,7 @@ function reflection(overrides: Partial<BatchReflection> = {}): BatchReflection {
     runs_read: 2,
     runs_not_read: 0,
     candidates: [],
+    evaluation: null,
     created_at: "2026-11-07T01:00:00Z",
     suggestions: [
       {
@@ -304,4 +306,231 @@ test("a round of one candidate lists its suggestions without candidate headings"
     expect(document.body.textContent).toContain("SKILL.md 沒說怎麼判斷重複列。"),
   );
   expect(document.querySelectorAll("h4")).toHaveLength(0);
+});
+
+const CANDIDATE_A = "a1a1a1a1-a1a1-4a1a-8a1a-a1a1a1a1a1a1";
+const CANDIDATE_B = "b2b2b2b2-b2b2-4b2b-8b2b-b2b2b2b2b2b2";
+const EVALUATE = `${REFLECTIONS}/${REFLECTION}/evaluate`;
+const ADOPT = `${REFLECTIONS}/${REFLECTION}/adopt`;
+
+const paired = (verdict: string, mean: number | null = 0.25) => ({
+  verdict,
+  mean_difference: mean,
+  low: mean === null ? null : mean - 0.2,
+  high: mean === null ? null : mean + 0.2,
+});
+
+function standing(candidate: number, overrides: Record<string, unknown> = {}) {
+  return {
+    candidate,
+    skill_version_id: candidate === 0 ? CANDIDATE_A : CANDIDATE_B,
+    batch_id: `c${candidate}c${candidate}c${candidate}c${candidate}-0000-4000-8000-00000000000${candidate}`,
+    skipped_suggestion_ids: [],
+    settled: true,
+    kept: true,
+    dev: paired("improved"),
+    held_out: paired("likely_improved"),
+    ...overrides,
+  };
+}
+
+function evaluated(evaluation: Record<string, unknown>) {
+  return reflection({ evaluation: evaluation as BatchReflection["evaluation"] });
+}
+
+function postsTo(page: ReturnType<typeof app>, path: string) {
+  return page.requests.filter((r) => r.method === "POST" && r.url.pathname === path);
+}
+
+test("evaluating names the suggestions it accepts and leaves the rejected ones out", async () => {
+  const page = app();
+  const base = reflection().suggestions[0];
+  const round = reflection({
+    suggestions: [
+      { ...base, suggestion_id: "p1", decision: "pending" },
+      { ...base, suggestion_id: "p2", decision: "pending" },
+      { ...base, suggestion_id: "x1", decision: "rejected" },
+    ],
+  });
+  const rounds = [round];
+  withTwoCases(page, rounds);
+  page.route(`**${EVALUATE}`, () => {
+    rounds[0] = evaluated({
+      candidates: [standing(0, { settled: false })],
+      recommended: null,
+      adopted: null,
+    });
+    return { json: rounds[0] };
+  });
+  await page.goto(BATCH_PAGE);
+  await page.eventually(() =>
+    expect(reasonOf(page, "評估 1 個候選")).toContain("還沒決定的 2 項建議"),
+  );
+  expect(reasonOf(page, "評估 1 個候選")).toContain("已拒絕的 1 項不會用");
+  expect(reasonOf(page, "評估 1 個候選")).toContain("這一批的 2 題");
+  await act(async () => page.getByRole("button", { name: "評估 1 個候選" }).element().click());
+  await page.eventually(() => expect(postsTo(page, EVALUATE)).toHaveLength(1));
+  await page.eventually(() =>
+    expect(
+      page.getByRole("status").filter({ hasText: "候選的批次跑完後才會給建議。" }).count(),
+    ).toBe(1),
+  );
+});
+
+test("confirming every listed pair sends the hash each pair showed, then evaluates again", async () => {
+  const page = app();
+  withTwoCases(page, [reflection()]);
+  let evaluations = 0;
+  page.route(`**${EVALUATE}`, () => {
+    evaluations += 1;
+    return evaluations === 1
+      ? {
+          status: 422,
+          json: {
+            error: "這幾題在候選版本上要先確認試跑權限；候選批次還沒開。",
+            unconfirmed_pairs: [
+              { skill_version_id: CANDIDATE_A, test_case_id: TEST_CASE },
+              { skill_version_id: CANDIDATE_B, test_case_id: SECOND_CASE },
+            ],
+          },
+        }
+      : { json: evaluated({ candidates: [standing(0)], recommended: 0, adopted: null }) };
+  });
+  page.route("**/runs/preflight**", (request) => {
+    if (request.url.pathname.endsWith("/confirm"))
+      return { json: { confirmed: true, summary_hash: "x" } };
+    const version = request.url.searchParams.get("version_id") ?? "";
+    const testCase = request.url.searchParams.get("test_case_id") ?? "";
+    return {
+      json: {
+        ...PREFLIGHT,
+        summary_hash: `hash-${version.slice(0, 2)}`,
+        summary: { ...PREFLIGHT.summary, skill_version_id: version, test_case_id: testCase },
+      },
+    };
+  });
+  await page.goto(BATCH_PAGE);
+  await page.eventually(() =>
+    expect(page.getByRole("button", { name: "評估 1 個候選" }).count()).toBe(1),
+  );
+  await act(async () => page.getByRole("button", { name: "評估 1 個候選" }).element().click());
+  const confirmAll = "我看過了，確認列出的 2 題";
+  await page.eventually(() =>
+    expect(page.getByRole("button", { name: confirmAll }).attribute("aria-disabled")).toBe("false"),
+  );
+  await act(async () => page.getByRole("button", { name: confirmAll }).element().click());
+  await page.eventually(() => expect(evaluations).toBe(2));
+  const confirms = page.requests.filter(
+    (r) => r.method === "POST" && r.url.pathname === `/skills/${SKILL}/runs/preflight/confirm`,
+  );
+  expect(confirms.map((r) => r.body)).toEqual([
+    { version_id: CANDIDATE_A, test_case_id: TEST_CASE, summary_hash: "hash-a1" },
+    { version_id: CANDIDATE_B, test_case_id: SECOND_CASE, summary_hash: "hash-b2" },
+  ]);
+});
+
+test("confirming every pair waits until each pair's summary has been shown", async () => {
+  const page = app();
+  withTwoCases(page, [reflection()]);
+  page.route(`**${EVALUATE}`, () => ({
+    status: 422,
+    json: {
+      error: "這幾題在候選版本上要先確認試跑權限；候選批次還沒開。",
+      unconfirmed_pairs: [{ skill_version_id: CANDIDATE_A, test_case_id: TEST_CASE }],
+    },
+  }));
+  page.route("**/runs/preflight**", () => ({
+    status: 503,
+    json: { error: "暫時無法產生權限摘要。" },
+  }));
+  await page.goto(BATCH_PAGE);
+  await page.eventually(() =>
+    expect(page.getByRole("button", { name: "評估 1 個候選" }).count()).toBe(1),
+  );
+  await act(async () => page.getByRole("button", { name: "評估 1 個候選" }).element().click());
+  const confirmAll = "我看過了，確認列出的 1 題";
+  await page.eventually(() =>
+    expect(page.getByRole("button", { name: confirmAll }).count()).toBe(1),
+  );
+  expect(page.getByRole("button", { name: confirmAll }).attribute("aria-disabled")).toBe("true");
+  await act(async () => page.getByRole("button", { name: confirmAll }).element().click());
+  expect(page.requests.filter((r) => r.url.pathname.endsWith("/preflight/confirm"))).toHaveLength(
+    0,
+  );
+});
+
+test("the recommended candidate is named, its dev verdict is not the deciding one, and adopting sends it", async () => {
+  const page = app();
+  const round = evaluated({
+    candidates: [
+      standing(0),
+      standing(1, { kept: false, held_out: paired("no_clear_difference", 0) }),
+    ],
+    recommended: 0,
+    adopted: null,
+  });
+  const rounds = [round];
+  withTwoCases(page, rounds);
+  page.route(`**${ADOPT}`, () => {
+    rounds[0] = evaluated({
+      candidates: [standing(0), standing(1)],
+      recommended: 0,
+      adopted: { candidate: 0, skill_version_id: CANDIDATE_A, adopted_at: "2026-11-07T02:00:00Z" },
+    });
+    return { json: rounds[0] };
+  });
+  await page.goto(BATCH_PAGE);
+  await page.eventually(() =>
+    expect(page.getByRole("status").filter({ hasText: "建議採用候選 1" }).count()).toBe(1),
+  );
+  expect(document.body.textContent).toContain("開發題（不作為判斷依據）：比原版好，差距明顯。");
+  expect(document.body.textContent).toContain("在每一題開發題上都沒有勝過其他候選與原版，淘汰");
+  await act(async () => page.getByRole("button", { name: "採用候選 1" }).element().click());
+  await page.eventually(() =>
+    expect(postsTo(page, ADOPT).map((r) => r.body)).toEqual([{ candidate: 0 }]),
+  );
+  await page.eventually(() =>
+    expect(
+      page
+        .getByRole("status")
+        .filter({ hasText: "已採用候選 1，它現在是這個小工具正式路線上的最新版本。" })
+        .count(),
+    ).toBe(1),
+  );
+  expect(page.getByRole("button", { name: "採用候選 2" }).count()).toBe(0);
+});
+
+test.each([
+  [
+    "every batch settled and none qualifies",
+    [standing(0, { held_out: paired("no_clear_difference", 0) })],
+    "沒有候選在沒給模型看的題目上明顯變好，建議保留目前的版本。",
+  ],
+  ["a batch still running", [standing(0, { settled: false })], "候選的批次跑完後才會給建議。"],
+])("with no recommendation and %s the page says so", async (_name, candidates, sentence) => {
+  const page = app();
+  withTwoCases(page, [evaluated({ candidates, recommended: null, adopted: null })]);
+  await page.goto(BATCH_PAGE);
+  await page.eventually(() =>
+    expect(page.getByRole("status").filter({ hasText: sentence }).count()).toBe(1),
+  );
+});
+
+test("an unavailable candidate says it has no version and offers no adoption", async () => {
+  const page = app();
+  withTwoCases(page, [
+    evaluated({
+      candidates: [
+        standing(0, { skill_version_id: null, batch_id: null, skipped_suggestion_ids: ["r1"] }),
+      ],
+      recommended: null,
+      adopted: null,
+    }),
+  ]);
+  await page.goto(BATCH_PAGE);
+  await page.eventually(() =>
+    expect(document.body.textContent).toContain("沒有可以套用的建議，所以沒有建版本。"),
+  );
+  expect(document.body.textContent).toContain("有 1 項建議沒有放進這個版本");
+  expect(page.getByRole("button", { name: "採用候選 1" }).count()).toBe(0);
 });

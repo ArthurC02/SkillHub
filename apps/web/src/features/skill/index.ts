@@ -1,6 +1,7 @@
 export { SkillVersionPicker } from "./components/SkillVersionPicker";
 export { SkillWorkspaceNav } from "./components/SkillWorkspaceNav";
 export { ownSkillsFromPages } from "./own-skills.model";
+export { inLine, lineNewest } from "./versions.model";
 export {
   MAX_COMPARE,
   useCatalog,

@@ -32,6 +32,7 @@ var strangerRoutes = []strangerCase{
 	{pattern: "GET /api/skills/{id}", want: http.StatusNotFound},
 	{pattern: "GET /api/skills/{id}/files", want: http.StatusNotFound},
 	{pattern: "GET /skills/{id}/versions", want: http.StatusOK},
+	{pattern: "GET /skills/{id}/candidate-versions", want: http.StatusOK},
 	{pattern: "GET /skills/{id}/diff", query: "?from={versionId}&to={versionId}", want: http.StatusNotFound},
 	{pattern: "GET /skills/{id}/runs/preflight",
 		query: "?version_id={versionId}&test_case_id={testCaseId}", want: http.StatusNotFound},
@@ -54,6 +55,8 @@ var strangerRoutes = []strangerCase{
 	{pattern: "POST /skills/{id}/evaluation-batches/{batchId}/resume", want: http.StatusNotFound},
 	{pattern: "POST /skills/{id}/evaluation-batches/{batchId}/reflections", body: `{"dev_test_case_ids":["00000000-0000-4000-8000-000000000001"]}`, want: http.StatusNotFound},
 	{pattern: "GET /skills/{id}/evaluation-batches/{batchId}/reflections", want: http.StatusNotFound},
+	{pattern: "POST /skills/{id}/evaluation-batches/{batchId}/reflections/{reflectionId}/evaluate", want: http.StatusNotFound},
+	{pattern: "POST /skills/{id}/evaluation-batches/{batchId}/reflections/{reflectionId}/adopt", body: `{"candidate":0}`, want: http.StatusNotFound},
 
 	{pattern: "GET /downloads/{artifactId}", want: http.StatusNotFound},
 	{pattern: "GET /downloads/{artifactId}/records", want: http.StatusNotFound},
@@ -205,6 +208,7 @@ func (w aliceWorld) resolve(path string) string {
 		{"{runId}", w.runID},
 		{"{name}", w.bundleName},
 		{"{batchId}", w.batchID},
+		{"{reflectionId}", "00000000-0000-4000-8000-0000000000e2"},
 	}
 	for _, r := range replacements {
 		path = strings.ReplaceAll(path, r.placeholder, r.value)

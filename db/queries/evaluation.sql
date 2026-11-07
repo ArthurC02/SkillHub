@@ -124,7 +124,8 @@ FOR UPDATE;
 -- name: DecideSuggestion :one
 UPDATE evaluation_suggestions SET
     decision = @decision,
-    decided_at = now()
+    decided_at = now(),
+    decided_by = sqlc.narg(decided_by)
 WHERE id = @id AND workspace_id = @workspace_id
 RETURNING *;
 
@@ -253,3 +254,43 @@ FROM evaluation_suggestion_applications a
 JOIN evaluation_suggestions s ON s.id = a.suggestion_id AND s.workspace_id = a.workspace_id
 WHERE s.reflection_id = @reflection_id AND a.workspace_id = @workspace_id
 ORDER BY a.suggestion_id, a.skill_version_id;
+
+-- name: InsertReflectionCandidateBatch :exec
+INSERT INTO reflection_candidate_batches (
+    workspace_id, reflection_id, candidate, skill_version_id, batch_id, skipped_suggestion_ids, created_by
+) VALUES (
+    @workspace_id, @reflection_id, @candidate, sqlc.narg(skill_version_id), sqlc.narg(batch_id),
+    @skipped_suggestion_ids::uuid[], sqlc.narg(created_by)
+)
+ON CONFLICT (reflection_id, candidate) DO NOTHING;
+
+-- name: ListReflectionCandidateBatches :many
+SELECT * FROM reflection_candidate_batches
+WHERE reflection_id = @reflection_id AND workspace_id = @workspace_id
+ORDER BY candidate;
+
+-- name: ListCandidateVersionsOfSkill :many
+SELECT l.skill_version_id::uuid AS version_id, l.reflection_id, rounds.batch_id, rounds.round::integer AS round, l.candidate
+FROM reflection_candidate_batches l
+JOIN (
+    SELECT br.id, br.batch_id, row_number() OVER (ORDER BY br.created_at, br.id) AS round
+    FROM batch_reflections br
+    WHERE br.workspace_id = @workspace_id AND br.skill_version_id = ANY(@version_ids::uuid[])
+) rounds ON rounds.id = l.reflection_id
+WHERE l.workspace_id = @workspace_id AND l.skill_version_id IS NOT NULL
+ORDER BY rounds.round, l.candidate;
+
+-- name: InsertReflectionAdoption :one
+INSERT INTO reflection_adoptions (reflection_id, workspace_id, candidate, skill_version_id, adopted_by)
+VALUES (@reflection_id, @workspace_id, @candidate, @skill_version_id, sqlc.narg(adopted_by))
+ON CONFLICT (reflection_id) DO NOTHING
+RETURNING *;
+
+-- name: GetReflectionAdoption :one
+SELECT * FROM reflection_adoptions WHERE reflection_id = @reflection_id AND workspace_id = @workspace_id;
+
+-- name: IsAdoptedCandidateVersion :one
+SELECT EXISTS (
+    SELECT 1 FROM reflection_adoptions a
+    WHERE a.workspace_id = @workspace_id AND a.skill_version_id = @skill_version_id
+);

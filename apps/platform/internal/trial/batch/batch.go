@@ -134,6 +134,7 @@ type NewBatch struct {
 	TestCaseIDs       []pgtype.UUID
 	Trials            int
 	WithSkillWithheld bool
+	OriginKey         *string
 }
 
 func (n NewBatch) validShape() bool {
@@ -169,8 +170,14 @@ func (s *BatchService) CreateBatch(ctx context.Context, n NewBatch) (Batch, erro
 		q := gen.New(tx)
 		created, err = q.InsertEvaluationBatch(ctx, gen.InsertEvaluationBatchParams{
 			WorkspaceID: n.WorkspaceID, SkillID: n.SkillID, SkillVersionID: n.VersionID,
-			Trials: int32(n.Trials), WithBaseline: n.WithSkillWithheld, CreatedBy: n.Actor,
+			Trials: int32(n.Trials), WithBaseline: n.WithSkillWithheld, CreatedBy: n.Actor, OriginKey: n.OriginKey,
 		})
+		if errors.Is(err, pgx.ErrNoRows) && n.OriginKey != nil {
+			created, err = q.GetEvaluationBatchByOriginKey(ctx, gen.GetEvaluationBatchByOriginKeyParams{
+				WorkspaceID: n.WorkspaceID, OriginKey: n.OriginKey,
+			})
+			return err
+		}
 		if err != nil {
 			return err
 		}

@@ -12,6 +12,7 @@ import {
   type SuggestionDecisionState,
 } from "../../../runs";
 import type { BatchReport } from "../batches.model";
+import { CandidateEvaluation } from "./CandidateEvaluation";
 import { useApplyReflection, useBatchReflections, useReflectOnBatch } from "../batches.service";
 import {
   CANDIDATE_FOCUS_LABEL,
@@ -102,6 +103,15 @@ export function BatchImprovement({
           batchId={batchId}
           reflection={latest}
           testCaseIds={testCases.map((tc) => tc.test_case_id)}
+        />
+      )}
+      {latest && latest.suggestions.length > 0 && (
+        <CandidateEvaluation
+          skillId={skillId}
+          batchId={batchId}
+          reflection={latest}
+          caseCount={testCases.length}
+          names={names}
         />
       )}
     </section>

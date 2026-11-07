@@ -40,12 +40,16 @@ const VERSIONS = {
       version_number: 2,
       content_hash: "sha256:bb",
       created_at: "2026-08-02T00:00:00Z",
+      held_for_evaluation: false,
+      promoted: false,
     },
     {
       version_id: OLDER_VERSION,
       version_number: 1,
       content_hash: "sha256:aa",
       created_at: "2026-08-01T00:00:00Z",
+      held_for_evaluation: false,
+      promoted: false,
     },
   ],
 };

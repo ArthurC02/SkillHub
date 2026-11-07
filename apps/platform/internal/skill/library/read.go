@@ -49,6 +49,8 @@ type Version struct {
 	CreatedAt         pgtype.Timestamptz
 	LicenseSource     *string
 	AllowedTools      []string
+	Description       string
+	HeldForEvaluation bool
 }
 
 type RuntimeCompatibility struct {
@@ -300,16 +302,21 @@ func (s *Service) LatestVersion(ctx context.Context, workspaceID, skillID pgtype
 	return versionDTO(row), true, nil
 }
 
-func (s *Service) Versions(ctx context.Context, workspaceID, skillID pgtype.UUID) ([]Version, error) {
+type ListedVersion struct {
+	Version
+	Promoted bool
+}
+
+func (s *Service) Versions(ctx context.Context, workspaceID, skillID pgtype.UUID) ([]ListedVersion, error) {
 	rows, err := gen.New(s.Pool).ListSkillVersions(ctx, gen.ListSkillVersionsParams{
 		WorkspaceID: workspaceID, SkillID: skillID,
 	})
 	if err != nil {
 		return nil, err
 	}
-	versions := make([]Version, len(rows))
+	versions := make([]ListedVersion, len(rows))
 	for i, row := range rows {
-		versions[i] = versionDTO(row)
+		versions[i] = ListedVersion{Version: versionDTO(row.SkillVersion), Promoted: row.Promoted}
 	}
 	return versions, nil
 }
@@ -494,8 +501,28 @@ func versionDTO(row gen.SkillVersion) Version {
 		PackageObjectKey: row.PackageObjectKey, SourcePath: row.SourcePath,
 		LicenseExpression: pgconv.Clone(row.LicenseExpression),
 		CreatedAt:         row.CreatedAt, LicenseSource: pgconv.Clone(row.LicenseSource),
-		AllowedTools: declaredTools(row.Manifest),
+		AllowedTools: declaredTools(row.Manifest), Description: declaredDescription(row.Manifest),
+		HeldForEvaluation: row.HeldForEvaluation,
 	}
+}
+
+func (v Version) licenseClaim() LicenseClaim {
+	var claim LicenseClaim
+	if v.LicenseExpression != nil {
+		claim.Expression = *v.LicenseExpression
+	}
+	if v.LicenseSource != nil {
+		claim.Source = *v.LicenseSource
+	}
+	return claim
+}
+
+func declaredDescription(manifest []byte) string {
+	var m skillpkg.Manifest
+	if json.Unmarshal(manifest, &m) != nil {
+		return ""
+	}
+	return m.Description
 }
 
 func declaredTools(manifest []byte) []string {
@@ -538,4 +565,19 @@ func takedownByOf(row gen.Skill) TakedownBy {
 		return TakedownByOwner
 	}
 	return TakedownByOperator
+}
+
+func VersionIn(ctx context.Context, tx pgx.Tx, workspaceID, versionID pgtype.UUID) (Version, bool, error) {
+	row, err := gen.New(tx).GetSkillVersion(ctx, gen.GetSkillVersionParams{ID: versionID, WorkspaceID: workspaceID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Version{}, false, nil
+	}
+	if err != nil {
+		return Version{}, false, err
+	}
+	return versionDTO(row), true, nil
+}
+
+func VersionInLine(ctx context.Context, db gen.DBTX, workspaceID, versionID pgtype.UUID) (bool, error) {
+	return gen.New(db).IsVersionInLine(ctx, gen.IsVersionInLineParams{VersionID: versionID, WorkspaceID: workspaceID})
 }

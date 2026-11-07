@@ -358,8 +358,21 @@ export interface SkillVersionSummary {
   created_at: string;
 }
 
+export interface ListedSkillVersion extends SkillVersionSummary {
+  held_for_evaluation: boolean;
+  promoted: boolean;
+}
+
 export interface SkillVersions {
-  versions: SkillVersionSummary[];
+  versions: ListedSkillVersion[];
+}
+
+export interface CandidateVersion {
+  version_id: string;
+  reflection_id: string;
+  batch_id: string;
+  round: number;
+  candidate: number;
 }
 
 export interface SkillDerivation {

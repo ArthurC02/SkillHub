@@ -17,7 +17,8 @@ export type PublishingRefusalReason =
   | "license_unknown"
   | "validation_blocked"
   | "rights_not_attested"
-  | "license_not_declarable";
+  | "license_not_declarable"
+  | "held_for_evaluation";
 
 export const PUBLISHING_REFUSAL_LABEL: Record<PublishingRefusalReason, string> = {
   no_publisher: "這個帳號還沒有註冊發佈者名稱；先在「發佈者名稱」註冊一個，才能發佈。",
@@ -37,6 +38,7 @@ export const PUBLISHING_REFUSAL_LABEL: Record<PublishingRefusalReason, string> =
     "這份內容是你自己帶進來的，或是平台依你的描述寫出來的；發佈之前要先聲明你有權散布它。",
   license_not_declarable:
     "只有平台依你的描述寫出來的小工具可以在發佈時選授權條款，而且要從清單裡選一個。",
+  held_for_evaluation: "這一版是評估中的候選，還沒被採用，所以不能發佈；先在那一輪採用它，再發佈。",
 };
 
 export const PUBLISHER_NAME_RULE =

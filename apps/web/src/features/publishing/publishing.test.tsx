@@ -256,6 +256,8 @@ function bundleMemberRead(
               version_number: member.version_number,
               content_hash: member.content_hash,
               created_at: OWN_BUNDLE.created_at,
+              held_for_evaluation: false,
+              promoted: false,
             },
           ],
         }
@@ -2310,6 +2312,7 @@ test("PACK-003/004 每一個 PublishingRefusal.reason 都有一句中文", () =>
     "validation_blocked",
     "rights_not_attested",
     "license_not_declarable",
+    "held_for_evaluation",
   ];
   expect(Object.keys(PUBLISHING_REFUSAL_LABEL).sort()).toEqual([...REASONS].sort());
   for (const reason of REASONS) {

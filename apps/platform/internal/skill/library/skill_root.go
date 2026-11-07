@@ -31,6 +31,8 @@ const (
 	RefusedNotTakenDown            Refusal = "not_taken_down"
 	RefusedRestoreNotTheOwners     Refusal = "restore_not_the_owners"
 	RefusedRestoreWindowClosed     Refusal = "restore_window_closed"
+	RefusedVersionNotHeld          Refusal = "version_not_held"
+	RefusedLineMovedOn             Refusal = "line_moved_on"
 )
 
 type TakedownBy string
@@ -89,6 +91,10 @@ func (r Refused) err() error {
 		return ErrNotTakenDown
 	case RefusedRestoreNotTheOwners, RefusedRestoreWindowClosed:
 		return ErrRestoreNotAllowed
+	case RefusedVersionNotHeld:
+		return ErrVersionNotHeld
+	case RefusedLineMovedOn:
+		return ErrLineMovedOn
 	}
 	return r
 }
@@ -128,10 +134,16 @@ type SkillCreated struct {
 }
 
 type SkillVersionAdded struct {
-	VersionID     pgtype.UUID  `json:"version_id"`
-	VersionNumber int32        `json:"version_number"`
-	ContentHash   string       `json:"content_hash"`
-	ImprovedBy    *Improvement `json:"improved_by"`
+	VersionID         pgtype.UUID  `json:"version_id"`
+	VersionNumber     int32        `json:"version_number"`
+	ContentHash       string       `json:"content_hash"`
+	ImprovedBy        *Improvement `json:"improved_by"`
+	HeldForEvaluation bool         `json:"held_for_evaluation"`
+}
+
+type SkillVersionPromoted struct {
+	VersionID pgtype.UUID `json:"version_id"`
+	by        pgtype.UUID
 }
 
 type Improvement struct {
@@ -142,9 +154,10 @@ type Improvement struct {
 
 type SkillDescribed struct{}
 
-func (SkillCreated) eventType() string      { return outbox.SkillCreated }
-func (SkillVersionAdded) eventType() string { return outbox.SkillVersionAdded }
-func (SkillDescribed) eventType() string    { return outbox.SkillDescribed }
+func (SkillCreated) eventType() string         { return outbox.SkillCreated }
+func (SkillVersionAdded) eventType() string    { return outbox.SkillVersionAdded }
+func (SkillVersionPromoted) eventType() string { return outbox.SkillVersionPromoted }
+func (SkillDescribed) eventType() string       { return outbox.SkillDescribed }
 
 func (Refused) eventType() string                 { return "" }
 func (SkillTakenDown) eventType() string          { return outbox.SkillTakenDown }
@@ -168,6 +181,7 @@ type SkillRoot struct {
 	takedownReason string
 	takedownBy     TakedownBy
 	newest         newestVersion
+	highestNumber  int32
 	pending        VersionContent
 	added          gen.SkillVersion
 	events         []Event
@@ -352,14 +366,43 @@ func (s *SkillRoot) AddVersion(content VersionContent) {
 	}
 	content = cloneVersionContent(content)
 	s.pending = content
-	s.newest = newestVersion{exists: true, number: s.newest.number + 1, license: content.licenseClaim()}
+	s.highestNumber++
+	if !content.held {
+		s.newest = newestVersion{exists: true, number: s.highestNumber, license: content.licenseClaim()}
+	}
 	s.record(SkillVersionAdded{
-		VersionNumber: s.newest.number, ContentHash: content.contentHash, ImprovedBy: content.improvedBy,
+		VersionNumber: s.highestNumber, ContentHash: content.contentHash, ImprovedBy: content.improvedBy,
+		HeldForEvaluation: content.held,
 	})
 }
 
+func (s *SkillRoot) Promote(held Version, base, by pgtype.UUID) {
+	switch {
+	case held.SkillID != s.row.ID:
+		s.record(Refused{Reason: RefusedNoVersion})
+		return
+	case !held.HeldForEvaluation:
+		s.record(Refused{Reason: RefusedVersionNotHeld})
+		return
+	case s.newest.id == held.ID:
+		return
+	case s.newest.id != base:
+		s.record(Refused{Reason: RefusedLineMovedOn})
+		return
+	}
+	s.newest = newestVersion{id: held.ID, exists: true, number: held.VersionNumber, license: held.licenseClaim()}
+	s.record(SkillVersionPromoted{VersionID: held.ID, by: by})
+	s.describe(held.Description)
+}
+
 func (s *SkillRoot) AdoptNewestSummary() {
-	summary := s.pending.summary
+	if s.pending.held {
+		return
+	}
+	s.describe(s.pending.summary)
+}
+
+func (s *SkillRoot) describe(summary string) {
 	if s.row.Summary != nil && *s.row.Summary == summary {
 		return
 	}
