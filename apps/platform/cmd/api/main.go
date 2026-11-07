@@ -349,6 +349,12 @@ func openStore(ctx context.Context, mode deployment) (*objstore.Client, func()) 
 	return store, stopStore
 }
 
+func accountPurgeGrace() time.Duration {
+	grace, err := wiring.AccountPurgeGrace()
+	exitOn(err, "account purge grace")
+	return grace
+}
+
 func measuredAnalyticsRetention() time.Duration {
 	analyticsRetention := analyticsRetentionFromEnv()
 	if analyticsRetention < time.Second {
@@ -375,6 +381,7 @@ func apiConfigFromEnv(posture envx.Posture) apiserver.Config {
 	return apiserver.Config{
 		Fetcher:           wiring.ImportFetcher(posture),
 		DownloadRetention: retentionFromEnv(),
+		AccountPurgeGrace: accountPurgeGrace(),
 		FeedbackRetention: feedbackRetentionFromEnv(),
 		OAuth: &identity.GitHubOAuth{
 			ClientID:     os.Getenv("GITHUB_CLIENT_ID"),

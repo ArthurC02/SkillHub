@@ -46,6 +46,8 @@ type Handler struct {
 
 	Features map[string]bool
 
+	PurgeGrace time.Duration
+
 	Disclosures map[string]bool
 }
 
@@ -616,7 +618,7 @@ func (h *Handler) me(w http.ResponseWriter, r *http.Request) {
 	if user.DeletionRequestedAt.Valid {
 		at := user.DeletionRequestedAt.Time.UTC()
 		requestedAt := at.Format(time.RFC3339)
-		purgeAfter := at.Add(AccountDeletionGrace).UTC().Format(time.RFC3339)
+		purgeAfter := at.Add(h.PurgeGrace).UTC().Format(time.RFC3339)
 		scope := deletionScope
 		out.DeletionRequestedAt = &requestedAt
 		out.PurgeAfter = &purgeAfter
@@ -643,7 +645,7 @@ func (h *Handler) requestDeletion(w http.ResponseWriter, r *http.Request) {
 	}
 	httpx.WriteJSON(w, http.StatusOK, accountDeletionResponse{
 		DeletionRequestedAt: updated.DeletionRequestedAt.Time.UTC().Format(time.RFC3339),
-		PurgeAfter:          updated.DeletionRequestedAt.Time.Add(AccountDeletionGrace).UTC().Format(time.RFC3339),
+		PurgeAfter:          updated.DeletionRequestedAt.Time.Add(h.PurgeGrace).UTC().Format(time.RFC3339),
 		Cancellable:         true,
 		Scope:               deletionScope,
 	})

@@ -1,6 +1,7 @@
 package apiserver
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"log/slog"
@@ -66,6 +67,7 @@ type Config struct {
 	Profiles packaging.Profiles
 
 	DownloadRetention  time.Duration
+	AccountPurgeGrace  time.Duration
 	AnalyticsRetention time.Duration
 
 	Readiness *envx.Registry
@@ -245,6 +247,7 @@ func newAuthHandler(cfg Config, identitySvc *identity.Service) *identity.Handler
 		Invited:     cfg.Invited,
 		Features:    entryPointFeatures(cfg),
 		Disclosures: disclosureFeatures(cfg),
+		PurgeGrace:  cmp.Or(cfg.AccountPurgeGrace, identity.AccountDeletionGrace),
 	}
 }
 
