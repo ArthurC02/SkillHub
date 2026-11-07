@@ -119,3 +119,68 @@ func TestTheImprovementModelIsToldWhichFilesTheRunNeverOpened(t *testing.T) {
 		t.Fatalf("digest does not end with the unopened file:\n%s", suggester.got.EvaluationDigest)
 	}
 }
+
+func toolCallTrace(t *testing.T, complete bool, calls int, args string) facts.Material {
+	view := trace.AdvancedView{Complete: complete, Events: []trace.EventView{}}
+	for i := 0; i < calls; i++ {
+		view.Events = append(view.Events, event(t, trace.TypeToolCall, map[string]any{
+			"tool_name": "Bash", "outcome": "succeeded", "duration_ms": 7, "arguments": map[string]any{"command": args},
+		}))
+	}
+	return facts.Material{Advanced: view}
+}
+
+func toolCallSection(digest string) string {
+	_, after, _ := strings.Cut(digest, toolCallsHeading)
+	return after
+}
+
+func TestTheDigestListsEachToolCallInOrderWithItsOutcomeAndArguments(t *testing.T) {
+	m := facts.Material{Advanced: trace.AdvancedView{Complete: true, Events: []trace.EventView{
+		event(t, trace.TypeToolCall, map[string]any{"tool_name": "Bash", "outcome": "failed", "duration_ms": 40, "arguments": map[string]any{"command": "python scripts/rate.py"}}),
+		event(t, trace.TypeToolCall, map[string]any{"tool_name": "Read", "outcome": "succeeded", "duration_ms": 3, "arguments": nil}),
+	}}}
+
+	digest, _ := suggestionDigest(m, assessment{})
+
+	want := "  1. Bash -> failed in 40 ms: {\"command\":\"python scripts/rate.py\"}\n  2. Read -> succeeded in 3 ms\n"
+	if got := toolCallSection(digest); got != want {
+		t.Fatalf("tool call section = %q, want %q", got, want)
+	}
+}
+
+func TestTheDigestSaysWhenTheRunMadeNoToolCalls(t *testing.T) {
+	digest, _ := suggestionDigest(toolCallTrace(t, true, 0, ""), assessment{})
+	if got := toolCallSection(digest); got != "  (none)\n" {
+		t.Fatalf("tool call section = %q, want only (none)", got)
+	}
+}
+
+func TestTheDigestWarnsThatToolCallsMayBeMissingFromAPartialTrace(t *testing.T) {
+	digest, _ := suggestionDigest(toolCallTrace(t, false, 0, ""), assessment{})
+	if got := toolCallSection(digest); got != toolCallsPartialNotice+"  (none)\n" {
+		t.Fatalf("tool call section = %q, want the partial notice before (none)", got)
+	}
+}
+
+func TestTheDigestShowsAtMostItsLimitOfToolCallsAndCountsTheRest(t *testing.T) {
+	atLimit, _ := suggestionDigest(toolCallTrace(t, true, 60, "ls"), assessment{})
+	if section := toolCallSection(atLimit); strings.Count(section, "Bash") != 60 || strings.Contains(section, "more calls not shown") {
+		t.Fatalf("60 calls: section = %q, want all 60 and no omission line", section)
+	}
+	overLimit, _ := suggestionDigest(toolCallTrace(t, true, 61, "ls"), assessment{})
+	section := toolCallSection(overLimit)
+	if strings.Count(section, "Bash") != 60 || !strings.HasSuffix(section, "  ... 1 more calls not shown\n") {
+		t.Fatalf("61 calls: section = %q, want 60 calls then one omitted", section)
+	}
+}
+
+func TestTheDigestCutsEachToolCallsArgumentsToItsRuneBudget(t *testing.T) {
+	long := strings.Repeat("字", 400)
+	digest, _ := suggestionDigest(toolCallTrace(t, true, 1, long), assessment{})
+	line := strings.TrimSuffix(toolCallSection(digest), "\n")
+	_, args, _ := strings.Cut(line, ": ")
+	if n := len([]rune(args)); n != 300 {
+		t.Fatalf("arguments are %d runes, want them cut at 300", n)
+	}
+}

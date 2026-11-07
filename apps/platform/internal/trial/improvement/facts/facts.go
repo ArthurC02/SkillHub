@@ -1,6 +1,7 @@
 package facts
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 	"unicode/utf8"
@@ -117,4 +118,42 @@ func (m Material) FinalOutputCut() (reason string, cut bool) {
 	}
 	return fmt.Sprintf("the final output was cut off at %d characters, so the rest of the answer cannot be checked",
 		utf8.RuneCountInString(m.Summary.FinalOutput)), true
+}
+
+type ToolCall struct {
+	Name       string
+	Outcome    string
+	DurationMS int64
+	Arguments  string
+}
+
+type ToolCallLog struct {
+	Calls    []ToolCall
+	Complete bool
+}
+
+func (m Material) ToolCalls() ToolCallLog {
+	view := m.Advanced
+	log := ToolCallLog{Complete: view.Complete && !view.HasMore && !view.EvaluationTruncated}
+	for _, e := range view.Events {
+		if e.Type != trace.TypeToolCall {
+			continue
+		}
+		var p struct {
+			ToolName   string          `json:"tool_name"`
+			Outcome    string          `json:"outcome"`
+			DurationMS int64           `json:"duration_ms"`
+			Arguments  json.RawMessage `json:"arguments"`
+		}
+		if err := json.Unmarshal(e.Payload, &p); err != nil {
+			log.Complete = false
+			continue
+		}
+		call := ToolCall{Name: p.ToolName, Outcome: p.Outcome, DurationMS: p.DurationMS}
+		if len(p.Arguments) > 0 && string(p.Arguments) != "null" {
+			call.Arguments = string(p.Arguments)
+		}
+		log.Calls = append(log.Calls, call)
+	}
+	return log
 }

@@ -321,8 +321,40 @@ func suggestionDigest(m facts.Material, v assessment) (string, []verdict.Evidenc
 		addRefs(f.Evidence)
 	}
 
+	writeToolCalls(&b, m.ToolCalls())
+
 	digest, _ := textx.CutRunes(b.String(), maxDigestChars)
 	return digest, refs
+}
+
+const (
+	toolCallsHeading       = "\ntool calls in the order the run made them:\n"
+	toolCallsPartialNotice = "  (the trace does not show every call, so calls may be missing from this list)\n"
+	maxDigestToolCalls     = 60
+	digestArgumentRunes    = 300
+)
+
+func writeToolCalls(b *strings.Builder, log facts.ToolCallLog) {
+	b.WriteString(toolCallsHeading)
+	if !log.Complete {
+		b.WriteString(toolCallsPartialNotice)
+	}
+	if len(log.Calls) == 0 {
+		b.WriteString("  (none)\n")
+		return
+	}
+	for i, call := range log.Calls {
+		if i == maxDigestToolCalls || b.Len() >= maxDigestChars {
+			fmt.Fprintf(b, "  ... %d more calls not shown\n", len(log.Calls)-i)
+			return
+		}
+		fmt.Fprintf(b, "  %d. %s -> %s in %d ms", i+1, call.Name, call.Outcome, call.DurationMS)
+		if call.Arguments != "" {
+			args, _ := textx.CutRunes(call.Arguments, digestArgumentRunes)
+			fmt.Fprintf(b, ": %s", args)
+		}
+		b.WriteByte('\n')
+	}
 }
 
 func (s *Service) packageFiles(ctx context.Context, m facts.Material) ([]string, []modelport.TargetFile) {
