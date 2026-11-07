@@ -1,0 +1,16 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "candidate-evaluation-recited",
+  "proposal_id": "candidate-evaluation-recited-2026-11-07",
+  "obligations": [
+    {
+      "id": "evidence-current",
+      "source_type": "acceptance-criterion",
+      "source_id": "citations-current",
+      "expected_outcome": "verify-evidence reports current for every citation of the updated records.",
+      "level": "architecture",
+      "status": "planned",
+      "check": ".domain-memory/domain-memory.exe verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/candidate-evaluation-recited-2026-11-07 --path apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_integration_test.go --path apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_scope_integration_test.go --path apps/platform/internal/entrypoint/api/apiserver/publishing_release_guard_integration_test.go --path apps/platform/internal/entrypoint/api/apiserver/reflection_integration_test.go --path apps/platform/internal/entrypoint/api/apiserver/reflection_wiring.go --path apps/platform/internal/skill/admission/creation.go --path apps/platform/internal/skill/admission/mcp_tools.go --path apps/platform/internal/skill/admission/mcp_tools_test.go --path apps/platform/internal/skill/admission/service.go --path apps/platform/internal/skill/publishing/service.go --path apps/platform/internal/trial/batch/batch_comparison.go --path apps/platform/internal/trial/batch/batch_report.go --path apps/platform/internal/trial/batch/batch_test.go --path apps/platform/internal/trial/improvement/evaluation.go --path apps/platform/internal/trial/improvement/evaluation_test.go --path apps/platform/internal/trial/improvement/reflection/reflection.go --path apps/platform/internal/trial/improvement/reflection/round_test.go --path db/migrations/0150_reflection_candidates.sql"
+    }
+  ]
+}

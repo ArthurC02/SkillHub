@@ -1,0 +1,38 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "candidate-evaluation-recited",
+  "status": "draft",
+  "intent": "Re-cite rules/a-batch-reflection-is-paid-for-by-its-requester, rules/a-paired-test-case-is-better-only-when-strictly-higher, rules/a-publication-takes-only-a-version-of-its-own-skill, rules/a-skill-effect-is-reported-only-when-the-skill-was-withheld, rules/a-suggestion-decision-is-accepted-or-rejected, rules/an-applied-acceptance-is-final, rules/an-unlisted-mcp-tool-blocks-a-created-draft-and-warns-an-import, rules/batches-are-compared-only-on-test-cases-both-judged, rules/only-judged-trials-enter-the-pass-rate, interactions/batch-eval-batch-trials after the code they cite moved or changed; the facts they state are unchanged.",
+  "actor": "agent:coding-agent",
+  "observable_outcome": "verify-evidence reports every citation of the updated records current.",
+  "acceptance_criteria": [
+    {
+      "id": "citations-current",
+      "statement": "Every citation in the updated records matches the lines it cites."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_scope_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/publishing_release_guard_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/reflection_integration_test.go",
+    "apps/platform/internal/entrypoint/api/apiserver/reflection_wiring.go",
+    "apps/platform/internal/skill/admission/creation.go",
+    "apps/platform/internal/skill/admission/mcp_tools.go",
+    "apps/platform/internal/skill/admission/mcp_tools_test.go",
+    "apps/platform/internal/skill/admission/service.go",
+    "apps/platform/internal/skill/publishing/service.go",
+    "apps/platform/internal/trial/batch/batch_comparison.go",
+    "apps/platform/internal/trial/batch/batch_report.go",
+    "apps/platform/internal/trial/batch/batch_test.go",
+    "apps/platform/internal/trial/improvement/evaluation.go",
+    "apps/platform/internal/trial/improvement/evaluation_test.go",
+    "apps/platform/internal/trial/improvement/reflection/reflection.go",
+    "apps/platform/internal/trial/improvement/reflection/round_test.go",
+    "db/migrations/0150_reflection_candidates.sql"
+  ]
+}
