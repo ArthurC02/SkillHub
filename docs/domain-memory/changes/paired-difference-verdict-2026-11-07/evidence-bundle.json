@@ -1,0 +1,85 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "paired-difference-verdict",
+  "proposal_id": "paired-difference-verdict-2026-11-07",
+  "registry_revision": {
+    "observed_commit": "52bd74f915da87dd7fb5381b69d0eea823bc64a2",
+    "registry_digest": "sha256:105b89ad4aa82099f6056f9e51c56a03b64cad96ee184ff147a196cb650fdb16",
+    "committed_digest": "sha256:4582b82dc81cce3554faa8395d68065f894c2680c8dd628dffd58230622f2599"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-paired-difference-is-called-better-only-when-its-interval-excludes-zero",
+      "mutated_protection": "apps/platform/internal/trial/batch/batch_comparison.go:124: case mean-normalZ999*standardError > 0: -> case mean-normalZ95*standardError > 0:",
+      "failure_evidence": "below\n--- FAIL: TestTheVerdictNeedsTheIntervalAtEachLevelToExcludeZero (0.00s)\n    --- PASS: TestTheVerdictNeedsTheIntervalAtEachLevelToExcludeZero/the_99.9%_interval_just_excludes_zero (0.00s)\n    --- FAIL: TestTheVerdictNeedsTheIntervalAtEachLevelToExcludeZero/the_99.9%_interval_just_includes_zero (0.00s)\n    --- FAIL: TestTheVerdictNeedsTheIntervalAtEachLevelToExcludeZero/the_95%_interval_just_excludes_zero (0.00s)\n    --- PASS: TestTheVerdictNeedsTheIntervalAtEachLevelToExcludeZero/the_95%_interval_just_includes_zero (0.00s)\n    --- PASS: TestTheVerdictNeedsTheIntervalAtEachLevelToExcludeZero/no_difference_at_all (0.00s)\n    --- PASS: TestTheVerdictNeedsTheIntervalAtEachLevelToExcludeZero/the_95%_interval_just_includes_zero_below (0.00s)\n    --- PASS: TestTheVerdictNeedsTheIntervalAtEachLevelToExcludeZero/the_95%_interval_just_excludes_zero_below (0.00s)\n    --- PASS: TestTheVerdictNeedsTheIntervalAtEachLevelToExcludeZero/the_99.9%_interval_just_includes_zero_below (0.00s)\n    --- PASS: TestTheVerdictNeedsTheIntervalAtEachLevelToExcludeZero/the_99.9%_interval_just_excludes_zero_below (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/batch\t1.707s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "equal-moves-are-clear",
+      "mutated_protection": "apps/platform/internal/trial/batch/batch_comparison.go:128: case mean+normalZ999*standardError < 0: -> case false:",
+      "failure_evidence": "=== RUN   TestEveryPairedCaseMovingTheSameWayIsAClearDifference\n    batch_test.go:181: two equal losses: verdict \"likely_worse\", want worse\n--- FAIL: TestEveryPairedCaseMovingTheSameWayIsAClearDifference (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/batch\t1.657s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-paired-difference-needs-two-pairs-for-an-interval",
+      "mutated_protection": "apps/platform/internal/trial/batch/batch_comparison.go:111: return &mean, nil, VerdictTooFewPairs -> return &mean, nil, VerdictNoClearDifference",
+      "failure_evidence": "=== RUN   TestThePairedDifferenceCarriesItsStandardErrorInterval\n    batch_test.go:139: one pair: 0x2cf618c4d038 <nil> \"no_clear_difference\", want the difference without an interval and too_few_pairs\n--- FAIL: TestThePairedDifferenceCarriesItsStandardErrorInterval (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/batch\t1.654s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "rule-batches-are-compared-only-on-test-cases-both-judged",
+      "mutated_protection": "apps/platform/internal/trial/batch/batch_http.go:252: Verdict: comparison.Verdict, -> ",
+      "failure_evidence": "=== RUN   TestTwoBatchesAreComparedOnlyOnTheTestCasesBothJudged\n    evaluation_batch_integration_test.go:611: comparison: got 200 map[candidate:map[created_at:2026-11-07T09:47:22Z id:c8f61c3c-8f88-4abc-a2d9-b09357a1e336 skill_id:d07b19cf-89f2-4bb5-9a6a-2d38d6f8f05d skill_version_id:5432840e-0222-42da-a10d-386456ee7fd3 status:launched trials:1 with_skill_withheld:false] candidate_better:1 difference:0.5 difference_95:map[high:1.479981992270027 low:-0.479981992270027] paired:2 reference:map[created_at:2026-11-07T09:47:21Z id:0fb50477-0bc7-434c-8ad4-4fec22f985d5 skill_id:d07b19cf-89f2-4bb5-9a6a-2d38d6f8f05d skill_version_id:5432840e-0222-42da-a10d-386456ee7fd3 status:launched trials:1 with_skill_withheld:false] reference_better:0 tied:1 unpaired:2 verdict:], want 2 pairs (an awaiting trial leaves its test case unpaired), one better and one tied, 0.5 within [-0.48, 1.48], so no clear difference\n--- FAIL: TestTwoBatchesAreComparedOnlyOnTheTestCasesBothJudged (0.37s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t3.213s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-paired-difference-is-called-better-only-when-its-interval-excludes-zero",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestTheVerdictNeedsTheIntervalAtEachLevelToExcludeZero$ ./internal/trial/batch/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:9292be1ff357bcb7aa828333778b02f7022784d4e287c19ac6c3bbbe6615325e",
+      "finished_at": "2026-11-07T09:47:57.461047Z"
+    },
+    {
+      "obligation_id": "equal-moves-are-clear",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestEveryPairedCaseMovingTheSameWayIsAClearDifference$ ./internal/trial/batch/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:d3cbec2426de431b5af0eadfc9271bd0d5164fcea5d687adf63fdf6a8b922d9c",
+      "finished_at": "2026-11-07T09:48:01.119006Z"
+    },
+    {
+      "obligation_id": "rule-a-paired-difference-needs-two-pairs-for-an-interval",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestThePairedDifferenceCarriesItsStandardErrorInterval$ ./internal/trial/batch/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:a14e82ae6ab93bb1699c4639579b3936b260db16a552f9d91f9e070eee8f3fe1",
+      "finished_at": "2026-11-07T09:48:04.526303Z"
+    },
+    {
+      "obligation_id": "rule-batches-are-compared-only-on-test-cases-both-judged",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestTwoBatchesAreComparedOnlyOnTheTestCasesBothJudged$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "integration",
+      "exit_code": 0,
+      "output_sha256": "sha256:eac3f2da684a9cb954e6566c3568ba2ca5e95f4809363f5b80635a509ed6234e",
+      "finished_at": "2026-11-07T09:48:10.268926Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

@@ -1,0 +1,61 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "paired-difference-verdict",
+  "proposal_id": "paired-difference-verdict-2026-11-07",
+  "obligations": [
+    {
+      "id": "rule-a-paired-difference-is-called-better-only-when-its-interval-excludes-zero",
+      "source_type": "rule",
+      "source_id": "a-paired-difference-is-called-better-only-when-its-interval-excludes-zero",
+      "also_covers": [
+        {
+          "source_type": "acceptance-criterion",
+          "source_id": "verdict-from-two-levels"
+        }
+      ],
+      "expected_outcome": "TestTheVerdictNeedsTheIntervalAtEachLevelToExcludeZero: with a standard error of 0.1, means of 0.33, 0.32, 0.2, 0.19, 0, -0.19, -0.2, -0.32 and -0.33 give improved, likely_improved twice, no_clear_difference three times, likely_worse twice and worse.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestTheVerdictNeedsTheIntervalAtEachLevelToExcludeZero$ ./internal/trial/batch/"
+    },
+    {
+      "id": "equal-moves-are-clear",
+      "source_type": "acceptance-criterion",
+      "source_id": "verdict-from-two-levels",
+      "expected_outcome": "TestEveryPairedCaseMovingTheSameWayIsAClearDifference: three equal gains are improved and two equal losses are worse.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestEveryPairedCaseMovingTheSameWayIsAClearDifference$ ./internal/trial/batch/"
+    },
+    {
+      "id": "rule-a-paired-difference-needs-two-pairs-for-an-interval",
+      "source_type": "rule",
+      "source_id": "a-paired-difference-needs-two-pairs-for-an-interval",
+      "also_covers": [
+        {
+          "source_type": "acceptance-criterion",
+          "source_id": "too-few-pairs"
+        }
+      ],
+      "expected_outcome": "TestThePairedDifferenceCarriesItsStandardErrorInterval: no pair gives neither, one pair gives 0.5 without an interval, both too_few_pairs; four pairs give 0.25 within [-0.3826, 0.8826], no_clear_difference.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestThePairedDifferenceCarriesItsStandardErrorInterval$ ./internal/trial/batch/"
+    },
+    {
+      "id": "rule-batches-are-compared-only-on-test-cases-both-judged",
+      "source_type": "rule",
+      "source_id": "batches-are-compared-only-on-test-cases-both-judged",
+      "also_covers": [
+        {
+          "source_type": "acceptance-criterion",
+          "source_id": "api-carries-verdict"
+        }
+      ],
+      "expected_outcome": "TestTwoBatchesAreComparedOnlyOnTheTestCasesBothJudged: 2 pairs, 2 unpaired, one better and one tied, 0.5 within [-0.48, 1.48] and verdict no_clear_difference.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestTwoBatchesAreComparedOnlyOnTheTestCasesBothJudged$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}

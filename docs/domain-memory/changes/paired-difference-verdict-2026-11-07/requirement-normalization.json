@@ -1,0 +1,31 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "paired-difference-verdict",
+  "status": "draft",
+  "intent": "A creator comparing two batches, or a batch with its skill withheld, is told whether the difference supports calling the change better, instead of reading a mean and an interval and deciding alone.",
+  "actor": "skill-creator",
+  "observable_outcome": "GET comparison and the batch report's skill_effect carry a verdict; the page shows it first, and a difference whose 95% interval includes zero is shown as no clear difference.",
+  "acceptance_criteria": [
+    {
+      "id": "verdict-from-two-levels",
+      "statement": "The verdict is improved or worse when the 99.9% interval excludes zero, likely improved or likely worse when only the 95% interval does, and no clear difference when the 95% interval includes zero."
+    },
+    {
+      "id": "too-few-pairs",
+      "statement": "Fewer than two pairs give the verdict too few pairs, with the difference but no interval."
+    },
+    {
+      "id": "api-carries-verdict",
+      "statement": "A comparison whose 95% interval includes zero answers verdict no_clear_difference."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/trial/batch/batch_comparison.go",
+    "apps/platform/internal/trial/batch/batch_http.go",
+    "contracts/openapi/public.yaml"
+  ]
+}

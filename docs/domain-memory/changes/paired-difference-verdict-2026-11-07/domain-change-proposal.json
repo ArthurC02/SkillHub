@@ -1,0 +1,189 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "paired-difference-verdict-2026-11-07",
+  "proposer": "coding-agent",
+  "requirement_id": "paired-difference-verdict",
+  "status": "verified",
+  "change_classification": "material",
+  "submitted_at": "2026-11-07T09:47:53.801149Z",
+  "verified_at": "2026-11-07T09:48:10.684550Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "52bd74f915da87dd7fb5381b69d0eea823bc64a2",
+    "registry_digest": "sha256:105b89ad4aa82099f6056f9e51c56a03b64cad96ee184ff147a196cb650fdb16",
+    "committed_digest": "sha256:4582b82dc81cce3554faa8395d68065f894c2680c8dd628dffd58230622f2599"
+  },
+  "affected_contexts": [
+    "batch"
+  ],
+  "rule_ids": [
+    "a-paired-difference-is-called-better-only-when-its-interval-excludes-zero",
+    "a-paired-difference-needs-two-pairs-for-an-interval",
+    "batches-are-compared-only-on-test-cases-both-judged"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "batch",
+    "invariant": "A paired difference is presented as better or worse only when its interval excludes zero; the verdict is derived from the same paired standard error as the reported interval and travels with it.",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "batch computes the verdict and exposes it through its own HTTP views; the web reads it from the contract and no other context reads it.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A mean with an interval leaves the reader to decide whether a change helped, and a difference whose interval includes zero reads as better when it may be noise.",
+      "The interval already comes from the paired standard error, so a second level needs no new statistics.",
+      "Fewer than two pairs give no standard error."
+    ],
+    "decision": "pairedDifference returns a verdict beside the mean and the 95% interval; differenceVerdict checks the 99.9% and then the 95% bound on each side; both HTTP views and the contract carry it, and the page shows it first.",
+    "invariants_preserved": [
+      "The mean and the 95% interval are unchanged.",
+      "Pairing only test cases judged in both batches is unchanged.",
+      "One pair still gives a difference without an interval."
+    ],
+    "rejected_alternatives": [
+      "Leaving the verdict to the web, which would put a statistical rule outside the context that owns the numbers.",
+      "A noise floor from repeated baseline batches, which needs two batches of one version on the same cases and has no data yet."
+    ],
+    "proof_obligations": [
+      "rule-a-paired-difference-is-called-better-only-when-its-interval-excludes-zero",
+      "equal-moves-are-clear",
+      "rule-a-paired-difference-needs-two-pairs-for-an-interval",
+      "rule-batches-are-compared-only-on-test-cases-both-judged"
+    ],
+    "counterfactual_check": "Use the 95% bound where differenceVerdict checks the 99.9% one; the 0.32 and -0.32 rows of the verdict table must fail. Give a single pair a verdict other than too_few_pairs; the standard-error test must fail."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-paired-difference-is-called-better-only-when-its-interval-excludes-zero",
+        "statement": "A paired difference between two batches, or between a batch and its skill-withheld arm, is presented as better or worse only when its interval excludes zero: improved or worse when the 99.9% interval does, likely improved or likely worse when only the 95% interval does, no clear difference when the 95% interval includes zero, and too few pairs below two pairs; nothing short of likely improved is presented as an improvement.",
+        "contexts": [
+          "batch"
+        ],
+        "examples": [
+          "A mean of +0.19 with a standard error of 0.1 has a 95% interval that includes zero, so the comparison says there is no clear difference rather than better.",
+          "A mean of +0.2 with a standard error of 0.1 is likely improved; +0.33 is improved.",
+          "One paired test case gives a difference but too few pairs for a verdict."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/batch/batch_comparison.go",
+            "lines": {
+              "start": 100,
+              "end": 134
+            },
+            "excerpt_sha256": "sha256:a32f124e038f39b6528efe8e188f2f4923c4d7061ff9fa60b51600770d57cffb"
+          },
+          {
+            "path": "apps/platform/internal/trial/batch/batch_test.go",
+            "lines": {
+              "start": 150,
+              "end": 183
+            },
+            "excerpt_sha256": "sha256:0f5a0ffc9ceebca6b6b380b5b54b7b5e0825a271a4392056265e4a16d474d6e9"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-paired-difference-needs-two-pairs-for-an-interval",
+        "statement": "A paired difference gets a confidence interval only from two or more pairs; one pair gives the difference alone.",
+        "contexts": [
+          "batch"
+        ],
+        "examples": [
+          "One pair gives a difference with no interval."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/batch/batch_comparison.go",
+            "lines": {
+              "start": 110,
+              "end": 112
+            },
+            "content_sha256": "sha256:d9a8ead42f0fbc22cbf4a9e831593db87c0614997d2e5024893292256813ea33",
+            "excerpt_sha256": "sha256:5357a08d524b6b250c2c6c0b48d8f57c47cc5d16933e98addf275a6b65bd6338"
+          },
+          {
+            "path": "apps/platform/internal/trial/batch/batch_test.go",
+            "lines": {
+              "start": 134,
+              "end": 148
+            },
+            "content_sha256": "sha256:05c2c88a490742814f34c7186903488eeb043cbe018d8df2cd30093fcedb7db9",
+            "excerpt_sha256": "sha256:006809a5dd8211f277ac548a072b08303147719ed40d41e3f78dafff320fd8d3"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "batches-are-compared-only-on-test-cases-both-judged",
+        "statement": "Two batches are compared only on test cases judged in both; a test case judged in only one counts as unpaired, not as better, worse or tied.",
+        "contexts": [
+          "batch"
+        ],
+        "examples": [
+          "A test case judged in the candidate but not the reference adds to unpaired."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/batch/batch_comparison.go",
+            "lines": {
+              "start": 42,
+              "end": 77
+            },
+            "content_sha256": "sha256:d9a8ead42f0fbc22cbf4a9e831593db87c0614997d2e5024893292256813ea33",
+            "excerpt_sha256": "sha256:7c8767e568418548ba47be6eaeb6df116d7d1a19af372e49e365f0fab72c83d3"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_integration_test.go",
+            "lines": {
+              "start": 584,
+              "end": 625
+            },
+            "content_sha256": "sha256:23c3916efbb64d5050be1f4daa7aea4af34a222575d54545f6fe6872d869fd26",
+            "excerpt_sha256": "sha256:be958287f9a866c0b2b004bc4e8a7c40acdd29f230c6d25f0ec218b98f22387c"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-11-07T09:48:10.339614Z",
+      "scope": "proposal",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "52bd74f915da87dd7fb5381b69d0eea823bc64a2",
+        "registry_digest": "sha256:105b89ad4aa82099f6056f9e51c56a03b64cad96ee184ff147a196cb650fdb16",
+        "committed_digest": "sha256:4582b82dc81cce3554faa8395d68065f894c2680c8dd628dffd58230622f2599"
+      }
+    }
+  ],
+  "supersedes": [
+    "batch-report-counting-and-scope-rules-2026-10-19",
+    "shifted-recite-2026-10-24"
+  ]
+}
