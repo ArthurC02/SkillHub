@@ -159,6 +159,14 @@ type CreditLedger interface {
 	Reserve(context.Context, pgx.Tx, pgtype.UUID, float64) (bool, error)
 	Settle(ctx context.Context, tx pgx.Tx, run RunSettlement) error
 	FinalCostRecorded(ctx context.Context, runID pgtype.UUID) (bool, error)
+	RunCostStatistics(ctx context.Context) (RunCostStatistics, error)
+}
+
+type RunCostStatistics struct {
+	MedianCredits    int64
+	ThresholdCredits int64
+	SampleCount      int
+	Reliable         bool
 }
 
 const providerUnassigned = "unassigned"

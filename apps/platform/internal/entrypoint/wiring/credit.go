@@ -184,6 +184,17 @@ func (l runCreditLedger) Reserve(ctx context.Context, tx pgx.Tx, workspaceID pgt
 	return l.credits.CanAffordStepIn(ctx, tx, userID, billable(reservedUSD))
 }
 
+func (l runCreditLedger) RunCostStatistics(ctx context.Context) (run.RunCostStatistics, error) {
+	est, err := l.credits.Estimate(ctx, credit.KindRun)
+	if err != nil {
+		return run.RunCostStatistics{}, err
+	}
+	return run.RunCostStatistics{
+		MedianCredits: est.LowCredits, ThresholdCredits: est.ThresholdCredits,
+		SampleCount: est.SampleCount, Reliable: !est.Estimated,
+	}, nil
+}
+
 func runCostKey(runID pgtype.UUID) string { return "run:" + pgconv.UUIDString(runID) }
 
 func (l runCreditLedger) Settle(ctx context.Context, tx pgx.Tx, r run.RunSettlement) error {

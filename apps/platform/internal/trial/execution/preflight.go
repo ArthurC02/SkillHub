@@ -206,6 +206,22 @@ const (
 	baselineMaxUSD    = 0.2367
 )
 
+func runCostEstimate(ctx context.Context, l CreditLedger) (CostEstimate, error) {
+	stats, err := l.RunCostStatistics(ctx)
+	if err != nil || !stats.Reliable {
+		return defaultCostEstimate(l.CreditsForUSD)
+	}
+	return CostEstimate{
+		LowCredits:     stats.MedianCredits,
+		TypicalCredits: stats.MedianCredits,
+		HighCredits:    stats.ThresholdCredits,
+		Basis: fmt.Sprintf(
+			"估計值,非報價。來源:最近 %d 次試跑的實付分布(中位數 %d 點、九成五不超過 %d 點);"+
+				"評估批次開始前也以每次試跑 %d 點估算。實際扣點以這個 Run 結算時的實付換算為準。",
+			stats.SampleCount, stats.MedianCredits, stats.ThresholdCredits, stats.ThresholdCredits),
+	}, nil
+}
+
 func defaultCostEstimate(credits func(float64) (int64, bool)) (CostEstimate, error) {
 	conv := func(usd float64) (int64, error) {
 		c, ok := credits(usd)
@@ -371,7 +387,7 @@ func (s *Service) permissionSummaryFor(
 
 		return PermissionSummary{}, errors.New("run: no credit conversion wired; the pre-run screen cannot state a cost")
 	}
-	estimate, err := defaultCostEstimate(s.Ledger.CreditsForUSD)
+	estimate, err := runCostEstimate(ctx, s.Ledger)
 	if err != nil {
 		return PermissionSummary{}, err
 	}

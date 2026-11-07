@@ -22,6 +22,9 @@ func (runCreditLedger) Reserve(context.Context, pgx.Tx, pgtype.UUID, float64) (b
 func (l runCreditLedger) Settle(ctx context.Context, tx pgx.Tx, r run.RunSettlement) error {
 	return l.settle(ctx, tx, r)
 }
+func (runCreditLedger) RunCostStatistics(context.Context) (run.RunCostStatistics, error) {
+	return run.RunCostStatistics{}, nil
+}
 func (runCreditLedger) FinalCostRecorded(context.Context, pgtype.UUID) (bool, error) {
 	return false, nil
 }

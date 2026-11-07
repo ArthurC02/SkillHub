@@ -224,6 +224,29 @@ func assertCostEstimatedAsACreditRange(t *testing.T, view preflightView) {
 	}
 }
 
+func TestThePreflightEstimateReadsTheRecentRunCostsOnceThereAreEnough(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-preflight-statistics")
+	if _, err := pool.Exec(context.Background(), `
+		INSERT INTO cost_statistics (kind, window_start, window_end, sample_count, p50_usd_micros, p90_usd_micros, p95_usd_micros, max_usd_micros)
+		VALUES ('run', now() - interval '1 day', now() + interval '1 day', 23, 50000, 150000, 200000, 400000)`); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM cost_statistics WHERE kind = 'run' AND window_end > now()`)
+	})
+
+	code, view := f.preflight(t)
+	if code != http.StatusOK {
+		t.Fatalf("preflight: %d %s", code, view.Error)
+	}
+	cost := view.EstimatedCost
+	if !strings.Contains(cost.Basis, "最近 23 次試跑") || cost.TypicalCredits != cost.LowCredits || cost.HighCredits <= cost.LowCredits {
+		t.Errorf("estimate = %+v, want the median as typical and the start threshold as high, citing the 23 recent runs", cost)
+	}
+}
+
 func TestCostEstimateIsOutsideTheConfirmedHash(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
