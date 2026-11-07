@@ -387,7 +387,10 @@ func (s *Service) permissionSummaryFor(
 
 		return PermissionSummary{}, errors.New("run: no credit conversion wired; the pre-run screen cannot state a cost")
 	}
-	estimate, err := runCostEstimate(ctx, s.Ledger)
+	estimate, err := defaultCostEstimate(s.Ledger.CreditsForUSD)
+	if held == nil {
+		estimate, err = runCostEstimate(ctx, s.Ledger)
+	}
 	if err != nil {
 		return PermissionSummary{}, err
 	}
