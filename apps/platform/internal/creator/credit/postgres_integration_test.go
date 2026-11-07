@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -15,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/testschema"
 )
 
@@ -267,6 +269,137 @@ func TestOneSessionThatCannotBeSummarizedDoesNotStopTheOthers(t *testing.T) {
 		}
 		if n != want {
 			t.Errorf("summaries for session %s = %d, want %d", fmt.Sprint(uuid.UUID(id.Bytes)), n, want)
+		}
+	}
+}
+
+func aggregateWindow(t *testing.T, ctx context.Context, tx pgx.Tx, kind CostKind, start, end string) gen.AggregateCostEventsWindowRow {
+	t.Helper()
+	from, err := time.Parse(time.RFC3339, start)
+	if err != nil {
+		t.Fatal(err)
+	}
+	to, err := time.Parse(time.RFC3339, end)
+	if err != nil {
+		t.Fatal(err)
+	}
+	row, err := gen.New(tx).AggregateCostEventsWindow(ctx, gen.AggregateCostEventsWindowParams{
+		Kind: string(kind), MeasuredSource: string(statisticsCostSource),
+		WindowStart: pgconv.Timestamptz(from), WindowEnd: pgconv.Timestamptz(to),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return row
+}
+
+func fixtureUser(t *testing.T, ctx context.Context, tx pgx.Tx) pgtype.UUID {
+	t.Helper()
+	var user pgtype.UUID
+	if err := tx.QueryRow(ctx, `INSERT INTO users (email, display_name) VALUES ($1, 'fixture') RETURNING id`,
+		uuid.NewString()+"@example.test").Scan(&user); err != nil {
+		t.Fatal(err)
+	}
+	return user
+}
+
+func TestADebitOfThreeCallsIsOneEventAndThreeStatisticSamples(t *testing.T) {
+	pool := integrationPool(t)
+	ctx := context.Background()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	user := fixtureUser(t, ctx, tx)
+	s := &Service{Store: NewPostgresStore(pool), Config: testConfig()}
+	total, key := int64(6_000), "batch_reflection:"+uuid.NewString()
+	if _, err := s.Charge(ctx, tx, ChargeInput{
+		Kind: KindBatchReflection, UserID: user, IdempotencyKey: key,
+		UsdMicros: &total, CallUsdMicros: []int64{1_000, 2_000, 3_000},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO cost_events (kind, model, usd_micros, cost_source, user_id, idempotency_key, created_at)
+		VALUES ('batch_reflection', 'fixture-model', 4000, 'gateway', $1, $2, '2001-01-01T12:00:00Z')`,
+		user, uuid.NewString()); err != nil {
+		t.Fatal(err)
+	}
+	var events int
+	var calls []int64
+	if err := tx.QueryRow(ctx, `SELECT count(*) OVER (), call_usd_micros FROM cost_events WHERE idempotency_key = $1`, key).
+		Scan(&events, &calls); err != nil {
+		t.Fatal(err)
+	}
+	if events != 1 || len(calls) != 3 || calls[0] != 1_000 || calls[1] != 2_000 || calls[2] != 3_000 {
+		t.Fatalf("the debit wrote %d events with calls %v, want one event listing 1000, 2000 and 3000", events, calls)
+	}
+
+	now := aggregateWindow(t, ctx, tx, KindBatchReflection, "2000-01-01T00:00:00Z", "2999-01-01T00:00:00Z")
+	if now.SampleCount != 4 || now.P50UsdMicros != 2_500 || now.P95UsdMicros != 3_850 || now.MaxUsdMicros != 4_000 {
+		t.Errorf("window = %+v, want 4 call samples (three listed, one single-call event), p50 2500, p95 3850, max 4000", now)
+	}
+}
+
+func TestAWindowOfSingleCallEventsCountsEachEventOnce(t *testing.T) {
+	pool := integrationPool(t)
+	ctx := context.Background()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	user := fixtureUser(t, ctx, tx)
+	for _, micros := range []int64{100, 200, 300, 400} {
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO cost_events (kind, model, usd_micros, cost_source, user_id, idempotency_key, created_at)
+			VALUES ('creation_step', 'fixture-model', $1, 'gateway', $2, $3, '2002-06-01T12:00:00Z')`,
+			micros, user, uuid.NewString()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got := aggregateWindow(t, ctx, tx, KindCreationStep, "2002-06-01T00:00:00Z", "2002-06-02T00:00:00Z")
+	if got.SampleCount != 4 || got.P50UsdMicros != 250 || got.P95UsdMicros != 385 || got.MaxUsdMicros != 400 {
+		t.Errorf("window = %+v, want 4 samples, p50 250, p95 385, max 400", got)
+	}
+}
+
+func TestTheCallsOfAnEventMustBeTwoOrMoreReportedCostsSummingToItsDebit(t *testing.T) {
+	pool := integrationPool(t)
+	ctx := context.Background()
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	user := fixtureUser(t, ctx, tx)
+	insert := func(usd int64, source string, calls []int64) error {
+		_, err := savepointTx{tx}.Exec(ctx, `
+			INSERT INTO cost_events (kind, model, usd_micros, cost_source, user_id, idempotency_key, call_usd_micros)
+			VALUES ('batch_reflection', 'fixture-model', $1, $2, $3, $4, $5)`, usd, source, user, uuid.NewString(), calls)
+		return err
+	}
+	for _, tc := range []struct {
+		name   string
+		usd    int64
+		source string
+		calls  []int64
+		ok     bool
+	}{
+		{"two calls summing to the debit", 30, "gateway", []int64{10, 20}, true},
+		{"no listed calls", 30, "gateway", nil, true},
+		{"one listed call", 30, "gateway", []int64{30}, false},
+		{"calls one short of the debit", 30, "gateway", []int64{10, 19}, false},
+		{"a negative call", 30, "gateway", []int64{40, -10}, false},
+		{"calls on an estimated debit", 30, "estimated", []int64{10, 20}, false},
+	} {
+		err := insert(tc.usd, tc.source, tc.calls)
+		if tc.ok != (err == nil) {
+			t.Errorf("%s: err = %v, want accepted %v", tc.name, err, tc.ok)
+		}
+		if !tc.ok && err != nil && !strings.Contains(err.Error(), "cost_events_call_usd_micros_sum_to_the_debit") {
+			t.Errorf("%s: refused by %v, want the calls constraint", tc.name, err)
 		}
 	}
 }

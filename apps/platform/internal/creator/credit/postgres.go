@@ -62,6 +62,7 @@ func (s *PostgresStore) RecordCostEvent(ctx context.Context, tx DBTX, e CostEven
 		RefType:          nullString(e.RefType),
 		RefID:            e.RefID,
 		IdempotencyKey:   e.IdempotencyKey,
+		CallUsdMicros:    e.CallUsdMicros,
 	})
 	if err == nil {
 		return pgconv.UUIDString(row.ID), false, nil

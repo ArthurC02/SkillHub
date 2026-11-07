@@ -328,6 +328,7 @@ func (s *Service) settleRound(ctx context.Context, round *eval.NewReflection, fo
 func roundUsage(usages []*modelport.ModelUsage) *modelport.ModelUsage {
 	var sum modelport.ModelUsage
 	cost, reported, seen := 0.0, true, false
+	var calls []float64
 	for _, u := range usages {
 		if u == nil {
 			reported = false
@@ -338,6 +339,7 @@ func roundUsage(usages []*modelport.ModelUsage) *modelport.ModelUsage {
 		sum.CompletionTokens += u.CompletionTokens
 		if usd := u.ReportedCostUSD(); usd != nil {
 			cost += *usd
+			calls = append(calls, *usd)
 		} else {
 			reported = false
 		}
@@ -347,6 +349,9 @@ func roundUsage(usages []*modelport.ModelUsage) *modelport.ModelUsage {
 	}
 	if reported {
 		sum.CostUSD, sum.CostReported = &cost, true
+		if len(calls) > 1 {
+			sum.CallCostsUSD = calls
+		}
 	}
 	return &sum
 }

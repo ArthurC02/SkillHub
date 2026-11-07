@@ -99,7 +99,8 @@ type ChargeInput struct {
 	PromptTokens     int64
 	CompletionTokens int64
 
-	UsdMicros *int64
+	UsdMicros     *int64
+	CallUsdMicros []int64
 
 	ReservedUsdMicros int64
 
@@ -126,12 +127,8 @@ func (s *Service) Charge(ctx context.Context, tx DBTX, in ChargeInput) (ChargeRe
 	if in.Kind == "" || in.IdempotencyKey == "" || !in.UserID.Valid {
 		return ChargeResult{}, ErrInvalid
 	}
-	estimated := in.UsdMicros == nil
-	billingMicros := in.ReservedUsdMicros
-	if !estimated {
-		billingMicros = *in.UsdMicros
-	}
-	if billingMicros < 0 {
+	billingMicros, estimated, ok := in.billing()
+	if !ok {
 		return ChargeResult{}, ErrInvalid
 	}
 	if err := s.checkAccount(ctx, tx, in.UserID); err != nil {
@@ -141,7 +138,7 @@ func (s *Service) Charge(ctx context.Context, tx DBTX, in ChargeInput) (ChargeRe
 	eventID, eventExisted, err := s.Store.RecordCostEvent(ctx, tx, CostEvent{
 		Kind: in.Kind, Model: in.Model, PromptVersion: in.PromptVersion,
 		PromptTokens: in.PromptTokens, CompletionTokens: in.CompletionTokens,
-		UsdMicros: billingMicros, Estimated: estimated,
+		UsdMicros: billingMicros, CallUsdMicros: in.CallUsdMicros, Estimated: estimated,
 		WorkspaceID: in.WorkspaceID, UserID: in.UserID,
 		RefType: in.RefType, RefID: in.RefID, IdempotencyKey: in.IdempotencyKey,
 	})
@@ -518,4 +515,30 @@ func (s *Service) DailyCredits(ctx context.Context, since time.Time) ([]DailyAmo
 	}
 	total, err := s.Store.BalanceTotal(ctx)
 	return days, total, err
+}
+
+func callsCoverTheDebit(calls []int64, usdMicros *int64) bool {
+	if calls == nil {
+		return true
+	}
+	if usdMicros == nil || len(calls) < 2 {
+		return false
+	}
+	var sum int64
+	for _, c := range calls {
+		if c < 0 {
+			return false
+		}
+		sum += c
+	}
+	return sum == *usdMicros
+}
+
+func (in ChargeInput) billing() (micros int64, estimated, ok bool) {
+	estimated = in.UsdMicros == nil
+	micros = in.ReservedUsdMicros
+	if !estimated {
+		micros = *in.UsdMicros
+	}
+	return micros, estimated, micros >= 0 && callsCoverTheDebit(in.CallUsdMicros, in.UsdMicros)
 }

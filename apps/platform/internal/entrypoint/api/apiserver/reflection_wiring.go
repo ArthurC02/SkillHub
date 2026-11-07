@@ -40,7 +40,7 @@ func newReflectionHandler(cfg Config, app *App, creditSvc *credit.Service) *refl
 				}
 				return billing.Charge(ctx, workspaceID, &testlab.ModelUsage{
 					PromptTokens: usage.PromptTokens, CompletionTokens: usage.CompletionTokens,
-					CostUSD: usage.CostUSD, CostReported: usage.CostReported,
+					CostUSD: usage.CostUSD, CostReported: usage.CostReported, CallCostsUSD: usage.CallCostsUSD,
 				})
 			},
 		},

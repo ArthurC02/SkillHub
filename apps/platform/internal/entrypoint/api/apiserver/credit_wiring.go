@@ -126,6 +126,10 @@ func suggestBilling(
 					micros, _ := credit.BillableMicros(*usd)
 					in.UsdMicros = &micros
 				}
+				if usage.ReportedCostUSD() != nil && len(usage.CallCostsUSD) > 1 {
+					total, calls := credit.CallsMicros(usage.CallCostsUSD)
+					in.UsdMicros, in.CallUsdMicros = &total, calls
+				}
 			}
 			_, err = svc.Charge(ctx, tx, in)
 			return err

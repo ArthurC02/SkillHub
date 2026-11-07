@@ -14,13 +14,14 @@ import (
 const aggregateCostEventsWindow = `-- name: AggregateCostEventsWindow :one
 SELECT
     count(*)::bigint AS sample_count,
-    coalesce(percentile_cont(0.5) WITHIN GROUP (ORDER BY usd_micros), 0)::bigint AS p50_usd_micros,
-    coalesce(percentile_cont(0.9) WITHIN GROUP (ORDER BY usd_micros), 0)::bigint AS p90_usd_micros,
-    coalesce(percentile_cont(0.95) WITHIN GROUP (ORDER BY usd_micros), 0)::bigint AS p95_usd_micros,
-    coalesce(max(usd_micros), 0)::bigint AS max_usd_micros
-FROM cost_events
-WHERE kind = $1 AND cost_source = $2
-  AND created_at >= $3 AND created_at < $4
+    coalesce(percentile_cont(0.5) WITHIN GROUP (ORDER BY call.usd_micros), 0)::bigint AS p50_usd_micros,
+    coalesce(percentile_cont(0.9) WITHIN GROUP (ORDER BY call.usd_micros), 0)::bigint AS p90_usd_micros,
+    coalesce(percentile_cont(0.95) WITHIN GROUP (ORDER BY call.usd_micros), 0)::bigint AS p95_usd_micros,
+    coalesce(max(call.usd_micros), 0)::bigint AS max_usd_micros
+FROM cost_events e
+CROSS JOIN LATERAL unnest(coalesce(e.call_usd_micros, ARRAY[e.usd_micros])) AS call (usd_micros)
+WHERE e.kind = $1 AND e.cost_source = $2
+  AND e.created_at >= $3 AND e.created_at < $4
 `
 
 type AggregateCostEventsWindowParams struct {
@@ -138,15 +139,15 @@ func (q *Queries) GetLatestCostStatistics(ctx context.Context, kind string) (Cos
 const insertCostEvent = `-- name: InsertCostEvent :one
 INSERT INTO cost_events (
     kind, model, prompt_version, prompt_tokens, completion_tokens, usd_micros,
-    cost_source, workspace_id, user_id, ref_type, ref_id, idempotency_key
+    cost_source, workspace_id, user_id, ref_type, ref_id, idempotency_key, call_usd_micros
 ) VALUES (
     $1, $2, $3, $4,
     $5, $6, $7,
     $8, $9, $10, $11,
-    $12
+    $12, $13::bigint[]
 )
 ON CONFLICT ON CONSTRAINT cost_events_idempotency_key_key DO NOTHING
-RETURNING id, kind, model, prompt_version, prompt_tokens, completion_tokens, usd_micros, cost_source, workspace_id, user_id, ref_type, ref_id, idempotency_key, created_at
+RETURNING id, kind, model, prompt_version, prompt_tokens, completion_tokens, usd_micros, cost_source, workspace_id, user_id, ref_type, ref_id, idempotency_key, created_at, call_usd_micros
 `
 
 type InsertCostEventParams struct {
@@ -162,6 +163,7 @@ type InsertCostEventParams struct {
 	RefType          *string
 	RefID            pgtype.UUID
 	IdempotencyKey   string
+	CallUsdMicros    []int64
 }
 
 func (q *Queries) InsertCostEvent(ctx context.Context, arg InsertCostEventParams) (CostEvent, error) {
@@ -178,6 +180,7 @@ func (q *Queries) InsertCostEvent(ctx context.Context, arg InsertCostEventParams
 		arg.RefType,
 		arg.RefID,
 		arg.IdempotencyKey,
+		arg.CallUsdMicros,
 	)
 	var i CostEvent
 	err := row.Scan(
@@ -195,6 +198,7 @@ func (q *Queries) InsertCostEvent(ctx context.Context, arg InsertCostEventParams
 		&i.RefID,
 		&i.IdempotencyKey,
 		&i.CreatedAt,
+		&i.CallUsdMicros,
 	)
 	return i, err
 }

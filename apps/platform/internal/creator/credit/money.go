@@ -66,3 +66,12 @@ func UsageCost(costUSD *float64) (usdMicros int64, estimated bool) {
 	micros, exact := BillableMicros(*costUSD)
 	return micros, !exact
 }
+
+func CallsMicros(callsUSD []float64) (total int64, calls []int64) {
+	calls = make([]int64, len(callsUSD))
+	for i, usd := range callsUSD {
+		calls[i], _ = BillableMicros(usd)
+		total += calls[i]
+	}
+	return total, calls
+}

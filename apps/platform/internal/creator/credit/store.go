@@ -96,6 +96,7 @@ type CostEvent struct {
 	PromptTokens     int64
 	CompletionTokens int64
 	UsdMicros        int64
+	CallUsdMicros    []int64
 
 	Estimated bool
 

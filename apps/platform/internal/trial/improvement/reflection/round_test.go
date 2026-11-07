@@ -100,6 +100,9 @@ func TestARoundIsChargedOnceForTheSumOfItsAnsweredCalls(t *testing.T) {
 	if u.PromptTokens != 50 || u.CompletionTokens != 2 || !u.CostReported || *u.CostUSD != 0.03 {
 		t.Errorf("charged usage = %+v (cost %v), want 50 prompt, 2 completion, 0.03 reported", u, *u.CostUSD)
 	}
+	if !slices.Equal(u.CallCostsUSD, []float64{0.01, 0.02}) {
+		t.Errorf("call costs = %v, want each answered call's 0.01 and 0.02", u.CallCostsUSD)
+	}
 	want := []eval.ReflectionCandidate{
 		{Focus: "instructions", Answered: true}, {Focus: "scripts_and_tools"}, {Focus: "references_and_examples", Answered: true},
 	}
@@ -150,7 +153,7 @@ func TestARoundsCostIsReportedOnlyWhenEveryAnsweredCallReportedIt(t *testing.T) 
 	usd := 0.01
 	reported := &modelport.ModelUsage{PromptTokens: 5, CostUSD: &usd, CostReported: true}
 	unreported := &modelport.ModelUsage{PromptTokens: 7}
-	if got := roundUsage([]*modelport.ModelUsage{reported, unreported}); got.PromptTokens != 12 || got.CostReported || got.CostUSD != nil {
+	if got := roundUsage([]*modelport.ModelUsage{reported, unreported}); got.PromptTokens != 12 || got.CostReported || got.CostUSD != nil || got.CallCostsUSD != nil {
 		t.Errorf("mixed = %+v, want 12 tokens and no reported cost", got)
 	}
 	if got := roundUsage([]*modelport.ModelUsage{reported, nil}); got.PromptTokens != 5 || got.CostReported {
@@ -158,5 +161,12 @@ func TestARoundsCostIsReportedOnlyWhenEveryAnsweredCallReportedIt(t *testing.T) 
 	}
 	if got := roundUsage([]*modelport.ModelUsage{nil, nil}); got != nil {
 		t.Errorf("no usage at all = %+v, want nil", got)
+	}
+}
+
+func TestASingleReportedCallListsNoCallCosts(t *testing.T) {
+	usd := 0.01
+	if got := roundUsage([]*modelport.ModelUsage{{PromptTokens: 5, CostUSD: &usd, CostReported: true}}); !got.CostReported || got.CallCostsUSD != nil {
+		t.Errorf("one call = %+v, want its reported cost and no call list", got)
 	}
 }

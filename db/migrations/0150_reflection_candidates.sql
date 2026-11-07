@@ -44,3 +44,24 @@ ALTER TABLE evaluation_suggestions
 
 COMMENT ON COLUMN evaluation_suggestions.candidate IS
     'Which candidate of its batch improvement round wrote the suggestion, counted from 0; always 0 for a suggestion on one run''s evaluation.';
+
+CREATE FUNCTION bigint_array_sum(values_ bigint[]) RETURNS numeric
+LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE AS $$
+    SELECT coalesce(sum(v), 0) FROM unnest(values_) AS v
+$$;
+
+COMMENT ON FUNCTION bigint_array_sum(bigint[]) IS
+    'The sum of an array of bigints, 0 for an empty array; a CHECK constraint may call it where it may not hold a subquery.';
+
+ALTER TABLE cost_events
+    ADD COLUMN call_usd_micros bigint[]
+        CONSTRAINT cost_events_call_usd_micros_sum_to_the_debit
+        CHECK (call_usd_micros IS NULL OR (
+            cardinality(call_usd_micros) >= 2
+            AND array_position(call_usd_micros, NULL) IS NULL
+            AND 0 <= ALL (call_usd_micros)
+            AND bigint_array_sum(call_usd_micros) = usd_micros
+            AND cost_source = 'gateway'));
+
+COMMENT ON COLUMN cost_events.call_usd_micros IS
+    'The reported cost of each model call this one debit covers, in micro-dollars, when it covers two or more calls whose costs were all reported by the gateway; they sum to usd_micros. NULL when the event is one call or any call''s cost was not reported, so each event is one sample of a call''s cost unless this lists its calls.';

@@ -352,6 +352,8 @@ type CostEvent struct {
 	// Caller-supplied key that makes recording the same call twice a no-op; unique across all events.
 	IdempotencyKey string
 	CreatedAt      pgtype.Timestamptz
+	// The reported cost of each model call this one debit covers, in micro-dollars, when it covers two or more calls whose costs were all reported by the gateway; they sum to usd_micros. NULL when the event is one call or any call's cost was not reported, so each event is one sample of a call's cost unless this lists its calls.
+	CallUsdMicros []int64
 }
 
 // Per creation session roll-up of cost: total micro-dollars, number of steps and whether any step was estimated. Kept permanently, even across account purge.

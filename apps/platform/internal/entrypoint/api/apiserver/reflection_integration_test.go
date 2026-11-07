@@ -26,6 +26,7 @@ type reflectionModel struct {
 	focuses []string
 	failing map[string]bool
 	silent  map[string]bool
+	costUSD *float64
 }
 
 func (m *reflectionModel) record(attribution, digest, focus string) {
@@ -37,10 +38,10 @@ func (m *reflectionModel) record(attribution, digest, focus string) {
 	}
 }
 
-func (m *reflectionModel) answerTo(focus string) (fails, silent bool) {
+func (m *reflectionModel) answerTo(focus string) (fails, silent bool, costUSD *float64) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return m.failing[focus], m.silent[focus]
+	return m.failing[focus], m.silent[focus], m.costUSD
 }
 
 func (m *reflectionModel) answerFocuses(failing, silent map[string]bool) {
@@ -83,7 +84,7 @@ func reflectionLLM(t *testing.T, proposals []llmclient.ImprovementProposal) (*ll
 			return
 		}
 		model.record(req.EvaluationID, req.EvaluationDigest, req.Focus)
-		fails, silent := model.answerTo(req.Focus)
+		fails, silent, cost := model.answerTo(req.Focus)
 		if fails {
 			http.Error(w, `{"detail":"upstream"}`, http.StatusInternalServerError)
 			return
@@ -94,7 +95,7 @@ func reflectionLLM(t *testing.T, proposals []llmclient.ImprovementProposal) (*ll
 		}
 		_ = json.NewEncoder(w).Encode(llmclient.SuggestImprovementsResponse{
 			Suggestions: answer, Model: "gpt-6-sol", PromptVersion: "suggest-improvements/test",
-			Usage: &llmclient.GatewayUsage{PromptTokens: 20, CompletionTokens: 9},
+			Usage: callUsage(cost),
 		})
 	})
 	srv := httptest.NewServer(mux)
@@ -608,5 +609,43 @@ func TestARoundWhoseEveryCandidateFailedIsUnavailableAndUncharged(t *testing.T) 
 	}
 	if n, _ := reflectionDebits(t, alice); n != 0 {
 		t.Errorf("a round with no answer left %d debits", n)
+	}
+}
+
+func callUsage(costUSD *float64) *llmclient.GatewayUsage {
+	if costUSD == nil {
+		return &llmclient.GatewayUsage{PromptTokens: 20, CompletionTokens: 9}
+	}
+	return &llmclient.GatewayUsage{PromptTokens: 20, CompletionTokens: 9, CostUSD: costUSD, CostSource: llmclient.CostSourceGateway}
+}
+
+func (m *reflectionModel) reportCost(usd float64) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.costUSD = &usd
+}
+
+func TestARoundWhoseCallsReportTheirCostListsEachCallOnItsOneDebit(t *testing.T) {
+	pool := requireDB(t)
+	clearEvaluationSettings(t, pool)
+	a := newAPI(t, pool)
+	setReflectionCandidates(t, a, `{"count":3,"round_credit_cap":2147483647,"note":"priced calls"}`)
+	alice := a.login(t, "reflect-priced-calls")
+	f := seedReflectableBatch(t, a, pool, alice, "reflect-priced-calls")
+	f.model.reportCost(0.002)
+
+	if code, _, raw := alice.reflect(t, f, devBody(f.devCase)); code != http.StatusCreated {
+		t.Fatalf("reflect: got %d %s, want 201", code, raw)
+	}
+	var rows int
+	var total int64
+	var calls []int64
+	if err := testPool.QueryRow(context.Background(), `
+		SELECT count(*) OVER (), usd_micros, call_usd_micros FROM cost_events
+		WHERE kind = 'batch_reflection' AND user_id = $1`, mustUUID(t, alice.userID)).Scan(&rows, &total, &calls); err != nil {
+		t.Fatal(err)
+	}
+	if want := []int64{2000, 2000, 2000}; rows != 1 || total != 6000 || !slices.Equal(calls, want) {
+		t.Errorf("debits = %d of %d micros listing %v, want one of 6000 listing %v", rows, total, calls, want)
 	}
 }

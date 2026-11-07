@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"testing"
 	"time"
 
@@ -746,5 +747,39 @@ func TestASpendIsRecordedEvenWhenTheRequestThatMadeItWasCancelled(t *testing.T) 
 	}
 	if store.deadlineIn <= 0 || store.deadlineIn > costRecordingWait {
 		t.Errorf("the recording had %v left, want its own deadline of at most 10s", store.deadlineIn)
+	}
+}
+
+func TestAChargeListingItsCallsIsRefusedUnlessTwoOrMoreCallsSumToAKnownCost(t *testing.T) {
+	known := int64(30)
+	for i, tc := range []struct {
+		name  string
+		usd   *int64
+		calls []int64
+		ok    bool
+	}{
+		{"no listed calls", &known, nil, true},
+		{"two calls summing to the cost", &known, []int64{10, 20}, true},
+		{"three calls summing to the cost", &known, []int64{10, 10, 10}, true},
+		{"one listed call", &known, []int64{30}, false},
+		{"calls one over the cost", &known, []int64{10, 21}, false},
+		{"a negative call", &known, []int64{40, -10}, false},
+		{"calls on an estimated cost", nil, []int64{10, 20}, false},
+	} {
+		s := &Service{Store: newFakeStore(), Config: testConfig()}
+		_, err := s.Charge(context.Background(), nil, ChargeInput{
+			Kind: KindBatchReflection, UserID: testUser(byte(40 + i)), IdempotencyKey: tc.name,
+			UsdMicros: tc.usd, ReservedUsdMicros: 30, CallUsdMicros: tc.calls,
+		})
+		if tc.ok != (err == nil) || (!tc.ok && !errors.Is(err, ErrInvalid)) {
+			t.Errorf("%s: err = %v, want accepted %v", tc.name, err, tc.ok)
+		}
+	}
+}
+
+func TestCallCostsAreBilledEachAndTotalledAsBilled(t *testing.T) {
+	total, calls := CallsMicros([]float64{0.0000011, 0.002, 0})
+	if want := []int64{2, 2000, 0}; !slices.Equal(calls, want) || total != 2002 {
+		t.Errorf("CallsMicros = %d %v, want 2002 %v", total, calls, want)
 	}
 }
