@@ -10,9 +10,10 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 )
 
-func TestACreationStepJobIsAbandonedAfterThreeMinutes(t *testing.T) {
-	if got := (&CreationStepWorker{}).Timeout(nil); got != 3*time.Minute {
-		t.Errorf("creation step timeout = %v, want 3m", got)
+func TestTheCreationStepJobOutlivesTheLongestStepALimitMayAllow(t *testing.T) {
+	const longestAllowedStep = 120*time.Second + 10*time.Second + 60*time.Second
+	if got := (&CreationStepWorker{}).Timeout(nil); got <= longestAllowedStep {
+		t.Errorf("job timeout = %s, want more than the %s a step may take", got, longestAllowedStep)
 	}
 }
 
