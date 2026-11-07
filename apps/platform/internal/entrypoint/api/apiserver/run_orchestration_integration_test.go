@@ -2033,3 +2033,38 @@ func setRunPolicyValue(t *testing.T, pool *pgxpool.Pool, runID pgtype.UUID, path
 		t.Fatal(err)
 	}
 }
+
+func TestARunSettlesAgainstTheBudgetItWasAdmittedUnder(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	f := newFixture(t, a, pool, "alice-settles-admitted-budget")
+	clearRunBacklog(t, pool)
+	fake := providertest.New("fake_sandbox", "test-token")
+	t.Cleanup(fake.Close)
+	svc := *a.runs
+	svc.Providers = run.NewRegistry(fake.Provider())
+	svc.Store = a.packages
+	svc.PollInterval = 20 * time.Millisecond
+	svc.Deployment.SettlesWithoutSpendWait = true
+	var reserved []float64
+	svc.Ledger = runCreditLedger{settle: func(_ context.Context, _ pgx.Tx, s run.RunSettlement) error {
+		reserved = append(reserved, s.ReservedUSD)
+		return nil
+	}}
+	ctx := context.Background()
+
+	resetRunBudget(t, pool)
+	if _, err := pool.Exec(ctx, `INSERT INTO run_model_budget_setting (budget_micros, reason) VALUES (370000, 'settlement test')`); err != nil {
+		t.Fatal(err)
+	}
+	created := f.start(t)
+	if err := driveThroughPolls(ctx, svc.Drive, mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.CleanRun(ctx, mustUUID(t, f.workspaceID), mustUUID(t, created.RunID)); err != nil {
+		t.Fatal(err)
+	}
+	if len(reserved) != 1 || reserved[0] != 0.37 {
+		t.Errorf("settlement released %v, want the 0.37 USD budget frozen in the run's policy", reserved)
+	}
+}

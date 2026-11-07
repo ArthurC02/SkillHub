@@ -39,12 +39,16 @@ func (s *Service) settleCredit(ctx context.Context, run gen.Run, attempts []gen.
 		return nil
 	}
 	costUSD := s.reportedSpend(ctx, run, attempts)
+	reservedUSD, err := reservedBudgetUSD(ctx, s.queries(), run, s.Deployment)
+	if err != nil {
+		return fmt.Errorf("read the budget the run was admitted under: %w", err)
+	}
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("start settlement: %w", err)
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
-	settlement := RunSettlement{WorkspaceID: run.WorkspaceID, RunID: run.ID, CostUSD: costUSD, ReservedUSD: s.Deployment.Budget()}
+	settlement := RunSettlement{WorkspaceID: run.WorkspaceID, RunID: run.ID, CostUSD: costUSD, ReservedUSD: reservedUSD}
 	if err := s.Ledger.Settle(ctx, tx, settlement); err != nil {
 		return fmt.Errorf("settle: %w", err)
 	}
@@ -57,6 +61,18 @@ func (s *Service) settleCredit(ctx context.Context, run gen.Run, attempts []gen.
 		return fmt.Errorf("commit settlement: %w", err)
 	}
 	return nil
+}
+
+func reservedBudgetUSD(ctx context.Context, q *gen.Queries, run gen.Run, d Deployment) (float64, error) {
+	snapshots, err := q.GetRunSnapshots(ctx, gen.GetRunSnapshotsParams{RunID: run.ID, WorkspaceID: run.WorkspaceID})
+	if err != nil {
+		return 0, err
+	}
+	_, policy, err := requirementsFor(snapshots.PolicySnapshot)
+	if err != nil {
+		return 0, err
+	}
+	return policy.modelBudget(d), nil
 }
 
 const GatewaySpendLandsWithin = 30 * time.Second
