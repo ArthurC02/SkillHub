@@ -35,6 +35,13 @@ func AnalyticsCollected() bool {
 	return os.Getenv(AnalyticsRetentionEnv) != ""
 }
 
+func AnalyticsRetention() (time.Duration, error) {
+	if !AnalyticsCollected() {
+		return 0, nil
+	}
+	return MaintenanceDuration(AnalyticsRetentionEnv)
+}
+
 func MaintenanceBatch() int32 {
 	return envx.PositiveInt32("MAINTENANCE_BATCH", defaultMaintenanceBatch)
 }

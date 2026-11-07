@@ -356,8 +356,9 @@ func accountPurgeGrace() time.Duration {
 }
 
 func measuredAnalyticsRetention() time.Duration {
-	analyticsRetention := analyticsRetentionFromEnv()
-	if analyticsRetention < time.Second {
+	analyticsRetention, err := wiring.AnalyticsRetention()
+	exitOn(err, "analytics retention")
+	if analyticsRetention == 0 {
 		slog.Warn("ANALYTICS_RETENTION not set; the BETA-002 funnel is not being measured")
 	}
 	return analyticsRetention
@@ -686,19 +687,6 @@ func feedbackRetentionFromEnv() time.Duration {
 	d, err := time.ParseDuration(raw)
 	if err != nil || d <= 0 {
 		slog.Warn("FEEDBACK_RETENTION is not a positive duration; /policy/data-retention will report that feedback is kept indefinitely", "value", raw)
-		return 0
-	}
-	return d
-}
-
-func analyticsRetentionFromEnv() time.Duration {
-	raw := os.Getenv("ANALYTICS_RETENTION")
-	if raw == "" {
-		return 0
-	}
-	d, err := time.ParseDuration(raw)
-	if err != nil {
-		slog.Warn("ANALYTICS_RETENTION is not a duration; funnel events are not collected", "value", raw)
 		return 0
 	}
 	return d
