@@ -1,6 +1,7 @@
 import { Timestamp } from "../../../../shared/ui/Timestamp";
 import type { Evaluation } from "../../evaluation.service";
-import { OVERALL_LABEL, FINDING_CATEGORY_LABEL, SEVERITY_LABEL } from "../evaluation.model";
+import { FINDING_CATEGORY_LABEL, SEVERITY_LABEL } from "../evaluation.model";
+import { OVERALL_LABEL } from "../../../../shared/verdict";
 import { ExecutionState } from "./ExecutionState";
 import { CriterionSection } from "./CriterionSection";
 import { MatchLegend } from "./MatchLegend";

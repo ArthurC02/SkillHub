@@ -154,7 +154,7 @@ export function CriteriaSection({ testCase }: { testCase: TestCase }) {
       {testCase.acceptance_criteria.length > MAX_CRITERIA && (
         <p role="status">
           這個測試題有 {testCase.acceptance_criteria.length} 條驗收條件，評估只判定前 {MAX_CRITERIA}{" "}
-          條；超過的部分會讓整次判定標為無法判定。刪到 {MAX_CRITERIA} 條以內才可能通過。
+          條；超過的部分會讓整次判定標為無法判斷。刪到 {MAX_CRITERIA} 條以內才可能通過。
         </p>
       )}
       <p>

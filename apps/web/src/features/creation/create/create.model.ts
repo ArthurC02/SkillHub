@@ -9,6 +9,7 @@ import type {
 import type { CommandExtra } from "./create.commands";
 import type { CategorizedFindings, ImportFinding } from "../../../core/api/types";
 import { isCategorizedFindings } from "../import.service";
+import { criterionTally, labelOf, OVERALL_LABEL } from "../../../shared/verdict";
 
 export type DraftInspection = { findings: CategorizedFindings } | { refusal: string };
 
@@ -246,13 +247,6 @@ export const FETCH_STATUS_LABEL: Record<string, string> = {
   declined: "使用者不同意",
 };
 
-export const ROUND_OVERALL_LABEL: Record<string, string> = {
-  met: "達成",
-  partially_met: "部分達成",
-  not_met: "未達成",
-  undetermined: "無法判定",
-};
-
 function truncateForTimeline(s: string, n = 120): string {
   return s.length > n ? s.slice(0, n) + "…" : s;
 }
@@ -274,10 +268,9 @@ export function buildRoundTimeline(messages: CreationSnapshot["messages"]): Time
           round += 1;
           const overall = parsed.evaluation.overall ?? "";
           const results = parsed.evaluation.criterion_results ?? [];
-          const count = (r: string) => results.filter((x) => x.result === r).length;
           items.push({
             key: `t-${i}`,
-            text: `第 ${round} 次試跑：${ROUND_OVERALL_LABEL[overall] ?? overall}（通過 ${count("passed")}／不通過 ${count("failed")}／無法判定 ${count("undetermined")}）`,
+            text: `第 ${round} 次試跑：${labelOf(OVERALL_LABEL, overall) ?? overall}（${criterionTally(results)}）`,
           });
           setQuestion = false;
           setTrialAnchor = true;

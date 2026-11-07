@@ -1,6 +1,6 @@
 import { formatAt } from "../../../../shared/ui/Timestamp.model";
 import type { EvaluationRevision } from "../../evaluation.service";
-import { OVERALL_LABEL } from "../evaluation.model";
+import { OVERALL_LABEL } from "../../../../shared/verdict";
 
 export function RevisionPicker({
   revisions,

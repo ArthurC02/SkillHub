@@ -1,6 +1,7 @@
 import { StateIcon, type IconState } from "../../../../shared/ui/StateIcon";
 import type { CriterionResult } from "../../evaluation.service";
-import { CRITERION_LABEL, isEvidenceUnverifiable, SOURCE_LABEL } from "../evaluation.model";
+import { isEvidenceUnverifiable, SOURCE_LABEL } from "../evaluation.model";
+import { CRITERION_LABEL } from "../../../../shared/verdict";
 import { EvidenceList } from "./EvidenceList";
 
 export function CriterionItem({

@@ -1,5 +1,5 @@
 import type { ComparisonSide, RunComparison } from "../../evaluation.service";
-import { CRITERION_LABEL } from "../../evaluation/evaluation.model";
+import { CRITERION_LABEL } from "../../../../shared/verdict";
 import { SIDE_LABEL } from "./ComparisonTables.model";
 
 export function CriterionMatrixTable({

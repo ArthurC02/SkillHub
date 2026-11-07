@@ -1,5 +1,5 @@
 import type { ComparisonSide } from "../../evaluation.service";
-import { OVERALL_LABEL } from "../../evaluation/evaluation.model";
+import { OVERALL_LABEL } from "../../../../shared/verdict";
 
 export function verdictCell(side: ComparisonSide) {
   if (!side.evaluation) return "未評估（不是通過）";

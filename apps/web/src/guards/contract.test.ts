@@ -209,13 +209,12 @@ const LABEL_TABLES: Array<{
   {
     what: "Evaluation.overall → 任務判定",
     values: generated.EvaluationOverallEnum,
-    table: async () => (await import("../features/runs/evaluation/evaluation.model")).OVERALL_LABEL,
+    table: async () => (await import("../shared/verdict")).OVERALL_LABEL,
   },
   {
     what: "CriterionResult.result → 逐條判定",
     values: generated.CriterionResultResultEnum,
-    table: async () =>
-      (await import("../features/runs/evaluation/evaluation.model")).CRITERION_LABEL,
+    table: async () => (await import("../shared/verdict")).CRITERION_LABEL,
   },
   {
     what: "CriterionResult.source → 判定來源",

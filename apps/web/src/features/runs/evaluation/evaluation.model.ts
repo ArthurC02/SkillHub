@@ -62,19 +62,6 @@ export const SUGGESTION_OUTCOME_SENTENCE: Record<SuggestionOutcome, string> = {
   kept: "這份評估沒有產生改善建議。",
 };
 
-export const OVERALL_LABEL: Record<Evaluation["overall"], string> = {
-  met: "符合",
-  partially_met: "部分符合",
-  not_met: "未符合",
-  undetermined: "無法判斷",
-};
-
-export const CRITERION_LABEL: Record<CriterionResult["result"], string> = {
-  passed: "通過",
-  failed: "未通過",
-  undetermined: "無法判斷",
-};
-
 const EVIDENCE_UNVERIFIABLE_PREFIX = "evidence_unverifiable: ";
 
 export function isEvidenceUnverifiable(c: CriterionResult): boolean {

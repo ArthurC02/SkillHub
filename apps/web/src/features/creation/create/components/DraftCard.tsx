@@ -2,7 +2,8 @@ import { Link } from "@tanstack/react-router";
 import type { CreationSnapshot, CreationState, CreationSessionRead } from "../../creation.service";
 import { runStatusLabel, type RunListItem } from "../../../runs";
 import { Reveal } from "../../../../shared/ui/Reveal";
-import { ROUND_OVERALL_LABEL, findRunObservation, readDraftInspection } from "../create.model";
+import { findRunObservation, readDraftInspection } from "../create.model";
+import { labelOf, OVERALL_LABEL } from "../../../../shared/verdict";
 import type { Perform } from "../create.commands";
 import { DraftFindings } from "./DraftFindings";
 
@@ -158,7 +159,7 @@ function DraftCandidate({
           {run && (
             <p>
               試跑結果：{runStatusLabel(run.execution_status)}；評估：
-              {ROUND_OVERALL_LABEL[run.evaluation?.overall ?? ""] ?? "無評估"}
+              {labelOf(OVERALL_LABEL, run.evaluation?.overall ?? "") ?? "無評估"}
             </p>
           )}
         </>

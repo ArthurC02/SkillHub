@@ -31,7 +31,7 @@ test.each([
     { role: "user", content: "另一個問題" },
   ]);
   expect(timeline.filter((item) => !item.text.startsWith("讀取網頁："))).toEqual([
-    { key: "t-0", text: "第 1 次試跑：部分達成（通過 1／不通過 1／無法判定 0）" },
+    { key: "t-0", text: "第 1 次試跑：部分符合（通過 1／未通過 1／無法判斷 0）" },
     { key: "t-1", text: `系統問你：${question}` },
     { key: "t-3", text: "你回答：請保留三個統計欄位" },
     { key: "t-5", text: "模型建議：已補上總列數、有效數字列數與缺值列數" },
@@ -48,6 +48,6 @@ test("a new trial stops waiting for the previous trial's answer", () => {
     ]),
   ).toEqual([
     { key: "t-0", text: `系統問你：${question}` },
-    { key: "t-1", text: "第 1 次試跑：部分達成（通過 1／不通過 1／無法判定 0）" },
+    { key: "t-1", text: "第 1 次試跑：部分符合（通過 1／未通過 1／無法判斷 0）" },
   ]);
 });

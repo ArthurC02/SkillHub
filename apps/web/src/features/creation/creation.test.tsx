@@ -821,12 +821,12 @@ test("a run observation reads as a verdict, with the per-criterion detail behind
   await render();
   await resume();
   const bubble = box.querySelector('.creation-log > li[data-role="tool"]')!;
-  expect(bubble.textContent).toContain("部分達成");
-  expect(bubble.textContent).toContain("通過 1／不通過 1／無法判定 0");
+  expect(bubble.textContent).toContain("部分符合");
+  expect(bubble.textContent).toContain("通過 1／未通過 1／無法判斷 0");
   expect(bubble.textContent).toContain("輸出有內容，但缺了日期欄。");
   expect(bubble.textContent, "整包 JSON 還是原樣倒出來").not.toContain('"criterion_results"');
   expect(bubble.querySelector("details"), "把逐條判定折起來了").toBe(null);
-  expect(bubble.textContent).toContain("不通過：輸出包含日期");
+  expect(bubble.textContent).toContain("未通過：輸出包含日期");
   expect(bubble.textContent).toContain("整份輸出沒有日期");
 });
 test("a tool message that is already a sentence is left alone", async () => {
@@ -2087,7 +2087,7 @@ test("the draft card names its linked run's status and verdict in Chinese, inclu
   const card = Array.from(box.querySelectorAll("p")).find((p) =>
     p.textContent?.startsWith("試跑結果："),
   );
-  expect(card?.textContent).toBe("試跑結果：執行完成；評估：無法判定");
+  expect(card?.textContent).toBe("試跑結果：執行完成；評估：無法判斷");
   expect(box.textContent).not.toMatch(/succeeded|undetermined/);
 });
 test("acceptance criteria render under the brief and the confirm button names both", async () => {

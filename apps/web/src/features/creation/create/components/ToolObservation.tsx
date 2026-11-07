@@ -1,12 +1,12 @@
 import { Reveal } from "../../../../shared/ui/Reveal";
 import { runStatusLabel } from "../../../runs";
-import { FETCH_STATUS_LABEL, ROUND_OVERALL_LABEL } from "../create.model";
-
-const CRITERION_RESULT_LABEL: Record<string, string> = {
-  passed: "通過",
-  failed: "不通過",
-  undetermined: "無法判定",
-};
+import { FETCH_STATUS_LABEL } from "../create.model";
+import {
+  CRITERION_LABEL,
+  criterionTally,
+  labelOf,
+  OVERALL_LABEL,
+} from "../../../../shared/verdict";
 
 type FetchObservation = {
   fetch: { url: string; status: string; bytes?: number; text?: string };
@@ -57,15 +57,13 @@ export function ToolObservation({ raw }: { raw: string }) {
     const asRun = parsed as Partial<RunToolObservation>;
     if (typeof asRun.run_id === "string" && typeof asRun.execution_status === "string") {
       const results = asRun.evaluation?.criterion_results ?? [];
-      const count = (r: string) => results.filter((x) => x.result === r).length;
       const overall = asRun.evaluation?.overall ?? "";
       return (
         <>
           <span className="creation-text">
             試跑結果：{runStatusLabel(asRun.execution_status)}；評估：
-            {ROUND_OVERALL_LABEL[overall] ?? "無評估"}
-            {results.length > 0 &&
-              `（通過 ${count("passed")}／不通過 ${count("failed")}／無法判定 ${count("undetermined")}）`}
+            {labelOf(OVERALL_LABEL, overall) ?? "無評估"}
+            {results.length > 0 && `（${criterionTally(results)}）`}
           </span>
           {!!asRun.evaluation?.summary && (
             <span className="creation-text">{asRun.evaluation.summary}</span>
@@ -74,7 +72,7 @@ export function ToolObservation({ raw }: { raw: string }) {
             <ul>
               {results.map((c, i) => (
                 <li key={i}>
-                  {CRITERION_RESULT_LABEL[c.result ?? ""] ?? c.result ?? "無結果"}：{c.text}
+                  {labelOf(CRITERION_LABEL, c.result ?? "") ?? c.result ?? "無結果"}：{c.text}
                   {!!c.reason && `——${c.reason}`}
                 </li>
               ))}
