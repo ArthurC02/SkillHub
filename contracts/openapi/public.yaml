@@ -8393,7 +8393,8 @@ components:
       description: |
         Per test case, one arm's pass rate minus the other's, over the test
         cases both arms judged; the mean with a 95% interval from the paired
-        standard error.
+        standard error and the Student t value for pairs minus one degrees of
+        freedom.
       required: [paired, unpaired, verdict, better, worse, tied]
       properties:
         paired: { type: integer }
@@ -8417,8 +8418,9 @@ components:
         What the paired difference supports. improved or worse when the 99.9%
         interval excludes zero, likely_improved or likely_worse when only the
         95% interval does, no_clear_difference when the 95% interval includes
-        zero, too_few_pairs with fewer than two pairs. Nothing short of
-        likely_improved may be presented as an improvement.
+        zero, too_few_pairs with fewer than two pairs. Both intervals use the
+        Student t value for pairs minus one degrees of freedom. Nothing short
+        of likely_improved may be presented as an improvement.
     EvaluationBatchArm:
       type: object
       required: [test_cases, passed, judged, test_cases_all_passed, test_cases_decided]

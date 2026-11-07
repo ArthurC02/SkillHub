@@ -16,8 +16,9 @@
  * What the paired difference supports. improved or worse when the 99.9%
  * interval excludes zero, likely_improved or likely_worse when only the
  * 95% interval does, no_clear_difference when the 95% interval includes
- * zero, too_few_pairs with fewer than two pairs. Nothing short of
- * likely_improved may be presented as an improvement.
+ * zero, too_few_pairs with fewer than two pairs. Both intervals use the
+ * Student t value for pairs minus one degrees of freedom. Nothing short
+ * of likely_improved may be presented as an improvement.
  * 
  * @export
  */

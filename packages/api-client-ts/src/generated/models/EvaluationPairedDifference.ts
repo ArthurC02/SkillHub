@@ -17,7 +17,8 @@ import type { EvaluationPairedDifferenceDifference95 } from './EvaluationPairedD
 /**
  * Per test case, one arm's pass rate minus the other's, over the test
  * cases both arms judged; the mean with a 95% interval from the paired
- * standard error.
+ * standard error and the Student t value for pairs minus one degrees of
+ * freedom.
  * 
  * @export
  * @interface EvaluationPairedDifference

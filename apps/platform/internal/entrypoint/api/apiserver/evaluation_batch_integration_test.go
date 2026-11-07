@@ -606,9 +606,9 @@ func TestTwoBatchesAreComparedOnlyOnTheTestCasesBothJudged(t *testing.T) {
 	interval, _ := body["difference_95"].(map[string]any)
 	if code != http.StatusOK || body["paired"] != float64(2) || body["unpaired"] != float64(2) ||
 		body["candidate_better"] != float64(1) || body["tied"] != float64(1) || body["reference_better"] != float64(0) ||
-		!near(body["difference"], 0.5) || !near(interval["low"], -0.48) || !near(interval["high"], 1.48) ||
+		!near(body["difference"], 0.5) || !near(interval["low"], -5.853) || !near(interval["high"], 6.853) ||
 		body["verdict"] != "no_clear_difference" {
-		t.Fatalf("comparison: got %d %v, want 2 pairs (an awaiting trial leaves its test case unpaired), one better and one tied, 0.5 within [-0.48, 1.48], so no clear difference", code, body)
+		t.Fatalf("comparison: got %d %v, want 2 pairs (an awaiting trial leaves its test case unpaired), one better and one tied, 0.5 within [-5.853, 6.853] from t(1) = 12.706, so no clear difference", code, body)
 	}
 	if reference, _ := body["reference"].(map[string]any); reference["id"] != baseline {
 		t.Errorf("comparison reference = %v, want batch %s", body["reference"], baseline)

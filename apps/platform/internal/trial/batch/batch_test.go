@@ -139,16 +139,35 @@ func TestThePairedDifferenceCarriesItsStandardErrorInterval(t *testing.T) {
 		t.Errorf("one pair: %v %v %q, want the difference without an interval and too_few_pairs", mean, interval, verdict)
 	}
 	mean, interval, verdict := pairedDifference([]float64{1, 0, 0.5, -0.5})
-	if math.Abs(*mean-0.25) > 1e-9 || math.Abs(interval.Low+0.3826) > 5e-4 || math.Abs(interval.High-0.8826) > 5e-4 {
-		t.Errorf("four pairs: mean %v interval %+v, want 0.25 [-0.3826, 0.8826]", *mean, *interval)
+	if math.Abs(*mean-0.25) > 1e-9 || math.Abs(interval.Low+0.7770) > 5e-4 || math.Abs(interval.High-1.2770) > 5e-4 {
+		t.Errorf("four pairs: mean %v interval %+v, want 0.25 [-0.7770, 1.2770] from t(3) = 3.182", *mean, *interval)
 	}
 	if verdict != "no_clear_difference" {
 		t.Errorf("four pairs whose interval includes zero: verdict %q, want no_clear_difference", verdict)
 	}
 }
 
+func TestTheCriticalValuesFollowStudentTForTheNumberOfPairs(t *testing.T) {
+	cases := []struct {
+		pairs       int
+		at95, at999 float64
+	}{
+		{2, 12.706, 636.619},
+		{4, 3.182, 12.924},
+		{31, 2.042, 3.646},
+		{32, 1.959964, 3.290527},
+	}
+	for _, c := range cases {
+		got := pairedCriticalValues(c.pairs)
+		if math.Abs(got.at95-c.at95) > 5e-4 || math.Abs(got.at999-c.at999) > 5e-4 {
+			t.Errorf("%d pairs: critical values %+v, want %v and %v", c.pairs, got, c.at95, c.at999)
+		}
+	}
+}
+
 func TestTheVerdictNeedsTheIntervalAtEachLevelToExcludeZero(t *testing.T) {
 	const standardError = 0.1
+	manyPairs := pairedCriticalValues(1000)
 	cases := []struct {
 		name string
 		mean float64
@@ -166,7 +185,32 @@ func TestTheVerdictNeedsTheIntervalAtEachLevelToExcludeZero(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			if got := differenceVerdict(c.mean, standardError); got != c.want {
+			if got := differenceVerdict(c.mean, standardError, manyPairs); got != c.want {
+				t.Fatalf("verdict = %q, want %q", got, c.want)
+			}
+		})
+	}
+}
+
+func TestFourPairsNeedTheWiderStudentTIntervalForAVerdict(t *testing.T) {
+	const standardError = 0.02
+	fourPairs := pairedCriticalValues(4)
+	cases := []struct {
+		name string
+		mean float64
+		want string
+	}{
+		{"past 12.924 standard errors", 0.26, "improved"},
+		{"short of 12.924 standard errors, which the normal 3.29 would call improved", 0.25, "likely_improved"},
+		{"past 3.182 standard errors", 0.064, "likely_improved"},
+		{"short of 3.182 standard errors, which the normal 1.96 would call likely improved", 0.06, "no_clear_difference"},
+		{"short of 3.182 standard errors below", -0.06, "no_clear_difference"},
+		{"past 3.182 standard errors below", -0.064, "likely_worse"},
+		{"past 12.924 standard errors below", -0.26, "worse"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := differenceVerdict(c.mean, standardError, fourPairs); got != c.want {
 				t.Fatalf("verdict = %q, want %q", got, c.want)
 			}
 		})

@@ -88,6 +88,25 @@ func unionOfTestCases(reports ...ArmReport) map[pgtype.UUID]bool {
 
 const normalZ999 = 3.290526731491926
 
+var (
+	studentT975 = [...]float64{12.706, 4.303, 3.182, 2.776, 2.571, 2.447, 2.365, 2.306, 2.262, 2.228,
+		2.201, 2.179, 2.160, 2.145, 2.131, 2.120, 2.110, 2.101, 2.093, 2.086,
+		2.080, 2.074, 2.069, 2.064, 2.060, 2.056, 2.052, 2.048, 2.045, 2.042}
+	studentT9995 = [...]float64{636.619, 31.599, 12.924, 8.610, 6.869, 5.959, 5.408, 5.041, 4.781, 4.587,
+		4.437, 4.318, 4.221, 4.140, 4.073, 4.015, 3.965, 3.922, 3.883, 3.850,
+		3.819, 3.792, 3.768, 3.745, 3.725, 3.707, 3.690, 3.674, 3.659, 3.646}
+)
+
+type criticalValues struct{ at95, at999 float64 }
+
+func pairedCriticalValues(pairs int) criticalValues {
+	df := pairs - 1
+	if df < 1 || df > len(studentT975) {
+		return criticalValues{normalZ95, normalZ999}
+	}
+	return criticalValues{studentT975[df-1], studentT9995[df-1]}
+}
+
 const (
 	VerdictImproved          = "improved"
 	VerdictLikelyImproved    = "likely_improved"
@@ -115,19 +134,20 @@ func pairedDifference(differences []float64) (*float64, *Interval, string) {
 		squares += (d - mean) * (d - mean)
 	}
 	standardError := math.Sqrt(squares/(n-1)) / math.Sqrt(n)
-	interval := &Interval{Low: mean - normalZ95*standardError, High: mean + normalZ95*standardError}
-	return &mean, interval, differenceVerdict(mean, standardError)
+	critical := pairedCriticalValues(len(differences))
+	interval := &Interval{Low: mean - critical.at95*standardError, High: mean + critical.at95*standardError}
+	return &mean, interval, differenceVerdict(mean, standardError, critical)
 }
 
-func differenceVerdict(mean, standardError float64) string {
+func differenceVerdict(mean, standardError float64, critical criticalValues) string {
 	switch {
-	case mean-normalZ999*standardError > 0:
+	case mean-critical.at999*standardError > 0:
 		return VerdictImproved
-	case mean-normalZ95*standardError > 0:
+	case mean-critical.at95*standardError > 0:
 		return VerdictLikelyImproved
-	case mean+normalZ999*standardError < 0:
+	case mean+critical.at999*standardError < 0:
 		return VerdictWorse
-	case mean+normalZ95*standardError < 0:
+	case mean+critical.at95*standardError < 0:
 		return VerdictLikelyWorse
 	}
 	return VerdictNoClearDifference

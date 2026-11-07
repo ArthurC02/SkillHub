@@ -9532,8 +9532,9 @@ func (s *EvaluationCostSource) UnmarshalText(data []byte) error {
 
 // What the paired difference supports. improved or worse when the 99.9% interval excludes zero,
 // likely_improved or likely_worse when only the 95% interval does, no_clear_difference when the 95%
-// interval includes zero, too_few_pairs with fewer than two pairs. Nothing short of likely_improved
-// may be presented as an improvement.
+// interval includes zero, too_few_pairs with fewer than two pairs. Both intervals use the Student t
+// value for pairs minus one degrees of freedom. Nothing short of likely_improved may be presented as
+// an improvement.
 // Ref: #/components/schemas/EvaluationDifferenceVerdict
 type EvaluationDifferenceVerdict string
 
@@ -9983,7 +9984,8 @@ func (s *EvaluationOverall) UnmarshalText(data []byte) error {
 }
 
 // Per test case, one arm's pass rate minus the other's, over the test cases both arms judged; the mean
-// with a 95% interval from the paired standard error.
+// with a 95% interval from the paired standard error and the Student t value for pairs minus one
+// degrees of freedom.
 // Ref: #/components/schemas/EvaluationPairedDifference
 type EvaluationPairedDifference struct {
 	Paired int `json:"paired"`
