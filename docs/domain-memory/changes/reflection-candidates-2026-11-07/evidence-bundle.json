@@ -1,0 +1,101 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "reflection-candidates",
+  "proposal_id": "reflection-candidates-2026-11-07",
+  "registry_revision": {
+    "observed_commit": "dfe6ce75d7c733ce4dde4272aafeaa29b64014ae",
+    "registry_digest": "sha256:b415caaf41069cd58ff3146e0047ea9274dd897b1eeda9fba7c753da006d1a3d",
+    "committed_digest": "sha256:d619ea8969d1189b834e3d66376123d7c72fb13dac28e083f9eaf63f96a0fe19"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-batch-reflection-is-paid-for-by-its-requester",
+      "mutated_protection": "apps/platform/internal/trial/improvement/reflection/reflection.go:84: estimate := quote.Threshold * int64(policy.Candidates) -> estimate := quote.Threshold",
+      "failure_evidence": "=== RUN   TestARoundIsAdmittedOnlyWhenItsEstimateFitsTheCapAndTheBalance\n    round_test.go:47: two candidates one over the cap: err = <nil>, want 這一輪預估的點數超過管理者設定的每輪上限，沒有呼叫模型、也沒有扣點。請管理者調高上限或減少候選數。\n    round_test.go:47: two candidates one credit short of twice the threshold: err = <nil>, want 點數不足，無法開始找改進，沒有呼叫模型。請聯絡管理者為這個帳號加點。\n--- FAIL: TestARoundIsAdmittedOnlyWhenItsEstimateFitsTheCapAndTheBalance (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/reflection\t1.674s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "one-debit-for-answered-calls",
+      "mutated_protection": "apps/platform/internal/trial/improvement/reflection/reflection.go:337: sum.PromptTokens += u.PromptTokens -> sum.PromptTokens = u.PromptTokens",
+      "failure_evidence": "=== RUN   TestARoundIsChargedOnceForTheSumOfItsAnsweredCalls\n2026/11/07 19:48:05 WARN batch reflection unavailable batch_id=\"\" focus=scripts_and_tools error=\"gateway 502\"\n    round_test.go:101: charged usage = &{PromptTokens:30 CompletionTokens:2 CostUSD:0x1810ddbb0780 CostReported:true} (cost 0.03), want 50 prompt, 2 completion, 0.03 reported\n--- FAIL: TestARoundIsChargedOnceForTheSumOfItsAnsweredCalls (0.07s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/reflection\t1.735s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "candidates-frozen-with-the-round",
+      "mutated_protection": "apps/platform/internal/trial/improvement/reflection_store.go:237: if len(n.Candidates) > 1 { -> if len(n.Candidates) >= 1 {",
+      "failure_evidence": "=== RUN   TestARoundOfOneCandidateAsksOnceWithNoFocusAndListsNoCandidates\n2026/11/07 19:48:20 INFO improvement proposals batch_id=051c24aa-5de7-4646-8646-6f3362ab7726 proposed=1 stored=1 dropped_no_evidence=0 dropped_unstorable=0 dropped_write_failed=0 dropped_over_cap=0\n2026/11/07 19:48:20 ERROR request failed on the server method=POST path=/skills/a3a96901-b45d-44bd-a4dc-b2a06d2e4e65/evaluation-batches/051c24aa-5de7-4646-8646-6f3362ab7726/reflections status=500\n    reflection_integration_test.go:482: reflect: got 500 {\"error\":\"找改進失敗，這次沒有留下紀錄。\"}\n        , want 201\n--- FAIL: TestARoundOfOneCandidateAsksOnceWithNoFocusAndListsNoCandidates (0.32s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t2.384s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "cap-unset-refused",
+      "mutated_protection": "apps/platform/internal/trial/improvement/reflection/reflection.go:74: if policy.Candidates > 1 && policy.RoundCreditCap == nil { -> if policy.Candidates > 9 && policy.RoundCreditCap == nil {",
+      "failure_evidence": "s how to find duplicates\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":2,\"end\":43},\"excerpt\":\"could not tell which rows were duplicates\",\"excerpt_truncated\":false,\"available\":true}],\"target_path\":\"SKILL.md\",\"expected_impact\":\"the next run removes duplicate rows\",\"decision\":\"pending\"},{\"suggestion_id\":\"94a411d3-b485-4536-821b-374d19367fa7\",\"category\":\"skill\",\"problem\":\"the skill never says how to find duplicates\",\"evidence\":[{\"kind\":\"agent_output\",\"match\":\"exact\",\"char_range\":{\"start\":2,\"end\":43},\"excerpt\":\"could not tell which rows were duplicates\",\"excerpt_truncated\":false,\"available\":true}],\"target_path\":\"SKILL.md\",\"expected_impact\":\"the next run removes duplicate rows\",\"decision\":\"pending\"}],\"candidates\":[{\"focus\":\"instructions\",\"outcome\":\"kept\",\"suggestion_ids\":[\"8238ce4e-f928-4d1f-b559-f2fd623f70bc\"]},{\"focus\":\"scripts_and_tools\",\"outcome\":\"kept\",\"suggestion_ids\":[\"94a411d3-b485-4536-821b-374d19367fa7\"]}]}\n        , want 409 naming reflection_round_credit_cap\n--- FAIL: TestARoundOfSeveralCandidatesIsRefusedBeforeAnyCallWhileTheRoundCapIsUnset (0.36s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t3.079s\nFAIL\n",
+      "restored": true
+    },
+    {
+      "status": "passed",
+      "obligation_id": "three-candidates-one-debit",
+      "mutated_protection": "apps/platform/internal/trial/improvement/reflection/reflection.go:294: req.Focus = focus -> req.Focus = focus[:0]",
+      "failure_evidence": "=== RUN   TestARoundOfThreeCandidatesAsksEachFocusOnceAndIsChargedOnce\n2026/11/07 19:49:22 INFO improvement proposals batch_id=4ca3cadc-d60c-41de-b686-8daa1f56ef59 proposed=1 stored=1 dropped_no_evidence=0 dropped_unstorable=0 dropped_write_failed=0 dropped_over_cap=0\n2026/11/07 19:49:22 INFO improvement proposals batch_id=4ca3cadc-d60c-41de-b686-8daa1f56ef59 proposed=1 stored=1 dropped_no_evidence=0 dropped_unstorable=0 dropped_write_failed=0 dropped_over_cap=0\n2026/11/07 19:49:22 INFO improvement proposals batch_id=4ca3cadc-d60c-41de-b686-8daa1f56ef59 proposed=1 stored=1 dropped_no_evidence=0 dropped_unstorable=0 dropped_write_failed=0 dropped_over_cap=0\n    reflection_integration_test.go:510: focuses sent = [\"\" \"\" \"\"], want [\"instructions\" \"references_and_examples\" \"scripts_and_tools\"]\n--- FAIL: TestARoundOfThreeCandidatesAsksEachFocusOnceAndIsChargedOnce (0.36s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t3.073s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-batch-reflection-is-paid-for-by-its-requester",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestARoundIsAdmittedOnlyWhenItsEstimateFitsTheCapAndTheBalance$ ./internal/trial/improvement/reflection/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:149ae75206021596777235198a7ef8bbdd822f23a08cb0675a104fc8a43a3d60",
+      "finished_at": "2026-11-07T11:47:11.162090Z"
+    },
+    {
+      "obligation_id": "one-debit-for-answered-calls",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^(TestARoundIsChargedOnceForTheSumOfItsAnsweredCalls|TestARoundWithNoAnsweredCallIsNotCharged)$ ./internal/trial/improvement/reflection/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:5ba68472f9e08925eeb1d9722c66b259ae2705f1dccdf2119b6877734fb72145",
+      "finished_at": "2026-11-07T11:47:15.060465Z"
+    },
+    {
+      "obligation_id": "three-candidates-one-debit",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestARoundOfThreeCandidatesAsksEachFocusOnceAndIsChargedOnce$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "integration",
+      "exit_code": 0,
+      "output_sha256": "sha256:f50ef9e77770981c916b6f49028c6774abe03a7b8553e9b8e26b16e7cb3d86d9",
+      "finished_at": "2026-11-07T11:47:20.689991Z"
+    },
+    {
+      "obligation_id": "cap-unset-refused",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^(TestARoundOfSeveralCandidatesIsRefusedBeforeAnyCallWhileTheRoundCapIsUnset|TestARoundWhoseEstimateExceedsTheRoundCapIsRefusedBeforeAnyCall)$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "integration",
+      "exit_code": 0,
+      "output_sha256": "sha256:93dd50850fe47c7f1e46ce2895f41895972f282df7ef132dd08180b44b24e193",
+      "finished_at": "2026-11-07T11:47:27.149256Z"
+    },
+    {
+      "obligation_id": "candidates-frozen-with-the-round",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^(TestEachCandidateOfARoundRecordsItsOwnOutcomeAndTheRoundTakesTheBest|TestARoundWhoseEveryCandidateFailedIsUnavailableAndUncharged|TestARoundOfOneCandidateAsksOnceWithNoFocusAndListsNoCandidates)$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "integration",
+      "exit_code": 0,
+      "output_sha256": "sha256:564df6b8438e9d67070831357f18c7bdff908f181b729f0e3e2f0b3d94140f95",
+      "finished_at": "2026-11-07T11:47:33.154359Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

@@ -1,0 +1,64 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "reflection-candidates",
+  "proposal_id": "reflection-candidates-2026-11-07",
+  "obligations": [
+    {
+      "id": "rule-a-batch-reflection-is-paid-for-by-its-requester",
+      "source_type": "rule",
+      "source_id": "a-batch-reflection-is-paid-for-by-its-requester",
+      "also_covers": [
+        {
+          "source_type": "acceptance-criterion",
+          "source_id": "cap-required-for-several"
+        }
+      ],
+      "expected_outcome": "TestARoundIsAdmittedOnlyWhenItsEstimateFitsTheCapAndTheBalance: at a threshold of 70, one candidate is admitted at 70 and refused at 69; two candidates with no cap are refused before the balance is read; two fit a cap of 140 and are refused at 139; halted model calls refuse first.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestARoundIsAdmittedOnlyWhenItsEstimateFitsTheCapAndTheBalance$ ./internal/trial/improvement/reflection/"
+    },
+    {
+      "id": "one-debit-for-answered-calls",
+      "source_type": "acceptance-criterion",
+      "source_id": "one-admit-one-debit",
+      "expected_outcome": "TestARoundIsChargedOnceForTheSumOfItsAnsweredCalls and TestARoundWithNoAnsweredCallIsNotCharged: answered calls of 20 and 30 prompt tokens are one charge of 50; no answered call is no charge, and ErrBudgetExhausted only when the budget ran out.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^(TestARoundIsChargedOnceForTheSumOfItsAnsweredCalls|TestARoundWithNoAnsweredCallIsNotCharged)$ ./internal/trial/improvement/reflection/"
+    },
+    {
+      "id": "three-candidates-one-debit",
+      "source_type": "acceptance-criterion",
+      "source_id": "one-admit-one-debit",
+      "expected_outcome": "TestARoundOfThreeCandidatesAsksEachFocusOnceAndIsChargedOnce: three focused calls, three kept candidates with one suggestion each, one batch_reflection debit of 60 prompt tokens.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestARoundOfThreeCandidatesAsksEachFocusOnceAndIsChargedOnce$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "cap-unset-refused",
+      "source_type": "acceptance-criterion",
+      "source_id": "cap-required-for-several",
+      "expected_outcome": "TestARoundOfSeveralCandidatesIsRefusedBeforeAnyCallWhileTheRoundCapIsUnset and TestARoundWhoseEstimateExceedsTheRoundCapIsRefusedBeforeAnyCall: 409 naming reflection_round_credit_cap and 422, no model call, no debit.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^(TestARoundOfSeveralCandidatesIsRefusedBeforeAnyCallWhileTheRoundCapIsUnset|TestARoundWhoseEstimateExceedsTheRoundCapIsRefusedBeforeAnyCall)$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "candidates-frozen-with-the-round",
+      "source_type": "invariant",
+      "source_id": "batch-reflection",
+      "also_covers": [
+        {
+          "source_type": "acceptance-criterion",
+          "source_id": "candidates-recorded"
+        }
+      ],
+      "expected_outcome": "TestEachCandidateOfARoundRecordsItsOwnOutcomeAndTheRoundTakesTheBest, TestARoundWhoseEveryCandidateFailedIsUnavailableAndUncharged and TestARoundOfOneCandidateAsksOnceWithNoFocusAndListsNoCandidates: outcomes [kept, unavailable, none_proposed] with round kept; all failed is unavailable with two unavailable candidates; one candidate lists none.",
+      "level": "integration",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^(TestEachCandidateOfARoundRecordsItsOwnOutcomeAndTheRoundTakesTheBest|TestARoundWhoseEveryCandidateFailedIsUnavailableAndUncharged|TestARoundOfOneCandidateAsksOnceWithNoFocusAndListsNoCandidates)$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}
