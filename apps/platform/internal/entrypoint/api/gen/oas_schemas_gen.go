@@ -600,6 +600,10 @@ type BatchReflection struct {
 	RunsNotRead int                     `json:"runs_not_read"`
 	CreatedAt   time.Time               `json:"created_at"`
 	Suggestions []ImprovementSuggestion `json:"suggestions"`
+	// The alternative suggestion sets this round asked for, in order. Empty for a round of one candidate,
+	// whose `outcome` and `suggestions` say everything. With several, `outcome` is the best of the
+	// candidates' outcomes and `suggestions` holds them all.
+	Candidates []ReflectionCandidate `json:"candidates"`
 }
 
 // GetReflectionID returns the value of ReflectionID.
@@ -642,6 +646,11 @@ func (s *BatchReflection) GetSuggestions() []ImprovementSuggestion {
 	return s.Suggestions
 }
 
+// GetCandidates returns the value of Candidates.
+func (s *BatchReflection) GetCandidates() []ReflectionCandidate {
+	return s.Candidates
+}
+
 // SetReflectionID sets the value of ReflectionID.
 func (s *BatchReflection) SetReflectionID(val uuid.UUID) {
 	s.ReflectionID = val
@@ -680,6 +689,11 @@ func (s *BatchReflection) SetCreatedAt(val time.Time) {
 // SetSuggestions sets the value of Suggestions.
 func (s *BatchReflection) SetSuggestions(val []ImprovementSuggestion) {
 	s.Suggestions = val
+}
+
+// SetCandidates sets the value of Candidates.
+func (s *BatchReflection) SetCandidates(val []ReflectionCandidate) {
+	s.Candidates = val
 }
 
 func (*BatchReflection) reflectOnEvaluationBatchRes() {}
@@ -25203,8 +25217,14 @@ func (s *PlatformAgentStep) SetCreatedAt(val time.Time) {
 
 // Ref: #/components/schemas/PlatformSettings
 type PlatformSettings struct {
-	InjectionCheck PlatformSettingsInjectionCheck `json:"injection_check"`
-	JudgePanel     PlatformSettingsJudgePanel     `json:"judge_panel"`
+	ReflectionCandidates PlatformSettingsReflectionCandidates `json:"reflection_candidates"`
+	InjectionCheck       PlatformSettingsInjectionCheck       `json:"injection_check"`
+	JudgePanel           PlatformSettingsJudgePanel           `json:"judge_panel"`
+}
+
+// GetReflectionCandidates returns the value of ReflectionCandidates.
+func (s *PlatformSettings) GetReflectionCandidates() PlatformSettingsReflectionCandidates {
+	return s.ReflectionCandidates
 }
 
 // GetInjectionCheck returns the value of InjectionCheck.
@@ -25217,6 +25237,11 @@ func (s *PlatformSettings) GetJudgePanel() PlatformSettingsJudgePanel {
 	return s.JudgePanel
 }
 
+// SetReflectionCandidates sets the value of ReflectionCandidates.
+func (s *PlatformSettings) SetReflectionCandidates(val PlatformSettingsReflectionCandidates) {
+	s.ReflectionCandidates = val
+}
+
 // SetInjectionCheck sets the value of InjectionCheck.
 func (s *PlatformSettings) SetInjectionCheck(val PlatformSettingsInjectionCheck) {
 	s.InjectionCheck = val
@@ -25227,9 +25252,10 @@ func (s *PlatformSettings) SetJudgePanel(val PlatformSettingsJudgePanel) {
 	s.JudgePanel = val
 }
 
-func (*PlatformSettings) getPlatformSettingsRes() {}
-func (*PlatformSettings) setInjectionCheckRes()   {}
-func (*PlatformSettings) setJudgePanelRes()       {}
+func (*PlatformSettings) getPlatformSettingsRes()     {}
+func (*PlatformSettings) setInjectionCheckRes()       {}
+func (*PlatformSettings) setJudgePanelRes()           {}
+func (*PlatformSettings) setReflectionCandidatesRes() {}
 
 type PlatformSettingsInjectionCheck struct {
 	Enabled bool `json:"enabled"`
@@ -25325,6 +25351,56 @@ func (s *PlatformSettingsJudgePanel) SetSetByUserID(val OptUUID) {
 
 // SetSetAt sets the value of SetAt.
 func (s *PlatformSettingsJudgePanel) SetSetAt(val OptDateTime) {
+	s.SetAt = val
+}
+
+type PlatformSettingsReflectionCandidates struct {
+	// How many candidates a batch improvement round asks for; 1 until an operator changes it.
+	Count int `json:"count"`
+	// The most credits one round may cost; absent while unset.
+	RoundCreditCap OptInt `json:"round_credit_cap"`
+	// Present once an operator has changed the setting.
+	Reason OptString   `json:"reason"`
+	SetAt  OptDateTime `json:"set_at"`
+}
+
+// GetCount returns the value of Count.
+func (s *PlatformSettingsReflectionCandidates) GetCount() int {
+	return s.Count
+}
+
+// GetRoundCreditCap returns the value of RoundCreditCap.
+func (s *PlatformSettingsReflectionCandidates) GetRoundCreditCap() OptInt {
+	return s.RoundCreditCap
+}
+
+// GetReason returns the value of Reason.
+func (s *PlatformSettingsReflectionCandidates) GetReason() OptString {
+	return s.Reason
+}
+
+// GetSetAt returns the value of SetAt.
+func (s *PlatformSettingsReflectionCandidates) GetSetAt() OptDateTime {
+	return s.SetAt
+}
+
+// SetCount sets the value of Count.
+func (s *PlatformSettingsReflectionCandidates) SetCount(val int) {
+	s.Count = val
+}
+
+// SetRoundCreditCap sets the value of RoundCreditCap.
+func (s *PlatformSettingsReflectionCandidates) SetRoundCreditCap(val OptInt) {
+	s.RoundCreditCap = val
+}
+
+// SetReason sets the value of Reason.
+func (s *PlatformSettingsReflectionCandidates) SetReason(val OptString) {
+	s.Reason = val
+}
+
+// SetSetAt sets the value of SetAt.
+func (s *PlatformSettingsReflectionCandidates) SetSetAt(val OptDateTime) {
 	s.SetAt = val
 }
 
@@ -27482,6 +27558,158 @@ func (*ReflectOnEvaluationBatchUnauthorized) reflectOnEvaluationBatchRes() {}
 type ReflectOnEvaluationBatchUnprocessableEntity Error
 
 func (*ReflectOnEvaluationBatchUnprocessableEntity) reflectOnEvaluationBatchRes() {}
+
+// Ref: #/components/schemas/ReflectionCandidate
+type ReflectionCandidate struct {
+	// Where this candidate's model call was told to look first.
+	Focus ReflectionCandidateFocus `json:"focus"`
+	// This candidate's own outcome, read as the round's `outcome` is.
+	Outcome ReflectionCandidateOutcome `json:"outcome"`
+	// The round's suggestions this candidate wrote.
+	SuggestionIds []uuid.UUID `json:"suggestion_ids"`
+}
+
+// GetFocus returns the value of Focus.
+func (s *ReflectionCandidate) GetFocus() ReflectionCandidateFocus {
+	return s.Focus
+}
+
+// GetOutcome returns the value of Outcome.
+func (s *ReflectionCandidate) GetOutcome() ReflectionCandidateOutcome {
+	return s.Outcome
+}
+
+// GetSuggestionIds returns the value of SuggestionIds.
+func (s *ReflectionCandidate) GetSuggestionIds() []uuid.UUID {
+	return s.SuggestionIds
+}
+
+// SetFocus sets the value of Focus.
+func (s *ReflectionCandidate) SetFocus(val ReflectionCandidateFocus) {
+	s.Focus = val
+}
+
+// SetOutcome sets the value of Outcome.
+func (s *ReflectionCandidate) SetOutcome(val ReflectionCandidateOutcome) {
+	s.Outcome = val
+}
+
+// SetSuggestionIds sets the value of SuggestionIds.
+func (s *ReflectionCandidate) SetSuggestionIds(val []uuid.UUID) {
+	s.SuggestionIds = val
+}
+
+// Where this candidate's model call was told to look first.
+type ReflectionCandidateFocus string
+
+const (
+	ReflectionCandidateFocusInstructions          ReflectionCandidateFocus = "instructions"
+	ReflectionCandidateFocusScriptsAndTools       ReflectionCandidateFocus = "scripts_and_tools"
+	ReflectionCandidateFocusReferencesAndExamples ReflectionCandidateFocus = "references_and_examples"
+	ReflectionCandidateFocusFree                  ReflectionCandidateFocus = "free"
+)
+
+// AllValues returns all ReflectionCandidateFocus values.
+func (ReflectionCandidateFocus) AllValues() []ReflectionCandidateFocus {
+	return []ReflectionCandidateFocus{
+		ReflectionCandidateFocusInstructions,
+		ReflectionCandidateFocusScriptsAndTools,
+		ReflectionCandidateFocusReferencesAndExamples,
+		ReflectionCandidateFocusFree,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ReflectionCandidateFocus) MarshalText() ([]byte, error) {
+	switch s {
+	case ReflectionCandidateFocusInstructions:
+		return []byte(s), nil
+	case ReflectionCandidateFocusScriptsAndTools:
+		return []byte(s), nil
+	case ReflectionCandidateFocusReferencesAndExamples:
+		return []byte(s), nil
+	case ReflectionCandidateFocusFree:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ReflectionCandidateFocus) UnmarshalText(data []byte) error {
+	switch ReflectionCandidateFocus(data) {
+	case ReflectionCandidateFocusInstructions:
+		*s = ReflectionCandidateFocusInstructions
+		return nil
+	case ReflectionCandidateFocusScriptsAndTools:
+		*s = ReflectionCandidateFocusScriptsAndTools
+		return nil
+	case ReflectionCandidateFocusReferencesAndExamples:
+		*s = ReflectionCandidateFocusReferencesAndExamples
+		return nil
+	case ReflectionCandidateFocusFree:
+		*s = ReflectionCandidateFocusFree
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// This candidate's own outcome, read as the round's `outcome` is.
+type ReflectionCandidateOutcome string
+
+const (
+	ReflectionCandidateOutcomeUnavailable  ReflectionCandidateOutcome = "unavailable"
+	ReflectionCandidateOutcomeNoneProposed ReflectionCandidateOutcome = "none_proposed"
+	ReflectionCandidateOutcomeNoneKept     ReflectionCandidateOutcome = "none_kept"
+	ReflectionCandidateOutcomeKept         ReflectionCandidateOutcome = "kept"
+)
+
+// AllValues returns all ReflectionCandidateOutcome values.
+func (ReflectionCandidateOutcome) AllValues() []ReflectionCandidateOutcome {
+	return []ReflectionCandidateOutcome{
+		ReflectionCandidateOutcomeUnavailable,
+		ReflectionCandidateOutcomeNoneProposed,
+		ReflectionCandidateOutcomeNoneKept,
+		ReflectionCandidateOutcomeKept,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ReflectionCandidateOutcome) MarshalText() ([]byte, error) {
+	switch s {
+	case ReflectionCandidateOutcomeUnavailable:
+		return []byte(s), nil
+	case ReflectionCandidateOutcomeNoneProposed:
+		return []byte(s), nil
+	case ReflectionCandidateOutcomeNoneKept:
+		return []byte(s), nil
+	case ReflectionCandidateOutcomeKept:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ReflectionCandidateOutcome) UnmarshalText(data []byte) error {
+	switch ReflectionCandidateOutcome(data) {
+	case ReflectionCandidateOutcomeUnavailable:
+		*s = ReflectionCandidateOutcomeUnavailable
+		return nil
+	case ReflectionCandidateOutcomeNoneProposed:
+		*s = ReflectionCandidateOutcomeNoneProposed
+		return nil
+	case ReflectionCandidateOutcomeNoneKept:
+		*s = ReflectionCandidateOutcomeNoneKept
+		return nil
+	case ReflectionCandidateOutcomeKept:
+		*s = ReflectionCandidateOutcomeKept
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
 
 // A candidate skill the platform found and did not create. One bad skill does not refuse the rest of a
 // source, so this list can sit beside a non-empty `skills`.
@@ -32404,6 +32632,52 @@ func (s *SetPlatformAgentSpendCapReq) SetNote(val string) {
 type SetPlatformAgentSpendCapServiceUnavailable Error
 
 func (*SetPlatformAgentSpendCapServiceUnavailable) setPlatformAgentSpendCapRes() {}
+
+type SetReflectionCandidatesBadRequest Error
+
+func (*SetReflectionCandidatesBadRequest) setReflectionCandidatesRes() {}
+
+type SetReflectionCandidatesNotFound Error
+
+func (*SetReflectionCandidatesNotFound) setReflectionCandidatesRes() {}
+
+type SetReflectionCandidatesReq struct {
+	Count int `json:"count"`
+	// The most credits one round may cost. Leaving it out unsets it.
+	RoundCreditCap OptInt `json:"round_credit_cap"`
+	// Why, in the operator's own words. Whitespace does not satisfy it.
+	Note string `json:"note"`
+}
+
+// GetCount returns the value of Count.
+func (s *SetReflectionCandidatesReq) GetCount() int {
+	return s.Count
+}
+
+// GetRoundCreditCap returns the value of RoundCreditCap.
+func (s *SetReflectionCandidatesReq) GetRoundCreditCap() OptInt {
+	return s.RoundCreditCap
+}
+
+// GetNote returns the value of Note.
+func (s *SetReflectionCandidatesReq) GetNote() string {
+	return s.Note
+}
+
+// SetCount sets the value of Count.
+func (s *SetReflectionCandidatesReq) SetCount(val int) {
+	s.Count = val
+}
+
+// SetRoundCreditCap sets the value of RoundCreditCap.
+func (s *SetReflectionCandidatesReq) SetRoundCreditCap(val OptInt) {
+	s.RoundCreditCap = val
+}
+
+// SetNote sets the value of Note.
+func (s *SetReflectionCandidatesReq) SetNote(val string) {
+	s.Note = val
+}
 
 type SetRunModelBudgetBadRequest Error
 

@@ -1,4 +1,8 @@
-import type { BatchReflectionOutcomeEnum } from "@skillhub/api-client-ts";
+import type {
+  BatchReflectionOutcomeEnum,
+  ReflectionCandidateFocusEnum,
+  ReflectionCandidateOutcomeEnum,
+} from "@skillhub/api-client-ts";
 import { contractEnum } from "../../../core/api/contract-enum";
 import { isSuggestion, type ImprovementSuggestion } from "../../runs";
 import type { BatchTestCase, TrialOutcome } from "./batches.model";
@@ -24,7 +28,38 @@ export type BatchReflection = {
   runs_not_read: number;
   created_at: string;
   suggestions: ImprovementSuggestion[];
+  candidates: ReflectionCandidate[];
 };
+
+export type ReflectionCandidate = {
+  focus: ReflectionCandidateFocusEnum;
+  outcome: ReflectionCandidateOutcomeEnum;
+  suggestion_ids: string[];
+};
+
+export const CANDIDATE_FOCUS_LABEL: Record<ReflectionCandidateFocusEnum, string> = {
+  instructions: "先看指示",
+  scripts_and_tools: "先看 Script 與工具",
+  references_and_examples: "先看參考資料與範例",
+  free: "不限方向",
+};
+
+const CANDIDATE_OUTCOMES = contractEnum<ReflectionCandidateOutcomeEnum>({
+  unavailable: true,
+  none_proposed: true,
+  none_kept: true,
+  kept: true,
+});
+
+function isCandidate(value: unknown): value is ReflectionCandidate {
+  return (
+    isRecord(value) &&
+    Object.hasOwn(CANDIDATE_FOCUS_LABEL, value.focus as string) &&
+    CANDIDATE_OUTCOMES.includes(value.outcome as string) &&
+    Array.isArray(value.suggestion_ids) &&
+    value.suggestion_ids.every((id) => typeof id === "string")
+  );
+}
 
 export const REFLECTION_OUTCOME_SENTENCE: Record<ReflectionOutcome, string> = {
   restricted: "這個小工具的來源授權還在審查中，審查期間不找改進，這次沒有呼叫模型。",
@@ -57,7 +92,9 @@ export function isBatchReflection(value: unknown, batchId: string): value is Bat
     isCount(value.runs_not_read) &&
     typeof value.created_at === "string" &&
     Array.isArray(value.suggestions) &&
-    value.suggestions.every(isSuggestion)
+    value.suggestions.every(isSuggestion) &&
+    Array.isArray(value.candidates) &&
+    value.candidates.every(isCandidate)
   );
 }
 

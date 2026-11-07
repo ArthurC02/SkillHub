@@ -1262,6 +1262,7 @@ export const ADMIN_TREND_ACTIONS = {
 export const ADMIN_SETTINGS = {
   judge_panel: { enabled: false },
   injection_check: { enabled: false },
+  reflection_candidates: { count: 1 },
 } satisfies PlatformSettings;
 
 export const ADMIN_MCP_TOOLS = {

@@ -127,6 +127,7 @@ var anonymousRoutes = []anonCase{
 	{pattern: "POST /admin/evaluation/graders/{id}/versions", want: http.StatusNotFound},
 	{pattern: "PUT /admin/settings/judge-panel", want: http.StatusNotFound},
 	{pattern: "PUT /admin/settings/injection-check", want: http.StatusNotFound},
+	{pattern: "PUT /admin/settings/reflection-candidates", want: http.StatusNotFound},
 	{pattern: "GET /admin/mcp-tools", want: http.StatusNotFound},
 	{pattern: "POST /admin/mcp-tools", want: http.StatusNotFound},
 	{pattern: "POST /admin/mcp-tools/{id}/retire", want: http.StatusNotFound},

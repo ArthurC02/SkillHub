@@ -475,6 +475,9 @@ class TargetFile(BaseModel):
     content: str = Field(..., max_length=60_000)  # one-number: suggestMaxTargetFileChars
 
 
+SuggestionFocus = Literal["instructions", "scripts_and_tools", "references_and_examples", "free"]
+
+
 class SuggestImprovementsRequest(BaseModel):
     evaluation_id: str
     evaluation_digest: str = Field(
@@ -490,6 +493,7 @@ class SuggestImprovementsRequest(BaseModel):
         default_factory=list,
         max_length=10,  # one-number: suggestMaxTargetFiles
     )
+    focus: SuggestionFocus | None = None
     timeout_seconds: float | None = Field(None, gt=0)
 
 
@@ -524,6 +528,25 @@ class SuggestImprovementsResponse(ImprovementProposals):
     usage: GatewayUsage | None = None
 
 
+_FOCUS_INSTRUCTION = {
+    "instructions": (
+        "Look for the fix in SKILL.md: its instructions, its description "
+        "and when it should be used."
+    ),
+    "scripts_and_tools": (
+        "Look for the fix in the bundled scripts and in how the instructions tell the agent "
+        "to call tools and scripts, including their order."
+    ),
+    "references_and_examples": (
+        "Look for the fix in the references, examples and data files the instructions point to."
+    ),
+    "free": (
+        "Look anywhere in the package, and prefer a change different in kind "
+        "from a small wording fix."
+    ),
+}
+
+
 def _improvements_user_message(req: SuggestImprovementsRequest) -> str:
     sections = [f"# What the evaluation found\n{_scrub(req.evaluation_digest)}"]
 
@@ -537,7 +560,10 @@ def _improvements_user_message(req: SuggestImprovementsRequest) -> str:
         )
 
     body = "\n\n".join(sections)
-    return fence(DATA_TAG, body) + "\n\nPropose the improvements supported by the evaluation above."
+    ask = "Propose the improvements supported by the evaluation above."
+    if req.focus is not None:
+        ask += " " + _FOCUS_INSTRUCTION[req.focus]
+    return fence(DATA_TAG, body) + "\n\n" + ask
 
 
 @router.post("/suggest-improvements", response_model=SuggestImprovementsResponse)

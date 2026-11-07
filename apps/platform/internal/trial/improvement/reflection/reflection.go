@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -28,6 +29,8 @@ var (
 	ErrCreditThreshold  = errors.New("點數不足，無法開始找改進，沒有呼叫模型。請聯絡管理者為這個帳號加點。")
 	ErrModelCallsHalted = errors.New("平台暫停中，這次沒有呼叫模型、也沒有扣點。請稍後再試。")
 	ErrBudgetExhausted  = errors.New("平台的模型總額度暫時用完，這次沒有扣點。請在台北時間每天上午 8 點額度恢復後再試。")
+	ErrRoundCapUnset    = errors.New("管理者還沒設定每輪找改進的點數上限（reflection_round_credit_cap），一輪找多個候選無法開始，沒有呼叫模型、也沒有扣點。")
+	ErrRoundOverCap     = errors.New("這一輪預估的點數超過管理者設定的每輪上限，沒有呼叫模型、也沒有扣點。請管理者調高上限或減少候選數。")
 
 	errNotConfigured = errors.New("batch reflection is not configured")
 )
@@ -49,24 +52,40 @@ type BatchTrial struct {
 	Settled  bool
 }
 
+type RoundPolicy struct {
+	Candidates     int
+	RoundCreditCap *int64
+}
+
+type StartQuote struct {
+	Balance, Threshold int64
+}
+
 type Billing struct {
 	ModelCallsHalted func(ctx context.Context) bool
-	CanStart         func(ctx context.Context, workspaceID pgtype.UUID) (bool, error)
+	Quote            func(ctx context.Context, workspaceID pgtype.UUID) (StartQuote, error)
 	Charge           func(ctx context.Context, workspaceID pgtype.UUID, usage *modelport.ModelUsage) error
 }
 
-func (b Billing) admit(ctx context.Context, workspaceID pgtype.UUID) error {
+func (b Billing) admit(ctx context.Context, workspaceID pgtype.UUID, policy RoundPolicy) error {
 	if b.ModelCallsHalted != nil && b.ModelCallsHalted(ctx) {
 		return ErrModelCallsHalted
 	}
-	if b.CanStart == nil {
+	if policy.Candidates > 1 && policy.RoundCreditCap == nil {
+		return ErrRoundCapUnset
+	}
+	if b.Quote == nil {
 		return nil
 	}
-	ok, err := b.CanStart(ctx, workspaceID)
+	quote, err := b.Quote(ctx, workspaceID)
 	if err != nil {
 		return err
 	}
-	if !ok {
+	estimate := quote.Threshold * int64(policy.Candidates)
+	if policy.RoundCreditCap != nil && estimate > *policy.RoundCreditCap {
+		return ErrRoundOverCap
+	}
+	if quote.Balance < estimate {
 		return ErrCreditThreshold
 	}
 	return nil
@@ -85,6 +104,7 @@ type Service struct {
 	Eval            *eval.Service
 	ReadBatchTrials func(ctx context.Context, workspaceID, batchID pgtype.UUID) (BatchTrials, bool, error)
 	Billing         Billing
+	Policy          func(ctx context.Context) (RoundPolicy, error)
 }
 
 type Ask struct {
@@ -215,6 +235,27 @@ func readable(failing []eval.RunFailure) (read []eval.RunFailure, notRead int) {
 	return read, len(failing) - len(read)
 }
 
+var candidateFocuses = [...]string{"instructions", "scripts_and_tools", "references_and_examples", "free"}
+
+func roundFocuses(candidates int) []string {
+	if candidates <= 1 {
+		return []string{""}
+	}
+	return candidateFocuses[:min(candidates, len(candidateFocuses))]
+}
+
+func (s *Service) policy(ctx context.Context) (RoundPolicy, error) {
+	if s.Policy == nil {
+		return RoundPolicy{Candidates: 1}, nil
+	}
+	return s.Policy(ctx)
+}
+
+type candidateCall struct {
+	resp *modelport.Improvements
+	err  error
+}
+
 func (s *Service) reflect(ctx context.Context, round *eval.NewReflection, failing []eval.RunFailure) error {
 	read, notRead := readable(failing)
 	round.RunsRead, round.RunsNotRead = len(read), notRead
@@ -227,30 +268,87 @@ func (s *Service) reflect(ctx context.Context, round *eval.NewReflection, failin
 		round.Outcome = eval.SuggestionsNoEvidence
 		return nil
 	}
-	if err := s.Billing.admit(ctx, round.WorkspaceID); err != nil {
+	policy, err := s.policy(ctx)
+	if err != nil {
 		return err
 	}
+	if err := s.Billing.admit(ctx, round.WorkspaceID, policy); err != nil {
+		return err
+	}
+	focuses := roundFocuses(policy.Candidates)
+	calls := make([]candidateCall, len(focuses))
 	budget := eval.SuggestImprovementsBudget
 	callCtx, cancel := context.WithTimeout(ctx, budget.Deadline)
 	defer cancel()
-	resp, err := s.Eval.Suggester.SuggestImprovements(callCtx, modelport.ImprovementRequest{
+	request := modelport.ImprovementRequest{
 		EvaluationID:     "batch:" + pgconv.UUIDString(round.BatchID),
 		EvaluationDigest: digest(round.RunsRead, round.RunsNotRead, len(round.DevTestCaseIDs), reading.Sections),
 		FileTree:         reading.FileTree,
 		TargetFiles:      reading.TargetFiles,
 		Within:           s.Eval.Budgets.Within(ctx, budget),
-	})
-	if errors.Is(err, modelport.ErrModelBudgetExhausted) {
-		return ErrBudgetExhausted
 	}
-	if err != nil {
-		slog.Warn("batch reflection unavailable", "batch_id", pgconv.UUIDString(round.BatchID), "error", err)
-		round.Outcome = eval.SuggestionsUnavailable
+	var wg sync.WaitGroup
+	for i, focus := range focuses {
+		wg.Go(func() {
+			req := request
+			req.Focus = focus
+			calls[i].resp, calls[i].err = s.Eval.Suggester.SuggestImprovements(callCtx, req)
+		})
+	}
+	wg.Wait()
+	return s.settleRound(ctx, round, focuses, calls)
+}
+
+func (s *Service) settleRound(ctx context.Context, round *eval.NewReflection, focuses []string, calls []candidateCall) error {
+	var answered []*modelport.ModelUsage
+	exhausted := false
+	for i, call := range calls {
+		candidate := eval.ReflectionCandidate{Focus: focuses[i]}
+		switch {
+		case errors.Is(call.err, modelport.ErrModelBudgetExhausted):
+			exhausted = true
+		case call.err != nil:
+			slog.Warn("batch reflection unavailable", "batch_id", pgconv.UUIDString(round.BatchID), "focus", focuses[i], "error", call.err)
+		default:
+			candidate.Answered, candidate.Proposals = true, call.resp.Proposals
+			answered = append(answered, call.resp.Usage)
+		}
+		round.Candidates = append(round.Candidates, candidate)
+	}
+	if len(answered) == 0 {
+		if exhausted {
+			return ErrBudgetExhausted
+		}
 		return nil
 	}
-	s.Billing.charge(ctx, round.WorkspaceID, resp.Usage)
-	round.Proposals, round.Outcome = resp.Proposals, eval.SuggestionsNoneProposed
+	s.Billing.charge(ctx, round.WorkspaceID, roundUsage(answered))
 	return nil
+}
+
+func roundUsage(usages []*modelport.ModelUsage) *modelport.ModelUsage {
+	var sum modelport.ModelUsage
+	cost, reported, seen := 0.0, true, false
+	for _, u := range usages {
+		if u == nil {
+			reported = false
+			continue
+		}
+		seen = true
+		sum.PromptTokens += u.PromptTokens
+		sum.CompletionTokens += u.CompletionTokens
+		if usd := u.ReportedCostUSD(); usd != nil {
+			cost += *usd
+		} else {
+			reported = false
+		}
+	}
+	if !seen {
+		return nil
+	}
+	if reported {
+		sum.CostUSD, sum.CostReported = &cost, true
+	}
+	return &sum
 }
 
 func digest(runsRead, notRead, devCases int, sections []string) string {

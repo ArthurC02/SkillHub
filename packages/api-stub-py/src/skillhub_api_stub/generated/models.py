@@ -619,6 +619,13 @@ class GeneratedFile(BaseModel):
     )
 
 
+class Focus(Enum):
+    instructions = 'instructions'
+    scripts_and_tools = 'scripts_and_tools'
+    references_and_examples = 'references_and_examples'
+    free = 'free'
+
+
 class SuggestImprovementsRequest(BaseModel):
     evaluation_id: str = Field(
         ..., description='Gateway metadata for cost attribution. Carries no authority.'
@@ -626,6 +633,10 @@ class SuggestImprovementsRequest(BaseModel):
     evaluation_digest: constr(min_length=1, max_length=20000) = Field(
         ...,
         description="Go's rendering of the evaluation - failed criteria, deterministic\nfindings, the evidence behind them. A digest rather than the stored\nrow: the same low-privilege reading rule as `trace_digest`.\n",
+    )
+    focus: Focus | None = Field(
+        None,
+        description='Which part of the package this call should look for a fix in, so the\nseveral calls of one batch improvement round propose different\nchanges. Absent, the call looks anywhere, as a single call does.\n',
     )
     file_tree: list[str] | None = Field([], max_length=500)
     target_files: list[TargetFile] | None = Field(

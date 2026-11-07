@@ -1,4 +1,7 @@
-import { SetPlatformAgentSpendCapBodyDailySpendCapUsdMicrosMaximum } from "@skillhub/api-client-ts/limits";
+import {
+  SetPlatformAgentSpendCapBodyDailySpendCapUsdMicrosMaximum,
+  SetReflectionCandidatesBodyCountMaximum as MAX_REFLECTION_CANDIDATES,
+} from "@skillhub/api-client-ts/limits";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, apiFetch, isLastingReadFailure } from "../../core/api/client";
 import { useMe } from "../../core/session/me.service";
@@ -677,6 +680,12 @@ export type PlatformSettings = {
     reason?: string;
     set_at?: string;
   };
+  reflection_candidates: {
+    count: number;
+    round_credit_cap?: number;
+    reason?: string;
+    set_at?: string;
+  };
 };
 
 export async function getPlatformSettings() {
@@ -702,15 +711,41 @@ function isSetting(value: unknown): value is Record<string, unknown> {
 
 function isPlatformSettings(value: unknown): value is PlatformSettings {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
-  const { judge_panel: panel, injection_check: check } = value as Partial<PlatformSettings>;
+  const {
+    judge_panel: panel,
+    injection_check: check,
+    reflection_candidates: candidates,
+  } = value as Partial<PlatformSettings>;
   return (
     isSetting(panel) &&
     typeof panel.enabled === "boolean" &&
     isSetting(check) &&
     typeof check.enabled === "boolean" &&
     (check.credits_per_million_tokens === undefined ||
-      (Number.isInteger(check.credits_per_million_tokens) && check.credits_per_million_tokens > 0))
+      (Number.isInteger(check.credits_per_million_tokens) &&
+        check.credits_per_million_tokens > 0)) &&
+    isSetting(candidates) &&
+    Number.isInteger(candidates.count) &&
+    candidates.count >= 1 &&
+    candidates.count <= MAX_REFLECTION_CANDIDATES &&
+    (candidates.round_credit_cap === undefined ||
+      (Number.isInteger(candidates.round_credit_cap) && candidates.round_credit_cap > 0))
   );
+}
+
+export function useReflectionCandidatesSetting() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { count: number; round_credit_cap?: number; note: string }) =>
+      apiFetch<unknown>("/admin/settings/reflection-candidates", send("PUT", body)),
+    onSuccess: (settings) => {
+      if (isPlatformSettings(settings)) {
+        queryClient.setQueryData(queryKeys.admin.settings, settings);
+        return;
+      }
+      return queryClient.invalidateQueries({ queryKey: queryKeys.admin.settings });
+    },
+  });
 }
 
 export function usePlatformSettings() {

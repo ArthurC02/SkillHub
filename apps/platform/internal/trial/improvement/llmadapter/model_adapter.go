@@ -90,6 +90,7 @@ func (a modelOverHTTP) SuggestImprovements(ctx context.Context, req modelport.Im
 		EvaluationDigest: req.EvaluationDigest,
 		FileTree:         req.FileTree,
 		TargetFiles:      files,
+		Focus:            req.Focus,
 		TimeoutSeconds:   req.Within.Seconds(),
 	})
 	if err != nil {

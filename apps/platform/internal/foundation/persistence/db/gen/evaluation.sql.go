@@ -111,22 +111,26 @@ func (q *Queries) CompleteEvaluation(ctx context.Context, arg CompleteEvaluation
 
 const createBatchReflection = `-- name: CreateBatchReflection :one
 INSERT INTO batch_reflections (
-    workspace_id, batch_id, skill_version_id, dev_test_case_ids, outcome, runs_read, runs_not_read, created_by
+    workspace_id, batch_id, skill_version_id, dev_test_case_ids, outcome, runs_read, runs_not_read, created_by,
+    candidate_focuses, candidate_outcomes
 ) VALUES (
-    $1, $2, $3, $4::uuid[], $5, $6, $7, $8
+    $1, $2, $3, $4::uuid[], $5, $6, $7, $8,
+    $9::text[], $10::text[]
 )
-RETURNING id, workspace_id, batch_id, skill_version_id, dev_test_case_ids, outcome, runs_read, runs_not_read, created_by, created_at
+RETURNING id, workspace_id, batch_id, skill_version_id, dev_test_case_ids, outcome, runs_read, runs_not_read, created_by, created_at, candidate_focuses, candidate_outcomes
 `
 
 type CreateBatchReflectionParams struct {
-	WorkspaceID    pgtype.UUID
-	BatchID        pgtype.UUID
-	SkillVersionID pgtype.UUID
-	DevTestCaseIds []pgtype.UUID
-	Outcome        string
-	RunsRead       int32
-	RunsNotRead    int32
-	CreatedBy      pgtype.UUID
+	WorkspaceID       pgtype.UUID
+	BatchID           pgtype.UUID
+	SkillVersionID    pgtype.UUID
+	DevTestCaseIds    []pgtype.UUID
+	Outcome           string
+	RunsRead          int32
+	RunsNotRead       int32
+	CreatedBy         pgtype.UUID
+	CandidateFocuses  []string
+	CandidateOutcomes []string
 }
 
 func (q *Queries) CreateBatchReflection(ctx context.Context, arg CreateBatchReflectionParams) (BatchReflection, error) {
@@ -139,6 +143,8 @@ func (q *Queries) CreateBatchReflection(ctx context.Context, arg CreateBatchRefl
 		arg.RunsRead,
 		arg.RunsNotRead,
 		arg.CreatedBy,
+		arg.CandidateFocuses,
+		arg.CandidateOutcomes,
 	)
 	var i BatchReflection
 	err := row.Scan(
@@ -152,6 +158,8 @@ func (q *Queries) CreateBatchReflection(ctx context.Context, arg CreateBatchRefl
 		&i.RunsNotRead,
 		&i.CreatedBy,
 		&i.CreatedAt,
+		&i.CandidateFocuses,
+		&i.CandidateOutcomes,
 	)
 	return i, err
 }
@@ -225,7 +233,7 @@ INSERT INTO evaluation_suggestions (
     workspace_id, evaluation_id, category, problem, evidence,
     target_path, proposed_content, expected_impact
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, workspace_id, evaluation_id, category, problem, evidence, target_path, proposed_content, expected_impact, decision, decided_at, applied_skill_version_id, created_at, reflection_id
+RETURNING id, workspace_id, evaluation_id, category, problem, evidence, target_path, proposed_content, expected_impact, decision, decided_at, applied_skill_version_id, created_at, reflection_id, candidate
 `
 
 type CreateEvaluationSuggestionParams struct {
@@ -266,6 +274,7 @@ func (q *Queries) CreateEvaluationSuggestion(ctx context.Context, arg CreateEval
 		&i.AppliedSkillVersionID,
 		&i.CreatedAt,
 		&i.ReflectionID,
+		&i.Candidate,
 	)
 	return i, err
 }
@@ -273,12 +282,12 @@ func (q *Queries) CreateEvaluationSuggestion(ctx context.Context, arg CreateEval
 const createReflectionSuggestion = `-- name: CreateReflectionSuggestion :one
 INSERT INTO evaluation_suggestions (
     workspace_id, reflection_id, category, problem, evidence,
-    target_path, proposed_content, expected_impact
+    target_path, proposed_content, expected_impact, candidate
 ) VALUES (
     $1, $2, $3, $4, $5,
-    $6, $7, $8
+    $6, $7, $8, $9
 )
-RETURNING id, workspace_id, evaluation_id, category, problem, evidence, target_path, proposed_content, expected_impact, decision, decided_at, applied_skill_version_id, created_at, reflection_id
+RETURNING id, workspace_id, evaluation_id, category, problem, evidence, target_path, proposed_content, expected_impact, decision, decided_at, applied_skill_version_id, created_at, reflection_id, candidate
 `
 
 type CreateReflectionSuggestionParams struct {
@@ -290,6 +299,7 @@ type CreateReflectionSuggestionParams struct {
 	TargetPath      string
 	ProposedContent string
 	ExpectedImpact  string
+	Candidate       int16
 }
 
 func (q *Queries) CreateReflectionSuggestion(ctx context.Context, arg CreateReflectionSuggestionParams) (EvaluationSuggestion, error) {
@@ -302,6 +312,7 @@ func (q *Queries) CreateReflectionSuggestion(ctx context.Context, arg CreateRefl
 		arg.TargetPath,
 		arg.ProposedContent,
 		arg.ExpectedImpact,
+		arg.Candidate,
 	)
 	var i EvaluationSuggestion
 	err := row.Scan(
@@ -319,6 +330,7 @@ func (q *Queries) CreateReflectionSuggestion(ctx context.Context, arg CreateRefl
 		&i.AppliedSkillVersionID,
 		&i.CreatedAt,
 		&i.ReflectionID,
+		&i.Candidate,
 	)
 	return i, err
 }
@@ -328,7 +340,7 @@ UPDATE evaluation_suggestions SET
     decision = $1,
     decided_at = now()
 WHERE id = $2 AND workspace_id = $3
-RETURNING id, workspace_id, evaluation_id, category, problem, evidence, target_path, proposed_content, expected_impact, decision, decided_at, applied_skill_version_id, created_at, reflection_id
+RETURNING id, workspace_id, evaluation_id, category, problem, evidence, target_path, proposed_content, expected_impact, decision, decided_at, applied_skill_version_id, created_at, reflection_id, candidate
 `
 
 type DecideSuggestionParams struct {
@@ -355,6 +367,7 @@ func (q *Queries) DecideSuggestion(ctx context.Context, arg DecideSuggestionPara
 		&i.AppliedSkillVersionID,
 		&i.CreatedAt,
 		&i.ReflectionID,
+		&i.Candidate,
 	)
 	return i, err
 }
@@ -450,7 +463,7 @@ func (q *Queries) FindLiveTraceEvents(ctx context.Context, arg FindLiveTraceEven
 }
 
 const getBatchReflection = `-- name: GetBatchReflection :one
-SELECT id, workspace_id, batch_id, skill_version_id, dev_test_case_ids, outcome, runs_read, runs_not_read, created_by, created_at FROM batch_reflections
+SELECT id, workspace_id, batch_id, skill_version_id, dev_test_case_ids, outcome, runs_read, runs_not_read, created_by, created_at, candidate_focuses, candidate_outcomes FROM batch_reflections
 WHERE id = $1 AND workspace_id = $2
 `
 
@@ -473,6 +486,8 @@ func (q *Queries) GetBatchReflection(ctx context.Context, arg GetBatchReflection
 		&i.RunsNotRead,
 		&i.CreatedBy,
 		&i.CreatedAt,
+		&i.CandidateFocuses,
+		&i.CandidateOutcomes,
 	)
 	return i, err
 }
@@ -605,7 +620,7 @@ func (q *Queries) GetEvaluationRevision(ctx context.Context, arg GetEvaluationRe
 }
 
 const getEvaluationSettings = `-- name: GetEvaluationSettings :one
-SELECT singleton, judge_panel, reason, set_by, set_at, injection_check, injection_check_credits_per_million_tokens, injection_check_reason, injection_check_set_at FROM evaluation_settings
+SELECT singleton, judge_panel, reason, set_by, set_at, injection_check, injection_check_credits_per_million_tokens, injection_check_reason, injection_check_set_at, reflection_candidates, reflection_round_credit_cap, reflection_candidates_reason, reflection_candidates_set_at FROM evaluation_settings
 `
 
 func (q *Queries) GetEvaluationSettings(ctx context.Context) (EvaluationSetting, error) {
@@ -621,12 +636,16 @@ func (q *Queries) GetEvaluationSettings(ctx context.Context) (EvaluationSetting,
 		&i.InjectionCheckCreditsPerMillionTokens,
 		&i.InjectionCheckReason,
 		&i.InjectionCheckSetAt,
+		&i.ReflectionCandidates,
+		&i.ReflectionRoundCreditCap,
+		&i.ReflectionCandidatesReason,
+		&i.ReflectionCandidatesSetAt,
 	)
 	return i, err
 }
 
 const getEvaluationSuggestion = `-- name: GetEvaluationSuggestion :one
-SELECT id, workspace_id, evaluation_id, category, problem, evidence, target_path, proposed_content, expected_impact, decision, decided_at, applied_skill_version_id, created_at, reflection_id FROM evaluation_suggestions
+SELECT id, workspace_id, evaluation_id, category, problem, evidence, target_path, proposed_content, expected_impact, decision, decided_at, applied_skill_version_id, created_at, reflection_id, candidate FROM evaluation_suggestions
 WHERE id = $1 AND workspace_id = $2
 `
 
@@ -653,12 +672,13 @@ func (q *Queries) GetEvaluationSuggestion(ctx context.Context, arg GetEvaluation
 		&i.AppliedSkillVersionID,
 		&i.CreatedAt,
 		&i.ReflectionID,
+		&i.Candidate,
 	)
 	return i, err
 }
 
 const listBatchReflections = `-- name: ListBatchReflections :many
-SELECT id, workspace_id, batch_id, skill_version_id, dev_test_case_ids, outcome, runs_read, runs_not_read, created_by, created_at FROM batch_reflections
+SELECT id, workspace_id, batch_id, skill_version_id, dev_test_case_ids, outcome, runs_read, runs_not_read, created_by, created_at, candidate_focuses, candidate_outcomes FROM batch_reflections
 WHERE workspace_id = $1 AND batch_id = $2
 ORDER BY created_at DESC, id DESC
 LIMIT $3
@@ -690,6 +710,8 @@ func (q *Queries) ListBatchReflections(ctx context.Context, arg ListBatchReflect
 			&i.RunsNotRead,
 			&i.CreatedBy,
 			&i.CreatedAt,
+			&i.CandidateFocuses,
+			&i.CandidateOutcomes,
 		); err != nil {
 			return nil, err
 		}
@@ -875,7 +897,7 @@ func (q *Queries) ListEvaluationSuggestionApplications(ctx context.Context, arg 
 }
 
 const listEvaluationSuggestions = `-- name: ListEvaluationSuggestions :many
-SELECT id, workspace_id, evaluation_id, category, problem, evidence, target_path, proposed_content, expected_impact, decision, decided_at, applied_skill_version_id, created_at, reflection_id FROM evaluation_suggestions
+SELECT id, workspace_id, evaluation_id, category, problem, evidence, target_path, proposed_content, expected_impact, decision, decided_at, applied_skill_version_id, created_at, reflection_id, candidate FROM evaluation_suggestions
 WHERE evaluation_id = $1 AND workspace_id = $2
 ORDER BY created_at, id
 `
@@ -909,6 +931,7 @@ func (q *Queries) ListEvaluationSuggestions(ctx context.Context, arg ListEvaluat
 			&i.AppliedSkillVersionID,
 			&i.CreatedAt,
 			&i.ReflectionID,
+			&i.Candidate,
 		); err != nil {
 			return nil, err
 		}
@@ -959,7 +982,7 @@ func (q *Queries) ListReflectionSuggestionApplications(ctx context.Context, arg 
 }
 
 const listReflectionSuggestions = `-- name: ListReflectionSuggestions :many
-SELECT id, workspace_id, evaluation_id, category, problem, evidence, target_path, proposed_content, expected_impact, decision, decided_at, applied_skill_version_id, created_at, reflection_id FROM evaluation_suggestions
+SELECT id, workspace_id, evaluation_id, category, problem, evidence, target_path, proposed_content, expected_impact, decision, decided_at, applied_skill_version_id, created_at, reflection_id, candidate FROM evaluation_suggestions
 WHERE reflection_id = ANY($1::uuid[]) AND workspace_id = $2
 ORDER BY created_at, id
 `
@@ -993,6 +1016,7 @@ func (q *Queries) ListReflectionSuggestions(ctx context.Context, arg ListReflect
 			&i.AppliedSkillVersionID,
 			&i.CreatedAt,
 			&i.ReflectionID,
+			&i.Candidate,
 		); err != nil {
 			return nil, err
 		}
@@ -1202,7 +1226,7 @@ func (q *Queries) LockEvaluation(ctx context.Context, arg LockEvaluationParams) 
 }
 
 const lockEvaluationSuggestion = `-- name: LockEvaluationSuggestion :one
-SELECT id, workspace_id, evaluation_id, category, problem, evidence, target_path, proposed_content, expected_impact, decision, decided_at, applied_skill_version_id, created_at, reflection_id FROM evaluation_suggestions
+SELECT id, workspace_id, evaluation_id, category, problem, evidence, target_path, proposed_content, expected_impact, decision, decided_at, applied_skill_version_id, created_at, reflection_id, candidate FROM evaluation_suggestions
 WHERE id = $1 AND workspace_id = $2
 FOR UPDATE
 `
@@ -1230,6 +1254,7 @@ func (q *Queries) LockEvaluationSuggestion(ctx context.Context, arg LockEvaluati
 		&i.AppliedSkillVersionID,
 		&i.CreatedAt,
 		&i.ReflectionID,
+		&i.Candidate,
 	)
 	return i, err
 }
@@ -1368,7 +1393,7 @@ SET injection_check = EXCLUDED.injection_check,
     injection_check_credits_per_million_tokens = EXCLUDED.injection_check_credits_per_million_tokens,
     injection_check_reason = EXCLUDED.injection_check_reason,
     injection_check_set_at = now()
-RETURNING singleton, judge_panel, reason, set_by, set_at, injection_check, injection_check_credits_per_million_tokens, injection_check_reason, injection_check_set_at
+RETURNING singleton, judge_panel, reason, set_by, set_at, injection_check, injection_check_credits_per_million_tokens, injection_check_reason, injection_check_set_at, reflection_candidates, reflection_round_credit_cap, reflection_candidates_reason, reflection_candidates_set_at
 `
 
 type SetEvaluationInjectionCheckParams struct {
@@ -1390,6 +1415,49 @@ func (q *Queries) SetEvaluationInjectionCheck(ctx context.Context, arg SetEvalua
 		&i.InjectionCheckCreditsPerMillionTokens,
 		&i.InjectionCheckReason,
 		&i.InjectionCheckSetAt,
+		&i.ReflectionCandidates,
+		&i.ReflectionRoundCreditCap,
+		&i.ReflectionCandidatesReason,
+		&i.ReflectionCandidatesSetAt,
+	)
+	return i, err
+}
+
+const setEvaluationReflectionCandidates = `-- name: SetEvaluationReflectionCandidates :one
+INSERT INTO evaluation_settings (judge_panel, reflection_candidates, reflection_round_credit_cap,
+                                 reflection_candidates_reason, reflection_candidates_set_at)
+VALUES (false, $1, $2, $3, now())
+ON CONFLICT (singleton) DO UPDATE
+SET reflection_candidates = EXCLUDED.reflection_candidates,
+    reflection_round_credit_cap = EXCLUDED.reflection_round_credit_cap,
+    reflection_candidates_reason = EXCLUDED.reflection_candidates_reason,
+    reflection_candidates_set_at = now()
+RETURNING singleton, judge_panel, reason, set_by, set_at, injection_check, injection_check_credits_per_million_tokens, injection_check_reason, injection_check_set_at, reflection_candidates, reflection_round_credit_cap, reflection_candidates_reason, reflection_candidates_set_at
+`
+
+type SetEvaluationReflectionCandidatesParams struct {
+	ReflectionCandidates     int16
+	ReflectionRoundCreditCap *int32
+	Reason                   *string
+}
+
+func (q *Queries) SetEvaluationReflectionCandidates(ctx context.Context, arg SetEvaluationReflectionCandidatesParams) (EvaluationSetting, error) {
+	row := q.db.QueryRow(ctx, setEvaluationReflectionCandidates, arg.ReflectionCandidates, arg.ReflectionRoundCreditCap, arg.Reason)
+	var i EvaluationSetting
+	err := row.Scan(
+		&i.Singleton,
+		&i.JudgePanel,
+		&i.Reason,
+		&i.SetBy,
+		&i.SetAt,
+		&i.InjectionCheck,
+		&i.InjectionCheckCreditsPerMillionTokens,
+		&i.InjectionCheckReason,
+		&i.InjectionCheckSetAt,
+		&i.ReflectionCandidates,
+		&i.ReflectionRoundCreditCap,
+		&i.ReflectionCandidatesReason,
+		&i.ReflectionCandidatesSetAt,
 	)
 	return i, err
 }
@@ -1399,7 +1467,7 @@ INSERT INTO evaluation_settings (judge_panel, reason, set_by, set_at)
 VALUES ($1, $2, $3, now())
 ON CONFLICT (singleton) DO UPDATE
 SET judge_panel = EXCLUDED.judge_panel, reason = EXCLUDED.reason, set_by = EXCLUDED.set_by, set_at = now()
-RETURNING singleton, judge_panel, reason, set_by, set_at, injection_check, injection_check_credits_per_million_tokens, injection_check_reason, injection_check_set_at
+RETURNING singleton, judge_panel, reason, set_by, set_at, injection_check, injection_check_credits_per_million_tokens, injection_check_reason, injection_check_set_at, reflection_candidates, reflection_round_credit_cap, reflection_candidates_reason, reflection_candidates_set_at
 `
 
 type SetEvaluationSettingsParams struct {
@@ -1421,6 +1489,10 @@ func (q *Queries) SetEvaluationSettings(ctx context.Context, arg SetEvaluationSe
 		&i.InjectionCheckCreditsPerMillionTokens,
 		&i.InjectionCheckReason,
 		&i.InjectionCheckSetAt,
+		&i.ReflectionCandidates,
+		&i.ReflectionRoundCreditCap,
+		&i.ReflectionCandidatesReason,
+		&i.ReflectionCandidatesSetAt,
 	)
 	return i, err
 }

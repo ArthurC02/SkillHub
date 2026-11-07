@@ -13,6 +13,7 @@
 
 import type { PlatformSettingsInjectionCheck } from './PlatformSettingsInjectionCheck';
 import type { PlatformSettingsJudgePanel } from './PlatformSettingsJudgePanel';
+import type { PlatformSettingsReflectionCandidates } from './PlatformSettingsReflectionCandidates';
 
 /**
  * 
@@ -20,6 +21,10 @@ import type { PlatformSettingsJudgePanel } from './PlatformSettingsJudgePanel';
  * @interface PlatformSettings
  */
 export interface PlatformSettings {
+    /**
+     * 
+     */
+    reflectionCandidates: PlatformSettingsReflectionCandidates;
     /**
      * 
      */

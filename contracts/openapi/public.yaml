@@ -3874,6 +3874,51 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /admin/settings/reflection-candidates:
+    put:
+      operationId: setReflectionCandidates
+      summary: Set how many candidate suggestion sets a batch improvement round asks for, and its credit cap (02:EVAL-002)
+      description: |
+        Operator only. A round asks the model `count` times at once, each call
+        with its own focus, and is charged once for all of them. With more than
+        one candidate the round needs `round_credit_cap`: while the cap is unset
+        such a round is refused before any model call. A single-candidate round
+        is not capped. The next round reads the new value. Writes the change
+        and its audit event in one transaction.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [count, note]
+              properties:
+                count: { type: integer, minimum: 1, maximum: 4 }
+                round_credit_cap:
+                  type: integer
+                  minimum: 1
+                  maximum: 2147483647
+                  description: The most credits one round may cost. Leaving it out unsets it.
+                note:
+                  type: string
+                  maxLength: 1000
+                  description: Why, in the operator's own words. Whitespace does not satisfy it.
+      responses:
+        "200":
+          description: The settings as they now stand.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PlatformSettings" }
+        "400":
+          description: Body is not JSON, `count` is missing or outside 1–4, `round_credit_cap` is not positive, or `note` is blank or over 1000 characters.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: The caller is not an operator.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /admin/agents/brake:
     put:
       operationId: engagePlatformAgentBrake
@@ -5759,12 +5804,14 @@ paths:
         "409":
           description: |
             The batch is still launching, or a development case has a trial
-            that has not finished or not been evaluated yet.
+            that has not finished or not been evaluated yet, or the round asks
+            for several candidates while the operator has set no round credit
+            cap; no model call was made.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "422":
-          description: The credit is short; no model call was made.
+          description: The credit is short, or the round's estimate (the start threshold times the candidates) exceeds the round credit cap; no model call was made.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -8252,8 +8299,16 @@ components:
           description: The operator who last enabled or disabled the agent; absent until somebody has.
     PlatformSettings:
       type: object
-      required: [judge_panel, injection_check]
+      required: [judge_panel, injection_check, reflection_candidates]
       properties:
+        reflection_candidates:
+          type: object
+          required: [count]
+          properties:
+            count: { type: integer, description: How many candidates a batch improvement round asks for; 1 until an operator changes it. }
+            round_credit_cap: { type: integer, description: The most credits one round may cost; absent while unset. }
+            reason: { type: string, description: Present once an operator has changed the setting. }
+            set_at: { type: string, format: date-time }
         injection_check:
           type: object
           required: [enabled]
@@ -12711,7 +12766,7 @@ components:
         One improvement round read from an evaluation batch's development
         test cases. Frozen once written; only its suggestions' decisions move.
       type: object
-      required: [reflection_id, batch_id, dev_test_case_ids, outcome, runs_read, runs_not_read, created_at, suggestions]
+      required: [reflection_id, batch_id, dev_test_case_ids, outcome, runs_read, runs_not_read, created_at, suggestions, candidates]
       properties:
         reflection_id: { type: string, format: uuid }
         batch_id: { type: string, format: uuid }
@@ -12743,6 +12798,31 @@ components:
         suggestions:
           type: array
           items: { $ref: "#/components/schemas/ImprovementSuggestion" }
+        candidates:
+          type: array
+          maxItems: 4
+          description: |
+            The alternative suggestion sets this round asked for, in order.
+            Empty for a round of one candidate, whose `outcome` and
+            `suggestions` say everything. With several, `outcome` is the best
+            of the candidates' outcomes and `suggestions` holds them all.
+          items: { $ref: "#/components/schemas/ReflectionCandidate" }
+    ReflectionCandidate:
+      type: object
+      required: [focus, outcome, suggestion_ids]
+      properties:
+        focus:
+          type: string
+          enum: [instructions, scripts_and_tools, references_and_examples, free]
+          description: Where this candidate's model call was told to look first.
+        outcome:
+          type: string
+          enum: [unavailable, none_proposed, none_kept, kept]
+          description: This candidate's own outcome, read as the round's `outcome` is.
+        suggestion_ids:
+          type: array
+          items: { type: string, format: uuid }
+          description: The round's suggestions this candidate wrote.
     SuggestionBlockedReason:
       description: |
         Why a suggestion cannot be applied. One vocabulary, served from one

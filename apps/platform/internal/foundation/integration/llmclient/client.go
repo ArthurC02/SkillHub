@@ -412,6 +412,7 @@ type SuggestImprovementsRequest struct {
 	EvaluationDigest string       `json:"evaluation_digest"`
 	FileTree         []string     `json:"file_tree,omitempty"`
 	TargetFiles      []TargetFile `json:"target_files,omitempty"`
+	Focus            string       `json:"focus,omitempty"`
 	TimeoutSeconds   float64      `json:"timeout_seconds,omitempty"`
 }
 

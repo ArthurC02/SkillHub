@@ -22,6 +22,7 @@ for (const kind of ["judge", "runs"] as const) {
             ? {
                 judge_panel: { enabled: unavailable ? "false" : false },
                 injection_check: { enabled: false },
+                reflection_candidates: { count: 1 },
               }
             : {
                 ...ADMIN_RUN_SETTINGS,
@@ -79,7 +80,11 @@ for (const kind of ["judge", "tokens"] as const) {
       if (written && !recovered) return { status: 503, json: { error: "settings unavailable" } };
       return {
         json: judge
-          ? { judge_panel: { enabled: written }, injection_check: { enabled: false } }
+          ? {
+              judge_panel: { enabled: written },
+              injection_check: { enabled: false },
+              reflection_candidates: { count: 1 },
+            }
           : {
               ...ADMIN_RUN_SETTINGS,
               tokens_per_minute: {

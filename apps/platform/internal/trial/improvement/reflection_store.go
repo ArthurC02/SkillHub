@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -191,23 +192,50 @@ type ReflectionRecord struct {
 	Suggestions []Suggestion
 }
 
+type ReflectionCandidate struct {
+	Focus     string
+	Answered  bool
+	Proposals []modelport.ImprovementProposal
+}
+
 type NewReflection struct {
 	WorkspaceID, Actor, BatchID, SkillVersionID pgtype.UUID
 	DevTestCaseIDs                              []pgtype.UUID
 	Outcome                                     SuggestionOutcome
 	RunsRead, RunsNotRead                       int
-	Proposals                                   []modelport.ImprovementProposal
+	Candidates                                  []ReflectionCandidate
 	Refs                                        []verdict.EvidenceRef
 }
 
-func RecordReflection(ctx context.Context, s *Service, n NewReflection) (ReflectionRecord, error) {
+var outcomesWorstFirst = []SuggestionOutcome{SuggestionsUnavailable, SuggestionsNoneProposed, SuggestionsNoneKept, SuggestionsKept}
+
+func keepCandidate(owner proposalOwner, c ReflectionCandidate, refs []verdict.EvidenceRef) ([]keptProposal, SuggestionOutcome) {
+	if !c.Answered {
+		return nil, SuggestionsUnavailable
+	}
+	if len(c.Proposals) == 0 {
+		return nil, SuggestionsNoneProposed
+	}
 	var kept []keptProposal
-	if len(n.Proposals) > 0 {
-		keepProposals(proposalOwner{key: "batch_id", id: pgconv.UUIDString(n.BatchID)}, n.Proposals, n.Refs,
-			func(k keptProposal) error { kept = append(kept, k); return nil })
-		n.Outcome = SuggestionsNoneKept
-		if len(kept) > 0 {
-			n.Outcome = SuggestionsKept
+	keepProposals(owner, c.Proposals, refs, func(k keptProposal) error { kept = append(kept, k); return nil })
+	if len(kept) == 0 {
+		return nil, SuggestionsNoneKept
+	}
+	return kept, SuggestionsKept
+}
+
+func RecordReflection(ctx context.Context, s *Service, n NewReflection) (ReflectionRecord, error) {
+	owner := proposalOwner{key: "batch_id", id: pgconv.UUIDString(n.BatchID)}
+	kept := make([][]keptProposal, len(n.Candidates))
+	focuses, outcomes := []string{}, []string{}
+	for i, c := range n.Candidates {
+		var outcome SuggestionOutcome
+		kept[i], outcome = keepCandidate(owner, c, n.Refs)
+		if i == 0 || slices.Index(outcomesWorstFirst, outcome) > slices.Index(outcomesWorstFirst, n.Outcome) {
+			n.Outcome = outcome
+		}
+		if len(n.Candidates) > 1 {
+			focuses, outcomes = append(focuses, c.Focus), append(outcomes, string(outcome))
 		}
 	}
 	tx, err := s.Pool.Begin(ctx)
@@ -219,20 +247,24 @@ func RecordReflection(ctx context.Context, s *Service, n NewReflection) (Reflect
 	row, err := q.CreateBatchReflection(ctx, gen.CreateBatchReflectionParams{
 		WorkspaceID: n.WorkspaceID, BatchID: n.BatchID, SkillVersionID: n.SkillVersionID, DevTestCaseIds: n.DevTestCaseIDs,
 		Outcome: string(n.Outcome), RunsRead: int32(n.RunsRead), RunsNotRead: int32(n.RunsNotRead), CreatedBy: n.Actor,
+		CandidateFocuses: focuses, CandidateOutcomes: outcomes,
 	})
 	if err != nil {
 		return ReflectionRecord{}, err
 	}
 	out := ReflectionRecord{Row: row}
-	for _, k := range kept {
-		sug, err := q.CreateReflectionSuggestion(ctx, gen.CreateReflectionSuggestionParams{
-			WorkspaceID: n.WorkspaceID, ReflectionID: row.ID, Category: k.Category, Problem: k.Problem,
-			Evidence: k.Evidence, TargetPath: k.TargetPath, ProposedContent: k.ProposedContent, ExpectedImpact: k.ExpectedImpact,
-		})
-		if err != nil {
-			return ReflectionRecord{}, err
+	for candidate, proposals := range kept {
+		for _, k := range proposals {
+			sug, err := q.CreateReflectionSuggestion(ctx, gen.CreateReflectionSuggestionParams{
+				WorkspaceID: n.WorkspaceID, ReflectionID: row.ID, Category: k.Category, Problem: k.Problem,
+				Evidence: k.Evidence, TargetPath: k.TargetPath, ProposedContent: k.ProposedContent, ExpectedImpact: k.ExpectedImpact,
+				Candidate: int16(candidate),
+			})
+			if err != nil {
+				return ReflectionRecord{}, err
+			}
+			out.Suggestions = append(out.Suggestions, suggestionOf(sug))
 		}
-		out.Suggestions = append(out.Suggestions, suggestionOf(sug))
 	}
 	return out, tx.Commit(ctx)
 }

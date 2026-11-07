@@ -30,6 +30,27 @@ type view struct {
 	RunsNotRead    int32                 `json:"runs_not_read"`
 	CreatedAt      string                `json:"created_at"`
 	Suggestions    []eval.SuggestionView `json:"suggestions"`
+	Candidates     []candidateView       `json:"candidates"`
+}
+
+type candidateView struct {
+	Focus         string   `json:"focus"`
+	Outcome       string   `json:"outcome"`
+	SuggestionIDs []string `json:"suggestion_ids"`
+}
+
+func candidatesOf(rec eval.ReflectionRecord) []candidateView {
+	out := make([]candidateView, len(rec.Row.CandidateFocuses))
+	for i, focus := range rec.Row.CandidateFocuses {
+		out[i] = candidateView{Focus: focus, Outcome: rec.Row.CandidateOutcomes[i], SuggestionIDs: []string{}}
+	}
+	for _, sug := range rec.Suggestions {
+		if int(sug.Candidate) < len(out) {
+			c := &out[sug.Candidate]
+			c.SuggestionIDs = append(c.SuggestionIDs, pgconv.UUIDString(sug.ID))
+		}
+	}
+	return out
 }
 
 func (h *Handler) Reflect(w http.ResponseWriter, r *http.Request) {
@@ -64,9 +85,9 @@ func (h *Handler) Reflect(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, eval.ErrNotFound.Error())
 	case errors.Is(err, ErrInvalid):
 		httpx.WriteError(w, http.StatusBadRequest, err.Error())
-	case errors.Is(err, ErrNotReady):
+	case errors.Is(err, ErrNotReady), errors.Is(err, ErrRoundCapUnset):
 		httpx.WriteError(w, http.StatusConflict, err.Error())
-	case errors.Is(err, ErrCreditThreshold):
+	case errors.Is(err, ErrCreditThreshold), errors.Is(err, ErrRoundOverCap):
 		httpx.WriteError(w, http.StatusUnprocessableEntity, err.Error())
 	case errors.Is(err, ErrModelCallsHalted), errors.Is(err, ErrBudgetExhausted):
 		httpx.WriteError(w, http.StatusServiceUnavailable, err.Error())
@@ -135,6 +156,7 @@ func (h *Handler) view(ctx context.Context, workspaceID pgtype.UUID, rec eval.Re
 		RunsRead: row.RunsRead, RunsNotRead: row.RunsNotRead,
 		CreatedAt:   row.CreatedAt.Time.UTC().Format(time.RFC3339),
 		Suggestions: suggestions,
+		Candidates:  candidatesOf(rec),
 	}
 	for i, id := range row.DevTestCaseIds {
 		out.DevTestCaseIDs[i] = pgconv.UUIDString(id)

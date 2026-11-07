@@ -585,6 +585,10 @@ type SetPlatformAgentSpendCapRes interface {
 	setPlatformAgentSpendCapRes()
 }
 
+type SetReflectionCandidatesRes interface {
+	setReflectionCandidatesRes()
+}
+
 type SetRunModelBudgetRes interface {
 	setRunModelBudgetRes()
 }

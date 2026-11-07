@@ -274,6 +274,10 @@ type BatchReflection struct {
 	CreatedBy pgtype.UUID
 	// When the round was recorded, after the model answered.
 	CreatedAt pgtype.Timestamptz
+	// The focus each candidate's model call was given, in candidate order: instructions, scripts_and_tools, references_and_examples or free. Empty for a round of one candidate, which is asked with no focus.
+	CandidateFocuses []string
+	// Each candidate's own outcome, in the same order as candidate_focuses: unavailable, none_proposed, none_kept or kept. Empty for a round of one candidate, whose outcome is the round's.
+	CandidateOutcomes []string
 }
 
 // A named, workspace-owned collection of skills that is versioned and downloaded as one unit.
@@ -794,6 +798,14 @@ type EvaluationSetting struct {
 	InjectionCheckReason *string
 	// When the injection check was last changed; NULL while it has never been changed.
 	InjectionCheckSetAt pgtype.Timestamptz
+	// How many alternative suggestion sets one batch improvement round asks for, each with its own focus. 1 is a single set with no focus.
+	ReflectionCandidates int16
+	// The most credits one batch improvement round may cost. NULL means unset: a round asking for more than one candidate is refused until it is set, and a single-candidate round is not capped.
+	ReflectionRoundCreditCap *int32
+	// Why the operator last changed reflection_candidates or reflection_round_credit_cap; NULL while neither has been changed.
+	ReflectionCandidatesReason *string
+	// When reflection_candidates or reflection_round_credit_cap was last changed; NULL while neither has been changed.
+	ReflectionCandidatesSetAt pgtype.Timestamptz
 }
 
 // One proposed improvement produced from an evaluation, with the problem, evidence, target file, proposed change, expected impact and the user's decision. Accepting a suggestion creates a new skill version rather than editing in place.
@@ -824,6 +836,8 @@ type EvaluationSuggestion struct {
 	CreatedAt             pgtype.Timestamptz
 	// The batch improvement round that produced this suggestion. Exactly one of evaluation_id and reflection_id is set.
 	ReflectionID pgtype.UUID
+	// Which candidate of its batch improvement round wrote the suggestion, counted from 0; always 0 for a suggestion on one run's evaluation.
+	Candidate int16
 }
 
 // The link between an accepted evaluation suggestion and the new skill version created from it. Immutable and append-only: later applications never overwrite an earlier source.

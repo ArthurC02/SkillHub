@@ -9,18 +9,31 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/evalsettings"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/modelport"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/reflection"
 )
 
 func newReflectionHandler(cfg Config, app *App, creditSvc *credit.Service) *reflection.Handler {
 	billing := suggestBilling(testlab.SuggestBilling{}, credit.KindBatchReflection, creditSvc, app.Auth.Service, cfg.Pool)
+	settings := &evalsettings.Service{Pool: cfg.Pool}
 	svc := &reflection.Service{
 		Eval:            app.EvalSvc,
 		ReadBatchTrials: batchTrialsReader(app.EvalBatches),
+		Policy: func(ctx context.Context) (reflection.RoundPolicy, error) {
+			policy, err := settings.ReflectionPolicy(ctx)
+			return reflection.RoundPolicy{Candidates: policy.Count, RoundCreditCap: policy.RoundCreditCap}, err
+		},
 		Billing: reflection.Billing{
 			ModelCallsHalted: app.RunSvc.DispatchGate().ModelCallsHalted,
-			CanStart:         billing.CanStart,
+			Quote: func(ctx context.Context, workspaceID pgtype.UUID) (reflection.StartQuote, error) {
+				userID, err := app.Auth.Service.WorkspaceOwner(ctx, workspaceID)
+				if err != nil {
+					return reflection.StartQuote{}, err
+				}
+				check, err := creditSvc.CanStart(ctx, userID, credit.KindBatchReflection)
+				return reflection.StartQuote{Balance: check.Balance, Threshold: check.Threshold}, err
+			},
 			Charge: func(ctx context.Context, workspaceID pgtype.UUID, usage *modelport.ModelUsage) error {
 				if usage == nil {
 					return billing.Charge(ctx, workspaceID, nil)

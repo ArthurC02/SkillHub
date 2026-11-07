@@ -12,6 +12,7 @@
  */
 
 import type { ImprovementSuggestion } from './ImprovementSuggestion';
+import type { ReflectionCandidate } from './ReflectionCandidate';
 
 /**
  * One improvement round read from an evaluation batch's development
@@ -61,6 +62,14 @@ export interface BatchReflection {
      * 
      */
     suggestions: Array<ImprovementSuggestion>;
+    /**
+     * The alternative suggestion sets this round asked for, in order.
+     * Empty for a round of one candidate, whose `outcome` and
+     * `suggestions` say everything. With several, `outcome` is the best
+     * of the candidates' outcomes and `suggestions` holds them all.
+     * 
+     */
+    candidates: Array<ReflectionCandidate>;
 }
 
 

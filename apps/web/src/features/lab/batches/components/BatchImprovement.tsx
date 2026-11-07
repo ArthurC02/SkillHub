@@ -14,6 +14,7 @@ import {
 import type { BatchReport } from "../batches.model";
 import { useApplyReflection, useBatchReflections, useReflectOnBatch } from "../batches.service";
 import {
+  CANDIDATE_FOCUS_LABEL,
   REFLECTION_OUTCOME_SENTENCE,
   heldOutTestCaseIds,
   reflectHoldReason,
@@ -159,17 +160,26 @@ function ReflectionResult({
         <>
           <p className="note">「預期影響」是模型的預測，不是量測結果。</p>
           <MatchLegend evidence={items.flatMap((s) => s.evidence)} />
-          <ul className="suggestion-list">
-            {items.map((s) => (
-              <SuggestionItem
-                key={s.suggestion_id.toLowerCase()}
-                suggestion={s}
-                listKey={queryKeys.evaluationBatches.reflections(skillId, batchId)}
-                decisionState={states.get(s.suggestion_id.toLowerCase())}
-                onDecisionStateChange={setState}
-              />
-            ))}
-          </ul>
+          {candidateGroups(reflection).map((group) => (
+            <div key={group.key}>
+              {group.title && <h4>{group.title}</h4>}
+              {group.items.length === 0 ? (
+                <p>{group.empty}</p>
+              ) : (
+                <ul className="suggestion-list">
+                  {group.items.map((s) => (
+                    <SuggestionItem
+                      key={s.suggestion_id.toLowerCase()}
+                      suggestion={s}
+                      listKey={queryKeys.evaluationBatches.reflections(skillId, batchId)}
+                      decisionState={states.get(s.suggestion_id.toLowerCase())}
+                      onDecisionStateChange={setState}
+                    />
+                  ))}
+                </ul>
+              )}
+            </div>
+          ))}
           <p>
             <button
               type="button"
@@ -219,4 +229,23 @@ function ReflectionResult({
       )}
     </div>
   );
+}
+
+type CandidateGroup = {
+  key: string;
+  title: string;
+  empty: string;
+  items: BatchReflection["suggestions"];
+};
+
+function candidateGroups(reflection: BatchReflection): CandidateGroup[] {
+  if (reflection.candidates.length === 0)
+    return [{ key: "all", title: "", empty: "", items: reflection.suggestions }];
+  const byId = new Map(reflection.suggestions.map((s) => [s.suggestion_id.toLowerCase(), s]));
+  return reflection.candidates.map((candidate, i) => ({
+    key: `${i}:${candidate.focus}`,
+    title: `候選 ${i + 1}：${CANDIDATE_FOCUS_LABEL[candidate.focus]}`,
+    empty: REFLECTION_OUTCOME_SENTENCE[candidate.outcome],
+    items: candidate.suggestion_ids.flatMap((id) => byId.get(id.toLowerCase()) ?? []),
+  }));
 }

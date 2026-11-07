@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"slices"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -21,12 +23,36 @@ const heldOutFinalOutput = "HELD-OUT-ANSWER the rows were left exactly as they c
 type reflectionModel struct {
 	mu      sync.Mutex
 	digests map[string][]string
+	focuses []string
+	failing map[string]bool
+	silent  map[string]bool
 }
 
-func (m *reflectionModel) record(attribution, digest string) {
+func (m *reflectionModel) record(attribution, digest, focus string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.digests[attribution] = append(m.digests[attribution], digest)
+	if strings.HasPrefix(attribution, "batch:") {
+		m.focuses = append(m.focuses, focus)
+	}
+}
+
+func (m *reflectionModel) answerTo(focus string) (fails, silent bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.failing[focus], m.silent[focus]
+}
+
+func (m *reflectionModel) answerFocuses(failing, silent map[string]bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.failing, m.silent = failing, silent
+}
+
+func (m *reflectionModel) sentFocuses() []string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]string(nil), m.focuses...)
 }
 
 func (m *reflectionModel) batchDigests() []string {
@@ -56,9 +82,18 @@ func reflectionLLM(t *testing.T, proposals []llmclient.ImprovementProposal) (*ll
 			http.Error(w, `{"detail":"bad"}`, http.StatusUnprocessableEntity)
 			return
 		}
-		model.record(req.EvaluationID, req.EvaluationDigest)
+		model.record(req.EvaluationID, req.EvaluationDigest, req.Focus)
+		fails, silent := model.answerTo(req.Focus)
+		if fails {
+			http.Error(w, `{"detail":"upstream"}`, http.StatusInternalServerError)
+			return
+		}
+		answer := proposals
+		if silent {
+			answer = nil
+		}
 		_ = json.NewEncoder(w).Encode(llmclient.SuggestImprovementsResponse{
-			Suggestions: proposals, Model: "gpt-6-sol", PromptVersion: "suggest-improvements/test",
+			Suggestions: answer, Model: "gpt-6-sol", PromptVersion: "suggest-improvements/test",
 			Usage: &llmclient.GatewayUsage{PromptTokens: 20, CompletionTokens: 9},
 		})
 	})
@@ -147,6 +182,7 @@ type reflectionBody struct {
 	RunsRead       int              `json:"runs_read"`
 	RunsNotRead    int              `json:"runs_not_read"`
 	Suggestions    []suggestionBody `json:"suggestions"`
+	Candidates     []candidateBody  `json:"candidates"`
 }
 
 func (c *client) reflect(t *testing.T, f reflectableBatch, body string) (int, reflectionBody, string) {
@@ -407,4 +443,170 @@ func appliedVersionOnReflection(t *testing.T, c *client, f reflectableBatch, ref
 		}
 	}
 	return recorded
+}
+
+type candidateBody struct {
+	Focus         string   `json:"focus"`
+	Outcome       string   `json:"outcome"`
+	SuggestionIDs []string `json:"suggestion_ids"`
+}
+
+func setReflectionCandidates(t *testing.T, a *api, body string) {
+	t.Helper()
+	operator := a.login(t, freshName("operator-reflection-candidates"))
+	a.auth.Operators = map[string]bool{operator.userID: true}
+	if code, answer := operatorCall(t, operator, http.MethodPut, "/admin/settings/reflection-candidates", body); code != http.StatusOK {
+		t.Fatalf("set reflection candidates %s: got %d %v, want 200", body, code, answer)
+	}
+}
+
+func reflectionDebits(t *testing.T, c *client) (n int, promptTokens int64) {
+	t.Helper()
+	if err := testPool.QueryRow(context.Background(), `
+		SELECT count(*), coalesce(sum(prompt_tokens), 0) FROM cost_events
+		WHERE kind = 'batch_reflection' AND user_id = $1`, mustUUID(t, c.userID)).Scan(&n, &promptTokens); err != nil {
+		t.Fatal(err)
+	}
+	return n, promptTokens
+}
+
+func TestARoundOfOneCandidateAsksOnceWithNoFocusAndListsNoCandidates(t *testing.T) {
+	pool := requireDB(t)
+	clearEvaluationSettings(t, pool)
+	a := newAPI(t, pool)
+	alice := a.login(t, "reflect-one-candidate")
+	f := seedReflectableBatch(t, a, pool, alice, "reflect-one-candidate")
+
+	code, got, raw := alice.reflect(t, f, devBody(f.devCase))
+	if code != http.StatusCreated {
+		t.Fatalf("reflect: got %d %s, want 201", code, raw)
+	}
+	if got.Candidates == nil || len(got.Candidates) != 0 {
+		t.Errorf("candidates = %#v, want an empty list", got.Candidates)
+	}
+	if sent := f.model.sentFocuses(); len(sent) != 1 || sent[0] != "" {
+		t.Errorf("focuses sent = %q, want one call with no focus", sent)
+	}
+	if n, tokens := reflectionDebits(t, alice); n != 1 || tokens != 20 {
+		t.Errorf("debits = %d for %d prompt tokens, want 1 for 20", n, tokens)
+	}
+}
+
+func TestARoundOfThreeCandidatesAsksEachFocusOnceAndIsChargedOnce(t *testing.T) {
+	pool := requireDB(t)
+	clearEvaluationSettings(t, pool)
+	a := newAPI(t, pool)
+	setReflectionCandidates(t, a, `{"count":3,"round_credit_cap":2147483647,"note":"compare three"}`)
+	alice := a.login(t, "reflect-three-candidates")
+	f := seedReflectableBatch(t, a, pool, alice, "reflect-three-candidates")
+
+	code, got, raw := alice.reflect(t, f, devBody(f.devCase))
+	if code != http.StatusCreated {
+		t.Fatalf("reflect: got %d %s, want 201", code, raw)
+	}
+	sent := f.model.sentFocuses()
+	sort.Strings(sent)
+	if want := []string{"instructions", "references_and_examples", "scripts_and_tools"}; !slices.Equal(sent, want) {
+		t.Errorf("focuses sent = %q, want %q", sent, want)
+	}
+	if got.Outcome != "kept" || len(got.Suggestions) != 3 || len(got.Candidates) != 3 {
+		t.Fatalf("round = %s, want kept with three candidates of one suggestion each", raw)
+	}
+	seen := map[string]bool{}
+	for i, want := range []string{"instructions", "scripts_and_tools", "references_and_examples"} {
+		c := got.Candidates[i]
+		if c.Focus != want || c.Outcome != "kept" || len(c.SuggestionIDs) != 1 || seen[c.SuggestionIDs[0]] {
+			t.Errorf("candidate %d = %+v, want focus %s kept with its own suggestion", i, c, want)
+		}
+		if len(c.SuggestionIDs) == 1 {
+			seen[c.SuggestionIDs[0]] = true
+		}
+	}
+	if n, tokens := reflectionDebits(t, alice); n != 1 || tokens != 60 {
+		t.Errorf("debits = %d for %d prompt tokens, want one debit for all three calls' 60", n, tokens)
+	}
+}
+
+func TestARoundOfSeveralCandidatesIsRefusedBeforeAnyCallWhileTheRoundCapIsUnset(t *testing.T) {
+	pool := requireDB(t)
+	clearEvaluationSettings(t, pool)
+	a := newAPI(t, pool)
+	setReflectionCandidates(t, a, `{"count":2,"note":"no cap yet"}`)
+	alice := a.login(t, "reflect-cap-unset")
+	f := seedReflectableBatch(t, a, pool, alice, "reflect-cap-unset")
+
+	code, _, raw := alice.reflect(t, f, devBody(f.devCase))
+	if code != http.StatusConflict || !strings.Contains(raw, "reflection_round_credit_cap") {
+		t.Fatalf("reflect: got %d %s, want 409 naming reflection_round_credit_cap", code, raw)
+	}
+	if n := len(f.model.batchDigests()); n != 0 {
+		t.Errorf("the model was called %d times for a refused round", n)
+	}
+	if n, _ := reflectionDebits(t, alice); n != 0 {
+		t.Errorf("a refused round left %d debits", n)
+	}
+}
+
+func TestARoundWhoseEstimateExceedsTheRoundCapIsRefusedBeforeAnyCall(t *testing.T) {
+	pool := requireDB(t)
+	clearEvaluationSettings(t, pool)
+	a := newAPI(t, pool)
+	setReflectionCandidates(t, a, `{"count":2,"round_credit_cap":1,"note":"tiny cap"}`)
+	alice := a.login(t, "reflect-over-cap")
+	f := seedReflectableBatch(t, a, pool, alice, "reflect-over-cap")
+
+	if code, _, raw := alice.reflect(t, f, devBody(f.devCase)); code != http.StatusUnprocessableEntity {
+		t.Fatalf("reflect: got %d %s, want 422", code, raw)
+	}
+	if n := len(f.model.batchDigests()); n != 0 {
+		t.Errorf("the model was called %d times for a round over its cap", n)
+	}
+}
+
+func TestEachCandidateOfARoundRecordsItsOwnOutcomeAndTheRoundTakesTheBest(t *testing.T) {
+	pool := requireDB(t)
+	clearEvaluationSettings(t, pool)
+	a := newAPI(t, pool)
+	setReflectionCandidates(t, a, `{"count":3,"round_credit_cap":2147483647,"note":"mixed answers"}`)
+	alice := a.login(t, "reflect-mixed-candidates")
+	f := seedReflectableBatch(t, a, pool, alice, "reflect-mixed-candidates")
+	f.model.answerFocuses(map[string]bool{"scripts_and_tools": true}, map[string]bool{"references_and_examples": true})
+
+	code, got, raw := alice.reflect(t, f, devBody(f.devCase))
+	if code != http.StatusCreated {
+		t.Fatalf("reflect: got %d %s, want 201", code, raw)
+	}
+	outcomes := make([]string, len(got.Candidates))
+	for i, c := range got.Candidates {
+		outcomes[i] = c.Outcome
+	}
+	if want := []string{"kept", "unavailable", "none_proposed"}; got.Outcome != "kept" || !slices.Equal(outcomes, want) || len(got.Suggestions) != 1 {
+		t.Errorf("round %s with candidates %q and %d suggestions, want kept, %q and 1", got.Outcome, outcomes, len(got.Suggestions), want)
+	}
+	if n, tokens := reflectionDebits(t, alice); n != 1 || tokens != 40 {
+		t.Errorf("debits = %d for %d prompt tokens, want one for the two answered calls' 40", n, tokens)
+	}
+}
+
+func TestARoundWhoseEveryCandidateFailedIsUnavailableAndUncharged(t *testing.T) {
+	pool := requireDB(t)
+	clearEvaluationSettings(t, pool)
+	a := newAPI(t, pool)
+	setReflectionCandidates(t, a, `{"count":2,"round_credit_cap":2147483647,"note":"all fail"}`)
+	alice := a.login(t, "reflect-all-fail")
+	f := seedReflectableBatch(t, a, pool, alice, "reflect-all-fail")
+	f.model.answerFocuses(map[string]bool{"instructions": true, "scripts_and_tools": true}, nil)
+
+	code, got, raw := alice.reflect(t, f, devBody(f.devCase))
+	if code != http.StatusCreated || got.Outcome != "unavailable" || len(got.Candidates) != 2 {
+		t.Fatalf("reflect: got %d %s, want 201 unavailable with two candidates", code, raw)
+	}
+	for i, c := range got.Candidates {
+		if c.Outcome != "unavailable" || len(c.SuggestionIDs) != 0 || c.SuggestionIDs == nil {
+			t.Errorf("candidate %d = %+v, want unavailable with an empty suggestion list", i, c)
+		}
+	}
+	if n, _ := reflectionDebits(t, alice); n != 0 {
+		t.Errorf("a round with no answer left %d debits", n)
+	}
 }

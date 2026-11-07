@@ -198,14 +198,27 @@ SET injection_check = EXCLUDED.injection_check,
     injection_check_set_at = now()
 RETURNING *;
 
+-- name: SetEvaluationReflectionCandidates :one
+INSERT INTO evaluation_settings (judge_panel, reflection_candidates, reflection_round_credit_cap,
+                                 reflection_candidates_reason, reflection_candidates_set_at)
+VALUES (false, @reflection_candidates, sqlc.narg(reflection_round_credit_cap), @reason, now())
+ON CONFLICT (singleton) DO UPDATE
+SET reflection_candidates = EXCLUDED.reflection_candidates,
+    reflection_round_credit_cap = EXCLUDED.reflection_round_credit_cap,
+    reflection_candidates_reason = EXCLUDED.reflection_candidates_reason,
+    reflection_candidates_set_at = now()
+RETURNING *;
+
 -- name: ListRunsWithAnEvaluation :many
 SELECT DISTINCT run_id FROM evaluations WHERE run_id = ANY(@run_ids::uuid[]);
 
 -- name: CreateBatchReflection :one
 INSERT INTO batch_reflections (
-    workspace_id, batch_id, skill_version_id, dev_test_case_ids, outcome, runs_read, runs_not_read, created_by
+    workspace_id, batch_id, skill_version_id, dev_test_case_ids, outcome, runs_read, runs_not_read, created_by,
+    candidate_focuses, candidate_outcomes
 ) VALUES (
-    @workspace_id, @batch_id, @skill_version_id, @dev_test_case_ids::uuid[], @outcome, @runs_read, @runs_not_read, sqlc.narg(created_by)
+    @workspace_id, @batch_id, @skill_version_id, @dev_test_case_ids::uuid[], @outcome, @runs_read, @runs_not_read, sqlc.narg(created_by),
+    @candidate_focuses::text[], @candidate_outcomes::text[]
 )
 RETURNING *;
 
@@ -222,10 +235,10 @@ WHERE id = @id AND workspace_id = @workspace_id;
 -- name: CreateReflectionSuggestion :one
 INSERT INTO evaluation_suggestions (
     workspace_id, reflection_id, category, problem, evidence,
-    target_path, proposed_content, expected_impact
+    target_path, proposed_content, expected_impact, candidate
 ) VALUES (
     @workspace_id, @reflection_id, @category, @problem, @evidence,
-    @target_path, @proposed_content, @expected_impact
+    @target_path, @proposed_content, @expected_impact, @candidate
 )
 RETURNING *;
 

@@ -15,6 +15,7 @@ import { ActionForm } from "../components/ActionForm";
 import { useSettingDraft } from "../components/useSettingDraft";
 import { SettingsResult } from "./SettingsResult";
 import { InjectionCheck } from "./InjectionCheck";
+import { ReflectionCandidates } from "./ReflectionCandidates";
 import { MCPTools } from "./MCPTools";
 import { RunModelBudget } from "./RunModelBudget";
 import { RunTokensPerMinute } from "./RunTokensPerMinute";
@@ -301,6 +302,13 @@ export function AdminSettings() {
         {settings.data && (
           <InjectionCheck
             check={settings.data.injection_check}
+            readable={!settings.error}
+            refreshing={settings.isFetching}
+          />
+        )}
+        {settings.data && (
+          <ReflectionCandidates
+            setting={settings.data.reflection_candidates}
             readable={!settings.error}
             refreshing={settings.isFetching}
           />

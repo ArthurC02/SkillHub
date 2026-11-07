@@ -2157,6 +2157,13 @@ components:
             Go's rendering of the evaluation - failed criteria, deterministic
             findings, the evidence behind them. A digest rather than the stored
             row: the same low-privilege reading rule as `trace_digest`.
+        focus:
+          type: string
+          enum: [instructions, scripts_and_tools, references_and_examples, free]
+          description: |
+            Which part of the package this call should look for a fix in, so the
+            several calls of one batch improvement round propose different
+            changes. Absent, the call looks anywhere, as a single call does.
         file_tree:
           type: array
           items:

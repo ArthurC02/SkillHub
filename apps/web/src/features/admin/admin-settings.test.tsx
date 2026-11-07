@@ -61,7 +61,11 @@ test.each(["judge", "rounds", "budget", "tokens"] as const)(
         if (written && !recover) return { body: { error: "settings unavailable" }, status: 503 };
         return {
           body: judge
-            ? { judge_panel: { enabled: written }, injection_check: { enabled: false } }
+            ? {
+                judge_panel: { enabled: written },
+                injection_check: { enabled: false },
+                reflection_candidates: { count: 1 },
+              }
             : written
               ? {
                   ...ADMIN_RUN_SETTINGS,
@@ -482,6 +486,7 @@ test("OPS-011: switching the judge panel on sends the choice with its reason and
         body: {
           judge_panel: { enabled, reason: "measure agreement", set_at: "2026-10-09T08:00:00Z" },
           injection_check: { enabled: false },
+          reflection_candidates: { count: 1 },
         },
         status: 200,
       };
@@ -511,6 +516,7 @@ test("switching the injection check on sends its price with the reason and shows
       ? {
           body: {
             judge_panel: { enabled: false },
+            reflection_candidates: { count: 1 },
             injection_check: {
               enabled: true,
               credits_per_million_tokens: 1000000,
@@ -551,7 +557,11 @@ test("a judge panel change focuses its result and editing the next reason clears
   stub(true, (path, method) =>
     path === "/admin/settings/judge-panel" && method === "PUT"
       ? {
-          body: { judge_panel: { enabled: true }, injection_check: { enabled: false } },
+          body: {
+            judge_panel: { enabled: true },
+            injection_check: { enabled: false },
+            reflection_candidates: { count: 1 },
+          },
           status: 200,
         }
       : undefined,
@@ -580,7 +590,11 @@ test.each(["judge panel", "answer rounds"] as const)(
       path === writePath && method === "PUT"
         ? {
             body: judge
-              ? { judge_panel: { enabled: true }, injection_check: { enabled: false } }
+              ? {
+                  judge_panel: { enabled: true },
+                  injection_check: { enabled: false },
+                  reflection_candidates: { count: 1 },
+                }
               : {
                   continuation_rounds: { rounds: 5, min: 1, max: 10 },
                   model_budget: ADMIN_RUN_SETTINGS.model_budget,
@@ -665,7 +679,11 @@ test("unreadable cached platform settings hide their controls and retry each set
       return {
         body:
           path === "/admin/settings"
-            ? { judge_panel: { enabled: false }, injection_check: { enabled: false } }
+            ? {
+                judge_panel: { enabled: false },
+                injection_check: { enabled: false },
+                reflection_candidates: { count: 1 },
+              }
             : {
                 continuation_rounds: { rounds: 3, min: 1, max: 10 },
                 model_budget: ADMIN_RUN_SETTINGS.model_budget,
@@ -1379,3 +1397,59 @@ test("an unreadable answered-rounds setting says so instead of drawing a form", 
   await waitFor(has("暫時無法讀取試跑設定"));
   expect(container.querySelector("#admin-settings-rounds-value")).toBeNull();
 });
+
+test.each([
+  [
+    "with a cap",
+    "300",
+    { count: 3, round_credit_cap: 300, note: "compare three" },
+    "每輪最多 300 點",
+  ],
+  ["with the cap left empty", "", { count: 3, note: "compare three" }, "每輪點數上限尚未設定"],
+])(
+  "saving the reflection candidates %s sends exactly what was entered and shows the saved state",
+  async (_name, cap, sent, shown) => {
+    stub(true, (path, method) =>
+      path === "/admin/settings/reflection-candidates" && method === "PUT"
+        ? {
+            body: {
+              judge_panel: { enabled: false },
+              injection_check: { enabled: false },
+              reflection_candidates: {
+                count: 3,
+                ...(cap === "" ? {} : { round_credit_cap: 300 }),
+                reason: "compare three",
+                set_at: "2026-11-07T08:00:00Z",
+              },
+            },
+            status: 200,
+          }
+        : undefined,
+    );
+    await mountAt("/admin/settings");
+    await waitFor(has("每輪 1 個候選；每輪點數上限尚未設定"));
+    await type("#admin-settings-reflection-candidates-note", "compare three");
+    for (const [count, capValue] of [
+      ["0", ""],
+      ["5", ""],
+      ["1.5", ""],
+      ["2", "0"],
+      ["2", "2147483648"],
+    ]) {
+      await type("#admin-settings-reflection-candidates-count", count);
+      await type("#admin-settings-reflection-candidates-cap", capValue);
+      expect(button("儲存候選數與上限").disabled, `${count} / ${capValue}`).toBe(true);
+    }
+    await type("#admin-settings-reflection-candidates-count", "3");
+    await type("#admin-settings-reflection-candidates-cap", cap);
+    await click(button("儲存候選數與上限"));
+    await waitFor(has("已儲存，下一輪找改進會問 3 個候選。"));
+    expect(calls.find((c) => c.method === "PUT")).toEqual({
+      method: "PUT",
+      url: "/admin/settings/reflection-candidates",
+      body: sent,
+    });
+    expect(has(`每輪 3 個候選；${shown}`)()).toBe(true);
+    expect(has("理由：compare three")()).toBe(true);
+  },
+);

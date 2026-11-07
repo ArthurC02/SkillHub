@@ -49,6 +49,7 @@ function reflection(overrides: Partial<BatchReflection> = {}): BatchReflection {
     outcome: "kept",
     runs_read: 2,
     runs_not_read: 0,
+    candidates: [],
     created_at: "2026-11-07T01:00:00Z",
     suggestions: [
       {
@@ -259,4 +260,48 @@ test("a re-run from a round that cannot be found prefills nothing", async () => 
     expect(page.getByRole("alert").filter({ hasText: "找不到那一次找改進的紀錄" }).count()).toBe(1),
   );
   expect(page.getByRole("button", { name: "開始評估批次" }).count()).toBe(0);
+});
+
+test("a round of several candidates lists each candidate's suggestions under its focus", async () => {
+  const page = app();
+  const first = reflection().suggestions[0];
+  withTwoCases(page, [
+    reflection({
+      suggestions: [first, { ...first, suggestion_id: "r2", problem: "Script 沒有處理空白欄。" }],
+      candidates: [
+        { focus: "instructions", outcome: "kept", suggestion_ids: ["R1"] },
+        { focus: "scripts_and_tools", outcome: "kept", suggestion_ids: ["r2"] },
+        { focus: "references_and_examples", outcome: "unavailable", suggestion_ids: [] },
+      ],
+    }),
+  ]);
+  await page.goto(BATCH_PAGE);
+  await page.eventually(() =>
+    expect(page.getByRole("heading", { name: "候選 3：先看參考資料與範例" }).count()).toBe(1),
+  );
+  const headings = [...document.querySelectorAll("h4")].map((h) => h.textContent);
+  expect(headings).toEqual([
+    "候選 1：先看指示",
+    "候選 2：先看 Script 與工具",
+    "候選 3：先看參考資料與範例",
+  ]);
+  const groups = [...document.querySelectorAll("h4")].map(
+    (h) => h.parentElement?.textContent ?? "",
+  );
+  expect(groups[0]).toContain("SKILL.md 沒說怎麼判斷重複列。");
+  expect(groups[0]).not.toContain("Script 沒有處理空白欄。");
+  expect(groups[1]).toContain("Script 沒有處理空白欄。");
+  expect(groups[2]).toContain(
+    "這次找改進時模型沒有回應，所以沒有建議；這不代表小工具沒有可以改進的地方，可以再試一次。",
+  );
+});
+
+test("a round of one candidate lists its suggestions without candidate headings", async () => {
+  const page = app();
+  withTwoCases(page, [reflection()]);
+  await page.goto(BATCH_PAGE);
+  await page.eventually(() =>
+    expect(document.body.textContent).toContain("SKILL.md 沒說怎麼判斷重複列。"),
+  );
+  expect(document.querySelectorAll("h4")).toHaveLength(0);
 });

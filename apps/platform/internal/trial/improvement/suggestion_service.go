@@ -32,6 +32,7 @@ type Suggestion struct {
 	DecidedAt             pgtype.Timestamptz
 	AppliedSkillVersionID pgtype.UUID
 	CreatedAt             pgtype.Timestamptz
+	Candidate             int16
 }
 
 func (s *Service) AppliedSuggestions(ctx context.Context, workspaceID, versionID pgtype.UUID) ([]AppliedSuggestion, error) {
@@ -121,6 +122,6 @@ func suggestionOf(row gen.EvaluationSuggestion) Suggestion {
 		TargetPath: row.TargetPath, ProposedContent: row.ProposedContent,
 		ExpectedImpact: row.ExpectedImpact, Decision: row.Decision,
 		DecidedAt: row.DecidedAt, AppliedSkillVersionID: row.AppliedSkillVersionID,
-		CreatedAt: row.CreatedAt,
+		CreatedAt: row.CreatedAt, Candidate: row.Candidate,
 	}
 }

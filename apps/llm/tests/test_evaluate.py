@@ -725,3 +725,48 @@ def test_the_suggestion_prompt_treats_the_unopened_files_as_context_not_evidence
     assert "the package files the run never opened. That list is context" in prompt
     assert "not evidence: quote only from the evidence lines" in prompt
     assert "point to that file at the step that needs it" in prompt
+
+
+def _ask_after_the_data(calls) -> str:
+    user = calls[0]["messages"][1]["content"]
+    return user.rsplit(f"</{evaluate.DATA_TAG}>", 1)[1].strip()
+
+
+@pytest.mark.parametrize(
+    "focus, phrase",
+    [
+        ("instructions", "Look for the fix in SKILL.md"),
+        ("scripts_and_tools", "the bundled scripts"),
+        ("references_and_examples", "the references, examples and data files"),
+        ("free", "Look anywhere in the package"),
+    ],
+)
+def test_a_focused_suggestion_call_says_where_to_look(capture, focus, phrase):
+    calls = capture(json.dumps(GOOD_PROPOSALS))
+
+    response = client.post("/suggest-improvements", json={**IMPROVE_REQUEST, "focus": focus})
+
+    assert response.status_code == 200
+    ask = _ask_after_the_data(calls)
+    assert ask.startswith("Propose the improvements supported by the evaluation above. ")
+    assert phrase in ask
+
+
+def test_an_unfocused_suggestion_call_asks_exactly_as_before(capture):
+    calls = capture(json.dumps(GOOD_PROPOSALS))
+
+    response = client.post("/suggest-improvements", json=IMPROVE_REQUEST)
+
+    assert response.status_code == 200
+    assert (
+        _ask_after_the_data(calls) == "Propose the improvements supported by the evaluation above."
+    )
+
+
+def test_an_unknown_focus_is_refused():
+    assert (
+        client.post(
+            "/suggest-improvements", json={**IMPROVE_REQUEST, "focus": "everything"}
+        ).status_code
+        == 422
+    )

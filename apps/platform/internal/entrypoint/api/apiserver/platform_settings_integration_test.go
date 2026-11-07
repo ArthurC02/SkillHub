@@ -3,6 +3,7 @@ package apiserver_test
 import (
 	"context"
 	"net/http"
+	"reflect"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -235,5 +236,69 @@ func expectSwitchingOffKeepsThePanel(t *testing.T, operator *client) {
 	}
 	if panel["enabled"] != true || panel["reason"] != "panel" {
 		t.Errorf("judge_panel = %v after the check was switched off, want the panel's own change kept", panel)
+	}
+}
+
+func TestAnOperatorSetsTheCandidatesPerRoundAndTheirCapWithinBounds(t *testing.T) {
+	pool := requireDB(t)
+	clearEvaluationSettings(t, pool)
+	a := newAPI(t, pool)
+	operator := a.login(t, freshName("operator-reflection-candidates"))
+	a.auth.Operators = map[string]bool{operator.userID: true}
+	svc := &evalsettings.Service{Pool: pool}
+	path := "/admin/settings/reflection-candidates"
+
+	code, settings := operatorCall(t, operator, http.MethodGet, "/admin/settings", "")
+	rc, _ := settings["reflection_candidates"].(map[string]any)
+	if _, capped := rc["round_credit_cap"]; code != http.StatusOK || rc["count"] != float64(1) || capped || rc["reason"] != nil {
+		t.Fatalf("untouched settings: %d %v, want one candidate, no cap and no reason", code, settings)
+	}
+
+	refusesEach(t, operator, path, map[string]string{
+		"no count":         `{"round_credit_cap":5,"note":"n"}`,
+		"zero candidates":  `{"count":0,"note":"n"}`,
+		"five candidates":  `{"count":5,"round_credit_cap":5,"note":"n"}`,
+		"a cap of zero":    `{"count":2,"round_credit_cap":0,"note":"n"}`,
+		"a cap over int32": `{"count":2,"round_credit_cap":2147483648,"note":"n"}`,
+		"a blank note":     `{"count":2,"round_credit_cap":5,"note":" "}`,
+		"not JSON":         `four`,
+	})
+	if policy, err := svc.ReflectionPolicy(context.Background()); err != nil || policy.Count != 1 || policy.RoundCreditCap != nil {
+		t.Fatalf("a refused change left the policy at %+v (%v), want one candidate and no cap", policy, err)
+	}
+
+	for _, tc := range []struct {
+		body  string
+		count int
+		cap   *int64
+	}{
+		{`{"count":4,"round_credit_cap":2147483647,"note":"widest"}`, 4, roundCap(2147483647)},
+		{`{"count":1,"round_credit_cap":1,"note":"narrowest"}`, 1, roundCap(1)},
+		{`{"count":2,"note":"cap cleared"}`, 2, nil},
+	} {
+		expectReflectionCandidatesSaved(t, operator, svc, tc.body, tc.count, tc.cap)
+	}
+	if n := countRow(t, pool, `SELECT count(*) FROM audit_events WHERE action = $1 AND metadata->>'setting' = 'reflection_candidates'`,
+		audit.ActionEvaluationSettingsSet); n != 3 {
+		t.Errorf("three changes wrote %d audit events, want 3", n)
+	}
+}
+
+func roundCap(n int64) *int64 { return &n }
+
+func expectReflectionCandidatesSaved(t *testing.T, operator *client, svc *evalsettings.Service, body string, count int, roundCredits *int64) {
+	t.Helper()
+	var capShown any
+	if roundCredits != nil {
+		capShown = float64(*roundCredits)
+	}
+	code, settings := operatorCall(t, operator, http.MethodPut, "/admin/settings/reflection-candidates", body)
+	rc, _ := settings["reflection_candidates"].(map[string]any)
+	if code != http.StatusOK || rc["count"] != float64(count) || rc["round_credit_cap"] != capShown || rc["set_at"] == nil {
+		t.Errorf("%s: %d %v", body, code, settings)
+	}
+	policy, err := svc.ReflectionPolicy(context.Background())
+	if err != nil || policy.Count != count || !reflect.DeepEqual(policy.RoundCreditCap, roundCredits) {
+		t.Errorf("%s: the next round reads %+v (%v)", body, policy, err)
 	}
 }

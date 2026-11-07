@@ -32,9 +32,17 @@ type injectionCheckView struct {
 	SetAt                   string `json:"set_at,omitempty"`
 }
 
+type reflectionCandidatesView struct {
+	Count          int    `json:"count"`
+	RoundCreditCap *int64 `json:"round_credit_cap,omitempty"`
+	Reason         string `json:"reason,omitempty"`
+	SetAt          string `json:"set_at,omitempty"`
+}
+
 type settingsView struct {
-	JudgePanel     judgePanelView     `json:"judge_panel"`
-	InjectionCheck injectionCheckView `json:"injection_check"`
+	JudgePanel           judgePanelView           `json:"judge_panel"`
+	InjectionCheck       injectionCheckView       `json:"injection_check"`
+	ReflectionCandidates reflectionCandidatesView `json:"reflection_candidates"`
 }
 
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
@@ -120,5 +128,41 @@ func viewOfSettings(s Settings) settingsView {
 		check.Reason = s.InjectionCheck.Reason
 		check.SetAt = s.InjectionCheck.SetAt.UTC().Format(time.RFC3339)
 	}
-	return settingsView{JudgePanel: panel, InjectionCheck: check}
+	candidates := reflectionCandidatesView{Count: s.ReflectionCandidates.Count, RoundCreditCap: s.ReflectionCandidates.RoundCreditCap}
+	if s.ReflectionCandidates.Changed {
+		candidates.Reason = s.ReflectionCandidates.Reason
+		candidates.SetAt = s.ReflectionCandidates.SetAt.UTC().Format(time.RFC3339)
+	}
+	return settingsView{JudgePanel: panel, InjectionCheck: check, ReflectionCandidates: candidates}
+}
+
+func (h *Handler) SetReflectionCandidates(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Count          *int   `json:"count"`
+		RoundCreditCap *int64 `json:"round_credit_cap"`
+		Note           string `json:"note"`
+	}
+	if !httpx.DecodeJSON(w, r, maxSettingsBodyBytes, &body, "body must be JSON") {
+		return
+	}
+	if body.Count == nil {
+		httpx.WriteError(w, http.StatusBadRequest, "count is required")
+		return
+	}
+	operator, ok := h.Actor(r)
+	if !ok {
+		httpx.WriteError(w, http.StatusNotFound, "not found")
+		return
+	}
+	settings, err := h.Svc.SetReflectionCandidates(r.Context(), operator, *body.Count, body.RoundCreditCap, body.Note)
+	switch {
+	case errors.Is(err, ErrSettingsReasonRequired):
+		httpx.WriteError(w, http.StatusBadRequest, "note is required and at most 1000 characters")
+	case errors.Is(err, ErrReflectionCandidates):
+		httpx.WriteError(w, http.StatusBadRequest, "count must be between 1 and 4 and round_credit_cap, when given, positive")
+	case err != nil:
+		httpx.WriteError(w, http.StatusInternalServerError, "settings update failed")
+	default:
+		httpx.WriteJSON(w, http.StatusOK, viewOfSettings(settings))
+	}
 }

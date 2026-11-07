@@ -7,6 +7,7 @@ const (
 	AcceptanceCriteriaSuggestionsSuggestionsMaxItems          = 20
 	AcceptanceCriterionTextMaxLength                          = 2000
 	AddAcceptanceCriterionBodyTextMaxLength                   = 2000
+	BatchReflectionCandidatesMaxItems                         = 4
 	BrowseCatalogLimitMaximum                                 = 100
 	ClearModelCallBudgetBodyReasonMaxLength                   = 1000
 	ClearRunModelBudgetBodyNoteMaxLength                      = 1000
@@ -101,6 +102,9 @@ const (
 	SetPlatformAgentEnabledBodyNoteMaxLength                  = 1000
 	SetPlatformAgentSpendCapBodyDailySpendCapUsdMicrosMaximum = 5000000
 	SetPlatformAgentSpendCapBodyNoteMaxLength                 = 1000
+	SetReflectionCandidatesBodyCountMaximum                   = 4
+	SetReflectionCandidatesBodyNoteMaxLength                  = 1000
+	SetReflectionCandidatesBodyRoundCreditCapMaximum          = 2147483647
 	SetRunModelBudgetBodyNoteMaxLength                        = 1000
 	SetRunTokensPerMinuteBodyLimitMaximum                     = 2000000
 	SetRunTokensPerMinuteBodyNoteMaxLength                    = 1000

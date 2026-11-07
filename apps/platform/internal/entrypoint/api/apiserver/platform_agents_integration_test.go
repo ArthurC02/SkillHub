@@ -150,6 +150,7 @@ func TestPlatformAgentRoutesAreInvisibleWithoutTheOperatorRole(t *testing.T) {
 			{http.MethodPut, "/admin/agents/agent-route-404/spend-cap", `{"daily_spend_cap_usd_micros":2,"note":"n"}`},
 			{http.MethodGet, "/admin/settings", ""},
 			{http.MethodPut, "/admin/settings/judge-panel", `{"enabled":true,"note":"n"}`},
+			{http.MethodPut, "/admin/settings/reflection-candidates", `{"count":2,"round_credit_cap":5,"note":"n"}`},
 			{http.MethodPut, "/admin/agents/brake", `{"note":"n"}`},
 			{http.MethodDelete, "/admin/agents/brake", `{"note":"n"}`},
 		} {

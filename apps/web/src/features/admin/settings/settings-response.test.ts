@@ -16,7 +16,11 @@ const valid: Case[] = [
   [
     "enabled panel",
     "platform",
-    { judge_panel: { enabled: true }, injection_check: { enabled: false } },
+    {
+      judge_panel: { enabled: true },
+      injection_check: { enabled: false },
+      reflection_candidates: { count: 1 },
+    },
   ],
   ["standard runs", "runs", ADMIN_RUN_SETTINGS],
 ];
@@ -28,7 +32,11 @@ const metadata = {
 valid.push([
   "panel metadata",
   "platform",
-  { judge_panel: { enabled: false, ...metadata }, injection_check: { enabled: false } },
+  {
+    judge_panel: { enabled: false, ...metadata },
+    injection_check: { enabled: false },
+    reflection_candidates: { count: 1 },
+  },
 ]);
 for (const value of [-9007199254740991, 0, 9007199254740991]) {
   const body = structuredClone(ADMIN_RUN_SETTINGS);
@@ -48,6 +56,7 @@ valid.push([
   {
     judge_panel: { enabled: false },
     injection_check: { enabled: true, credits_per_million_tokens: 1, ...metadata },
+    reflection_candidates: { count: 1 },
   },
 ]);
 
@@ -74,7 +83,11 @@ for (const panel of [null, [], {}, { enabled: null }, { enabled: "false" }, { en
   invalid.push([
     `panel ${JSON.stringify(panel)}`,
     "platform",
-    { judge_panel: panel, injection_check: { enabled: false } },
+    {
+      judge_panel: panel,
+      injection_check: { enabled: false },
+      reflection_candidates: { count: 1 },
+    },
   ]);
 }
 for (const group of Object.keys(fields) as Group[]) {
@@ -106,7 +119,11 @@ for (const [field, value] of [
   invalid.push([
     `panel ${field} ${JSON.stringify(value)}`,
     "platform",
-    { judge_panel: { enabled: false, [field]: value }, injection_check: { enabled: false } },
+    {
+      judge_panel: { enabled: false, [field]: value },
+      injection_check: { enabled: false },
+      reflection_candidates: { count: 1 },
+    },
   ]);
   for (const group of Object.keys(fields) as Group[]) {
     invalid.push([
@@ -130,7 +147,11 @@ for (const check of [
   invalid.push([
     "injection check " + JSON.stringify(check),
     "platform",
-    { judge_panel: { enabled: false }, injection_check: check },
+    {
+      judge_panel: { enabled: false },
+      injection_check: check,
+      reflection_candidates: { count: 1 },
+    },
   ]);
 }
 
@@ -139,4 +160,42 @@ test.each(invalid)("settings with %s stay unreadable", async (_name, kind, body)
     Promise.resolve(new Response(JSON.stringify(body), { status: 200 })),
   );
   await expect(kind === "platform" ? getPlatformSettings() : getRunSettings()).rejects.toThrow();
+});
+
+const candidateSettings = (candidates: unknown) => ({
+  judge_panel: { enabled: false },
+  injection_check: { enabled: false },
+  reflection_candidates: candidates,
+});
+
+test.each([
+  [
+    "the widest round",
+    { count: 4, round_credit_cap: 2147483647, reason: "compare", set_at: metadata.set_at },
+  ],
+  ["the narrowest capped round", { count: 1, round_credit_cap: 1 }],
+])("reflection candidates for %s preserve their response", async (_name, candidates) => {
+  const body = candidateSettings(candidates);
+  vi.stubGlobal("fetch", () =>
+    Promise.resolve(new Response(JSON.stringify(body), { status: 200 })),
+  );
+  await expect(getPlatformSettings()).resolves.toEqual(body);
+});
+
+test.each([
+  ["missing", undefined],
+  ["null", null],
+  ["zero candidates", { count: 0 }],
+  ["five candidates", { count: 5 }],
+  ["a fractional count", { count: 1.5 }],
+  ["a count as text", { count: "2" }],
+  ["a cap of zero", { count: 2, round_credit_cap: 0 }],
+  ["a fractional cap", { count: 2, round_credit_cap: 1.5 }],
+  ["an unreadable time", { count: 1, set_at: "not a time" }],
+])("reflection candidates %s stay unreadable", async (_name, candidates) => {
+  const body = candidateSettings(candidates);
+  vi.stubGlobal("fetch", () =>
+    Promise.resolve(new Response(JSON.stringify(body), { status: 200 })),
+  );
+  await expect(getPlatformSettings()).rejects.toThrow();
 });

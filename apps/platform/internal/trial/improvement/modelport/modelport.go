@@ -136,6 +136,7 @@ type ImprovementRequest struct {
 	EvaluationDigest string
 	FileTree         []string
 	TargetFiles      []TargetFile
+	Focus            string
 
 	Within time.Duration
 }

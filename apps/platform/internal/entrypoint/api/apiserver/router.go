@@ -241,6 +241,7 @@ func mountOperatorRoutes(mux *http.ServeMux, d Deps) {
 	mux.HandleFunc("POST /admin/mcp-tools/{id}/retire", auth.RequireOperator(d.MCPTools.RetireTool))
 	mux.HandleFunc("PUT /admin/settings/judge-panel", auth.RequireOperator(d.Settings.SetJudgePanel))
 	mux.HandleFunc("PUT /admin/settings/injection-check", auth.RequireOperator(d.Settings.SetInjectionCheck))
+	mux.HandleFunc("PUT /admin/settings/reflection-candidates", auth.RequireOperator(d.Settings.SetReflectionCandidates))
 	mux.HandleFunc("GET /admin/settings/runs", auth.RequireOperator(d.RunSettings.Get))
 	mux.HandleFunc("PUT /admin/settings/runs/continuation-rounds", auth.RequireOperator(d.RunSettings.SetContinuationRounds))
 	mux.HandleFunc("PUT /admin/settings/runs/model-budget", auth.RequireOperator(d.RunSettings.SetRunModelBudget))

@@ -297,6 +297,7 @@ scope:
   GetPlatformAgentSpendCap: platform-wide
   SetEvaluationSettings: platform-wide
   SetEvaluationInjectionCheck: platform-wide
+  SetEvaluationReflectionCandidates: platform-wide
   SetRunSettings: platform-wide
   SetRunModelBudgetSetting: platform-wide
   InsertMCPTool: platform-wide

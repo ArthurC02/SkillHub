@@ -18,6 +18,7 @@ from skillhub_llm.evaluate import (
     ImprovementProposal,
     JudgeEvidenceRef,
     JudgeVerdict,
+    SuggestImprovementsRequest,
 )
 from skillhub_llm.gateway import GatewayUsage
 from skillhub_llm.generate import GenerateDiagram
@@ -33,6 +34,7 @@ MODELS: dict[str, type[BaseModel]] = {
     "GatewayUsage": GatewayUsage,
     "GenerateDiagram": GenerateDiagram,
     "ImprovementProposal": ImprovementProposal,
+    "SuggestImprovementsRequest": SuggestImprovementsRequest,
     "JudgeEvidenceRef": JudgeEvidenceRef,
     "JudgeVerdict": JudgeVerdict,
     "Readiness": Readiness,
