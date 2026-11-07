@@ -702,7 +702,7 @@ func TestFinishCreditFloorRefusalShowsBothSentencesAndWaitsForInput(t *testing.T
 	if !strings.Contains(generic.Content, "這一步未完成；") {
 		t.Fatalf("second-to-last message = %q, want the generic failure sentence", generic.Content)
 	}
-	if floor.Content != "帳戶餘額已達可容忍的欠款上限，請充值後再繼續這場創作。" {
+	if floor.Content != "點數已達可欠款的上限，這一步沒有呼叫模型、也沒有扣點。請聯絡管理者為這個帳號加點後再送出。" {
 		t.Fatalf("last message = %q, want the credit-floor sentence", floor.Content)
 	}
 }

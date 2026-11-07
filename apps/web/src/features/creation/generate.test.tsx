@@ -247,7 +247,7 @@ test("GEN-008: a session that expires while generating says 需要登入, not th
 
 test.each([
   [429, "太多請求了，請在 7 秒後再試。"],
-  [503, "平台暫停中，這次沒有呼叫模型、也沒有花錢。請稍後再試。"],
+  [503, "平台暫停中，這次沒有呼叫模型、也沒有扣點。請稍後再試。"],
   [400, "其中一個參考的 Skill 無法使用，請換一個再試一次。"],
 ])("a generation refused with %i shows the server's own sentence %s", async (status, said) => {
   stubSession({ features: { generate_skill: true }, generateError: { status, error: said } });
@@ -347,7 +347,7 @@ test("GEN-003: past failures are readable, and the task description is not among
   const text = container.textContent ?? "";
   expect(text).toContain("最近沒有成功的生成（2 次）");
   expect(text).toContain("name-invalid");
-  expect(text).toContain("沒有呼叫模型，也沒有花錢");
+  expect(text).toContain("沒有呼叫模型，也沒有扣點");
   expect(text).toContain("這裡沒有記下你當時輸入的任務描述");
 });
 

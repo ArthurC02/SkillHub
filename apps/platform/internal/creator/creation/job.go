@@ -631,7 +631,7 @@ func failedAttempt(p *Snapshot, err error, call stepCall) State {
 		p.Steps--
 		state = StateWaitingInput
 		p.PendingAction = NothingPending
-		p.appendMessage("assistant", "帳戶餘額已達可容忍的欠款上限，請充值後再繼續這場創作。")
+		p.appendMessage("assistant", "點數已達可欠款的上限，這一步沒有呼叫模型、也沒有扣點。請聯絡管理者為這個帳號加點後再送出。")
 	}
 	if errors.Is(callErr, ErrModelCallsHalted) {
 		p.Steps--
