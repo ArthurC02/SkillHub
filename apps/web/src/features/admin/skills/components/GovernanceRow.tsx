@@ -2,14 +2,7 @@ import { useEffect, useRef } from "react";
 import { Link } from "@tanstack/react-router";
 import type { SkillGovernance } from "../../admin.service";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
-
-const REDISTRIBUTION: Record<string, string> = {
-  allowed: "可以再散布",
-  blocked: "禁止再散布",
-  unknown: "尚未判定",
-  self_supplied: "使用者自己提供",
-  generated: "平台生成",
-};
+import { REDISTRIBUTION_LABEL } from "../../admin.model";
 
 export function GovernanceRow({
   skill,
@@ -45,7 +38,7 @@ export function GovernanceRow({
             : "沒有受限"}
         </span>{" "}
         <span className="badge">
-          再散布：{REDISTRIBUTION[skill.redistribution] ?? skill.redistribution}
+          再散布：{REDISTRIBUTION_LABEL[skill.redistribution] ?? skill.redistribution}
         </span>{" "}
         {skill.deleted_at && <span className="badge badge-unverified">擁有者已刪除</span>}
       </p>

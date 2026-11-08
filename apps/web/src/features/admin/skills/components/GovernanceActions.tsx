@@ -3,6 +3,7 @@ import { useGovernanceAction, type SkillGovernance } from "../../admin.service";
 import { ConfirmDelete } from "../../../../shared/ui/ConfirmDelete";
 import { WriteFailure } from "../../components/WriteFailure";
 import { ActionForm } from "../../components/ActionForm";
+import { REDISTRIBUTION_LABEL } from "../../admin.model";
 
 const TAKEDOWN_SCOPE =
   "下架後這個小工具從目錄與搜尋消失，不能再下載或試跑；既有的試跑紀錄仍可追溯。審查結束後可以在這裡恢復上架，下架前請先確認。";
@@ -45,7 +46,7 @@ function RedistributionAction({
 }) {
   const redistribution = useGovernanceAction(skill.skill_id, "redistribution", ({ body }) =>
     onOutcome(
-      `「${skill.name}」的再散布判定已改為「${body.value === "allowed" ? "可以再散布" : body.value === "blocked" ? "禁止再散布" : "尚未判定"}」。`,
+      `「${skill.name}」的再散布判定已改為「${REDISTRIBUTION_LABEL[String(body.value)] ?? String(body.value)}」。`,
     ),
   );
   const [verdict, setVerdict] = useState("");
@@ -104,9 +105,9 @@ function RedistributionAction({
                 <option value="" disabled>
                   選擇判定
                 </option>
-                <option value="blocked">禁止再散布</option>
-                <option value="unknown">尚未判定</option>
-                <option value="allowed">可以再散布（要附授權證據）</option>
+                <option value="blocked">{REDISTRIBUTION_LABEL.blocked}</option>
+                <option value="unknown">{REDISTRIBUTION_LABEL.unknown}</option>
+                <option value="allowed">{REDISTRIBUTION_LABEL.allowed}（要附授權證據）</option>
               </select>
             </div>
             {releasing && (

@@ -60,3 +60,11 @@ export const COST_KIND: Record<string, string> = {
   run: "試跑",
   match_reasons: "搜尋理由",
 };
+
+export const REDISTRIBUTION_LABEL: Record<string, string> = {
+  allowed: "可以再散布",
+  blocked: "禁止再散布",
+  unknown: "尚未判定",
+  self_supplied: "使用者自己提供",
+  generated: "平台生成",
+};
