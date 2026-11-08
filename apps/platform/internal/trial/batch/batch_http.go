@@ -19,15 +19,6 @@ func sessionWorkspace(identities *identity.Service, w http.ResponseWriter, r *ht
 	return ws, ok
 }
 
-func pathUUID(w http.ResponseWriter, r *http.Request) (pgtype.UUID, bool) {
-	var id pgtype.UUID
-	if err := id.Scan(r.PathValue("id")); err != nil {
-		httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
-		return id, false
-	}
-	return id, true
-}
-
 type BatchHandler struct {
 	Svc      *BatchService
 	Identity *identity.Service
@@ -99,7 +90,7 @@ func (h *BatchHandler) CreateBatch(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	skillID, ok := pathUUID(w, r)
+	skillID, ok := httpx.PathUUID(w, r, "id", ErrNotFound.Error())
 	if !ok {
 		return
 	}
@@ -144,7 +135,7 @@ func (h *BatchHandler) ListBatches(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	skillID, ok := pathUUID(w, r)
+	skillID, ok := httpx.PathUUID(w, r, "id", ErrNotFound.Error())
 	if !ok {
 		return
 	}
@@ -165,13 +156,12 @@ func (h *BatchHandler) BatchReport(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	skillID, ok := pathUUID(w, r)
+	skillID, ok := httpx.PathUUID(w, r, "id", ErrNotFound.Error())
 	if !ok {
 		return
 	}
-	var batchID pgtype.UUID
-	if err := batchID.Scan(r.PathValue("batchId")); err != nil {
-		httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
+	batchID, ok := httpx.PathUUID(w, r, "batchId", ErrNotFound.Error())
+	if !ok {
 		return
 	}
 	report, err := h.Svc.BatchReport(r.Context(), ws.ID, skillID, batchID)
@@ -191,13 +181,12 @@ func (h *BatchHandler) ResumeBatch(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	skillID, ok := pathUUID(w, r)
+	skillID, ok := httpx.PathUUID(w, r, "id", ErrNotFound.Error())
 	if !ok {
 		return
 	}
-	var batchID pgtype.UUID
-	if err := batchID.Scan(r.PathValue("batchId")); err != nil {
-		httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
+	batchID, ok := httpx.PathUUID(w, r, "batchId", ErrNotFound.Error())
+	if !ok {
 		return
 	}
 	switch err := h.Svc.ResumeBatch(r.Context(), ws.ID, skillID, batchID); {
