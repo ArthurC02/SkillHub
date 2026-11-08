@@ -1,3 +1,7 @@
+import {
+  GenerateSkillBodyTaskDescriptionMaxLength,
+  GenerateSkillResultAttemptsMaximum,
+} from "@skillhub/api-client-ts/limits";
 import { useRef, useState, type ChangeEvent } from "react";
 import { ApiError } from "../../../core/api/client";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
@@ -18,11 +22,11 @@ import { GenerateFailed } from "./components/GenerateFailed";
 import { GenerateSucceeded } from "./components/GenerateSucceeded";
 import { ReferencePicker } from "../components/ReferencePicker";
 
-const GENERATE_MAX_TASK_RUNES = 4000; // one-number: generateMaxTaskRunes
+const GENERATE_MAX_TASK_RUNES = GenerateSkillBodyTaskDescriptionMaxLength;
 
 const GENERATE_MAX_OUTPUT_TOKENS = 16000; // one-number: generateMaxOutputTokens
 
-const GENERATE_MAX_ATTEMPTS = 2; // one-number: generateMaxAttempts
+const GENERATE_MAX_ATTEMPTS = GenerateSkillResultAttemptsMaximum;
 
 const GENERATE_COST_LOW_USD = 0.003;
 
