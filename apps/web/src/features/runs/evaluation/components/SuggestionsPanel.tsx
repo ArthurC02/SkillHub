@@ -11,7 +11,7 @@ import {
   useRunSuggestions,
   type RunSuggestions,
 } from "../../evaluation.service";
-import { SUGGESTION_OUTCOME_SENTENCE } from "../evaluation.model";
+import { PREDICTED_IMPACT_NOTE, SUGGESTION_OUTCOME_SENTENCE } from "../evaluation.model";
 import { useRun } from "../../runs.service";
 import { MatchLegend } from "./MatchLegend";
 import { ApplyFailureBody } from "./ApplyFailureBody";
@@ -138,7 +138,7 @@ function SuggestionsList({
   if (items.length === 0) return <p>{SUGGESTION_OUTCOME_SENTENCE[outcome ?? "kept"]}</p>;
   return (
     <>
-      <p className="note">「預期影響」是模型的預測，不是量測結果。</p>
+      <p className="note">{PREDICTED_IMPACT_NOTE}</p>
       <MatchLegend evidence={items.flatMap((suggestion) => suggestion.evidence)} />
       <ul className="suggestion-list">
         {items.map((suggestion) => (

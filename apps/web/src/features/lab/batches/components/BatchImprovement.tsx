@@ -7,6 +7,7 @@ import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import {
   ApplyFailureBody,
   MatchLegend,
+  PREDICTED_IMPACT_NOTE,
   SuggestionItem,
   isApplyResultUnknown,
   type SuggestionDecisionState,
@@ -172,7 +173,7 @@ function ReflectionResult({
         <p>{REFLECTION_OUTCOME_SENTENCE[reflection.outcome]}</p>
       ) : (
         <>
-          <p className="note">「預期影響」是模型的預測，不是量測結果。</p>
+          <p className="note">{PREDICTED_IMPACT_NOTE}</p>
           <MatchLegend evidence={items.flatMap((s) => s.evidence)} />
           {candidateGroups(reflection).map((group) => (
             <div key={group.key}>

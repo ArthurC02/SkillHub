@@ -24,3 +24,4 @@ export {
   type VersionFromSuggestions,
 } from "./evaluation.service";
 export { isSuggestion } from "./evaluation-response.model";
+export { NONE_KEPT_SENTENCE, PREDICTED_IMPACT_NOTE } from "./evaluation/evaluation.model";

@@ -158,6 +158,7 @@ test("finding improvements sends only the development cases and shows what it re
     ).toBe(1),
   );
   expect(page.getByText("SKILL.md 沒說怎麼判斷重複列。").count()).toBe(1);
+  expect(page.getByText("「預期影響」是模型的預測，不是量測結果。").count()).toBe(1);
 });
 
 test.each([
@@ -166,6 +167,7 @@ test.each([
     "這次找改進時模型沒有回應，所以沒有建議；這不代表小工具沒有可以改進的地方，可以再試一次。",
   ],
   ["not_needed", "開發題的試跑都符合，也沒有需要處理的發現，這次沒有呼叫模型。"],
+  ["none_kept", "模型提出的建議都沒有通過證據核對，平台一條都沒有保留。"],
 ] as const)(
   "an empty %s round says why rather than reading as nothing to fix",
   async (outcome, sentence) => {

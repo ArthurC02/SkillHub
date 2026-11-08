@@ -55,6 +55,9 @@ export function evaluationPanelState(query: {
   return { awaiting, notEvaluated, stoppedAsking, evaluating, asksHistory };
 }
 
+export const NONE_KEPT_SENTENCE = "模型提出的建議都沒有通過證據核對，平台一條都沒有保留。";
+export const PREDICTED_IMPACT_NOTE = "「預期影響」是模型的預測，不是量測結果。";
+
 export const SUGGESTION_OUTCOME_SENTENCE: Record<SuggestionOutcome, string> = {
   restricted: "這個小工具的來源授權還在審查中，審查期間不產生改善建議。",
   not_needed: "這次判定為符合，也沒有需要處理的發現，所以沒有改善建議。",
@@ -62,7 +65,7 @@ export const SUGGESTION_OUTCOME_SENTENCE: Record<SuggestionOutcome, string> = {
   unavailable:
     "這次產生改善建議時模型沒有回應，所以沒有建議；這不代表小工具沒有可以改進的地方。下一次試跑的評估會再產生一次。",
   none_proposed: "模型看過這份評估，沒有提出改善建議。",
-  none_kept: "模型提出的建議都沒有通過證據核對，平台一條都沒有保留。",
+  none_kept: NONE_KEPT_SENTENCE,
   kept: "這份評估沒有產生改善建議。",
 };
 

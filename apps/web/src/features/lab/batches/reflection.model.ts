@@ -4,7 +4,7 @@ import type {
   ReflectionCandidateOutcomeEnum,
 } from "@skillhub/api-client-ts";
 import { contractEnum } from "../../../core/api/contract-enum";
-import { isSuggestion, type ImprovementSuggestion } from "../../runs";
+import { NONE_KEPT_SENTENCE, isSuggestion, type ImprovementSuggestion } from "../../runs";
 import {
   isUnsettledOutcome,
   isVerdict,
@@ -106,7 +106,7 @@ export const REFLECTION_OUTCOME_SENTENCE: Record<ReflectionOutcome, string> = {
   unavailable:
     "這次找改進時模型沒有回應，所以沒有建議；這不代表小工具沒有可以改進的地方，可以再試一次。",
   none_proposed: "模型讀過開發題的失敗，沒有提出改善建議。",
-  none_kept: "模型提出的建議都沒有通過證據核對，平台一條都沒有保留。",
+  none_kept: NONE_KEPT_SENTENCE,
   kept: "",
 };
 
