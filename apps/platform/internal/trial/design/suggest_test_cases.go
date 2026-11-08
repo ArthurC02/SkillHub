@@ -15,13 +15,14 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/modelbudget"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	limits "github.com/ArthurC02/skillhub/apps/platform/internal/shared/contractlimits/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/platformbudget"
 )
 
 var (
 	ErrTestCaseSuggestUnavailable = errors.New("目前無法自動建議測試題，請自己手動寫")
 	ErrTestCaseCreditThreshold    = errors.New("點數不足，無法開始建議測試題，沒有呼叫模型。請聯絡管理者為這個帳號加點。")
 	ErrTestCaseModelCallsHalted   = errors.New("平台暫停中，這次沒有呼叫模型、也沒有扣點。測試題可以自己手動寫，或稍後再試。")
-	ErrTestCaseBudgetExhausted    = errors.New("平台的模型總額度暫時用完，這次沒有扣點。測試題可以自己手動寫，或在台北時間每天上午 8 點額度恢復後再試。")
+	ErrTestCaseBudgetExhausted    = errors.New("平台的模型總額度暫時用完，這次沒有扣點。測試題可以自己手動寫，或在" + platformbudget.ResetNotice + "額度恢復後再試。")
 )
 
 var SuggestTestCasesBudget = modelbudget.Endpoint{Kind: "suggest-test-cases", Deadline: suggestTestCasesTimeout}
