@@ -1,0 +1,111 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "creation-output-ceiling-named-2026-11-08",
+  "proposer": "coding-agent",
+  "requirement_id": "creation-output-ceiling-named",
+  "status": "verified",
+  "change_classification": "routine",
+  "submitted_at": "2026-11-08T13:54:54.791968Z",
+  "verified_at": "2026-11-08T13:55:48.179390Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "33112eab49b529ff4178841a7e9d47df3938b814",
+    "registry_digest": "sha256:df60bbfdac25bee0817f71a9e7c164f09260f2720f00fafe84e6a570dc68f183",
+    "committed_digest": "sha256:df60bbfdac25bee0817f71a9e7c164f09260f2720f00fafe84e6a570dc68f183"
+  },
+  "affected_contexts": [
+    "creation"
+  ],
+  "rule_ids": [
+    "a-creation-session-outlives-its-last-step"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "creation",
+    "invariant": "A creation session row outlives the last step that can start before its deadline.",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "unchanged; Limits.Valid compares the output-token ceiling against the named MaxOutputTokens instead of a literal, which the llm request model mirrors.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "Limits.Valid compared against a bare 16000 that the llm request model repeated; naming it changed the cited excerpt."
+    ],
+    "decision": "Re-cite the rule to its current lines; the rule text is unchanged.",
+    "invariants_preserved": [
+      "Retention must cover the session timeout, the call timeout, the slack and the wrap-up."
+    ],
+    "rejected_alternatives": [
+      "Leaving the stale citation, which would fail verify-evidence."
+    ],
+    "proof_obligations": [
+      "rule-a-creation-session-outlives-its-last-step"
+    ],
+    "counterfactual_check": "Drop the step from the retention check in Limits.Valid: the rule's test must fail."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-creation-session-outlives-its-last-step",
+        "statement": "Creation limits are usable only when the retention outlasts the session timeout plus the longest step that can start just before it: the call timeout, ten seconds of slack and sixty seconds to revoke the key, search ahead and settle; otherwise a session row could be deleted before its last step's spend is charged.",
+        "contexts": [
+          "creation"
+        ],
+        "examples": [
+          "With a one-minute session and a one-second call timeout, a retention of one minute and seventy-one seconds is usable and one second less is not."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/creation/service.go",
+            "lines": {
+              "start": 89,
+              "end": 91
+            },
+            "content_sha256": "sha256:dc1f97d692cc65306dec80a956bfac98013aede8ee4c4e93e21fe2a18ed0f1fc",
+            "excerpt_sha256": "sha256:1b5a5edee40897b4edc3b7ab73ed6f9622495e354af2ab44d99e320c58d5e750",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/creator/creation/limits_retention_test.go",
+            "lines": {
+              "start": 8,
+              "end": 26
+            },
+            "excerpt_sha256": "sha256:538dbabc0e0fbd9ce7aece4d83c4f0a1760ae4c610405be82bcccb7401235665"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-11-08T13:55:47.607852Z",
+      "scope": "proposal",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "33112eab49b529ff4178841a7e9d47df3938b814",
+        "registry_digest": "sha256:df60bbfdac25bee0817f71a9e7c164f09260f2720f00fafe84e6a570dc68f183",
+        "committed_digest": "sha256:df60bbfdac25bee0817f71a9e7c164f09260f2720f00fafe84e6a570dc68f183"
+      }
+    }
+  ],
+  "supersedes": [
+    "purge-grace-and-longest-step-recited-2026-11-08"
+  ]
+}

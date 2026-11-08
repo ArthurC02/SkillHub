@@ -1,0 +1,37 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "creation-output-ceiling-named",
+  "proposal_id": "creation-output-ceiling-named-2026-11-08",
+  "registry_revision": {
+    "observed_commit": "33112eab49b529ff4178841a7e9d47df3938b814",
+    "registry_digest": "sha256:df60bbfdac25bee0817f71a9e7c164f09260f2720f00fafe84e6a570dc68f183",
+    "committed_digest": "sha256:df60bbfdac25bee0817f71a9e7c164f09260f2720f00fafe84e6a570dc68f183"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-a-creation-session-outlives-its-last-step",
+      "mutated_protection": "apps/platform/internal/creator/creation/service.go:90: l.Retention >= l.SessionTimeout+l.activeStep()+attemptWrapUp -> l.Retention >= l.SessionTimeout+attemptWrapUp",
+      "failure_evidence": "=== RUN   TestASessionIsKeptUntilAStepStartedAtItsDeadlineHasSettled\n    limits_retention_test.go:23: one second short of the last step settling: Valid() = true, want false\n--- FAIL: TestASessionIsKeptUntilAStepStartedAtItsDeadlineHasSettled (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/creator/creation\t2.104s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-creation-session-outlives-its-last-step",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestASessionIsKeptUntilAStepStartedAtItsDeadlineHasSettled$ ./internal/creator/creation/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:8bdd59649bf755742e2f7b5fd6b261dc6b026f5fab62bca32bded384ef6c1828",
+      "finished_at": "2026-11-08T13:55:35.093435Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

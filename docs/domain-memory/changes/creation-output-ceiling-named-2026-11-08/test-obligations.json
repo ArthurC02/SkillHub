@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "creation-output-ceiling-named",
+  "proposal_id": "creation-output-ceiling-named-2026-11-08",
+  "obligations": [
+    {
+      "id": "rule-a-creation-session-outlives-its-last-step",
+      "source_type": "rule",
+      "source_id": "a-creation-session-outlives-its-last-step",
+      "also_covers": [
+        {
+          "source_type": "acceptance-criterion",
+          "source_id": "rule-unchanged"
+        }
+      ],
+      "expected_outcome": "TestASessionIsKeptUntilAStepStartedAtItsDeadlineHasSettled: a retention one second short of the last step settling is invalid and exactly long enough is valid.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestASessionIsKeptUntilAStepStartedAtItsDeadlineHasSettled$ ./internal/creator/creation/"
+    }
+  ]
+}
