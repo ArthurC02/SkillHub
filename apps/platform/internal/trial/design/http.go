@@ -32,15 +32,6 @@ func (h *Handler) workspace(w http.ResponseWriter, r *http.Request) (identity.Wo
 	return ws, ok
 }
 
-func pathUUID(w http.ResponseWriter, r *http.Request, name string) (pgtype.UUID, bool) {
-	var id pgtype.UUID
-	if err := id.Scan(r.PathValue(name)); err != nil {
-		httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
-		return pgtype.UUID{}, false
-	}
-	return id, true
-}
-
 const messageUnsupportedType = "不支援這種檔案類型"
 
 func stripSentinelPrefix(err, sentinel error) string {
@@ -292,7 +283,7 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	id, ok := pathUUID(w, r, "id")
+	id, ok := httpx.PathUUID(w, r, "id", ErrNotFound.Error())
 	if !ok {
 		return
 	}
@@ -309,7 +300,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	id, ok := pathUUID(w, r, "id")
+	id, ok := httpx.PathUUID(w, r, "id", ErrNotFound.Error())
 	if !ok {
 		return
 	}
@@ -346,7 +337,7 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	id, ok := pathUUID(w, r, "id")
+	id, ok := httpx.PathUUID(w, r, "id", ErrNotFound.Error())
 	if !ok {
 		return
 	}
@@ -370,7 +361,7 @@ func (h *Handler) AddCriterion(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	id, ok := pathUUID(w, r, "id")
+	id, ok := httpx.PathUUID(w, r, "id", ErrNotFound.Error())
 	if !ok {
 		return
 	}
@@ -397,7 +388,7 @@ func (h *Handler) SuggestCriteria(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	id, ok := pathUUID(w, r, "id")
+	id, ok := httpx.PathUUID(w, r, "id", ErrNotFound.Error())
 	if !ok {
 		return
 	}
@@ -443,7 +434,7 @@ func (h *Handler) UpdateCriterion(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	id, ok := pathUUID(w, r, "id")
+	id, ok := httpx.PathUUID(w, r, "id", ErrNotFound.Error())
 	if !ok {
 		return
 	}
@@ -471,7 +462,7 @@ func (h *Handler) DeleteCriterion(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	id, ok := pathUUID(w, r, "id")
+	id, ok := httpx.PathUUID(w, r, "id", ErrNotFound.Error())
 	if !ok {
 		return
 	}
@@ -518,7 +509,7 @@ func (h *Handler) UploadDataset(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	id, ok := pathUUID(w, r, "id")
+	id, ok := httpx.PathUUID(w, r, "id", ErrNotFound.Error())
 	if !ok {
 		return
 	}
@@ -551,7 +542,7 @@ func (h *Handler) ListDatasets(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	id, ok := pathUUID(w, r, "id")
+	id, ok := httpx.PathUUID(w, r, "id", ErrNotFound.Error())
 	if !ok {
 		return
 	}
@@ -584,11 +575,11 @@ func (h *Handler) DeleteDataset(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	id, ok := pathUUID(w, r, "id")
+	id, ok := httpx.PathUUID(w, r, "id", ErrNotFound.Error())
 	if !ok {
 		return
 	}
-	datasetID, ok := pathUUID(w, r, "datasetId")
+	datasetID, ok := httpx.PathUUID(w, r, "datasetId", ErrNotFound.Error())
 	if !ok {
 		return
 	}
@@ -609,7 +600,7 @@ func (h *Handler) SaveRunAsTestCase(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	runID, ok := pathUUID(w, r, "id")
+	runID, ok := httpx.PathUUID(w, r, "id", ErrNotFound.Error())
 	if !ok {
 		return
 	}
