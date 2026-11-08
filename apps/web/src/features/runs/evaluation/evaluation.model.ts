@@ -12,6 +12,10 @@ import {
   type SuggestionOutcome,
 } from "../evaluation.service";
 
+export function awaitsEvaluation(runStatus: string | undefined): boolean {
+  return runStatus === "succeeded" || runStatus === "failed";
+}
+
 export type EvaluationPanelState = {
   awaiting: boolean;
   notEvaluated: boolean;
@@ -42,7 +46,7 @@ export function evaluationPanelState(query: {
   dataStatus: Evaluation["status"] | undefined;
   pending: boolean;
 }): EvaluationPanelState {
-  const awaiting = query.runStatus === "succeeded" || query.runStatus === "failed";
+  const awaiting = awaitsEvaluation(query.runStatus);
   const notEvaluated =
     query.dataStatus === undefined && query.error instanceof ApiError && query.error.status === 404;
   const stoppedAsking = notEvaluated && query.errorUpdateCount >= EVALUATION_POLL_MAX_404;

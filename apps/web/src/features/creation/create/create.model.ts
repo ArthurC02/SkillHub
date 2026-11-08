@@ -6,6 +6,7 @@ import type {
   CreationSession,
   CreationSnapshot,
 } from "../creation.service";
+import { isCreationWorking } from "../creation.service";
 import type { CommandExtra } from "./create.commands";
 import type { CategorizedFindings, ImportFinding } from "../../../core/api/types";
 import { isCategorizedFindings } from "../import.service";
@@ -312,7 +313,7 @@ export function budgetChoices(min: number, max: number) {
 export function sessionPhase(session: CreationSession | undefined) {
   return {
     terminal: !!session && ["saved", "cancelled"].includes(session.state),
-    working: !!session && ["queued", "working"].includes(session.state),
+    working: isCreationWorking(session?.state),
   };
 }
 

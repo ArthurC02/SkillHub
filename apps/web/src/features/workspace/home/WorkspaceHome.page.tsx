@@ -7,6 +7,7 @@ import { PageReadFailure, ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import {
   creationStateLabel,
+  isCreationWorking,
   useCreationEntryPoint,
   useCreationSessions,
   useGenerateEntryPoint,
@@ -345,9 +346,7 @@ function CreationContinuations() {
           Date.parse(session.deadline) > now,
       )
       .slice(0, 3) ?? [];
-  const working = resumable.some(
-    (session) => session.state === "queued" || session.state === "working",
-  );
+  const working = resumable.some((session) => isCreationWorking(session.state));
 
   if (data && resumable.length === 0 && !busy) return null;
 
@@ -431,7 +430,7 @@ function CreationItem({ session }: { session: CreationSession }) {
 }
 
 function creationAction(state: CreationState): string {
-  if (state === "queued" || state === "working") return "查看進度";
+  if (isCreationWorking(state)) return "查看進度";
   if (state === "failed" || state === "needs_reupload") return "查看這一步";
   return "開啟會話";
 }

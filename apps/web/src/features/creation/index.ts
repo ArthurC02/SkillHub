@@ -3,6 +3,7 @@ export { GeneratedNotice } from "./components/GeneratedNotice";
 export { GenerateSkill } from "./generate/GenerateSkill";
 export {
   creationStateLabel,
+  isCreationWorking,
   useCreationEntryPoint,
   useCreationSessions,
   useCreationSessionsForVersion,

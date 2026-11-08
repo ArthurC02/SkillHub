@@ -128,6 +128,10 @@ const STATUSES = new Set<string>(Object.keys(STATUS_LABEL));
 const OUTCOMES = new Set<string>(Object.keys(OUTCOME_LABEL));
 const UNSETTLED_OUTCOMES = new Set<TrialOutcome>(["pending", "running", "awaiting_answer"]);
 
+export function isUnsettledOutcome(outcome: TrialOutcome): boolean {
+  return UNSETTLED_OUTCOMES.has(outcome);
+}
+
 export function pairedFromComparison(c: BatchComparison): PairedDifference {
   return {
     paired: c.paired,
@@ -167,7 +171,7 @@ export function reportStillMoving(report: BatchReport): boolean {
   if (report.batch.status !== "launched") return false;
   const arms = [report, ...(report.skill_withheld ? [report.skill_withheld] : [])];
   return arms.some((arm) =>
-    arm.test_cases.some((tc) => tc.trials.some((t) => UNSETTLED_OUTCOMES.has(t.outcome))),
+    arm.test_cases.some((tc) => tc.trials.some((t) => isUnsettledOutcome(t.outcome))),
   );
 }
 

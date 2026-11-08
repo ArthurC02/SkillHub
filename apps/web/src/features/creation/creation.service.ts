@@ -36,6 +36,12 @@ const CREATION_STATE_LABELS: Record<CreationState, string> = {
 export function creationStateLabel(state: CreationState): string {
   return CREATION_STATE_LABELS[state];
 }
+
+const WORKING_STATES: readonly string[] = ["queued", "working"] satisfies CreationState[];
+
+export function isCreationWorking(state: string | undefined): boolean {
+  return state !== undefined && WORKING_STATES.includes(state);
+}
 export interface CreationSkill {
   name: string;
   description: string;
@@ -264,9 +270,7 @@ export function useLiveCreationSession(id: string) {
         keepNewer(incoming as CreationSession)(previous as CreationSession | undefined),
       ),
     refetchInterval: (q) =>
-      !streaming &&
-      !isLastingReadFailure(q.state.error) &&
-      ["queued", "working"].includes(q.state.data?.state ?? "")
+      !streaming && !isLastingReadFailure(q.state.error) && isCreationWorking(q.state.data?.state)
         ? 1000
         : false,
   });

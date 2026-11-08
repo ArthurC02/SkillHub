@@ -2,7 +2,7 @@ import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { useEvaluation, useEvaluationRevisions } from "../evaluation.service";
-import { evaluationPanelState } from "./evaluation.model";
+import { awaitsEvaluation, evaluationPanelState } from "./evaluation.model";
 import { ExecutionState } from "./components/ExecutionState";
 import { EvaluationReport } from "./components/EvaluationReport";
 import { FeedbackForm } from "./components/FeedbackForm";
@@ -72,7 +72,7 @@ function EvaluationReadState({
 export function EvaluationPanel({ runId, runStatus }: { runId: string; runStatus?: string }) {
   const { evaluation: revision } = useSearch({ strict: false }) as { evaluation?: string };
   const navigate = useNavigate();
-  const awaiting = runStatus === "succeeded" || runStatus === "failed";
+  const awaiting = awaitsEvaluation(runStatus);
   const evaluation = useEvaluation(runId, revision, awaiting);
   const report = evaluation.error ? undefined : evaluation.data;
   const state = evaluationPanelState({

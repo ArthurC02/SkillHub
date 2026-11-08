@@ -6,10 +6,10 @@ import type {
 import { contractEnum } from "../../../core/api/contract-enum";
 import { isSuggestion, type ImprovementSuggestion } from "../../runs";
 import {
+  isUnsettledOutcome,
   isVerdict,
   type BatchTestCase,
   type DifferenceVerdict,
-  type TrialOutcome,
 } from "./batches.model";
 
 export type ReflectionOutcome = BatchReflectionOutcomeEnum;
@@ -206,8 +206,6 @@ export function isBatchReflectionList(
   );
 }
 
-const UNSETTLED: TrialOutcome[] = ["pending", "running", "awaiting_answer"];
-
 export function reflectHoldReason(
   testCases: BatchTestCase[],
   dev: ReadonlySet<string>,
@@ -219,7 +217,7 @@ export function reflectHoldReason(
   const unsettled = testCases.some(
     (tc) =>
       dev.has(tc.test_case_id.toLowerCase()) &&
-      tc.trials.some((trial) => UNSETTLED.includes(trial.outcome)),
+      tc.trials.some((trial) => isUnsettledOutcome(trial.outcome)),
   );
   return unsettled ? "勾選的開發題還有試跑沒跑完或還沒評估完，等它們都有結果再找改進。" : undefined;
 }
