@@ -13,4 +13,6 @@ export function oversizeReason(name: string, prompt: string): string | null {
   );
 }
 
+export const SAVE_FAILED = "儲存沒有成功，可以再試一次。";
+
 export const CREDIT_REFUSED = "點數不足，這次沒有呼叫模型、也沒有扣點。請管理者加點後再試。";

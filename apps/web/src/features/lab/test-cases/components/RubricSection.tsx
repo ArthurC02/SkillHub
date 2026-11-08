@@ -4,7 +4,7 @@ import { useUpdateTestCase } from "../../testcases.service";
 import type { RubricItem, TestCase } from "../../testcases.service";
 import { MutationError } from "./MutationError";
 import { RubricCriterionItem } from "./RubricCriterionItem";
-import { textLengthReason } from "../test-cases.model";
+import { SAVE_FAILED, textLengthReason } from "../test-cases.model";
 import { useRevealOnChange } from "../../../../shared/ui/useRevealOnChange";
 
 type RubricBlocker = { field: "version" | "item"; id: string; say: string };
@@ -140,7 +140,7 @@ export function RubricSection({ testCase }: { testCase: TestCase }) {
               : `目前 ${used} 條有內容。`}
           </span>
           {save.isSuccess && <p role="status">已儲存。</p>}
-          <MutationError error={save.error} what="Rubric" fallback="儲存沒有成功，可以再試一次。" />
+          <MutationError error={save.error} what="Rubric" fallback={SAVE_FAILED} />
         </>
       )}
     </>

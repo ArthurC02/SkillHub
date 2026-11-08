@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useUpdateTestCase } from "../../testcases.service";
 import type { TestCase } from "../../testcases.service";
-import { MAX_NAME_CHARS, MAX_PROMPT_CHARS, oversizeReason } from "../test-cases.model";
+import { MAX_NAME_CHARS, MAX_PROMPT_CHARS, SAVE_FAILED, oversizeReason } from "../test-cases.model";
 import { MutationError } from "./MutationError";
 
 export function PromptForm({ testCase }: { testCase: TestCase }) {
@@ -87,11 +87,7 @@ export function PromptForm({ testCase }: { testCase: TestCase }) {
         </span>
       )}
       {save.isSuccess && <p role="status">已儲存。</p>}
-      <MutationError
-        error={save.error}
-        what="名稱與 User Prompt"
-        fallback="儲存沒有成功，可以再試一次。"
-      />
+      <MutationError error={save.error} what="名稱與 User Prompt" fallback={SAVE_FAILED} />
     </>
   );
 }

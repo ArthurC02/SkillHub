@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useUpdateTestCase } from "../../testcases.service";
 import type { TestCase } from "../../testcases.service";
 import { MutationError } from "./MutationError";
+import { SAVE_FAILED } from "../test-cases.model";
 
 const MAX_FACT_CHARS = 1500; // one-number: simulatedUserFactsChars
 
@@ -72,7 +73,7 @@ export function SimulatedUserForm({ testCase }: { testCase: TestCase }) {
         {save.isPending ? "儲存中…" : "儲存模擬使用者"}
       </button>
       {save.isSuccess && <p role="status">已儲存。</p>}
-      <MutationError error={save.error} what="模擬使用者" fallback="儲存沒有成功，可以再試一次。" />
+      <MutationError error={save.error} what="模擬使用者" fallback={SAVE_FAILED} />
     </>
   );
 }
