@@ -144,6 +144,22 @@ func TestWorkspaceActivityRejectsForeignCursorAndOutOfRangeLimit(t *testing.T) {
 	}
 }
 
+func TestWorkspaceActivityRefusesAnEmptyLimitAndARepeatedParameterInsteadOfGuessing(t *testing.T) {
+	a := newAPI(t, requireDB(t))
+	alice := a.login(t, "activity-ambiguous-input")
+	cases := []struct{ path, want string }{
+		{"/me/activity?limit=", "query parameter limit must be a whole number between 1 and 100"},
+		{"/me/activity?limit=5&limit=6", "query parameter limit must be given once"},
+		{"/me/activity?cursor=a&cursor=b", "query parameter cursor must be given once"},
+	}
+	for _, c := range cases {
+		code, body := alice.doJSON(t, http.MethodGet, c.path, "")
+		if code != http.StatusBadRequest || body["error"] != c.want {
+			t.Errorf("GET %s: %d %v, want 400 %q", c.path, code, body, c.want)
+		}
+	}
+}
+
 func TestARunInWorkspaceActivityCarriesItsSkillAndTestCase(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)

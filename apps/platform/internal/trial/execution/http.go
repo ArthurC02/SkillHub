@@ -8,7 +8,6 @@ import (
 	"log/slog"
 	"math"
 	"net/http"
-	"strconv"
 	"time"
 	"unicode/utf8"
 
@@ -576,27 +575,11 @@ func pathUUID(w http.ResponseWriter, r *http.Request, name string) (id pgtype.UU
 }
 
 func parseLimit(r *http.Request) (int32, error) {
-	q := r.URL.Query()
-	if !q.Has("limit") {
-		return defaultRunPageSize, nil
-	}
-	n, err := strconv.Atoi(q.Get("limit"))
-	if err != nil || n < 1 || n > maxRunPageSize {
-		return 0, fmt.Errorf("query parameter limit must be a whole number between 1 and %d", maxRunPageSize)
-	}
-	return int32(n), nil
+	return httpx.QueryInt32(r, "limit", defaultRunPageSize, 1, maxRunPageSize)
 }
 
 func parseOffset(r *http.Request) (int32, error) {
-	q := r.URL.Query()
-	if !q.Has("offset") {
-		return 0, nil
-	}
-	n, err := strconv.ParseInt(q.Get("offset"), 10, 32)
-	if err != nil || n < 0 {
-		return 0, fmt.Errorf("query parameter offset must be a whole number between 0 and %d", math.MaxInt32)
-	}
-	return int32(n), nil
+	return httpx.QueryInt32(r, "offset", 0, 0, math.MaxInt32)
 }
 
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {

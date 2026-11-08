@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"strconv"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -36,21 +35,22 @@ func (h *activityHandler) List(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusUnauthorized, "not authenticated")
 		return
 	}
-	limit := 50
-	if raw := r.URL.Query().Get("limit"); raw != "" {
-		value, err := strconv.Atoi(raw)
-		if err != nil || value < 1 || value > 100 {
-			httpx.WriteError(w, http.StatusBadRequest, "limit must be between 1 and 100")
-			return
-		}
-		limit = value
+	limit, err := httpx.QueryInt32(r, "limit", defaultActivityPageSize, 1, maxActivityPageSize)
+	if err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	cursor, _, err := httpx.QueryValue(r, "cursor")
+	if err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, err.Error())
+		return
 	}
 	ws, err := h.Identity.PersonalWorkspace(r.Context(), user)
 	if err != nil {
 		httpx.WriteError(w, http.StatusInternalServerError, "workspace lookup failed")
 		return
 	}
-	page, err := h.Svc.List(r.Context(), ws.ID, r.URL.Query().Get("cursor"), limit)
+	page, err := h.Svc.List(r.Context(), ws.ID, cursor, int(limit))
 	if errors.Is(err, activity.ErrInvalidCursor) {
 		httpx.WriteError(w, http.StatusBadRequest, "cursor must be one this endpoint returned")
 		return
@@ -170,3 +170,8 @@ func linkActivityRuns(
 	}
 	return out, nil
 }
+
+const (
+	defaultActivityPageSize = 50
+	maxActivityPageSize     = 100
+)

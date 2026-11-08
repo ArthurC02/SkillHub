@@ -137,15 +137,13 @@ func (h *Handler) Findings(w http.ResponseWriter, r *http.Request) {
 	}
 	var beforeAt pgtype.Timestamptz
 	var beforeID pgtype.UUID
-	if values, present := r.URL.Query()["cursor"]; present {
-		var err error
-		if len(values) == 1 {
-			beforeAt, beforeID, err = findingCursor(values[0])
-		}
-		if len(values) != 1 || err != nil {
-			httpx.WriteError(w, http.StatusBadRequest, "cursor is invalid")
-			return
-		}
+	cursor, present, err := httpx.QueryValue(r, "cursor")
+	if err == nil && present {
+		beforeAt, beforeID, err = findingCursor(cursor)
+	}
+	if err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "cursor is invalid")
+		return
 	}
 	page, err := h.Svc.Findings(r.Context(), statuses, beforeAt, beforeID)
 	if err != nil {

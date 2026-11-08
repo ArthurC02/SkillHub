@@ -83,24 +83,25 @@ type operatorAuditResponse struct {
 }
 
 func (h *operatorAuditHandler) List(w http.ResponseWriter, r *http.Request) {
-	limit, err := queryInt32(r, "limit", defaultAuditPageSize, 1, maxAuditPageSize)
+	limit, err := httpx.QueryInt32(r, "limit", defaultAuditPageSize, 1, maxAuditPageSize)
 	if err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	offset, err := queryInt32(r, "offset", 0, 0, math.MaxInt32)
+	offset, err := httpx.QueryInt32(r, "offset", 0, 0, math.MaxInt32)
 	if err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	var beforeAt time.Time
 	var beforeID int64
-	if values, present := r.URL.Query()["cursor"]; present {
-		if len(values) != 1 || offset != 0 {
-			httpx.WriteError(w, http.StatusBadRequest, "cursor cannot be repeated or combined with offset")
-			return
-		}
-		beforeAt, beforeID, err = parseOperatorAuditCursor(values[0])
+	cursor, present, err := httpx.QueryValue(r, "cursor")
+	if err != nil || (present && offset != 0) {
+		httpx.WriteError(w, http.StatusBadRequest, "cursor cannot be repeated or combined with offset")
+		return
+	}
+	if present {
+		beforeAt, beforeID, err = parseOperatorAuditCursor(cursor)
 		if err != nil {
 			httpx.WriteError(w, http.StatusBadRequest, err.Error())
 			return
@@ -143,18 +144,6 @@ func parseOperatorAuditCursor(raw string) (time.Time, int64, error) {
 
 func operatorAuditCursor(record audit.Record) string {
 	return record.OccurredAt.UTC().Format(time.RFC3339Nano) + "_" + strconv.FormatInt(record.ID, 10)
-}
-
-func queryInt32(r *http.Request, name string, fallback, low, high int64) (int32, error) {
-	q := r.URL.Query()
-	if !q.Has(name) {
-		return int32(fallback), nil
-	}
-	n, err := strconv.ParseInt(q.Get(name), 10, 32)
-	if err != nil || n < low || n > high {
-		return 0, fmt.Errorf("query parameter %s must be a whole number between %d and %d", name, low, high)
-	}
-	return int32(n), nil
 }
 
 func optionalUUID(id pgtype.UUID) *string {

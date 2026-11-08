@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net/http"
 	"slices"
-	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -245,15 +244,7 @@ var unavailableFilters = map[string]string{
 }
 
 func parseLimit(r *http.Request) (int32, error) {
-	q := r.URL.Query()
-	if !q.Has("limit") {
-		return defaultSearchLimit, nil
-	}
-	n, err := strconv.Atoi(q.Get("limit"))
-	if err != nil || n < 1 || n > 100 {
-		return 0, errors.New("query parameter limit must be a whole number between 1 and 100")
-	}
-	return int32(n), nil
+	return httpx.QueryInt32(r, "limit", int64(defaultSearchLimit), 1, 100)
 }
 
 func parseFilters(r *http.Request) (searchFilters, error) {

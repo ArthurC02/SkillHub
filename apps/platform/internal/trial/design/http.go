@@ -3,12 +3,10 @@ package testlab
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"log/slog"
 	"math"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -234,31 +232,17 @@ type testCaseListItem struct {
 	HasRubric         bool   `json:"has_rubric"`
 }
 
-const defaultListLimit = 51
+const (
+	defaultListLimit = 51
+	maxListLimit     = 101
+)
 
 func parseListLimit(r *http.Request) (int32, error) {
-	q := r.URL.Query()
-	if !q.Has("limit") {
-		return defaultListLimit, nil
-	}
-
-	n, err := strconv.Atoi(q.Get("limit"))
-	if err != nil || n < 1 || n > 101 {
-		return 0, errors.New("limit 必須是 1 到 101 之間的整數")
-	}
-	return int32(n), nil
+	return httpx.QueryInt32(r, "limit", defaultListLimit, 1, maxListLimit)
 }
 
 func parseListOffset(r *http.Request) (int32, error) {
-	q := r.URL.Query()
-	if !q.Has("offset") {
-		return 0, nil
-	}
-	n, err := strconv.ParseInt(q.Get("offset"), 10, 32)
-	if err != nil || n < 0 {
-		return 0, fmt.Errorf("offset 必須是 0 到 %d 之間的整數", math.MaxInt32)
-	}
-	return int32(n), nil
+	return httpx.QueryInt32(r, "offset", 0, 0, math.MaxInt32)
 }
 
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
