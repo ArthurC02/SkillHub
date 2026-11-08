@@ -834,6 +834,7 @@ linters:
           files:
             - "**/internal/shared/skillpkg/**"
             - "**/internal/shared/contractlimits/**"
+            - "**/internal/shared/platformbudget/**"
             - "!$test"
           deny:
             - pkg: github.com/ArthurC02/skillhub/apps/platform/internal/trial/batch

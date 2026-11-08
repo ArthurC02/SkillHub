@@ -77,3 +77,6 @@ packages:
   - id: contractlimits
     kind: Shared Kernel
     path: shared/contractlimits
+  - id: platformbudget
+    kind: Shared Kernel
+    path: shared/platformbudget

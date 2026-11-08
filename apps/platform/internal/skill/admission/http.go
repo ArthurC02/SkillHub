@@ -19,6 +19,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/platformbudget"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
@@ -391,7 +392,7 @@ var generateRefusals = []generateRefusalEntry{
 	{ErrModelCallsHalted, http.StatusServiceUnavailable,
 		"平台暫停中，這次沒有呼叫模型、也沒有扣點。請稍後再試。"},
 	{ErrModelBudgetExhausted, http.StatusServiceUnavailable,
-		"平台的模型總額度暫時用完，這次沒有建立任何版本，也沒有扣點。現在重試也會被拒絕；額度在台北時間每天上午 8 點恢復，之後再送出。"},
+		"平台的模型總額度暫時用完，這次沒有建立任何版本，也沒有扣點。現在重試也會被拒絕；額度在" + platformbudget.ResetNotice + "恢復，之後再送出。"},
 	{ErrCreditThreshold, http.StatusUnprocessableEntity,
 		"點數不足，無法開始這次生成，沒有呼叫模型。請聯絡管理者為這個帳號加點。"},
 	{ErrGenerateNotForCatalogue, http.StatusUnprocessableEntity,

@@ -14,6 +14,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/messaging/outbox"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/platformbudget"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
@@ -517,7 +518,7 @@ func afterFailedJudgement(cause, settling error) error {
 
 func failureSummary(cause error) string {
 	if errors.Is(cause, modelport.ErrModelBudgetExhausted) {
-		return "這次判定沒有跑：平台的模型總額度暫時用完，判定沒有向你收費。額度在台北時間每天上午 8 點恢復，之後會自動重新判定；Run 本身的結果不受影響。"
+		return "這次判定沒有跑：平台的模型總額度暫時用完，判定沒有向你收費。額度在" + platformbudget.ResetNotice + "恢復，之後會自動重新判定；Run 本身的結果不受影響。"
 	}
 	return "這次判定沒有跑完：模型閘道或證據讀取失敗。原因已記在這個 Run 的執行紀錄（進階模式）裡。"
 }

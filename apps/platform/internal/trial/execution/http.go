@@ -20,6 +20,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
 	limits "github.com/ArthurC02/skillhub/apps/platform/internal/shared/contractlimits/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/platformbudget"
 )
 
 const maxRequestBodyBytes = 4096
@@ -221,7 +222,7 @@ var refusedRuns = []refusedRun{
 		"這個 Skill 版本的靜態掃描擋下了它，所以不能試跑。"},
 	{ErrCreditBalance, http.StatusUnprocessableEntity, messageCreditBalance},
 	{ErrPlatformModelBudget, http.StatusUnprocessableEntity,
-		"平台的模型總額度今天剩下的不夠這次試跑的上限，所以沒有開始，也沒有扣點。額度在台北時間每天上午 8 點恢復，之後再開始。"},
+		"平台的模型總額度今天剩下的不夠這次試跑的上限，所以沒有開始，也沒有扣點。額度在" + platformbudget.ResetNotice + "恢復，之後再開始。"},
 	{ErrRunLimitReached, http.StatusUnprocessableEntity,
 		"這個 Workspace 同時進行中的試跑已經達到上限，等其中一個結束再開始。"},
 	{ErrAccessRestricted, http.StatusUnprocessableEntity,

@@ -13,6 +13,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/textx"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/platformbudget"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/improvement/modelport"
 )
@@ -28,7 +29,7 @@ var (
 	ErrNotReady         = errors.New("開發集裡還有試跑沒有跑完或還沒評估完，等它們都有結果再找改進。")
 	ErrCreditThreshold  = errors.New("點數不足，無法開始找改進，沒有呼叫模型。請聯絡管理者為這個帳號加點。")
 	ErrModelCallsHalted = errors.New("平台暫停中，這次沒有呼叫模型、也沒有扣點。請稍後再試。")
-	ErrBudgetExhausted  = errors.New("平台的模型總額度暫時用完，這次沒有扣點。請在台北時間每天上午 8 點額度恢復後再試。")
+	ErrBudgetExhausted  = errors.New("平台的模型總額度暫時用完，這次沒有扣點。請在" + platformbudget.ResetNotice + "額度恢復後再試。")
 	ErrRoundCapUnset    = errors.New("管理者還沒設定每輪找改進的點數上限（reflection_round_credit_cap），一輪找多個候選無法開始，沒有呼叫模型、也沒有扣點。")
 	ErrRoundOverCap     = errors.New("這一輪預估的點數超過管理者設定的每輪上限，沒有呼叫模型、也沒有扣點。請管理者調高上限或減少候選數。")
 
