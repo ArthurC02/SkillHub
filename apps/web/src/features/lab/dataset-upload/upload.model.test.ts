@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { uploadErrorSentence, uploadRefusal } from "./upload.model";
 import type { DatasetLimits } from "../lab.service";
-import { isWriteResultUnknown } from "../lab.service";
+import { isWriteResultUnknown } from "../../../core/api/client";
 import { ApiError, SessionNotReadyError } from "../../../core/api/client";
 
 const LIMITS: DatasetLimits = {

@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
-import type { SessionNotReadyError } from "../../../../core/api/client";
+import { isWriteResultUnknown, type SessionNotReadyError } from "../../../../core/api/client";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
-import { isWriteResultUnknown, type Dataset } from "../../lab.service";
+import type { Dataset } from "../../lab.service";
 import { uploadErrorSentence } from "../upload.model";
 import { bytes } from "../../../../shared/format";
 import "./UploadFailure.css";

@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { ApiError, SessionNotReadyError } from "../../../core/api/client";
 import { startFailureSentence } from "./preflight.model";
-import { RunNotStartedError, isWriteResultUnknown } from "../lab.service";
+import { RunNotStartedError, isRunStartUnknown } from "../lab.service";
 
 test.each([
   ["lost response", new TypeError("Failed to fetch")],
@@ -24,8 +24,14 @@ test("a session-blocked start says that the operation was not sent", () => {
 
 test("a failed confirmation is known not to have requested Run creation", () => {
   const error = new RunNotStartedError(new ApiError(503, "service unavailable"));
-  expect(isWriteResultUnknown(error)).toBe(false);
+  expect(isRunStartUnknown(error)).toBe(false);
   expect(startFailureSentence(error)).toBe(
     "權限確認未完成，尚未送出開始試跑要求。請重試權限確認。",
   );
+});
+
+test("a run start the platform refused because dispatch is halted is known not to have started", () => {
+  const halted = new ApiError(503, "執行環境現在沒有在派送新的試跑", { reason: "dispatch_halted" });
+  expect(isRunStartUnknown(halted)).toBe(false);
+  expect(isRunStartUnknown(new ApiError(503, "service unavailable"))).toBe(true);
 });

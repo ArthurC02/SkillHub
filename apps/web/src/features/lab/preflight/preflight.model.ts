@@ -3,7 +3,7 @@ import { bytes } from "../../../shared/format";
 import { ApiError, SessionNotReadyError } from "../../../core/api/client";
 import {
   RunNotStartedError,
-  isWriteResultUnknown,
+  isRunStartUnknown,
   refusalReason,
   type PreflightResponse,
   type PreflightSummary,
@@ -80,7 +80,7 @@ export function startFailureSentence(err: unknown): string {
     return "權限確認未完成，尚未送出開始試跑要求。請重試權限確認。";
   if (refusalReason(err) === "dispatch_halted")
     return "平台暫停派送新的試跑，這次試跑沒有開始、也沒有用到額度。稍後再按一次就好。";
-  if (isWriteResultUnknown(err))
+  if (isRunStartUnknown(err))
     return "無法確認試跑是否已開始。請先查看試跑紀錄，再決定是否重新送出；再次送出可能建立另一筆試跑並使用額度。";
   if (err instanceof ApiError && err.status === 422) {
     return err.message

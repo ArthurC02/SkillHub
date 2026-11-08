@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiError, SessionNotReadyError, apiFetch } from "../../core/api/client";
+import { ApiError, apiFetch, isWriteResultUnknown } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
 
 export interface PreflightDataset {
@@ -152,11 +152,10 @@ export function refusalReason(error: unknown): string | undefined {
   return typeof reason === "string" ? reason : undefined;
 }
 
-export function isWriteResultUnknown(error: unknown): boolean {
-  if (error instanceof SessionNotReadyError) return false;
+export function isRunStartUnknown(error: unknown): boolean {
   if (error instanceof RunNotStartedError) return false;
   if (refusalReason(error) !== undefined) return false;
-  return !(error instanceof ApiError) || error.status >= 500;
+  return isWriteResultUnknown(error);
 }
 
 export class RunNotStartedError extends Error {
@@ -255,7 +254,7 @@ export function useConfirmAndStartRun(skillId: string, versionId: string, testCa
       try {
         await confirmPreflight(skillId, versionId, testCaseId, summaryHash);
       } catch (error) {
-        if (isWriteResultUnknown(error)) throw new RunNotStartedError(error);
+        if (isRunStartUnknown(error)) throw new RunNotStartedError(error);
         throw error;
       }
       return startRun(skillId, versionId, testCaseId, summaryHash);

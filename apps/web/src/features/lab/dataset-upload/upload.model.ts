@@ -1,5 +1,5 @@
-import { isWriteResultUnknown, type DatasetLimits } from "../lab.service";
-import { ApiError, SessionNotReadyError } from "../../../core/api/client";
+import type { DatasetLimits } from "../lab.service";
+import { ApiError, SessionNotReadyError, isWriteResultUnknown } from "../../../core/api/client";
 import { bytes } from "../../../shared/format";
 
 export interface TestCaseUsage {

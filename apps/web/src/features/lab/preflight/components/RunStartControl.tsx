@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Link } from "@tanstack/react-router";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
-import { isWriteResultUnknown } from "../../lab.service";
+import { isRunStartUnknown } from "../../lab.service";
 import type { useConfirmAndStartRun } from "../../lab.service";
 import type { PreflightResponse } from "../../lab.service";
 import { blockedSentence, startFailureSentence } from "../preflight.model";
@@ -23,7 +23,7 @@ export function RunStartControl({
   const message = startFailureSentence(start.error);
   const resultLink = useRef<HTMLAnchorElement>(null);
   const failure = useRef<HTMLParagraphElement>(null);
-  const unknown = Boolean(start.error) && isWriteResultUnknown(start.error);
+  const unknown = Boolean(start.error) && isRunStartUnknown(start.error);
 
   useEffect(() => {
     if (runId) resultLink.current?.focus();
