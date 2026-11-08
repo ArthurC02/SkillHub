@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"go/ast"
-	"go/parser"
-	"go/token"
 	"os"
 	"path/filepath"
 	"strings"
@@ -104,24 +102,9 @@ func budgetProblems(measured, baseline map[string]int, limit int, kind string) [
 
 func measureArchitecture(internal string) (budgetMeasure, error) {
 	m := budgetMeasure{files: map[string]int{}, methods: map[string]int{}, fields: map[string]int{}}
-	err := filepath.WalkDir(internal, func(path string, entry os.DirEntry, err error) error {
-		if err != nil || entry.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
-			return err
-		}
-		rel, err := filepath.Rel(internal, filepath.Dir(path))
-		if err != nil {
-			return err
-		}
-		pkg := filepath.ToSlash(rel)
-		if generatedPackage(pkg) {
-			return nil
-		}
-		file, err := parser.ParseFile(token.NewFileSet(), path, nil, parser.SkipObjectResolution)
-		if err != nil {
-			return err
-		}
-		m.files[pkg]++
-		m.record(pkg, file)
+	err := walkPlatformGo(internal, func(f platformGoFile) error {
+		m.files[f.pkg]++
+		m.record(f.pkg, f.file)
 		return nil
 	})
 	return m, err

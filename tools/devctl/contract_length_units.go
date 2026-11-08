@@ -3,9 +3,7 @@ package main
 import (
 	"fmt"
 	"go/ast"
-	"go/parser"
 	"go/token"
-	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -39,24 +37,8 @@ type parsedGoFile struct {
 
 func parsedPlatformPackages(internal string) (map[string][]parsedGoFile, error) {
 	packages := map[string][]parsedGoFile{}
-	err := filepath.WalkDir(internal, func(path string, entry os.DirEntry, err error) error {
-		if err != nil || entry.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
-			return err
-		}
-		rel, err := filepath.Rel(internal, path)
-		if err != nil {
-			return err
-		}
-		pkg := filepath.ToSlash(filepath.Dir(rel))
-		if generatedPackage(pkg) {
-			return nil
-		}
-		fset := token.NewFileSet()
-		file, err := parser.ParseFile(fset, path, nil, parser.SkipObjectResolution)
-		if err != nil {
-			return err
-		}
-		packages[pkg] = append(packages[pkg], parsedGoFile{rel: filepath.ToSlash(rel), fset: fset, file: file})
+	err := walkPlatformGo(internal, func(f platformGoFile) error {
+		packages[f.pkg] = append(packages[f.pkg], parsedGoFile{rel: f.rel, fset: f.fset, file: f.file})
 		return nil
 	})
 	return packages, err

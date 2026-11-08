@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"go/ast"
-	"go/parser"
 	"go/token"
 	"os"
 	"path/filepath"
@@ -51,25 +50,12 @@ func transactionCallbackProblems(root string) []string {
 
 func transactionCallbacks(internal string) (map[string]string, error) {
 	found := map[string]string{}
-	err := filepath.WalkDir(internal, func(path string, entry os.DirEntry, err error) error {
-		if err != nil || entry.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
-			return err
-		}
-		rel, err := filepath.Rel(internal, path)
-		if err != nil {
-			return err
-		}
-		pkg := filepath.ToSlash(filepath.Dir(rel))
-		if generatedPackage(pkg) || genericSubdomain(pkg) {
+	err := walkPlatformGo(internal, func(f platformGoFile) error {
+		if genericSubdomain(f.pkg) {
 			return nil
 		}
-		fset := token.NewFileSet()
-		file, err := parser.ParseFile(fset, path, nil, parser.SkipObjectResolution)
-		if err != nil {
-			return err
-		}
-		for name, pos := range exportedTransactionCallbacks(file) {
-			found[pkg+"."+name] = fmt.Sprintf("%s:%d", filepath.ToSlash(rel), fset.Position(pos).Line)
+		for name, pos := range exportedTransactionCallbacks(f.file) {
+			found[f.pkg+"."+name] = fmt.Sprintf("%s:%d", f.rel, f.fset.Position(pos).Line)
 		}
 		return nil
 	})
