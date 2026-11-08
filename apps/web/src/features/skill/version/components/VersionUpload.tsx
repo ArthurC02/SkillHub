@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { useMe } from "../../../../core/session/me.service";
+import {
+  identityUnconfirmedSentence,
+  isIdentityConfirmed,
+  useMe,
+} from "../../../../core/session/me.service";
 import { SessionNotReadyError } from "../../../../core/api/client";
 import type { UploadResult } from "../../../../core/api/types";
 import { bytes } from "../../../../shared/format";
@@ -28,7 +32,7 @@ export function VersionUpload({
   const limits = useSkillImportLimits();
   const [file, setFile] = useState<File>();
   const [unknownUpload, setUnknownUpload] = useState<UploadFailure>();
-  const identityConfirmed = me.isSuccess && me.fetchStatus === "idle";
+  const identityConfirmed = isIdentityConfirmed(me);
   const confirmed =
     contextConfirmed &&
     [me, versions, limits].every((query) => query.isSuccess && query.fetchStatus === "idle");
@@ -118,7 +122,7 @@ function uploadButtonLabel(pending: boolean, failed: boolean, error: unknown): s
 }
 
 function whyUploadWaits(identityConfirmed: boolean, limitsConfirmed: boolean): string {
-  if (!identityConfirmed) return "登入狀態尚未確認；請先在頁首確認，再上傳新版本。";
+  if (!identityConfirmed) return identityUnconfirmedSentence("上傳新版本");
   if (!limitsConfirmed) return "上傳限制尚未確認；請先重新讀取，再上傳新版本。";
   return "小工具與版本脈絡尚未確認；請先重新讀取，再上傳新版本。";
 }

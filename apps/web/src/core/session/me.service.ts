@@ -44,6 +44,14 @@ function isMe(value: unknown): value is Me {
   );
 }
 
+export function isIdentityConfirmed(me: { isSuccess: boolean; fetchStatus: string }): boolean {
+  return me.isSuccess && me.fetchStatus === "idle";
+}
+
+export function identityUnconfirmedSentence(action: string): string {
+  return `登入狀態尚未確認；請先在頁首確認，再${action}。`;
+}
+
 export function useMe() {
   return useQuery({
     queryKey: queryKeys.me,

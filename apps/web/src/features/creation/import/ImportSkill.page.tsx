@@ -3,7 +3,11 @@ import { Link } from "@tanstack/react-router";
 import { Findings } from "../../../shared/ui/Findings";
 import { LoginRequired, ReadFailure } from "../../../shared/ui/LoginRequired";
 import { unauthenticated } from "../../../shared/ui/LoginRequired.model";
-import { useMe } from "../../../core/session/me.service";
+import {
+  identityUnconfirmedSentence,
+  isIdentityConfirmed,
+  useMe,
+} from "../../../core/session/me.service";
 import {
   ApiError,
   SessionNotReadyError,
@@ -33,7 +37,7 @@ export function ImportSkill() {
   const mutation = useImportSkill();
   const limits = useSkillImportLimits();
   const rules = limits.isSuccess && limits.fetchStatus === "idle" ? limits.data : undefined;
-  const identityConfirmed = me.isSuccess && me.fetchStatus === "idle";
+  const identityConfirmed = isIdentityConfirmed(me);
   const blockedError = mutation.error instanceof SessionNotReadyError ? mutation.error : undefined;
   const result = blockedError && previousImport ? previousImport.result : mutation.data;
   const failure = blockedError && previousImport ? previousImport.error : mutation.error;
@@ -229,7 +233,7 @@ function ImportSourceForm({
       </fieldset>
       {!identityConfirmed && (
         <p id="import-session-unavailable" role="status" className="note">
-          登入狀態尚未確認；請先在頁首確認，再送出匯入。
+          {identityUnconfirmedSentence("送出匯入")}
         </p>
       )}
       {!rulesReady && (

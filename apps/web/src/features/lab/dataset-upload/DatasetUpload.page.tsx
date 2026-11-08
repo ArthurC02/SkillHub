@@ -3,7 +3,11 @@ import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Link, useParams, useSearch } from "@tanstack/react-router";
 import { useRef, useState, type ReactNode } from "react";
 import { ApiError, SessionNotReadyError, isWriteResultUnknown } from "../../../core/api/client";
-import { useMe } from "../../../core/session/me.service";
+import {
+  identityUnconfirmedSentence,
+  isIdentityConfirmed,
+  useMe,
+} from "../../../core/session/me.service";
 import {
   useDatasetLimits,
   useUploadDataset,
@@ -162,7 +166,7 @@ function DatasetIntake({
   const [unknownUpload, setUnknownUpload] = useState<DatasetUploadFailure>();
   const me = useMe();
   const upload = useUploadDataset(testCaseId);
-  const identityConfirmed = me.isSuccess && me.fetchStatus === "idle";
+  const identityConfirmed = isIdentityConfirmed(me);
   const readUnavailable = !limits || !used;
   const failedUpload = readUploadFailure(upload, unknownUpload);
 
@@ -190,7 +194,7 @@ function DatasetIntake({
         )}
         {!identityConfirmed && (
           <p id="upload-session-why" role="status" className="note">
-            登入狀態尚未確認；請先在頁首確認，再上傳測試資料。
+            {identityUnconfirmedSentence("上傳測試資料")}
           </p>
         )}
         <button
