@@ -1,0 +1,111 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "test-case-prompt-limit-recited-2026-11-08",
+  "proposer": "coding-agent",
+  "requirement_id": "test-case-prompt-limit-recited",
+  "status": "verified",
+  "change_classification": "routine",
+  "submitted_at": "2026-11-08T06:57:56.102390Z",
+  "verified_at": "2026-11-08T06:58:44.533913Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "1c72b71e7d1ea1fc7b3f7817fe36d0b5447e387a",
+    "registry_digest": "sha256:bd73d64a505d7996e0a58f1aef1ff0c25e53e267292aded50e14bde1a02bd177",
+    "committed_digest": "sha256:bd73d64a505d7996e0a58f1aef1ff0c25e53e267292aded50e14bde1a02bd177"
+  },
+  "affected_contexts": [
+    "testlab"
+  ],
+  "rule_ids": [
+    "test-case-text-limits-count-characters"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "testlab",
+    "invariant": "A Test Case's name and prompt are non-blank and within their limits, counted in characters.",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "unchanged; the draft check returns the same prompt-too-long refusal the continuation check already used, without changing the rule.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "validateDraft built the prompt-too-long sentence a second time; it now returns ErrPromptTooLong, which changed the cited excerpt."
+    ],
+    "decision": "Re-cite the rule to its current lines; the rule text is unchanged.",
+    "invariants_preserved": [
+      "Limits are counted in characters, not bytes."
+    ],
+    "rejected_alternatives": [
+      "Leaving the stale citation, which would fail verify-evidence."
+    ],
+    "proof_obligations": [
+      "rule-test-case-text-limits-count-characters"
+    ],
+    "counterfactual_check": "Count the prompt in bytes in validateDraft: the rule's test must fail."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "test-case-text-limits-count-characters",
+        "statement": "A Test Case's name and prompt must be non-blank and within their limits, counted in characters so Han text is not penalised for its byte length.",
+        "contexts": [
+          "testlab"
+        ],
+        "examples": [
+          "A prompt of MaxPromptChars+1 Han characters is refused; exactly MaxPromptChars is accepted."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/testlab.go",
+            "lines": {
+              "start": 531,
+              "end": 541
+            },
+            "content_sha256": "sha256:a76142ef632f2354dc23ca19a95ad100fca54bebb56a260e2957c337e0d11012",
+            "excerpt_sha256": "sha256:46d06d95bb74328f72274a752c28fe0c91211cac0724c64e6282c8dbf75f704a",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/trial/design/char_limits_test.go",
+            "lines": {
+              "start": 9,
+              "end": 37
+            },
+            "excerpt_sha256": "sha256:0b9e482eae35cb808d2c721fc1ff6d5998507119ad70512da86b3a3d4fd01051"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-11-08T06:58:44.021319Z",
+      "scope": "proposal",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "1c72b71e7d1ea1fc7b3f7817fe36d0b5447e387a",
+        "registry_digest": "sha256:bd73d64a505d7996e0a58f1aef1ff0c25e53e267292aded50e14bde1a02bd177",
+        "committed_digest": "sha256:bd73d64a505d7996e0a58f1aef1ff0c25e53e267292aded50e14bde1a02bd177"
+      }
+    }
+  ],
+  "supersedes": [
+    "testlab-harvest-rules-2026-10-17"
+  ]
+}

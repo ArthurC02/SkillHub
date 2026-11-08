@@ -1,0 +1,37 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "test-case-prompt-limit-recited",
+  "proposal_id": "test-case-prompt-limit-recited-2026-11-08",
+  "registry_revision": {
+    "observed_commit": "1c72b71e7d1ea1fc7b3f7817fe36d0b5447e387a",
+    "registry_digest": "sha256:bd73d64a505d7996e0a58f1aef1ff0c25e53e267292aded50e14bde1a02bd177",
+    "committed_digest": "sha256:bd73d64a505d7996e0a58f1aef1ff0c25e53e267292aded50e14bde1a02bd177"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-test-case-text-limits-count-characters",
+      "mutated_protection": "apps/platform/internal/trial/design/testlab.go:539: case utf8.RuneCountInString(prompt) > MaxPromptChars: -> case len(prompt) > MaxPromptChars:",
+      "failure_evidence": "=== RUN   TestTextLimitsCountCharactersNotBytes\n    char_limits_test.go:31: prompt of 32768 characters (98304 bytes) was refused: 請求內容無效: Prompt 最多 32768 個字\n--- FAIL: TestTextLimitsCountCharactersNotBytes (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/trial/design\t2.021s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "rule-test-case-text-limits-count-characters",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestTextLimitsCountCharactersNotBytes$ ./internal/trial/design/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:689c471a1423b9fc8dc63e6ac7f4d07e733152a2c0119d40a15090faca4edfd9",
+      "finished_at": "2026-11-08T06:58:06.937851Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

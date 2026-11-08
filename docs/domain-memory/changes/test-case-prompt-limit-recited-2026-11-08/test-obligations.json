@@ -1,0 +1,22 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "test-case-prompt-limit-recited",
+  "proposal_id": "test-case-prompt-limit-recited-2026-11-08",
+  "obligations": [
+    {
+      "id": "rule-test-case-text-limits-count-characters",
+      "source_type": "rule",
+      "source_id": "test-case-text-limits-count-characters",
+      "also_covers": [
+        {
+          "source_type": "acceptance-criterion",
+          "source_id": "rule-unchanged"
+        }
+      ],
+      "expected_outcome": "TestTextLimitsCountCharactersNotBytes: a name or prompt at its limit in Han characters is accepted and one character more is refused.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestTextLimitsCountCharactersNotBytes$ ./internal/trial/design/"
+    }
+  ]
+}
