@@ -4,7 +4,8 @@ import { API_BASE_URL, ApiError } from "../../core/api/client";
 import { useDevLogin, useDevSignIn } from "../../core/session/me.service";
 
 function signInFailureSentence(error: unknown): string {
-  if (error instanceof ApiError && error.status === 400) return "使用者名稱最多 64 個字元。";
+  if (error instanceof ApiError && error.status === 400)
+    return `使用者名稱最多 ${DevLoginBodyUserMaxLength} 個字元。`;
   return "登入沒有成功，可以再試一次。";
 }
 
