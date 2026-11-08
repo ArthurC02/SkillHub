@@ -8423,6 +8423,9 @@ components:
         runs under is resolved from it server-side and is never taken from a
         request parameter (iron rule 3).
   schemas:
+    RunStatus:
+      type: string
+      enum: [queued, provisioning, preparing, running, evaluating, succeeded, failed, cancelled, timed_out]
     Health:
       type: object
       required: [status]
@@ -8982,9 +8985,7 @@ components:
       properties:
         run_id: { type: string, format: uuid }
         status:
-          type: string
-          enum:
-            [queued, provisioning, preparing, running, evaluating, succeeded, failed, cancelled, timed_out]
+          allOf: [{ $ref: "#/components/schemas/RunStatus" }]
           description: |
             Read from the runs table, which is the only authority on run state
             (iron rule 5). Never reconstructed by replaying run_lifecycle trace
@@ -12228,10 +12229,7 @@ components:
             `not_evaluated`, `evaluating`, `evaluation_failed`, and the four
             verdicts `met` / `partially_met` / `not_met` / `undetermined`.
             `evaluation_failed` says nobody judged, **not** that the task failed.
-        status:
-          type: string
-          enum:
-            [queued, provisioning, preparing, running, evaluating, succeeded, failed, cancelled, timed_out]
+        status: { $ref: "#/components/schemas/RunStatus" }
         status_reason:
           type: string
           description: |
@@ -12344,9 +12342,7 @@ components:
           format: uuid
           description: The permanent platform identifier (iron rule 10).
         status:
-          type: string
-          enum:
-            [queued, provisioning, preparing, running, evaluating, succeeded, failed, cancelled, timed_out]
+          allOf: [{ $ref: "#/components/schemas/RunStatus" }]
           description: |
             The standard lifecycle of RUN-002. `cleaning_up` is not in
             here: cleanup happens after a terminal state and is reported
@@ -13155,9 +13151,7 @@ components:
                   that re-running is still POST /skills/{id}/runs behind
                   preflight — there is no re-run endpoint here.
               status:
-                type: string
-                enum:
-                  [queued, provisioning, preparing, running, evaluating, succeeded, failed, cancelled, timed_out]
+                allOf: [{ $ref: "#/components/schemas/RunStatus" }]
                 description: |
                   How the execution ended, and only that. `succeeded` means the
                   workload finished; whether it did what was asked is

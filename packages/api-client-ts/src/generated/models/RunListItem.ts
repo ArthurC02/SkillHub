@@ -12,6 +12,7 @@
  */
 
 import type { Labelled } from './Labelled';
+import type { RunStatus } from './RunStatus';
 
 /**
  * One row of the run history (WS-004). A narrower shape than `Run` on
@@ -51,7 +52,7 @@ export interface RunListItem {
     /**
      * 
      */
-    status: RunListItemStatusEnum;
+    status: RunStatus;
     /**
      * Why the run entered this status. Masked and safe to display.
      * 
@@ -151,21 +152,5 @@ export interface RunListItem {
     finishedAt?: Date;
 }
 
-
-/**
- * @export
- */
-export const RunListItemStatusEnum = {
-    Queued: 'queued',
-    Provisioning: 'provisioning',
-    Preparing: 'preparing',
-    Running: 'running',
-    Evaluating: 'evaluating',
-    Succeeded: 'succeeded',
-    Failed: 'failed',
-    Cancelled: 'cancelled',
-    TimedOut: 'timed_out',
-} as const;
-export type RunListItemStatusEnum = typeof RunListItemStatusEnum[keyof typeof RunListItemStatusEnum];
 
 

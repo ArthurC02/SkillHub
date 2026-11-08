@@ -11,6 +11,7 @@
  * Do not edit it manually.
  */
 
+import type { RunStatus } from './RunStatus';
 import type { TraceSummaryErrorsInner } from './TraceSummaryErrorsInner';
 import type { TraceSummaryQuestionsInner } from './TraceSummaryQuestionsInner';
 import type { TraceSummarySkillsInner } from './TraceSummarySkillsInner';
@@ -36,7 +37,7 @@ export interface TraceSummary {
      * events, and never allowed to disagree with `Run.status`.
      * 
      */
-    status: TraceSummaryStatusEnum;
+    status: RunStatus;
     /**
      * 
      */
@@ -138,21 +139,5 @@ export interface TraceSummary {
     steps: Array<TraceSummaryStepsInner>;
 }
 
-
-/**
- * @export
- */
-export const TraceSummaryStatusEnum = {
-    Queued: 'queued',
-    Provisioning: 'provisioning',
-    Preparing: 'preparing',
-    Running: 'running',
-    Evaluating: 'evaluating',
-    Succeeded: 'succeeded',
-    Failed: 'failed',
-    Cancelled: 'cancelled',
-    TimedOut: 'timed_out',
-} as const;
-export type TraceSummaryStatusEnum = typeof TraceSummaryStatusEnum[keyof typeof TraceSummaryStatusEnum];
 
 

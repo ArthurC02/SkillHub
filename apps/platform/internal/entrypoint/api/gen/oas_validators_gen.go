@@ -633,31 +633,6 @@ func (s *CancelRunAcceptedContinuation) Validate() error {
 	return nil
 }
 
-func (s CancelRunAcceptedStatus) Validate() error {
-	switch s {
-	case "queued":
-		return nil
-	case "provisioning":
-		return nil
-	case "preparing":
-		return nil
-	case "running":
-		return nil
-	case "evaluating":
-		return nil
-	case "succeeded":
-		return nil
-	case "failed":
-		return nil
-	case "cancelled":
-		return nil
-	case "timed_out":
-		return nil
-	default:
-		return errors.Errorf("invalid value: %v", s)
-	}
-}
-
 func (s *CandidatePairedVerdict) Validate() error {
 	if s == nil {
 		return validate.ErrNilPointer
@@ -11291,31 +11266,6 @@ func (s RunComparisonRunsItemEvaluationStatus) Validate() error {
 	}
 }
 
-func (s RunComparisonRunsItemStatus) Validate() error {
-	switch s {
-	case "queued":
-		return nil
-	case "provisioning":
-		return nil
-	case "preparing":
-		return nil
-	case "running":
-		return nil
-	case "evaluating":
-		return nil
-	case "succeeded":
-		return nil
-	case "failed":
-		return nil
-	case "cancelled":
-		return nil
-	case "timed_out":
-		return nil
-	default:
-		return errors.Errorf("invalid value: %v", s)
-	}
-}
-
 func (s *RunContinuation) Validate() error {
 	if s == nil {
 		return validate.ErrNilPointer
@@ -11370,31 +11320,6 @@ func (s *RunListItem) Validate() error {
 		return &validate.Error{Fields: failures}
 	}
 	return nil
-}
-
-func (s RunListItemStatus) Validate() error {
-	switch s {
-	case "queued":
-		return nil
-	case "provisioning":
-		return nil
-	case "preparing":
-		return nil
-	case "running":
-		return nil
-	case "evaluating":
-		return nil
-	case "succeeded":
-		return nil
-	case "failed":
-		return nil
-	case "cancelled":
-		return nil
-	case "timed_out":
-		return nil
-	default:
-		return errors.Errorf("invalid value: %v", s)
-	}
 }
 
 func (s *RunPermissionSummary) Validate() error {
@@ -15330,31 +15255,6 @@ func (s TraceSummarySkillsItemDecision) Validate() error {
 	case "activated":
 		return nil
 	case "skipped":
-		return nil
-	default:
-		return errors.Errorf("invalid value: %v", s)
-	}
-}
-
-func (s TraceSummaryStatus) Validate() error {
-	switch s {
-	case "queued":
-		return nil
-	case "provisioning":
-		return nil
-	case "preparing":
-		return nil
-	case "running":
-		return nil
-	case "evaluating":
-		return nil
-	case "succeeded":
-		return nil
-	case "failed":
-		return nil
-	case "cancelled":
-		return nil
-	case "timed_out":
 		return nil
 	default:
 		return errors.Errorf("invalid value: %v", s)

@@ -1101,7 +1101,7 @@ type CancelRunAccepted struct {
 	// `Evaluation.overall` from GET /runs/{id}/evaluation, which is a separate resource an evaluation
 	// never writes back into. A surface showing this value alone must word it as execution (執行完成 /
 	// 執行失敗) and must not present it as a pass.
-	Status CancelRunAcceptedStatus `json:"status"`
+	Status RunStatus `json:"status"`
 	// The run deliberately executed the test case without loading the skill, as the skill-withheld arm of
 	// an evaluation batch. Absent for an ordinary run.
 	SkillWithheld OptBool `json:"skill_withheld"`
@@ -1177,7 +1177,7 @@ func (s *CancelRunAccepted) GetRunID() uuid.UUID {
 }
 
 // GetStatus returns the value of Status.
-func (s *CancelRunAccepted) GetStatus() CancelRunAcceptedStatus {
+func (s *CancelRunAccepted) GetStatus() RunStatus {
 	return s.Status
 }
 
@@ -1272,7 +1272,7 @@ func (s *CancelRunAccepted) SetRunID(val uuid.UUID) {
 }
 
 // SetStatus sets the value of Status.
-func (s *CancelRunAccepted) SetStatus(val CancelRunAcceptedStatus) {
+func (s *CancelRunAccepted) SetStatus(val RunStatus) {
 	s.Status = val
 }
 
@@ -1486,104 +1486,6 @@ func (s *CancelRunAcceptedContinuation) SetAnswered(val bool) {
 // SetRoundsLeft sets the value of RoundsLeft.
 func (s *CancelRunAcceptedContinuation) SetRoundsLeft(val int) {
 	s.RoundsLeft = val
-}
-
-// The standard lifecycle of RUN-002. `cleaning_up` is not in here: cleanup happens after a terminal
-// state and is reported separately in `cleanup_status`, so "the run failed" and "its sandbox was torn
-// down" stay two distinct facts.
-//
-// `succeeded` says the workload finished, not that the task was done. Whether it was is
-// `Evaluation.overall` from GET /runs/{id}/evaluation, which is a separate resource an evaluation
-// never writes back into. A surface showing this value alone must word it as execution (執行完成 /
-// 執行失敗) and must not present it as a pass.
-type CancelRunAcceptedStatus string
-
-const (
-	CancelRunAcceptedStatusQueued       CancelRunAcceptedStatus = "queued"
-	CancelRunAcceptedStatusProvisioning CancelRunAcceptedStatus = "provisioning"
-	CancelRunAcceptedStatusPreparing    CancelRunAcceptedStatus = "preparing"
-	CancelRunAcceptedStatusRunning      CancelRunAcceptedStatus = "running"
-	CancelRunAcceptedStatusEvaluating   CancelRunAcceptedStatus = "evaluating"
-	CancelRunAcceptedStatusSucceeded    CancelRunAcceptedStatus = "succeeded"
-	CancelRunAcceptedStatusFailed       CancelRunAcceptedStatus = "failed"
-	CancelRunAcceptedStatusCancelled    CancelRunAcceptedStatus = "cancelled"
-	CancelRunAcceptedStatusTimedOut     CancelRunAcceptedStatus = "timed_out"
-)
-
-// AllValues returns all CancelRunAcceptedStatus values.
-func (CancelRunAcceptedStatus) AllValues() []CancelRunAcceptedStatus {
-	return []CancelRunAcceptedStatus{
-		CancelRunAcceptedStatusQueued,
-		CancelRunAcceptedStatusProvisioning,
-		CancelRunAcceptedStatusPreparing,
-		CancelRunAcceptedStatusRunning,
-		CancelRunAcceptedStatusEvaluating,
-		CancelRunAcceptedStatusSucceeded,
-		CancelRunAcceptedStatusFailed,
-		CancelRunAcceptedStatusCancelled,
-		CancelRunAcceptedStatusTimedOut,
-	}
-}
-
-// MarshalText implements encoding.TextMarshaler.
-func (s CancelRunAcceptedStatus) MarshalText() ([]byte, error) {
-	switch s {
-	case CancelRunAcceptedStatusQueued:
-		return []byte(s), nil
-	case CancelRunAcceptedStatusProvisioning:
-		return []byte(s), nil
-	case CancelRunAcceptedStatusPreparing:
-		return []byte(s), nil
-	case CancelRunAcceptedStatusRunning:
-		return []byte(s), nil
-	case CancelRunAcceptedStatusEvaluating:
-		return []byte(s), nil
-	case CancelRunAcceptedStatusSucceeded:
-		return []byte(s), nil
-	case CancelRunAcceptedStatusFailed:
-		return []byte(s), nil
-	case CancelRunAcceptedStatusCancelled:
-		return []byte(s), nil
-	case CancelRunAcceptedStatusTimedOut:
-		return []byte(s), nil
-	default:
-		return nil, errors.Errorf("invalid value: %q", s)
-	}
-}
-
-// UnmarshalText implements encoding.TextUnmarshaler.
-func (s *CancelRunAcceptedStatus) UnmarshalText(data []byte) error {
-	switch CancelRunAcceptedStatus(data) {
-	case CancelRunAcceptedStatusQueued:
-		*s = CancelRunAcceptedStatusQueued
-		return nil
-	case CancelRunAcceptedStatusProvisioning:
-		*s = CancelRunAcceptedStatusProvisioning
-		return nil
-	case CancelRunAcceptedStatusPreparing:
-		*s = CancelRunAcceptedStatusPreparing
-		return nil
-	case CancelRunAcceptedStatusRunning:
-		*s = CancelRunAcceptedStatusRunning
-		return nil
-	case CancelRunAcceptedStatusEvaluating:
-		*s = CancelRunAcceptedStatusEvaluating
-		return nil
-	case CancelRunAcceptedStatusSucceeded:
-		*s = CancelRunAcceptedStatusSucceeded
-		return nil
-	case CancelRunAcceptedStatusFailed:
-		*s = CancelRunAcceptedStatusFailed
-		return nil
-	case CancelRunAcceptedStatusCancelled:
-		*s = CancelRunAcceptedStatusCancelled
-		return nil
-	case CancelRunAcceptedStatusTimedOut:
-		*s = CancelRunAcceptedStatusTimedOut
-		return nil
-	default:
-		return errors.Errorf("invalid value: %q", data)
-	}
 }
 
 type CancelRunAcceptedTransitionsItem struct {
@@ -28717,7 +28619,7 @@ type RunComparisonRunsItem struct {
 	// How the execution ended, and only that. `succeeded` means the workload finished; whether it did what
 	// was asked is `evaluation.overall` beside it. Label this column with execution wording (執行完成
 	// / 執行失敗) and the judgement on its own row.
-	Status RunComparisonRunsItemStatus `json:"status"`
+	Status RunStatus `json:"status"`
 	// The task judgement for this run. Absent means the run was never evaluated — show 未評估, never
 	// a pass. An evaluation that broke is present with `status: failed`.
 	Evaluation OptRunComparisonRunsItemEvaluation `json:"evaluation"`
@@ -28763,7 +28665,7 @@ func (s *RunComparisonRunsItem) GetTestCaseID() OptUUID {
 }
 
 // GetStatus returns the value of Status.
-func (s *RunComparisonRunsItem) GetStatus() RunComparisonRunsItemStatus {
+func (s *RunComparisonRunsItem) GetStatus() RunStatus {
 	return s.Status
 }
 
@@ -28818,7 +28720,7 @@ func (s *RunComparisonRunsItem) SetTestCaseID(val OptUUID) {
 }
 
 // SetStatus sets the value of Status.
-func (s *RunComparisonRunsItem) SetStatus(val RunComparisonRunsItemStatus) {
+func (s *RunComparisonRunsItem) SetStatus(val RunStatus) {
 	s.Status = val
 }
 
@@ -29086,99 +28988,6 @@ func (s *RunComparisonRunsItemEvaluationStatus) UnmarshalText(data []byte) error
 	}
 }
 
-// How the execution ended, and only that. `succeeded` means the workload finished; whether it did what
-// was asked is `evaluation.overall` beside it. Label this column with execution wording (執行完成
-// / 執行失敗) and the judgement on its own row.
-type RunComparisonRunsItemStatus string
-
-const (
-	RunComparisonRunsItemStatusQueued       RunComparisonRunsItemStatus = "queued"
-	RunComparisonRunsItemStatusProvisioning RunComparisonRunsItemStatus = "provisioning"
-	RunComparisonRunsItemStatusPreparing    RunComparisonRunsItemStatus = "preparing"
-	RunComparisonRunsItemStatusRunning      RunComparisonRunsItemStatus = "running"
-	RunComparisonRunsItemStatusEvaluating   RunComparisonRunsItemStatus = "evaluating"
-	RunComparisonRunsItemStatusSucceeded    RunComparisonRunsItemStatus = "succeeded"
-	RunComparisonRunsItemStatusFailed       RunComparisonRunsItemStatus = "failed"
-	RunComparisonRunsItemStatusCancelled    RunComparisonRunsItemStatus = "cancelled"
-	RunComparisonRunsItemStatusTimedOut     RunComparisonRunsItemStatus = "timed_out"
-)
-
-// AllValues returns all RunComparisonRunsItemStatus values.
-func (RunComparisonRunsItemStatus) AllValues() []RunComparisonRunsItemStatus {
-	return []RunComparisonRunsItemStatus{
-		RunComparisonRunsItemStatusQueued,
-		RunComparisonRunsItemStatusProvisioning,
-		RunComparisonRunsItemStatusPreparing,
-		RunComparisonRunsItemStatusRunning,
-		RunComparisonRunsItemStatusEvaluating,
-		RunComparisonRunsItemStatusSucceeded,
-		RunComparisonRunsItemStatusFailed,
-		RunComparisonRunsItemStatusCancelled,
-		RunComparisonRunsItemStatusTimedOut,
-	}
-}
-
-// MarshalText implements encoding.TextMarshaler.
-func (s RunComparisonRunsItemStatus) MarshalText() ([]byte, error) {
-	switch s {
-	case RunComparisonRunsItemStatusQueued:
-		return []byte(s), nil
-	case RunComparisonRunsItemStatusProvisioning:
-		return []byte(s), nil
-	case RunComparisonRunsItemStatusPreparing:
-		return []byte(s), nil
-	case RunComparisonRunsItemStatusRunning:
-		return []byte(s), nil
-	case RunComparisonRunsItemStatusEvaluating:
-		return []byte(s), nil
-	case RunComparisonRunsItemStatusSucceeded:
-		return []byte(s), nil
-	case RunComparisonRunsItemStatusFailed:
-		return []byte(s), nil
-	case RunComparisonRunsItemStatusCancelled:
-		return []byte(s), nil
-	case RunComparisonRunsItemStatusTimedOut:
-		return []byte(s), nil
-	default:
-		return nil, errors.Errorf("invalid value: %q", s)
-	}
-}
-
-// UnmarshalText implements encoding.TextUnmarshaler.
-func (s *RunComparisonRunsItemStatus) UnmarshalText(data []byte) error {
-	switch RunComparisonRunsItemStatus(data) {
-	case RunComparisonRunsItemStatusQueued:
-		*s = RunComparisonRunsItemStatusQueued
-		return nil
-	case RunComparisonRunsItemStatusProvisioning:
-		*s = RunComparisonRunsItemStatusProvisioning
-		return nil
-	case RunComparisonRunsItemStatusPreparing:
-		*s = RunComparisonRunsItemStatusPreparing
-		return nil
-	case RunComparisonRunsItemStatusRunning:
-		*s = RunComparisonRunsItemStatusRunning
-		return nil
-	case RunComparisonRunsItemStatusEvaluating:
-		*s = RunComparisonRunsItemStatusEvaluating
-		return nil
-	case RunComparisonRunsItemStatusSucceeded:
-		*s = RunComparisonRunsItemStatusSucceeded
-		return nil
-	case RunComparisonRunsItemStatusFailed:
-		*s = RunComparisonRunsItemStatusFailed
-		return nil
-	case RunComparisonRunsItemStatusCancelled:
-		*s = RunComparisonRunsItemStatusCancelled
-		return nil
-	case RunComparisonRunsItemStatusTimedOut:
-		*s = RunComparisonRunsItemStatusTimedOut
-		return nil
-	default:
-		return errors.Errorf("invalid value: %q", data)
-	}
-}
-
 // Whether answering this run's questions could start a continuing run, served on GET /runs/{id} for a
 // succeeded run so the page can say so before the person writes any answer. The same rule decides POST
 // /runs/{id}/continuations; the operator setting can still change in between, and the post is the one
@@ -29298,8 +29107,8 @@ type RunListItem struct {
 	// `overall` read alone reports 「無法判斷」 for a pending or failed one. Values are
 	// `not_evaluated`, `evaluating`, `evaluation_failed`, and the four verdicts `met` / `partially_met` /
 	// `not_met` / `undetermined`. `evaluation_failed` says nobody judged, not that the task failed.
-	Evaluation Labelled          `json:"evaluation"`
-	Status     RunListItemStatus `json:"status"`
+	Evaluation Labelled  `json:"evaluation"`
+	Status     RunStatus `json:"status"`
 	// Why the run entered this status. Masked and safe to display.
 	//
 	// Two kinds of sentence arrive here and the difference matters. Most are the platform's own, and those
@@ -29364,7 +29173,7 @@ func (s *RunListItem) GetEvaluation() Labelled {
 }
 
 // GetStatus returns the value of Status.
-func (s *RunListItem) GetStatus() RunListItemStatus {
+func (s *RunListItem) GetStatus() RunStatus {
 	return s.Status
 }
 
@@ -29434,7 +29243,7 @@ func (s *RunListItem) SetEvaluation(val Labelled) {
 }
 
 // SetStatus sets the value of Status.
-func (s *RunListItem) SetStatus(val RunListItemStatus) {
+func (s *RunListItem) SetStatus(val RunStatus) {
 	s.Status = val
 }
 
@@ -29491,96 +29300,6 @@ func (s *RunListItem) SetStartedAt(val OptDateTime) {
 // SetFinishedAt sets the value of FinishedAt.
 func (s *RunListItem) SetFinishedAt(val OptDateTime) {
 	s.FinishedAt = val
-}
-
-type RunListItemStatus string
-
-const (
-	RunListItemStatusQueued       RunListItemStatus = "queued"
-	RunListItemStatusProvisioning RunListItemStatus = "provisioning"
-	RunListItemStatusPreparing    RunListItemStatus = "preparing"
-	RunListItemStatusRunning      RunListItemStatus = "running"
-	RunListItemStatusEvaluating   RunListItemStatus = "evaluating"
-	RunListItemStatusSucceeded    RunListItemStatus = "succeeded"
-	RunListItemStatusFailed       RunListItemStatus = "failed"
-	RunListItemStatusCancelled    RunListItemStatus = "cancelled"
-	RunListItemStatusTimedOut     RunListItemStatus = "timed_out"
-)
-
-// AllValues returns all RunListItemStatus values.
-func (RunListItemStatus) AllValues() []RunListItemStatus {
-	return []RunListItemStatus{
-		RunListItemStatusQueued,
-		RunListItemStatusProvisioning,
-		RunListItemStatusPreparing,
-		RunListItemStatusRunning,
-		RunListItemStatusEvaluating,
-		RunListItemStatusSucceeded,
-		RunListItemStatusFailed,
-		RunListItemStatusCancelled,
-		RunListItemStatusTimedOut,
-	}
-}
-
-// MarshalText implements encoding.TextMarshaler.
-func (s RunListItemStatus) MarshalText() ([]byte, error) {
-	switch s {
-	case RunListItemStatusQueued:
-		return []byte(s), nil
-	case RunListItemStatusProvisioning:
-		return []byte(s), nil
-	case RunListItemStatusPreparing:
-		return []byte(s), nil
-	case RunListItemStatusRunning:
-		return []byte(s), nil
-	case RunListItemStatusEvaluating:
-		return []byte(s), nil
-	case RunListItemStatusSucceeded:
-		return []byte(s), nil
-	case RunListItemStatusFailed:
-		return []byte(s), nil
-	case RunListItemStatusCancelled:
-		return []byte(s), nil
-	case RunListItemStatusTimedOut:
-		return []byte(s), nil
-	default:
-		return nil, errors.Errorf("invalid value: %q", s)
-	}
-}
-
-// UnmarshalText implements encoding.TextUnmarshaler.
-func (s *RunListItemStatus) UnmarshalText(data []byte) error {
-	switch RunListItemStatus(data) {
-	case RunListItemStatusQueued:
-		*s = RunListItemStatusQueued
-		return nil
-	case RunListItemStatusProvisioning:
-		*s = RunListItemStatusProvisioning
-		return nil
-	case RunListItemStatusPreparing:
-		*s = RunListItemStatusPreparing
-		return nil
-	case RunListItemStatusRunning:
-		*s = RunListItemStatusRunning
-		return nil
-	case RunListItemStatusEvaluating:
-		*s = RunListItemStatusEvaluating
-		return nil
-	case RunListItemStatusSucceeded:
-		*s = RunListItemStatusSucceeded
-		return nil
-	case RunListItemStatusFailed:
-		*s = RunListItemStatusFailed
-		return nil
-	case RunListItemStatusCancelled:
-		*s = RunListItemStatusCancelled
-		return nil
-	case RunListItemStatusTimedOut:
-		*s = RunListItemStatusTimedOut
-		return nil
-	default:
-		return errors.Errorf("invalid value: %q", data)
-	}
 }
 
 // Everything a run will be able to touch, shown before it starts (TEST-005/008). Built for a (skill
@@ -30833,14 +30552,7 @@ func (s *RunSettingsTokensPerMinute) SetSetAt(val OptDateTime) {
 	s.SetAt = val
 }
 
-// The standard lifecycle of RUN-002. `cleaning_up` is not in here: cleanup happens after a terminal
-// state and is reported separately in `cleanup_status`, so "the run failed" and "its sandbox was torn
-// down" stay two distinct facts.
-//
-// `succeeded` says the workload finished, not that the task was done. Whether it was is
-// `Evaluation.overall` from GET /runs/{id}/evaluation, which is a separate resource an evaluation
-// never writes back into. A surface showing this value alone must word it as execution (執行完成 /
-// 執行失敗) and must not present it as a pass.
+// Ref: #/components/schemas/RunStatus
 type RunStatus string
 
 const (
@@ -37166,8 +36878,8 @@ type TraceSummary struct {
 	// Read from the runs table, which is the only authority on run state (iron rule 5). Never
 	// reconstructed by replaying run_lifecycle trace events, and never allowed to disagree with
 	// `Run.status`.
-	Status       TraceSummaryStatus `json:"status"`
-	StatusReason OptString          `json:"status_reason"`
+	Status       RunStatus `json:"status"`
+	StatusReason OptString `json:"status_reason"`
 	// Same meaning as on the advanced view: false when a stream has a hole, and false when the workload
 	// ran with no recorder heard from. Zero counts under `complete: false` mean nothing was collected, not
 	// that nothing happened.
@@ -37219,7 +36931,7 @@ func (s *TraceSummary) GetRunID() uuid.UUID {
 }
 
 // GetStatus returns the value of Status.
-func (s *TraceSummary) GetStatus() TraceSummaryStatus {
+func (s *TraceSummary) GetStatus() RunStatus {
 	return s.Status
 }
 
@@ -37309,7 +37021,7 @@ func (s *TraceSummary) SetRunID(val uuid.UUID) {
 }
 
 // SetStatus sets the value of Status.
-func (s *TraceSummary) SetStatus(val TraceSummaryStatus) {
+func (s *TraceSummary) SetStatus(val RunStatus) {
 	s.Status = val
 }
 
@@ -37536,99 +37248,6 @@ func (s *TraceSummarySkillsItemDecision) UnmarshalText(data []byte) error {
 		return nil
 	case TraceSummarySkillsItemDecisionSkipped:
 		*s = TraceSummarySkillsItemDecisionSkipped
-		return nil
-	default:
-		return errors.Errorf("invalid value: %q", data)
-	}
-}
-
-// Read from the runs table, which is the only authority on run state (iron rule 5). Never
-// reconstructed by replaying run_lifecycle trace events, and never allowed to disagree with
-// `Run.status`.
-type TraceSummaryStatus string
-
-const (
-	TraceSummaryStatusQueued       TraceSummaryStatus = "queued"
-	TraceSummaryStatusProvisioning TraceSummaryStatus = "provisioning"
-	TraceSummaryStatusPreparing    TraceSummaryStatus = "preparing"
-	TraceSummaryStatusRunning      TraceSummaryStatus = "running"
-	TraceSummaryStatusEvaluating   TraceSummaryStatus = "evaluating"
-	TraceSummaryStatusSucceeded    TraceSummaryStatus = "succeeded"
-	TraceSummaryStatusFailed       TraceSummaryStatus = "failed"
-	TraceSummaryStatusCancelled    TraceSummaryStatus = "cancelled"
-	TraceSummaryStatusTimedOut     TraceSummaryStatus = "timed_out"
-)
-
-// AllValues returns all TraceSummaryStatus values.
-func (TraceSummaryStatus) AllValues() []TraceSummaryStatus {
-	return []TraceSummaryStatus{
-		TraceSummaryStatusQueued,
-		TraceSummaryStatusProvisioning,
-		TraceSummaryStatusPreparing,
-		TraceSummaryStatusRunning,
-		TraceSummaryStatusEvaluating,
-		TraceSummaryStatusSucceeded,
-		TraceSummaryStatusFailed,
-		TraceSummaryStatusCancelled,
-		TraceSummaryStatusTimedOut,
-	}
-}
-
-// MarshalText implements encoding.TextMarshaler.
-func (s TraceSummaryStatus) MarshalText() ([]byte, error) {
-	switch s {
-	case TraceSummaryStatusQueued:
-		return []byte(s), nil
-	case TraceSummaryStatusProvisioning:
-		return []byte(s), nil
-	case TraceSummaryStatusPreparing:
-		return []byte(s), nil
-	case TraceSummaryStatusRunning:
-		return []byte(s), nil
-	case TraceSummaryStatusEvaluating:
-		return []byte(s), nil
-	case TraceSummaryStatusSucceeded:
-		return []byte(s), nil
-	case TraceSummaryStatusFailed:
-		return []byte(s), nil
-	case TraceSummaryStatusCancelled:
-		return []byte(s), nil
-	case TraceSummaryStatusTimedOut:
-		return []byte(s), nil
-	default:
-		return nil, errors.Errorf("invalid value: %q", s)
-	}
-}
-
-// UnmarshalText implements encoding.TextUnmarshaler.
-func (s *TraceSummaryStatus) UnmarshalText(data []byte) error {
-	switch TraceSummaryStatus(data) {
-	case TraceSummaryStatusQueued:
-		*s = TraceSummaryStatusQueued
-		return nil
-	case TraceSummaryStatusProvisioning:
-		*s = TraceSummaryStatusProvisioning
-		return nil
-	case TraceSummaryStatusPreparing:
-		*s = TraceSummaryStatusPreparing
-		return nil
-	case TraceSummaryStatusRunning:
-		*s = TraceSummaryStatusRunning
-		return nil
-	case TraceSummaryStatusEvaluating:
-		*s = TraceSummaryStatusEvaluating
-		return nil
-	case TraceSummaryStatusSucceeded:
-		*s = TraceSummaryStatusSucceeded
-		return nil
-	case TraceSummaryStatusFailed:
-		*s = TraceSummaryStatusFailed
-		return nil
-	case TraceSummaryStatusCancelled:
-		*s = TraceSummaryStatusCancelled
-		return nil
-	case TraceSummaryStatusTimedOut:
-		*s = TraceSummaryStatusTimedOut
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)

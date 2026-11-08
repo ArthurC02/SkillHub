@@ -4104,60 +4104,6 @@ func (s *CancelRunAcceptedContinuation) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
-// Encode encodes CancelRunAcceptedStatus as json.
-func (s CancelRunAcceptedStatus) Encode(e *jx.Encoder) {
-	e.Str(string(s))
-}
-
-// Decode decodes CancelRunAcceptedStatus from json.
-func (s *CancelRunAcceptedStatus) Decode(d *jx.Decoder) error {
-	if s == nil {
-		return errors.New("invalid: unable to decode CancelRunAcceptedStatus to nil")
-	}
-	v, err := d.StrBytes()
-	if err != nil {
-		return err
-	}
-	// Try to use constant string.
-	switch CancelRunAcceptedStatus(v) {
-	case CancelRunAcceptedStatusQueued:
-		*s = CancelRunAcceptedStatusQueued
-	case CancelRunAcceptedStatusProvisioning:
-		*s = CancelRunAcceptedStatusProvisioning
-	case CancelRunAcceptedStatusPreparing:
-		*s = CancelRunAcceptedStatusPreparing
-	case CancelRunAcceptedStatusRunning:
-		*s = CancelRunAcceptedStatusRunning
-	case CancelRunAcceptedStatusEvaluating:
-		*s = CancelRunAcceptedStatusEvaluating
-	case CancelRunAcceptedStatusSucceeded:
-		*s = CancelRunAcceptedStatusSucceeded
-	case CancelRunAcceptedStatusFailed:
-		*s = CancelRunAcceptedStatusFailed
-	case CancelRunAcceptedStatusCancelled:
-		*s = CancelRunAcceptedStatusCancelled
-	case CancelRunAcceptedStatusTimedOut:
-		*s = CancelRunAcceptedStatusTimedOut
-	default:
-		*s = CancelRunAcceptedStatus(v)
-	}
-
-	return nil
-}
-
-// MarshalJSON implements stdjson.Marshaler.
-func (s CancelRunAcceptedStatus) MarshalJSON() ([]byte, error) {
-	e := jx.Encoder{}
-	s.Encode(&e)
-	return e.Bytes(), nil
-}
-
-// UnmarshalJSON implements stdjson.Unmarshaler.
-func (s *CancelRunAcceptedStatus) UnmarshalJSON(data []byte) error {
-	d := jx.DecodeBytes(data)
-	return s.Decode(d)
-}
-
 // Encode implements json.Marshaler.
 func (s *CancelRunAcceptedTransitionsItem) Encode(e *jx.Encoder) {
 	e.ObjStart()
@@ -64090,60 +64036,6 @@ func (s *RunComparisonRunsItemEvaluationStatus) UnmarshalJSON(data []byte) error
 	return s.Decode(d)
 }
 
-// Encode encodes RunComparisonRunsItemStatus as json.
-func (s RunComparisonRunsItemStatus) Encode(e *jx.Encoder) {
-	e.Str(string(s))
-}
-
-// Decode decodes RunComparisonRunsItemStatus from json.
-func (s *RunComparisonRunsItemStatus) Decode(d *jx.Decoder) error {
-	if s == nil {
-		return errors.New("invalid: unable to decode RunComparisonRunsItemStatus to nil")
-	}
-	v, err := d.StrBytes()
-	if err != nil {
-		return err
-	}
-	// Try to use constant string.
-	switch RunComparisonRunsItemStatus(v) {
-	case RunComparisonRunsItemStatusQueued:
-		*s = RunComparisonRunsItemStatusQueued
-	case RunComparisonRunsItemStatusProvisioning:
-		*s = RunComparisonRunsItemStatusProvisioning
-	case RunComparisonRunsItemStatusPreparing:
-		*s = RunComparisonRunsItemStatusPreparing
-	case RunComparisonRunsItemStatusRunning:
-		*s = RunComparisonRunsItemStatusRunning
-	case RunComparisonRunsItemStatusEvaluating:
-		*s = RunComparisonRunsItemStatusEvaluating
-	case RunComparisonRunsItemStatusSucceeded:
-		*s = RunComparisonRunsItemStatusSucceeded
-	case RunComparisonRunsItemStatusFailed:
-		*s = RunComparisonRunsItemStatusFailed
-	case RunComparisonRunsItemStatusCancelled:
-		*s = RunComparisonRunsItemStatusCancelled
-	case RunComparisonRunsItemStatusTimedOut:
-		*s = RunComparisonRunsItemStatusTimedOut
-	default:
-		*s = RunComparisonRunsItemStatus(v)
-	}
-
-	return nil
-}
-
-// MarshalJSON implements stdjson.Marshaler.
-func (s RunComparisonRunsItemStatus) MarshalJSON() ([]byte, error) {
-	e := jx.Encoder{}
-	s.Encode(&e)
-	return e.Bytes(), nil
-}
-
-// UnmarshalJSON implements stdjson.Unmarshaler.
-func (s *RunComparisonRunsItemStatus) UnmarshalJSON(data []byte) error {
-	d := jx.DecodeBytes(data)
-	return s.Decode(d)
-}
-
 // Encode implements json.Marshaler.
 func (s *RunContinuation) Encode(e *jx.Encoder) {
 	e.ObjStart()
@@ -64712,60 +64604,6 @@ func (s *RunListItem) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *RunListItem) UnmarshalJSON(data []byte) error {
-	d := jx.DecodeBytes(data)
-	return s.Decode(d)
-}
-
-// Encode encodes RunListItemStatus as json.
-func (s RunListItemStatus) Encode(e *jx.Encoder) {
-	e.Str(string(s))
-}
-
-// Decode decodes RunListItemStatus from json.
-func (s *RunListItemStatus) Decode(d *jx.Decoder) error {
-	if s == nil {
-		return errors.New("invalid: unable to decode RunListItemStatus to nil")
-	}
-	v, err := d.StrBytes()
-	if err != nil {
-		return err
-	}
-	// Try to use constant string.
-	switch RunListItemStatus(v) {
-	case RunListItemStatusQueued:
-		*s = RunListItemStatusQueued
-	case RunListItemStatusProvisioning:
-		*s = RunListItemStatusProvisioning
-	case RunListItemStatusPreparing:
-		*s = RunListItemStatusPreparing
-	case RunListItemStatusRunning:
-		*s = RunListItemStatusRunning
-	case RunListItemStatusEvaluating:
-		*s = RunListItemStatusEvaluating
-	case RunListItemStatusSucceeded:
-		*s = RunListItemStatusSucceeded
-	case RunListItemStatusFailed:
-		*s = RunListItemStatusFailed
-	case RunListItemStatusCancelled:
-		*s = RunListItemStatusCancelled
-	case RunListItemStatusTimedOut:
-		*s = RunListItemStatusTimedOut
-	default:
-		*s = RunListItemStatus(v)
-	}
-
-	return nil
-}
-
-// MarshalJSON implements stdjson.Marshaler.
-func (s RunListItemStatus) MarshalJSON() ([]byte, error) {
-	e := jx.Encoder{}
-	s.Encode(&e)
-	return e.Bytes(), nil
-}
-
-// UnmarshalJSON implements stdjson.Unmarshaler.
-func (s *RunListItemStatus) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -82990,60 +82828,6 @@ func (s TraceSummarySkillsItemDecision) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *TraceSummarySkillsItemDecision) UnmarshalJSON(data []byte) error {
-	d := jx.DecodeBytes(data)
-	return s.Decode(d)
-}
-
-// Encode encodes TraceSummaryStatus as json.
-func (s TraceSummaryStatus) Encode(e *jx.Encoder) {
-	e.Str(string(s))
-}
-
-// Decode decodes TraceSummaryStatus from json.
-func (s *TraceSummaryStatus) Decode(d *jx.Decoder) error {
-	if s == nil {
-		return errors.New("invalid: unable to decode TraceSummaryStatus to nil")
-	}
-	v, err := d.StrBytes()
-	if err != nil {
-		return err
-	}
-	// Try to use constant string.
-	switch TraceSummaryStatus(v) {
-	case TraceSummaryStatusQueued:
-		*s = TraceSummaryStatusQueued
-	case TraceSummaryStatusProvisioning:
-		*s = TraceSummaryStatusProvisioning
-	case TraceSummaryStatusPreparing:
-		*s = TraceSummaryStatusPreparing
-	case TraceSummaryStatusRunning:
-		*s = TraceSummaryStatusRunning
-	case TraceSummaryStatusEvaluating:
-		*s = TraceSummaryStatusEvaluating
-	case TraceSummaryStatusSucceeded:
-		*s = TraceSummaryStatusSucceeded
-	case TraceSummaryStatusFailed:
-		*s = TraceSummaryStatusFailed
-	case TraceSummaryStatusCancelled:
-		*s = TraceSummaryStatusCancelled
-	case TraceSummaryStatusTimedOut:
-		*s = TraceSummaryStatusTimedOut
-	default:
-		*s = TraceSummaryStatus(v)
-	}
-
-	return nil
-}
-
-// MarshalJSON implements stdjson.Marshaler.
-func (s TraceSummaryStatus) MarshalJSON() ([]byte, error) {
-	e := jx.Encoder{}
-	s.Encode(&e)
-	return e.Bytes(), nil
-}
-
-// UnmarshalJSON implements stdjson.Unmarshaler.
-func (s *TraceSummaryStatus) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }

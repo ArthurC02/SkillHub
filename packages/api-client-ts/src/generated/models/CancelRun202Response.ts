@@ -14,6 +14,7 @@
 import type { Labelled } from './Labelled';
 import type { RunAttemptsInner } from './RunAttemptsInner';
 import type { RunContinuation } from './RunContinuation';
+import type { RunStatus } from './RunStatus';
 import type { RunTransitionsInner } from './RunTransitionsInner';
 
 /**
@@ -40,7 +41,7 @@ export interface CancelRun202Response {
      * not present it as a pass.
      * 
      */
-    status: CancelRun202ResponseStatusEnum;
+    status: RunStatus;
     /**
      * The run deliberately executed the test case without loading the
      * skill, as the skill-withheld arm of an evaluation batch. Absent
@@ -167,21 +168,5 @@ export interface CancelRun202Response {
     note?: string;
 }
 
-
-/**
- * @export
- */
-export const CancelRun202ResponseStatusEnum = {
-    Queued: 'queued',
-    Provisioning: 'provisioning',
-    Preparing: 'preparing',
-    Running: 'running',
-    Evaluating: 'evaluating',
-    Succeeded: 'succeeded',
-    Failed: 'failed',
-    Cancelled: 'cancelled',
-    TimedOut: 'timed_out',
-} as const;
-export type CancelRun202ResponseStatusEnum = typeof CancelRun202ResponseStatusEnum[keyof typeof CancelRun202ResponseStatusEnum];
 
 

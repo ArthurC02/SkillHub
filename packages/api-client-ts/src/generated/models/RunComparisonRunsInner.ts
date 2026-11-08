@@ -13,6 +13,7 @@
 
 import type { RunComparisonRunsInnerCost } from './RunComparisonRunsInnerCost';
 import type { RunComparisonRunsInnerEvaluation } from './RunComparisonRunsInnerEvaluation';
+import type { RunStatus } from './RunStatus';
 import type { TraceSummaryErrorsInner } from './TraceSummaryErrorsInner';
 
 /**
@@ -55,7 +56,7 @@ export interface RunComparisonRunsInner {
      * its own row.
      * 
      */
-    status: RunComparisonRunsInnerStatusEnum;
+    status: RunStatus;
     /**
      * 
      */
@@ -98,21 +99,5 @@ export interface RunComparisonRunsInner {
     inputsAvailable: boolean;
 }
 
-
-/**
- * @export
- */
-export const RunComparisonRunsInnerStatusEnum = {
-    Queued: 'queued',
-    Provisioning: 'provisioning',
-    Preparing: 'preparing',
-    Running: 'running',
-    Evaluating: 'evaluating',
-    Succeeded: 'succeeded',
-    Failed: 'failed',
-    Cancelled: 'cancelled',
-    TimedOut: 'timed_out',
-} as const;
-export type RunComparisonRunsInnerStatusEnum = typeof RunComparisonRunsInnerStatusEnum[keyof typeof RunComparisonRunsInnerStatusEnum];
 
 

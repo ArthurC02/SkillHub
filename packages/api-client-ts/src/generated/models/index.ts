@@ -300,6 +300,7 @@ export * from './RunSettings';
 export * from './RunSettingsContinuationRounds';
 export * from './RunSettingsModelBudget';
 export * from './RunSettingsTokensPerMinute';
+export * from './RunStatus';
 export * from './RunTransitionsInner';
 export * from './SandboxTraceEvent';
 export * from './SaveRunAsTestCaseRequest';

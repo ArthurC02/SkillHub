@@ -14,6 +14,7 @@
 import type { Labelled } from './Labelled';
 import type { RunAttemptsInner } from './RunAttemptsInner';
 import type { RunContinuation } from './RunContinuation';
+import type { RunStatus } from './RunStatus';
 import type { RunTransitionsInner } from './RunTransitionsInner';
 
 /**
@@ -43,7 +44,7 @@ export interface Run {
      * not present it as a pass.
      * 
      */
-    status: RunStatusEnum;
+    status: RunStatus;
     /**
      * The run deliberately executed the test case without loading the
      * skill, as the skill-withheld arm of an evaluation batch. Absent
@@ -166,21 +167,5 @@ export interface Run {
     attempts?: Array<RunAttemptsInner>;
 }
 
-
-/**
- * @export
- */
-export const RunStatusEnum = {
-    Queued: 'queued',
-    Provisioning: 'provisioning',
-    Preparing: 'preparing',
-    Running: 'running',
-    Evaluating: 'evaluating',
-    Succeeded: 'succeeded',
-    Failed: 'failed',
-    Cancelled: 'cancelled',
-    TimedOut: 'timed_out',
-} as const;
-export type RunStatusEnum = typeof RunStatusEnum[keyof typeof RunStatusEnum];
 
 
