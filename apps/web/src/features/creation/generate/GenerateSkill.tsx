@@ -21,6 +21,7 @@ import { GenerateInFlight } from "./components/GenerateInFlight";
 import { GenerateFailed } from "./components/GenerateFailed";
 import { GenerateSucceeded } from "./components/GenerateSucceeded";
 import { ReferencePicker } from "../components/ReferencePicker";
+import { fieldCount } from "../../../shared/textLength.model";
 
 const GENERATE_MAX_TASK_RUNES = GenerateSkillBodyTaskDescriptionMaxLength;
 
@@ -116,7 +117,6 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
   }
 
   const nothingToSend = task.trim() === "" && !diagram;
-  const taskRunes = [...task].length;
 
   const submit = () =>
     mutation.mutate({
@@ -145,8 +145,7 @@ export function GenerateSkill({ initialTask = "" }: { initialTask?: string }) {
           disabled={mutation.isPending}
         />
         <p className="note field-count" id="generate-task-count">
-          {taskRunes.toLocaleString("zh-TW")} / {GENERATE_MAX_TASK_RUNES.toLocaleString("zh-TW")} 字
-          {taskRunes > GENERATE_MAX_TASK_RUNES && "——超過了，送出會被伺服器擋下"}
+          {fieldCount(task, GENERATE_MAX_TASK_RUNES)}
         </p>
       </div>
 

@@ -4,6 +4,7 @@ import type { CreditBalance } from "../../../../core/session/credits.service";
 import { ReferencePicker } from "../../components/ReferencePicker";
 import { CREATION_DIAGRAM_LIMIT, MAX_MESSAGE_RUNES } from "../create.model";
 import { ESTIMATE_MARK, points } from "../../../../shared/format";
+import { fieldCount } from "../../../../shared/textLength.model";
 
 type Reference = { id: string; name: string };
 
@@ -291,8 +292,7 @@ function ComposerTools({
         ＋ 參考小工具{refCount > 0 && `（${refCount}）`}
       </button>
       <span className="note field-count" id="composer-count">
-        {[...message].length.toLocaleString("zh-TW")} / {MAX_MESSAGE_RUNES.toLocaleString("zh-TW")}{" "}
-        字{[...message].length > MAX_MESSAGE_RUNES && "——超過了，送出會被擋下"}
+        {fieldCount(message, MAX_MESSAGE_RUNES)}
       </span>
       <button
         type="button"
