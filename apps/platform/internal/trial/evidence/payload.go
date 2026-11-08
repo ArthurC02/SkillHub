@@ -32,6 +32,8 @@ type payloadRule struct {
 	fields map[string]payloadField
 }
 
+var RunLifecycleStatuses = []string{"cancelled", "evaluating", "failed", "preparing", "provisioning", "queued", "running", "succeeded", "timed_out"}
+
 var payloadRules = map[string]payloadRule{
 	"skill_activation": {open: false, fields: map[string]payloadField{
 		"decision":         {required: true, kinds: []string{kindString}, enum: []string{"activated", "skipped"}},
@@ -95,7 +97,7 @@ var payloadRules = map[string]payloadRule{
 	"run_lifecycle": {open: false, fields: map[string]payloadField{
 		"from_status": {kinds: []string{kindNull, kindString}},
 		"reason":      {kinds: []string{kindNull, kindString}},
-		"to_status":   {required: true, kinds: []string{kindString}, enum: []string{"cancelled", "evaluating", "failed", "preparing", "provisioning", "queued", "running", "succeeded", "timed_out"}},
+		"to_status":   {required: true, kinds: []string{kindString}, enum: RunLifecycleStatuses},
 	}},
 	"evaluation_started": {open: false, fields: map[string]payloadField{
 		PayloadEvaluationID:    {required: true, kinds: []string{kindString}},
