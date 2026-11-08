@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ApiError } from "../../../../core/api/client";
+import { isUnusableRecordRequest } from "../../../../core/api/client";
 import { Loading } from "../../../../shared/ui/Loading";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { formatAt } from "../../../../shared/ui/Timestamp.model";
@@ -33,9 +33,7 @@ export function BatchComparison({
     (b) => b.id.toLowerCase() !== batchId.toLowerCase(),
   );
   const result = comparison.error ? undefined : comparison.data;
-  const unusable =
-    comparison.error instanceof ApiError &&
-    (comparison.error.status === 404 || comparison.error.status === 400);
+  const unusable = isUnusableRecordRequest(comparison.error);
 
   return (
     <section aria-labelledby={HEADING}>

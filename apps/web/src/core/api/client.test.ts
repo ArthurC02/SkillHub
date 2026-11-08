@@ -1,5 +1,11 @@
 import { afterEach, expect, test, vi } from "vitest";
-import { ApiError, apiFetch, isTransientReadFailure, serverReason } from "./client";
+import {
+  ApiError,
+  apiFetch,
+  isTransientReadFailure,
+  isUnusableRecordRequest,
+  serverReason,
+} from "./client";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -20,6 +26,18 @@ test.each([
   ["a 503", new ApiError(503, "service unavailable"), true],
 ])("isTransientReadFailure of %s", (_, error, expected) => {
   expect(isTransientReadFailure(error)).toBe(expected);
+});
+
+test.each([
+  ["no error", undefined, false],
+  ["a network error", new TypeError("Failed to fetch"), false],
+  ["a 400", new ApiError(400, "bad request"), true],
+  ["a 403", new ApiError(403, "forbidden"), false],
+  ["a 404", new ApiError(404, "not found"), true],
+  ["a 409", new ApiError(409, "conflict"), false],
+  ["a 500", new ApiError(500, "server error"), false],
+])("isUnusableRecordRequest of %s", (_, error, expected) => {
+  expect(isUnusableRecordRequest(error)).toBe(expected);
 });
 
 test("apiFetch rejects with the server's error string when the JSON body has one", async () => {

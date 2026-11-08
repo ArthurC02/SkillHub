@@ -4,7 +4,7 @@ import { unauthenticated } from "../../../shared/ui/LoginRequired.model";
 import { useMe } from "../../../core/session/me.service";
 import { useState, type ReactNode } from "react";
 import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { ApiError } from "../../../core/api/client";
+import { isUnusableRecordRequest } from "../../../core/api/client";
 import { useRunComparison } from "../evaluation.service";
 import { useRun, useRuns } from "../runs.service";
 import { ComparisonLead } from "./components/ComparisonLead";
@@ -154,10 +154,6 @@ function readFeedback(
 const UNUSABLE_PAIR =
   "這兩筆試跑紀錄不能比較：另一筆的 ID 格式不對、不存在、不屬於這個工作區，或就是這一筆本身。請換一筆試跑紀錄。";
 
-function unusablePair(error: unknown) {
-  return error instanceof ApiError && (error.status === 400 || error.status === 404);
-}
-
 function ComparisonResult({
   comparison,
   against,
@@ -187,10 +183,12 @@ function ComparisonResult({
       <ReadFailure
         error={busy ? null : comparison.error}
         what="比較結果"
-        retry={unusablePair(comparison.error) ? undefined : () => void comparison.refetch()}
+        retry={
+          isUnusableRecordRequest(comparison.error) ? undefined : () => void comparison.refetch()
+        }
         focusTarget="run-comparison-heading"
       >
-        {unusablePair(comparison.error) && <p role="alert">{UNUSABLE_PAIR}</p>}
+        {isUnusableRecordRequest(comparison.error) && <p role="alert">{UNUSABLE_PAIR}</p>}
       </ReadFailure>
       {children}
       {report && <ComparisonTables data={report} />}

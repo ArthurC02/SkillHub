@@ -51,6 +51,12 @@ export function isLastingReadFailure(error: unknown): boolean {
   return error instanceof ApiError && lastingReadFailures.has(error.status);
 }
 
+const unusableRecordRequests = new Set([400, 404]);
+
+export function isUnusableRecordRequest(error: unknown): boolean {
+  return error instanceof ApiError && unusableRecordRequests.has(error.status);
+}
+
 export function isTransientReadFailure(error: unknown): boolean {
   return Boolean(
     error &&

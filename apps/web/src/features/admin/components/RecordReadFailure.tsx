@@ -1,4 +1,4 @@
-import { ApiError } from "../../../core/api/client";
+import { isUnusableRecordRequest } from "../../../core/api/client";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 
 export function RecordReadFailure({
@@ -10,8 +10,7 @@ export function RecordReadFailure({
   what: string;
   focusTarget: string;
 }) {
-  const gone =
-    query.error instanceof ApiError && (query.error.status === 400 || query.error.status === 404);
+  const gone = isUnusableRecordRequest(query.error);
   return (
     <ReadFailure
       error={query.error}
