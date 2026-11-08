@@ -1,8 +1,9 @@
+import { PublicSearchSkillsQMaxLength } from "@skillhub/api-client-ts/limits";
 import { MAX_COMPARE } from "../../skill";
 import type { HomeSearch } from "../../../app/router";
 import type { SearchFilters } from "../../../core/api/types";
 
-export const SEARCH_MAX_QUERY = 2000; // one-number: searchMaxQueryRunes
+export const SEARCH_MAX_QUERY = PublicSearchSkillsQMaxLength;
 
 export const runes = (s: string) => [...s].length;
 

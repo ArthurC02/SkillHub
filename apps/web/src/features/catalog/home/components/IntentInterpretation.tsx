@@ -3,8 +3,8 @@ import type { SearchCorrection, SearchInterpretation } from "../../../../core/ap
 import {
   emptySearchIntent,
   correctedSearchText,
+  CORRECTED_QUERY_LIMIT,
   INTENT_FIELDS,
-  INTENT_FIELD_LIMIT,
   INTENT_KEYWORD_LIMIT,
   INTENT_KEYWORD_LENGTH,
   readSearchCorrection,
@@ -80,7 +80,7 @@ export function IntentInterpretation({
       {editing && (
         <form onSubmit={submit}>
           <p className="note">
-            五欄理解與關鍵詞合計最多 {INTENT_FIELD_LIMIT}{" "}
+            五欄理解與關鍵詞合計最多 {CORRECTED_QUERY_LIMIT}{" "}
             字，留白表示未提及；搜尋仍保留原始任務描述。
           </p>
           {INTENT_FIELDS.map((field) => (

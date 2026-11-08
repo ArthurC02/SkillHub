@@ -1,8 +1,15 @@
+import {
+  CorrectedSearchRequestQueryMaxLength,
+  SearchIntentInputMaxLength,
+  SearchKeywordsItemMaxLength,
+  SearchKeywordsMaxItems,
+} from "@skillhub/api-client-ts/limits";
 import type { SearchCorrection, SearchIntent } from "./types";
 
-export const INTENT_FIELD_LIMIT = 2000; // one-number: searchMaxQueryRunes
-export const INTENT_KEYWORD_LIMIT = 8; // one-number: intentMaxKeywords
-export const INTENT_KEYWORD_LENGTH = 128; // one-number: intentMaxKeywordRunes
+export const INTENT_FIELD_LIMIT = SearchIntentInputMaxLength;
+export const INTENT_KEYWORD_LIMIT = SearchKeywordsMaxItems;
+export const INTENT_KEYWORD_LENGTH = SearchKeywordsItemMaxLength;
+export const CORRECTED_QUERY_LIMIT = CorrectedSearchRequestQueryMaxLength;
 export const INTENT_FIELDS = ["input", "output", "tools", "data", "environment"] as const;
 
 export function emptySearchIntent(): SearchIntent {
@@ -47,8 +54,8 @@ export function readSearchCorrection(serialized: string): SearchCorrection {
     );
   }
   const correction = { intent: intent as SearchIntent, keywords };
-  if ([...correctedSearchText(correction)].length > INTENT_FIELD_LIMIT) {
-    throw new Error(`五欄理解與關鍵詞合計最多 ${INTENT_FIELD_LIMIT} 字，請縮短後再搜尋。`);
+  if ([...correctedSearchText(correction)].length > CORRECTED_QUERY_LIMIT) {
+    throw new Error(`五欄理解與關鍵詞合計最多 ${CORRECTED_QUERY_LIMIT} 字，請縮短後再搜尋。`);
   }
   return correction;
 }
