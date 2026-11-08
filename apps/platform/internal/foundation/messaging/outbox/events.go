@@ -47,6 +47,20 @@ type RunStatusChanged struct {
 	Reason     string `json:"reason,omitempty"`
 }
 
+type VersionAdded struct {
+	VersionID         pgtype.UUID  `json:"version_id"`
+	VersionNumber     int32        `json:"version_number"`
+	ContentHash       string       `json:"content_hash"`
+	ImprovedBy        *Improvement `json:"improved_by"`
+	HeldForEvaluation bool         `json:"held_for_evaluation"`
+}
+
+type Improvement struct {
+	EvaluationID  pgtype.UUID   `json:"evaluation_id"`
+	ReflectionID  pgtype.UUID   `json:"reflection_id,omitzero"`
+	SuggestionIDs []pgtype.UUID `json:"suggestion_ids"`
+}
+
 type RunCleanupChanged struct {
 	CleanupStatus string `json:"cleanup_status"`
 	FailureCount  int    `json:"failure_count,omitempty"`

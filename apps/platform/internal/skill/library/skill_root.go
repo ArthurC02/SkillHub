@@ -133,24 +133,14 @@ type SkillCreated struct {
 	ForkedFromVersionID pgtype.UUID    `json:"forked_from_version_id"`
 }
 
-type SkillVersionAdded struct {
-	VersionID         pgtype.UUID  `json:"version_id"`
-	VersionNumber     int32        `json:"version_number"`
-	ContentHash       string       `json:"content_hash"`
-	ImprovedBy        *Improvement `json:"improved_by"`
-	HeldForEvaluation bool         `json:"held_for_evaluation"`
-}
+type SkillVersionAdded outbox.VersionAdded
 
 type SkillVersionPromoted struct {
 	VersionID pgtype.UUID `json:"version_id"`
 	by        pgtype.UUID
 }
 
-type Improvement struct {
-	EvaluationID  pgtype.UUID   `json:"evaluation_id"`
-	ReflectionID  pgtype.UUID   `json:"reflection_id,omitzero"`
-	SuggestionIDs []pgtype.UUID `json:"suggestion_ids"`
-}
+type Improvement = outbox.Improvement
 
 type SkillDescribed struct{}
 

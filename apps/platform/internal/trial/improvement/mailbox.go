@@ -23,15 +23,6 @@ type SkillVersionConsumer struct {
 	Enqueue func(context.Context, SuggestionsAppliedArgs) error
 }
 
-type versionAdded struct {
-	VersionID  pgtype.UUID `json:"version_id"`
-	ImprovedBy *struct {
-		EvaluationID  pgtype.UUID   `json:"evaluation_id"`
-		ReflectionID  pgtype.UUID   `json:"reflection_id"`
-		SuggestionIDs []pgtype.UUID `json:"suggestion_ids"`
-	} `json:"improved_by"`
-}
-
 func (c *SkillVersionConsumer) Deliver(ctx context.Context, event outbox.Event) error {
 	if event.EventType != outbox.SkillVersionAdded {
 		return nil

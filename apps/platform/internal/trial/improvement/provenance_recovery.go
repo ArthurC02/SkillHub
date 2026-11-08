@@ -72,7 +72,7 @@ func (s *Service) recoverProvenanceOf(ctx context.Context, event outbox.Event) (
 }
 
 func suggestionsApplied(event outbox.Event) (SuggestionsAppliedArgs, bool, error) {
-	var added versionAdded
+	var added outbox.VersionAdded
 	if err := json.Unmarshal(event.Payload, &added); err != nil {
 		return SuggestionsAppliedArgs{}, false, err
 	}
