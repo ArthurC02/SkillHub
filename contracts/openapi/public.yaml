@@ -1516,7 +1516,7 @@ paths:
               type: object
               required: [name]
               properties:
-                name: { type: string }
+                name: { type: string, maxLength: 64 } # one-number: skillNameMaxLength
       responses:
         "201":
           description: Registered.
@@ -1907,7 +1907,7 @@ paths:
             schema:
               type: object
               properties:
-                name: { type: string }
+                name: { type: string, maxLength: 64 } # one-number: skillNameMaxLength
                 version_id: { type: string, format: uuid }
                 rights_attested: { type: boolean }
                 declared_license: { $ref: "#/components/schemas/DeclarableLicense" }

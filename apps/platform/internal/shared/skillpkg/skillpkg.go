@@ -133,7 +133,7 @@ func ValidName(name string) bool {
 }
 
 const (
-	maxNameLen        = 64
+	maxNameLen        = 64 // one-number: skillNameMaxLength
 	maxDescriptionLen = 1024
 
 	maxCompatibilityLen = 500

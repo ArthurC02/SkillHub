@@ -1,3 +1,4 @@
+import { RegisterPublisherBodyNameMaxLength } from "@skillhub/api-client-ts/limits";
 import { useId, useState } from "react";
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
@@ -83,7 +84,7 @@ export function PublisherRegistration({
               if (register.isError && !isWriteResultUnknown(register.error)) register.reset();
             }}
             disabled={register.isPending}
-            maxLength={64}
+            maxLength={RegisterPublisherBodyNameMaxLength}
             required
           />
         </div>

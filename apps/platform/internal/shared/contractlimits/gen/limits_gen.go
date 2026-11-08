@@ -75,10 +75,12 @@ const (
 	PublicSearchResultRankMaximum                             = 1
 	PublicSearchSkillsLimitMaximum                            = 100
 	PublicSearchSkillsQMaxLength                              = 2000
+	PublishSkillBodyNameMaxLength                             = 64
 	ReflectOnEvaluationBatchBodyDevTestCaseIdsMaxItems        = 49
 	ReflectionAdoptionCandidateMaximum                        = 3
 	ReflectionCandidateStandingCandidateMaximum               = 3
 	ReflectionEvaluationCandidatesMaxItems                    = 4
+	RegisterPublisherBodyNameMaxLength                        = 64
 	ReleasePlatformAgentBrakeBodyNoteMaxLength                = 1000
 	RubricItemTextMaxLength                                   = 2000
 	RubricItemsMaxItems                                       = 50

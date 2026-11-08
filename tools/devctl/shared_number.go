@@ -77,6 +77,7 @@ var sharedNumberRoster = []string{
 	"simulatedUserFactsChars",
 	"skillCandidateTagRunes",
 	"skillCandidateTagsMaxItems",
+	"skillNameMaxLength",
 	"suggestCriteriaMaxItems",
 	"suggestMaxDigestChars",
 	"suggestMaxEvidence",

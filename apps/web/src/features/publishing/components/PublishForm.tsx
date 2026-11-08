@@ -1,5 +1,6 @@
 import { useId } from "react";
 import type { DeclarableLicense } from "@skillhub/api-client-ts";
+import { PublishSkillBodyNameMaxLength } from "@skillhub/api-client-ts/limits";
 import type { usePublish } from "../publishing.service";
 import { DECLARABLE_LICENSES, writeFailureSentence } from "../publishing.model";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
@@ -127,7 +128,7 @@ export function PublishForm({
           disabled={publish.isPending}
           aria-describedby={`${nameInputId}-permanent`}
           onChange={(event) => onNameChange(event.target.value)}
-          maxLength={64}
+          maxLength={PublishSkillBodyNameMaxLength}
           required
         />
       </p>
