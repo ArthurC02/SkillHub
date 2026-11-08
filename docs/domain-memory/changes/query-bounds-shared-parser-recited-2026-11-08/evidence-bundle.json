@@ -1,0 +1,73 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "query-bounds-shared-parser-recited",
+  "proposal_id": "query-bounds-shared-parser-recited-2026-11-08",
+  "registry_revision": {
+    "observed_commit": "24dadb6ef2fdb2520f742ceb1039725ee540872c",
+    "registry_digest": "sha256:9d12f95cb3f1d20f52381ec359e8026aa05e8e8eeca98b7c1b91505e744e4f93",
+    "committed_digest": "sha256:9d12f95cb3f1d20f52381ec359e8026aa05e8e8eeca98b7c1b91505e744e4f93"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "rule-an-activity-page-limit-is-1-to-100",
+      "mutated_protection": "apps/platform/internal/foundation/runtime/httpx/query.go:29: if err != nil || n < low || n > high { -> if err != nil || n < low || n > high+1 {",
+      "failure_evidence": "=== RUN   TestWorkspaceActivityRejectsForeignCursorAndOutOfRangeLimit\n2026/11/08 16:46:24 ERROR request failed on the server method=GET path=/me/activity status=500\n    activity_integration_test.go:142: GET /me/activity?limit=101: status = 500, body = map[error:activity lookup failed]\n--- FAIL: TestWorkspaceActivityRejectsForeignCursorAndOutOfRangeLimit (0.14s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t4.477s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-search-limit-is-1-to-100",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestSearchLimitOutsideTheSchemaIsRefused$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:3ddbf57b4824e55168da4ba01e0374f2fde888c913ff2beb758bb0cf0a155fbe",
+      "finished_at": "2026-11-08T08:45:07.447984Z"
+    },
+    {
+      "obligation_id": "rule-a-skill-listing-page-stays-in-bounds",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestSkillListingPageMatchesThePublicBounds$ ./internal/skill/library/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:3343c9e2010cdff3bb71b8a921ad711e9eaab2f7ab7d1c336de99aeff9544efd",
+      "finished_at": "2026-11-08T08:45:13.626631Z"
+    },
+    {
+      "obligation_id": "rule-a-test-case-list-limit-is-1-to-101",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestTestCaseListRefusesAnOutOfSchemaLimit$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:d3025058c5b116f7249c9cb5c2fd492846ac4fac0d4de4e91c3ae060b97af3fa",
+      "finished_at": "2026-11-08T08:45:24.005340Z"
+    },
+    {
+      "obligation_id": "rule-a-test-case-list-offset-is-0-to-the-int32-ceiling",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestTestCaseListRefusesAnOutOfSchemaOffset$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:6ecef6619fc54ad6957380ce758bdd2e59204a1087874640153af92fd8821206",
+      "finished_at": "2026-11-08T08:45:32.976496Z"
+    },
+    {
+      "obligation_id": "rule-an-activity-page-limit-is-1-to-100",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -count=1 -v -run ^TestWorkspaceActivityRejectsForeignCursorAndOutOfRangeLimit$ ./internal/entrypoint/api/apiserver/",
+      "command_profile": "unit",
+      "exit_code": 0,
+      "output_sha256": "sha256:742b81c740f00d5c9e135109baf50580069f879f020d66b49ea9b80446cb4b6f",
+      "finished_at": "2026-11-08T08:45:41.479727Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

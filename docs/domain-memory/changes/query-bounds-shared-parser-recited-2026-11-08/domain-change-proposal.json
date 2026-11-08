@@ -1,0 +1,264 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "query-bounds-shared-parser-recited-2026-11-08",
+  "proposer": "coding-agent",
+  "requirement_id": "query-bounds-shared-parser-recited",
+  "status": "verified",
+  "change_classification": "routine",
+  "submitted_at": "2026-11-08T08:44:46.071139Z",
+  "verified_at": "2026-11-08T08:46:40.266900Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "24dadb6ef2fdb2520f742ceb1039725ee540872c",
+    "registry_digest": "sha256:9d12f95cb3f1d20f52381ec359e8026aa05e8e8eeca98b7c1b91505e744e4f93",
+    "committed_digest": "sha256:9d12f95cb3f1d20f52381ec359e8026aa05e8e8eeca98b7c1b91505e744e4f93"
+  },
+  "affected_contexts": [
+    "activity",
+    "catalog",
+    "registry",
+    "testlab"
+  ],
+  "rule_ids": [
+    "a-search-limit-is-1-to-100",
+    "a-skill-listing-page-stays-in-bounds",
+    "a-test-case-list-limit-is-1-to-101",
+    "a-test-case-list-offset-is-0-to-the-int32-ceiling",
+    "an-activity-page-limit-is-1-to-100"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "discovery",
+    "invariant": "Each list endpoint keeps its own limit and offset bounds; the shared parser only reads the one value and checks it against the bounds the endpoint passes.",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "unchanged; each handler passes its own bounds to httpx.QueryInt32, a generic helper, so no context depends on another.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "Seven handlers parsed limit and offset by hand with different wording, and the activity feed read an empty limit as the default and a repeated cursor as its first value."
+    ],
+    "decision": "Re-cite the five rules to the handlers' current lines; the rule texts are unchanged and still hold.",
+    "invariants_preserved": [
+      "Each endpoint's bounds are the ones its rule states.",
+      "An empty or out-of-range value is refused, never replaced by the default."
+    ],
+    "rejected_alternatives": [
+      "Leaving the stale citations, which would fail verify-evidence."
+    ],
+    "proof_obligations": [
+      "rule-a-search-limit-is-1-to-100",
+      "rule-a-skill-listing-page-stays-in-bounds",
+      "rule-a-test-case-list-limit-is-1-to-101",
+      "rule-a-test-case-list-offset-is-0-to-the-int32-ceiling",
+      "rule-an-activity-page-limit-is-1-to-100"
+    ],
+    "counterfactual_check": "Let QueryInt32 accept a value one past its upper bound: the activity limit rule's test must fail."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-search-limit-is-1-to-100",
+        "statement": "The search limit must be a whole number from 1 to 100; anything else is refused.",
+        "contexts": [
+          "catalog"
+        ],
+        "examples": [
+          "limit=100 is accepted and limit=101 answers 400."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/discovery/http.go",
+            "lines": {
+              "start": 246,
+              "end": 248
+            },
+            "content_sha256": "sha256:6cffc36a748a34e3b791f9a0fca48b5663e67f646a48218919f588ddbbb02abc",
+            "excerpt_sha256": "sha256:fe0cc563d110d1fb1cf68880228d8ee2eb71070a969213bef08d3460cbb077fc",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/disc_integration_test.go",
+            "lines": {
+              "start": 1554,
+              "end": 1581
+            },
+            "excerpt_sha256": "sha256:49c0db1962efe05d739f38b8aad5f3749d06cb601edb8ffd95ba97c504be9cee"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-skill-listing-page-stays-in-bounds",
+        "statement": "The Skill listing accepts a limit of 1 to 100 and a non-negative offset; any other value, including an empty or non-integer one, is refused.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "limit=101 is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/http.go",
+            "lines": {
+              "start": 340,
+              "end": 355
+            },
+            "content_sha256": "sha256:a2d17364a1d401dd7d9c2def2b68b043a8b412fed7c08f14381c65a7168df002",
+            "excerpt_sha256": "sha256:dc30398f1eeda4d6f9adab4fabbe37c3237f54ec8720c0a438dbfc31866b7b7a",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/http_test.go",
+            "lines": {
+              "start": 13,
+              "end": 50
+            },
+            "excerpt_sha256": "sha256:4aa8e925c744c1e006dbff381f70c82e0bf4b1a0bfe973cd271faf03b8306da0"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-test-case-list-limit-is-1-to-101",
+        "statement": "The test case list takes a limit from 1 to 101 inclusive and defaults to 51, one row more than a page shows so the client can tell whether another page exists; 0, 102, a non-integer and an empty limit are refused, never replaced by the default.",
+        "contexts": [
+          "testlab"
+        ],
+        "examples": [
+          "limit=101 lists; limit=102 and limit= answer 400; no limit lists 51."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/http.go",
+            "lines": {
+              "start": 235,
+              "end": 242
+            },
+            "content_sha256": "sha256:4aca441b16f9bca5408ec1640e4b187b01f0333ad52a36b96ffb145199677d6a",
+            "excerpt_sha256": "sha256:5cdbcdceef5894e8975c4295cfacba5019ea27c785c5bc04dac5ef7f58bf3d87",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/testlab_integration_test.go",
+            "lines": {
+              "start": 978,
+              "end": 1007
+            },
+            "excerpt_sha256": "sha256:ca207f418343ffd737e30a2af27a10f54ad7927f3e0d20cdcd7438309093e830"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-test-case-list-offset-is-0-to-the-int32-ceiling",
+        "statement": "The test case list takes an offset from 0 to 2147483647 as a plain decimal integer; a negative, fractional, hexadecimal, empty or larger value is refused rather than read as 0.",
+        "contexts": [
+          "testlab"
+        ],
+        "examples": [
+          "offset=2147483647 lists; offset=2147483648, offset=0x10 and offset=-1 answer 400."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/http.go",
+            "lines": {
+              "start": 244,
+              "end": 246
+            },
+            "content_sha256": "sha256:4aca441b16f9bca5408ec1640e4b187b01f0333ad52a36b96ffb145199677d6a",
+            "excerpt_sha256": "sha256:4dae8e8ed091367cee69394cbaa1483ecb4ec77da9c411f3ccc4182e191dc096",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/testlab_integration_test.go",
+            "lines": {
+              "start": 1019,
+              "end": 1060
+            },
+            "excerpt_sha256": "sha256:126d784c66c5c29b9201874ee687687da98abc2ecd49e00f049bbd5b00f1ee2b"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-activity-page-limit-is-1-to-100",
+        "statement": "The activity feed refuses a page limit outside 1 to 100 with 400.",
+        "contexts": [
+          "activity"
+        ],
+        "examples": [
+          "limit=0 and limit=101 both answer 400."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/activity.go",
+            "lines": {
+              "start": 38,
+              "end": 42
+            },
+            "content_sha256": "sha256:1dce0cc4cec9eaff9fdae25f9e04e7fb71b575904887b28b69577bde502ef357",
+            "excerpt_sha256": "sha256:3c5eddca3f0f3f0f75bf5ad0860459ad919cde0a03a3ed793e71ec9db642b270",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/activity_integration_test.go",
+            "lines": {
+              "start": 137,
+              "end": 145
+            },
+            "excerpt_sha256": "sha256:76c4f331def1c7138ff0e571926a1076891edba0dde252f5c11bb1b735cceda4"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-11-08T08:46:39.695261Z",
+      "scope": "proposal",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "24dadb6ef2fdb2520f742ceb1039725ee540872c",
+        "registry_digest": "sha256:9d12f95cb3f1d20f52381ec359e8026aa05e8e8eeca98b7c1b91505e744e4f93",
+        "committed_digest": "sha256:9d12f95cb3f1d20f52381ec359e8026aa05e8e8eeca98b7c1b91505e744e4f93"
+      }
+    }
+  ],
+  "supersedes": [
+    "findings-recite-2026-10-26",
+    "shifted-recite-2026-10-24"
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "query-bounds-shared-parser-recited",
+  "proposal_id": "query-bounds-shared-parser-recited-2026-11-08",
+  "obligations": [
+    {
+      "id": "rule-a-search-limit-is-1-to-100",
+      "source_type": "rule",
+      "source_id": "a-search-limit-is-1-to-100",
+      "also_covers": [
+        {
+          "source_type": "acceptance-criterion",
+          "source_id": "rules-unchanged"
+        }
+      ],
+      "expected_outcome": "TestSearchLimitOutsideTheSchemaIsRefused: a search limit outside 1 to 100 is refused.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestSearchLimitOutsideTheSchemaIsRefused$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-skill-listing-page-stays-in-bounds",
+      "source_type": "rule",
+      "source_id": "a-skill-listing-page-stays-in-bounds",
+      "expected_outcome": "TestSkillListingPageMatchesThePublicBounds: a listing limit of 1 to 100 and a non-negative offset are accepted, anything else including an empty value is refused.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestSkillListingPageMatchesThePublicBounds$ ./internal/skill/library/"
+    },
+    {
+      "id": "rule-a-test-case-list-limit-is-1-to-101",
+      "source_type": "rule",
+      "source_id": "a-test-case-list-limit-is-1-to-101",
+      "expected_outcome": "TestTestCaseListRefusesAnOutOfSchemaLimit: 0, 102, a non-integer and an empty limit are refused.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestTestCaseListRefusesAnOutOfSchemaLimit$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-a-test-case-list-offset-is-0-to-the-int32-ceiling",
+      "source_type": "rule",
+      "source_id": "a-test-case-list-offset-is-0-to-the-int32-ceiling",
+      "expected_outcome": "TestTestCaseListRefusesAnOutOfSchemaOffset: a negative, fractional, hexadecimal, empty or too large offset is refused.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestTestCaseListRefusesAnOutOfSchemaOffset$ ./internal/entrypoint/api/apiserver/"
+    },
+    {
+      "id": "rule-an-activity-page-limit-is-1-to-100",
+      "source_type": "rule",
+      "source_id": "an-activity-page-limit-is-1-to-100",
+      "expected_outcome": "TestWorkspaceActivityRejectsForeignCursorAndOutOfRangeLimit: an activity limit of 0 or 101 is refused with 400.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go -C apps/platform test -count=1 -v -run ^TestWorkspaceActivityRejectsForeignCursorAndOutOfRangeLimit$ ./internal/entrypoint/api/apiserver/"
+    }
+  ]
+}
