@@ -1,5 +1,10 @@
 import type { DatasetLimits } from "../lab.service";
-import { ApiError, SessionNotReadyError, isWriteResultUnknown } from "../../../core/api/client";
+import {
+  ApiError,
+  SessionNotReadyError,
+  isInAppWords,
+  isWriteResultUnknown,
+} from "../../../core/api/client";
 import { bytes } from "../../../shared/format";
 
 export interface TestCaseUsage {
@@ -12,7 +17,7 @@ export function uploadErrorSentence(error: unknown): string {
   if (!(error instanceof ApiError) || isWriteResultUnknown(error))
     return "無法確認上傳結果。請先核對下方最新檔案清單，再決定是否重試。";
   const { status, message } = error;
-  if ([400, 413, 415].includes(status) && /[\u3400-\u9fff]/u.test(message)) return message;
+  if ([400, 413, 415].includes(status) && isInAppWords(message)) return message;
   if ([400, 413, 415].includes(status)) {
     return "上傳沒有成功，請檢查檔案類型與大小後再試一次。";
   }
