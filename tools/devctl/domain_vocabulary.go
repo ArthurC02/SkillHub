@@ -381,8 +381,7 @@ var domainVocabularies = []domainVocabulary{
 				"apps/platform/internal/skill/library/curation.go", "AllCurationTiers",
 				"apps/platform/internal/skill/library/curation.go", "CurationTier"),
 			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "SetSkillCurationTierReqValue"),
-			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "BrowseCatalogTier"),
-			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "PublicSearchSkillsTier"),
+			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "SkillFilterTier"),
 		},
 		readers: []vocabularySource{
 			goConstEnum("apps/platform/internal/trial/execution/schedule.go", "curationTier"),
@@ -517,8 +516,7 @@ var domainVocabularies = []domainVocabulary{
 			goListedConstEnum(
 				"apps/platform/internal/skill/discovery/category.go", "AllStoredCategories",
 				"apps/platform/internal/skill/discovery/category.go", "Category"),
-			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "BrowseCatalogCategory"),
-			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "PublicSearchSkillsCategory"),
+			goConstEnum("apps/platform/internal/entrypoint/api/gen/oas_schemas_gen.go", "SkillFilterCategory"),
 		},
 	},
 	{
