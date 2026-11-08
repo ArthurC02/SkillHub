@@ -67990,64 +67990,6 @@ func (s *SandboxTraceEventStatus) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
-// Encode encodes SandboxTraceEventType as json.
-func (s SandboxTraceEventType) Encode(e *jx.Encoder) {
-	e.Str(string(s))
-}
-
-// Decode decodes SandboxTraceEventType from json.
-func (s *SandboxTraceEventType) Decode(d *jx.Decoder) error {
-	if s == nil {
-		return errors.New("invalid: unable to decode SandboxTraceEventType to nil")
-	}
-	v, err := d.StrBytes()
-	if err != nil {
-		return err
-	}
-	// Try to use constant string.
-	switch SandboxTraceEventType(v) {
-	case SandboxTraceEventTypeSkillActivation:
-		*s = SandboxTraceEventTypeSkillActivation
-	case SandboxTraceEventTypeResourceRead:
-		*s = SandboxTraceEventTypeResourceRead
-	case SandboxTraceEventTypeToolCall:
-		*s = SandboxTraceEventTypeToolCall
-	case SandboxTraceEventTypeMcpCall:
-		*s = SandboxTraceEventTypeMcpCall
-	case SandboxTraceEventTypeScriptLog:
-		*s = SandboxTraceEventTypeScriptLog
-	case SandboxTraceEventTypeAgentOutput:
-		*s = SandboxTraceEventTypeAgentOutput
-	case SandboxTraceEventTypeError:
-		*s = SandboxTraceEventTypeError
-	case SandboxTraceEventTypeUsage:
-		*s = SandboxTraceEventTypeUsage
-	case SandboxTraceEventTypeRunLifecycle:
-		*s = SandboxTraceEventTypeRunLifecycle
-	case SandboxTraceEventTypeEvaluationStarted:
-		*s = SandboxTraceEventTypeEvaluationStarted
-	case SandboxTraceEventTypeEvaluationCompleted:
-		*s = SandboxTraceEventTypeEvaluationCompleted
-	default:
-		*s = SandboxTraceEventType(v)
-	}
-
-	return nil
-}
-
-// MarshalJSON implements stdjson.Marshaler.
-func (s SandboxTraceEventType) MarshalJSON() ([]byte, error) {
-	e := jx.Encoder{}
-	s.Encode(&e)
-	return e.Bytes(), nil
-}
-
-// UnmarshalJSON implements stdjson.Unmarshaler.
-func (s *SandboxTraceEventType) UnmarshalJSON(data []byte) error {
-	d := jx.DecodeBytes(data)
-	return s.Decode(d)
-}
-
 // Encode encodes SaveRunAsTestCaseBadRequest as json.
 func (s *SaveRunAsTestCaseBadRequest) Encode(e *jx.Encoder) {
 	unwrapped := (*Error)(s)
@@ -81417,6 +81359,106 @@ func (s *TraceAdvanced) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes TraceEmitter as json.
+func (s TraceEmitter) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes TraceEmitter from json.
+func (s *TraceEmitter) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode TraceEmitter to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch TraceEmitter(v) {
+	case TraceEmitterSandbox:
+		*s = TraceEmitterSandbox
+	case TraceEmitterOrchestrator:
+		*s = TraceEmitterOrchestrator
+	case TraceEmitterLlmService:
+		*s = TraceEmitterLlmService
+	default:
+		*s = TraceEmitter(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s TraceEmitter) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *TraceEmitter) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes TraceEventType as json.
+func (s TraceEventType) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes TraceEventType from json.
+func (s *TraceEventType) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode TraceEventType to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch TraceEventType(v) {
+	case TraceEventTypeSkillActivation:
+		*s = TraceEventTypeSkillActivation
+	case TraceEventTypeResourceRead:
+		*s = TraceEventTypeResourceRead
+	case TraceEventTypeToolCall:
+		*s = TraceEventTypeToolCall
+	case TraceEventTypeMcpCall:
+		*s = TraceEventTypeMcpCall
+	case TraceEventTypeScriptLog:
+		*s = TraceEventTypeScriptLog
+	case TraceEventTypeAgentOutput:
+		*s = TraceEventTypeAgentOutput
+	case TraceEventTypeError:
+		*s = TraceEventTypeError
+	case TraceEventTypeUsage:
+		*s = TraceEventTypeUsage
+	case TraceEventTypeRunLifecycle:
+		*s = TraceEventTypeRunLifecycle
+	case TraceEventTypeEvaluationStarted:
+		*s = TraceEventTypeEvaluationStarted
+	case TraceEventTypeEvaluationCompleted:
+		*s = TraceEventTypeEvaluationCompleted
+	default:
+		*s = TraceEventType(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s TraceEventType) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *TraceEventType) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode implements json.Marshaler.
 func (s *TraceEventView) Encode(e *jx.Encoder) {
 	e.ObjStart()
@@ -81673,48 +81715,6 @@ func (s *TraceEventView) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
-// Encode encodes TraceEventViewEmittedBy as json.
-func (s TraceEventViewEmittedBy) Encode(e *jx.Encoder) {
-	e.Str(string(s))
-}
-
-// Decode decodes TraceEventViewEmittedBy from json.
-func (s *TraceEventViewEmittedBy) Decode(d *jx.Decoder) error {
-	if s == nil {
-		return errors.New("invalid: unable to decode TraceEventViewEmittedBy to nil")
-	}
-	v, err := d.StrBytes()
-	if err != nil {
-		return err
-	}
-	// Try to use constant string.
-	switch TraceEventViewEmittedBy(v) {
-	case TraceEventViewEmittedBySandbox:
-		*s = TraceEventViewEmittedBySandbox
-	case TraceEventViewEmittedByOrchestrator:
-		*s = TraceEventViewEmittedByOrchestrator
-	case TraceEventViewEmittedByLlmService:
-		*s = TraceEventViewEmittedByLlmService
-	default:
-		*s = TraceEventViewEmittedBy(v)
-	}
-
-	return nil
-}
-
-// MarshalJSON implements stdjson.Marshaler.
-func (s TraceEventViewEmittedBy) MarshalJSON() ([]byte, error) {
-	e := jx.Encoder{}
-	s.Encode(&e)
-	return e.Bytes(), nil
-}
-
-// UnmarshalJSON implements stdjson.Unmarshaler.
-func (s *TraceEventViewEmittedBy) UnmarshalJSON(data []byte) error {
-	d := jx.DecodeBytes(data)
-	return s.Decode(d)
-}
-
 // Encode implements json.Marshaler.
 func (s *TraceEventViewPayload) Encode(e *jx.Encoder) {
 	e.ObjStart()
@@ -81801,64 +81801,6 @@ func (s TraceEventViewStatus) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *TraceEventViewStatus) UnmarshalJSON(data []byte) error {
-	d := jx.DecodeBytes(data)
-	return s.Decode(d)
-}
-
-// Encode encodes TraceEventViewType as json.
-func (s TraceEventViewType) Encode(e *jx.Encoder) {
-	e.Str(string(s))
-}
-
-// Decode decodes TraceEventViewType from json.
-func (s *TraceEventViewType) Decode(d *jx.Decoder) error {
-	if s == nil {
-		return errors.New("invalid: unable to decode TraceEventViewType to nil")
-	}
-	v, err := d.StrBytes()
-	if err != nil {
-		return err
-	}
-	// Try to use constant string.
-	switch TraceEventViewType(v) {
-	case TraceEventViewTypeSkillActivation:
-		*s = TraceEventViewTypeSkillActivation
-	case TraceEventViewTypeResourceRead:
-		*s = TraceEventViewTypeResourceRead
-	case TraceEventViewTypeToolCall:
-		*s = TraceEventViewTypeToolCall
-	case TraceEventViewTypeMcpCall:
-		*s = TraceEventViewTypeMcpCall
-	case TraceEventViewTypeScriptLog:
-		*s = TraceEventViewTypeScriptLog
-	case TraceEventViewTypeAgentOutput:
-		*s = TraceEventViewTypeAgentOutput
-	case TraceEventViewTypeError:
-		*s = TraceEventViewTypeError
-	case TraceEventViewTypeUsage:
-		*s = TraceEventViewTypeUsage
-	case TraceEventViewTypeRunLifecycle:
-		*s = TraceEventViewTypeRunLifecycle
-	case TraceEventViewTypeEvaluationStarted:
-		*s = TraceEventViewTypeEvaluationStarted
-	case TraceEventViewTypeEvaluationCompleted:
-		*s = TraceEventViewTypeEvaluationCompleted
-	default:
-		*s = TraceEventViewType(v)
-	}
-
-	return nil
-}
-
-// MarshalJSON implements stdjson.Marshaler.
-func (s TraceEventViewType) MarshalJSON() ([]byte, error) {
-	e := jx.Encoder{}
-	s.Encode(&e)
-	return e.Bytes(), nil
-}
-
-// UnmarshalJSON implements stdjson.Unmarshaler.
-func (s *TraceEventViewType) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }

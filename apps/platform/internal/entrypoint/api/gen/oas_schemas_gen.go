@@ -31674,7 +31674,7 @@ type SandboxTraceEvent struct {
 	OccurredAt time.Time `json:"occurred_at"`
 	// Merged property.
 	EmittedBy SandboxTraceEventEmittedBy    `json:"emitted_by"`
-	Type      SandboxTraceEventType         `json:"type"`
+	Type      TraceEventType                `json:"type"`
 	Status    OptNilSandboxTraceEventStatus `json:"status"`
 	// What the producer claims. The control plane does not believe it: the masker runs on every event
 	// regardless, and a sandbox vouching for itself is exactly what the trust boundary forbids.
@@ -31720,7 +31720,7 @@ func (s *SandboxTraceEvent) GetEmittedBy() SandboxTraceEventEmittedBy {
 }
 
 // GetType returns the value of Type.
-func (s *SandboxTraceEvent) GetType() SandboxTraceEventType {
+func (s *SandboxTraceEvent) GetType() TraceEventType {
 	return s.Type
 }
 
@@ -31780,7 +31780,7 @@ func (s *SandboxTraceEvent) SetEmittedBy(val SandboxTraceEventEmittedBy) {
 }
 
 // SetType sets the value of Type.
-func (s *SandboxTraceEvent) SetType(val SandboxTraceEventType) {
+func (s *SandboxTraceEvent) SetType(val TraceEventType) {
 	s.Type = val
 }
 
@@ -31897,110 +31897,6 @@ func (s *SandboxTraceEventStatus) UnmarshalText(data []byte) error {
 		return nil
 	case SandboxTraceEventStatusTimedOut:
 		*s = SandboxTraceEventStatusTimedOut
-		return nil
-	default:
-		return errors.Errorf("invalid value: %q", data)
-	}
-}
-
-type SandboxTraceEventType string
-
-const (
-	SandboxTraceEventTypeSkillActivation     SandboxTraceEventType = "skill_activation"
-	SandboxTraceEventTypeResourceRead        SandboxTraceEventType = "resource_read"
-	SandboxTraceEventTypeToolCall            SandboxTraceEventType = "tool_call"
-	SandboxTraceEventTypeMcpCall             SandboxTraceEventType = "mcp_call"
-	SandboxTraceEventTypeScriptLog           SandboxTraceEventType = "script_log"
-	SandboxTraceEventTypeAgentOutput         SandboxTraceEventType = "agent_output"
-	SandboxTraceEventTypeError               SandboxTraceEventType = "error"
-	SandboxTraceEventTypeUsage               SandboxTraceEventType = "usage"
-	SandboxTraceEventTypeRunLifecycle        SandboxTraceEventType = "run_lifecycle"
-	SandboxTraceEventTypeEvaluationStarted   SandboxTraceEventType = "evaluation_started"
-	SandboxTraceEventTypeEvaluationCompleted SandboxTraceEventType = "evaluation_completed"
-)
-
-// AllValues returns all SandboxTraceEventType values.
-func (SandboxTraceEventType) AllValues() []SandboxTraceEventType {
-	return []SandboxTraceEventType{
-		SandboxTraceEventTypeSkillActivation,
-		SandboxTraceEventTypeResourceRead,
-		SandboxTraceEventTypeToolCall,
-		SandboxTraceEventTypeMcpCall,
-		SandboxTraceEventTypeScriptLog,
-		SandboxTraceEventTypeAgentOutput,
-		SandboxTraceEventTypeError,
-		SandboxTraceEventTypeUsage,
-		SandboxTraceEventTypeRunLifecycle,
-		SandboxTraceEventTypeEvaluationStarted,
-		SandboxTraceEventTypeEvaluationCompleted,
-	}
-}
-
-// MarshalText implements encoding.TextMarshaler.
-func (s SandboxTraceEventType) MarshalText() ([]byte, error) {
-	switch s {
-	case SandboxTraceEventTypeSkillActivation:
-		return []byte(s), nil
-	case SandboxTraceEventTypeResourceRead:
-		return []byte(s), nil
-	case SandboxTraceEventTypeToolCall:
-		return []byte(s), nil
-	case SandboxTraceEventTypeMcpCall:
-		return []byte(s), nil
-	case SandboxTraceEventTypeScriptLog:
-		return []byte(s), nil
-	case SandboxTraceEventTypeAgentOutput:
-		return []byte(s), nil
-	case SandboxTraceEventTypeError:
-		return []byte(s), nil
-	case SandboxTraceEventTypeUsage:
-		return []byte(s), nil
-	case SandboxTraceEventTypeRunLifecycle:
-		return []byte(s), nil
-	case SandboxTraceEventTypeEvaluationStarted:
-		return []byte(s), nil
-	case SandboxTraceEventTypeEvaluationCompleted:
-		return []byte(s), nil
-	default:
-		return nil, errors.Errorf("invalid value: %q", s)
-	}
-}
-
-// UnmarshalText implements encoding.TextUnmarshaler.
-func (s *SandboxTraceEventType) UnmarshalText(data []byte) error {
-	switch SandboxTraceEventType(data) {
-	case SandboxTraceEventTypeSkillActivation:
-		*s = SandboxTraceEventTypeSkillActivation
-		return nil
-	case SandboxTraceEventTypeResourceRead:
-		*s = SandboxTraceEventTypeResourceRead
-		return nil
-	case SandboxTraceEventTypeToolCall:
-		*s = SandboxTraceEventTypeToolCall
-		return nil
-	case SandboxTraceEventTypeMcpCall:
-		*s = SandboxTraceEventTypeMcpCall
-		return nil
-	case SandboxTraceEventTypeScriptLog:
-		*s = SandboxTraceEventTypeScriptLog
-		return nil
-	case SandboxTraceEventTypeAgentOutput:
-		*s = SandboxTraceEventTypeAgentOutput
-		return nil
-	case SandboxTraceEventTypeError:
-		*s = SandboxTraceEventTypeError
-		return nil
-	case SandboxTraceEventTypeUsage:
-		*s = SandboxTraceEventTypeUsage
-		return nil
-	case SandboxTraceEventTypeRunLifecycle:
-		*s = SandboxTraceEventTypeRunLifecycle
-		return nil
-	case SandboxTraceEventTypeEvaluationStarted:
-		*s = SandboxTraceEventTypeEvaluationStarted
-		return nil
-	case SandboxTraceEventTypeEvaluationCompleted:
-		*s = SandboxTraceEventTypeEvaluationCompleted
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)
@@ -37237,6 +37133,160 @@ func (s *TraceAdvanced) SetHasMore(val bool) {
 	s.HasMore = val
 }
 
+// Ref: #/components/schemas/TraceEmitter
+type TraceEmitter string
+
+const (
+	TraceEmitterSandbox      TraceEmitter = "sandbox"
+	TraceEmitterOrchestrator TraceEmitter = "orchestrator"
+	TraceEmitterLlmService   TraceEmitter = "llm_service"
+)
+
+// AllValues returns all TraceEmitter values.
+func (TraceEmitter) AllValues() []TraceEmitter {
+	return []TraceEmitter{
+		TraceEmitterSandbox,
+		TraceEmitterOrchestrator,
+		TraceEmitterLlmService,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s TraceEmitter) MarshalText() ([]byte, error) {
+	switch s {
+	case TraceEmitterSandbox:
+		return []byte(s), nil
+	case TraceEmitterOrchestrator:
+		return []byte(s), nil
+	case TraceEmitterLlmService:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TraceEmitter) UnmarshalText(data []byte) error {
+	switch TraceEmitter(data) {
+	case TraceEmitterSandbox:
+		*s = TraceEmitterSandbox
+		return nil
+	case TraceEmitterOrchestrator:
+		*s = TraceEmitterOrchestrator
+		return nil
+	case TraceEmitterLlmService:
+		*s = TraceEmitterLlmService
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/components/schemas/TraceEventType
+type TraceEventType string
+
+const (
+	TraceEventTypeSkillActivation     TraceEventType = "skill_activation"
+	TraceEventTypeResourceRead        TraceEventType = "resource_read"
+	TraceEventTypeToolCall            TraceEventType = "tool_call"
+	TraceEventTypeMcpCall             TraceEventType = "mcp_call"
+	TraceEventTypeScriptLog           TraceEventType = "script_log"
+	TraceEventTypeAgentOutput         TraceEventType = "agent_output"
+	TraceEventTypeError               TraceEventType = "error"
+	TraceEventTypeUsage               TraceEventType = "usage"
+	TraceEventTypeRunLifecycle        TraceEventType = "run_lifecycle"
+	TraceEventTypeEvaluationStarted   TraceEventType = "evaluation_started"
+	TraceEventTypeEvaluationCompleted TraceEventType = "evaluation_completed"
+)
+
+// AllValues returns all TraceEventType values.
+func (TraceEventType) AllValues() []TraceEventType {
+	return []TraceEventType{
+		TraceEventTypeSkillActivation,
+		TraceEventTypeResourceRead,
+		TraceEventTypeToolCall,
+		TraceEventTypeMcpCall,
+		TraceEventTypeScriptLog,
+		TraceEventTypeAgentOutput,
+		TraceEventTypeError,
+		TraceEventTypeUsage,
+		TraceEventTypeRunLifecycle,
+		TraceEventTypeEvaluationStarted,
+		TraceEventTypeEvaluationCompleted,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s TraceEventType) MarshalText() ([]byte, error) {
+	switch s {
+	case TraceEventTypeSkillActivation:
+		return []byte(s), nil
+	case TraceEventTypeResourceRead:
+		return []byte(s), nil
+	case TraceEventTypeToolCall:
+		return []byte(s), nil
+	case TraceEventTypeMcpCall:
+		return []byte(s), nil
+	case TraceEventTypeScriptLog:
+		return []byte(s), nil
+	case TraceEventTypeAgentOutput:
+		return []byte(s), nil
+	case TraceEventTypeError:
+		return []byte(s), nil
+	case TraceEventTypeUsage:
+		return []byte(s), nil
+	case TraceEventTypeRunLifecycle:
+		return []byte(s), nil
+	case TraceEventTypeEvaluationStarted:
+		return []byte(s), nil
+	case TraceEventTypeEvaluationCompleted:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TraceEventType) UnmarshalText(data []byte) error {
+	switch TraceEventType(data) {
+	case TraceEventTypeSkillActivation:
+		*s = TraceEventTypeSkillActivation
+		return nil
+	case TraceEventTypeResourceRead:
+		*s = TraceEventTypeResourceRead
+		return nil
+	case TraceEventTypeToolCall:
+		*s = TraceEventTypeToolCall
+		return nil
+	case TraceEventTypeMcpCall:
+		*s = TraceEventTypeMcpCall
+		return nil
+	case TraceEventTypeScriptLog:
+		*s = TraceEventTypeScriptLog
+		return nil
+	case TraceEventTypeAgentOutput:
+		*s = TraceEventTypeAgentOutput
+		return nil
+	case TraceEventTypeError:
+		*s = TraceEventTypeError
+		return nil
+	case TraceEventTypeUsage:
+		*s = TraceEventTypeUsage
+		return nil
+	case TraceEventTypeRunLifecycle:
+		*s = TraceEventTypeRunLifecycle
+		return nil
+	case TraceEventTypeEvaluationStarted:
+		*s = TraceEventTypeEvaluationStarted
+		return nil
+	case TraceEventTypeEvaluationCompleted:
+		*s = TraceEventTypeEvaluationCompleted
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 // A stored, server-masked Trace event returned by the advanced reader.
 // Ref: #/components/schemas/TraceEventView
 type TraceEventView struct {
@@ -37244,8 +37294,8 @@ type TraceEventView struct {
 	Attempt      int                     `json:"attempt"`
 	Seq          int                     `json:"seq"`
 	OccurredAt   time.Time               `json:"occurred_at"`
-	EmittedBy    TraceEventViewEmittedBy `json:"emitted_by"`
-	Type         TraceEventViewType      `json:"type"`
+	EmittedBy    TraceEmitter            `json:"emitted_by"`
+	Type         TraceEventType          `json:"type"`
 	Status       OptTraceEventViewStatus `json:"status"`
 	Late         OptBool                 `json:"late"`
 	MaskedFields []string                `json:"masked_fields"`
@@ -37273,12 +37323,12 @@ func (s *TraceEventView) GetOccurredAt() time.Time {
 }
 
 // GetEmittedBy returns the value of EmittedBy.
-func (s *TraceEventView) GetEmittedBy() TraceEventViewEmittedBy {
+func (s *TraceEventView) GetEmittedBy() TraceEmitter {
 	return s.EmittedBy
 }
 
 // GetType returns the value of Type.
-func (s *TraceEventView) GetType() TraceEventViewType {
+func (s *TraceEventView) GetType() TraceEventType {
 	return s.Type
 }
 
@@ -37323,12 +37373,12 @@ func (s *TraceEventView) SetOccurredAt(val time.Time) {
 }
 
 // SetEmittedBy sets the value of EmittedBy.
-func (s *TraceEventView) SetEmittedBy(val TraceEventViewEmittedBy) {
+func (s *TraceEventView) SetEmittedBy(val TraceEmitter) {
 	s.EmittedBy = val
 }
 
 // SetType sets the value of Type.
-func (s *TraceEventView) SetType(val TraceEventViewType) {
+func (s *TraceEventView) SetType(val TraceEventType) {
 	s.Type = val
 }
 
@@ -37350,54 +37400,6 @@ func (s *TraceEventView) SetMaskedFields(val []string) {
 // SetPayload sets the value of Payload.
 func (s *TraceEventView) SetPayload(val TraceEventViewPayload) {
 	s.Payload = val
-}
-
-type TraceEventViewEmittedBy string
-
-const (
-	TraceEventViewEmittedBySandbox      TraceEventViewEmittedBy = "sandbox"
-	TraceEventViewEmittedByOrchestrator TraceEventViewEmittedBy = "orchestrator"
-	TraceEventViewEmittedByLlmService   TraceEventViewEmittedBy = "llm_service"
-)
-
-// AllValues returns all TraceEventViewEmittedBy values.
-func (TraceEventViewEmittedBy) AllValues() []TraceEventViewEmittedBy {
-	return []TraceEventViewEmittedBy{
-		TraceEventViewEmittedBySandbox,
-		TraceEventViewEmittedByOrchestrator,
-		TraceEventViewEmittedByLlmService,
-	}
-}
-
-// MarshalText implements encoding.TextMarshaler.
-func (s TraceEventViewEmittedBy) MarshalText() ([]byte, error) {
-	switch s {
-	case TraceEventViewEmittedBySandbox:
-		return []byte(s), nil
-	case TraceEventViewEmittedByOrchestrator:
-		return []byte(s), nil
-	case TraceEventViewEmittedByLlmService:
-		return []byte(s), nil
-	default:
-		return nil, errors.Errorf("invalid value: %q", s)
-	}
-}
-
-// UnmarshalText implements encoding.TextUnmarshaler.
-func (s *TraceEventViewEmittedBy) UnmarshalText(data []byte) error {
-	switch TraceEventViewEmittedBy(data) {
-	case TraceEventViewEmittedBySandbox:
-		*s = TraceEventViewEmittedBySandbox
-		return nil
-	case TraceEventViewEmittedByOrchestrator:
-		*s = TraceEventViewEmittedByOrchestrator
-		return nil
-	case TraceEventViewEmittedByLlmService:
-		*s = TraceEventViewEmittedByLlmService
-		return nil
-	default:
-		return errors.Errorf("invalid value: %q", data)
-	}
 }
 
 type TraceEventViewPayload struct{}
@@ -37458,110 +37460,6 @@ func (s *TraceEventViewStatus) UnmarshalText(data []byte) error {
 		return nil
 	case TraceEventViewStatusTimedOut:
 		*s = TraceEventViewStatusTimedOut
-		return nil
-	default:
-		return errors.Errorf("invalid value: %q", data)
-	}
-}
-
-type TraceEventViewType string
-
-const (
-	TraceEventViewTypeSkillActivation     TraceEventViewType = "skill_activation"
-	TraceEventViewTypeResourceRead        TraceEventViewType = "resource_read"
-	TraceEventViewTypeToolCall            TraceEventViewType = "tool_call"
-	TraceEventViewTypeMcpCall             TraceEventViewType = "mcp_call"
-	TraceEventViewTypeScriptLog           TraceEventViewType = "script_log"
-	TraceEventViewTypeAgentOutput         TraceEventViewType = "agent_output"
-	TraceEventViewTypeError               TraceEventViewType = "error"
-	TraceEventViewTypeUsage               TraceEventViewType = "usage"
-	TraceEventViewTypeRunLifecycle        TraceEventViewType = "run_lifecycle"
-	TraceEventViewTypeEvaluationStarted   TraceEventViewType = "evaluation_started"
-	TraceEventViewTypeEvaluationCompleted TraceEventViewType = "evaluation_completed"
-)
-
-// AllValues returns all TraceEventViewType values.
-func (TraceEventViewType) AllValues() []TraceEventViewType {
-	return []TraceEventViewType{
-		TraceEventViewTypeSkillActivation,
-		TraceEventViewTypeResourceRead,
-		TraceEventViewTypeToolCall,
-		TraceEventViewTypeMcpCall,
-		TraceEventViewTypeScriptLog,
-		TraceEventViewTypeAgentOutput,
-		TraceEventViewTypeError,
-		TraceEventViewTypeUsage,
-		TraceEventViewTypeRunLifecycle,
-		TraceEventViewTypeEvaluationStarted,
-		TraceEventViewTypeEvaluationCompleted,
-	}
-}
-
-// MarshalText implements encoding.TextMarshaler.
-func (s TraceEventViewType) MarshalText() ([]byte, error) {
-	switch s {
-	case TraceEventViewTypeSkillActivation:
-		return []byte(s), nil
-	case TraceEventViewTypeResourceRead:
-		return []byte(s), nil
-	case TraceEventViewTypeToolCall:
-		return []byte(s), nil
-	case TraceEventViewTypeMcpCall:
-		return []byte(s), nil
-	case TraceEventViewTypeScriptLog:
-		return []byte(s), nil
-	case TraceEventViewTypeAgentOutput:
-		return []byte(s), nil
-	case TraceEventViewTypeError:
-		return []byte(s), nil
-	case TraceEventViewTypeUsage:
-		return []byte(s), nil
-	case TraceEventViewTypeRunLifecycle:
-		return []byte(s), nil
-	case TraceEventViewTypeEvaluationStarted:
-		return []byte(s), nil
-	case TraceEventViewTypeEvaluationCompleted:
-		return []byte(s), nil
-	default:
-		return nil, errors.Errorf("invalid value: %q", s)
-	}
-}
-
-// UnmarshalText implements encoding.TextUnmarshaler.
-func (s *TraceEventViewType) UnmarshalText(data []byte) error {
-	switch TraceEventViewType(data) {
-	case TraceEventViewTypeSkillActivation:
-		*s = TraceEventViewTypeSkillActivation
-		return nil
-	case TraceEventViewTypeResourceRead:
-		*s = TraceEventViewTypeResourceRead
-		return nil
-	case TraceEventViewTypeToolCall:
-		*s = TraceEventViewTypeToolCall
-		return nil
-	case TraceEventViewTypeMcpCall:
-		*s = TraceEventViewTypeMcpCall
-		return nil
-	case TraceEventViewTypeScriptLog:
-		*s = TraceEventViewTypeScriptLog
-		return nil
-	case TraceEventViewTypeAgentOutput:
-		*s = TraceEventViewTypeAgentOutput
-		return nil
-	case TraceEventViewTypeError:
-		*s = TraceEventViewTypeError
-		return nil
-	case TraceEventViewTypeUsage:
-		*s = TraceEventViewTypeUsage
-		return nil
-	case TraceEventViewTypeRunLifecycle:
-		*s = TraceEventViewTypeRunLifecycle
-		return nil
-	case TraceEventViewTypeEvaluationStarted:
-		*s = TraceEventViewTypeEvaluationStarted
-		return nil
-	case TraceEventViewTypeEvaluationCompleted:
-		*s = TraceEventViewTypeEvaluationCompleted
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)

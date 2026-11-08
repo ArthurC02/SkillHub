@@ -11,6 +11,8 @@
  * Do not edit it manually.
  */
 
+import type { TraceEventType } from './TraceEventType';
+
 /**
  * 
  * @export
@@ -50,7 +52,7 @@ export interface SandboxTraceEvent {
     /**
      * 
      */
-    type: SandboxTraceEventTypeEnum;
+    type: TraceEventType;
     /**
      * 
      */
@@ -80,24 +82,6 @@ export const SandboxTraceEventEmittedByEnum = {
     Sandbox: 'sandbox',
 } as const;
 export type SandboxTraceEventEmittedByEnum = typeof SandboxTraceEventEmittedByEnum[keyof typeof SandboxTraceEventEmittedByEnum];
-
-/**
- * @export
- */
-export const SandboxTraceEventTypeEnum = {
-    SkillActivation: 'skill_activation',
-    ResourceRead: 'resource_read',
-    ToolCall: 'tool_call',
-    McpCall: 'mcp_call',
-    ScriptLog: 'script_log',
-    AgentOutput: 'agent_output',
-    Error: 'error',
-    Usage: 'usage',
-    RunLifecycle: 'run_lifecycle',
-    EvaluationStarted: 'evaluation_started',
-    EvaluationCompleted: 'evaluation_completed',
-} as const;
-export type SandboxTraceEventTypeEnum = typeof SandboxTraceEventTypeEnum[keyof typeof SandboxTraceEventTypeEnum];
 
 /**
  * @export

@@ -8842,6 +8842,12 @@ components:
             documents one. A 503 that carries it was answered by the platform
             and wrote nothing; a 503 without it may come from in front of the
             platform, where the outcome is unknown.
+    TraceEmitter:
+      type: string
+      enum: [sandbox, orchestrator, llm_service]
+    TraceEventType:
+      type: string
+      enum: [skill_activation, resource_read, tool_call, mcp_call, script_log, agent_output, error, usage, run_lifecycle, evaluation_started, evaluation_completed]
     TraceEvent:
       type: object
       description: |
@@ -8866,10 +8872,8 @@ components:
             Gapless from 1, scoped to (run_id, attempt, emitted_by). A hole is how
             a lost event is detected; it is not a run-wide ordinal.
         occurred_at: { type: string, format: date-time }
-        emitted_by: { type: string, enum: [sandbox, orchestrator, llm_service] }
-        type:
-          type: string
-          enum: [skill_activation, resource_read, tool_call, mcp_call, script_log, agent_output, error, usage, run_lifecycle, evaluation_started, evaluation_completed]
+        emitted_by: { $ref: "#/components/schemas/TraceEmitter" }
+        type: { $ref: "#/components/schemas/TraceEventType" }
         status:
           type: [string, "null"]
           enum: [ok, error, skipped, cancelled, timed_out, null]
@@ -8914,10 +8918,8 @@ components:
         attempt: { type: integer, minimum: 1, maximum: 100000 }
         seq: { type: integer, minimum: 1, maximum: 100000 }
         occurred_at: { type: string, format: date-time }
-        emitted_by: { type: string, enum: [sandbox, orchestrator, llm_service] }
-        type:
-          type: string
-          enum: [skill_activation, resource_read, tool_call, mcp_call, script_log, agent_output, error, usage, run_lifecycle, evaluation_started, evaluation_completed]
+        emitted_by: { $ref: "#/components/schemas/TraceEmitter" }
+        type: { $ref: "#/components/schemas/TraceEventType" }
         status:
           type: string
           enum: [ok, error, skipped, cancelled, timed_out]

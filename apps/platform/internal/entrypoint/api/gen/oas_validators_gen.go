@@ -12081,35 +12081,6 @@ func (s SandboxTraceEventStatus) Validate() error {
 	}
 }
 
-func (s SandboxTraceEventType) Validate() error {
-	switch s {
-	case "skill_activation":
-		return nil
-	case "resource_read":
-		return nil
-	case "tool_call":
-		return nil
-	case "mcp_call":
-		return nil
-	case "script_log":
-		return nil
-	case "agent_output":
-		return nil
-	case "error":
-		return nil
-	case "usage":
-		return nil
-	case "run_lifecycle":
-		return nil
-	case "evaluation_started":
-		return nil
-	case "evaluation_completed":
-		return nil
-	default:
-		return errors.Errorf("invalid value: %v", s)
-	}
-}
-
 func (s *SaveRunAsTestCaseReq) Validate() error {
 	if s == nil {
 		return validate.ErrNilPointer
@@ -15020,6 +14991,48 @@ func (s *TraceAdvanced) Validate() error {
 	return nil
 }
 
+func (s TraceEmitter) Validate() error {
+	switch s {
+	case "sandbox":
+		return nil
+	case "orchestrator":
+		return nil
+	case "llm_service":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
+}
+
+func (s TraceEventType) Validate() error {
+	switch s {
+	case "skill_activation":
+		return nil
+	case "resource_read":
+		return nil
+	case "tool_call":
+		return nil
+	case "mcp_call":
+		return nil
+	case "script_log":
+		return nil
+	case "agent_output":
+		return nil
+	case "error":
+		return nil
+	case "usage":
+		return nil
+	case "run_lifecycle":
+		return nil
+	case "evaluation_started":
+		return nil
+	case "evaluation_completed":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
+}
+
 func (s *TraceEventView) Validate() error {
 	if s == nil {
 		return validate.ErrNilPointer
@@ -15125,19 +15138,6 @@ func (s *TraceEventView) Validate() error {
 	return nil
 }
 
-func (s TraceEventViewEmittedBy) Validate() error {
-	switch s {
-	case "sandbox":
-		return nil
-	case "orchestrator":
-		return nil
-	case "llm_service":
-		return nil
-	default:
-		return errors.Errorf("invalid value: %v", s)
-	}
-}
-
 func (s TraceEventViewStatus) Validate() error {
 	switch s {
 	case "ok":
@@ -15149,35 +15149,6 @@ func (s TraceEventViewStatus) Validate() error {
 	case "cancelled":
 		return nil
 	case "timed_out":
-		return nil
-	default:
-		return errors.Errorf("invalid value: %v", s)
-	}
-}
-
-func (s TraceEventViewType) Validate() error {
-	switch s {
-	case "skill_activation":
-		return nil
-	case "resource_read":
-		return nil
-	case "tool_call":
-		return nil
-	case "mcp_call":
-		return nil
-	case "script_log":
-		return nil
-	case "agent_output":
-		return nil
-	case "error":
-		return nil
-	case "usage":
-		return nil
-	case "run_lifecycle":
-		return nil
-	case "evaluation_started":
-		return nil
-	case "evaluation_completed":
 		return nil
 	default:
 		return errors.Errorf("invalid value: %v", s)

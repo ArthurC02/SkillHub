@@ -11,6 +11,9 @@
  * Do not edit it manually.
  */
 
+import type { TraceEmitter } from './TraceEmitter';
+import type { TraceEventType } from './TraceEventType';
+
 /**
  * A stored, server-masked Trace event returned by the advanced reader.
  * @export
@@ -36,11 +39,11 @@ export interface TraceEventView {
     /**
      * 
      */
-    emittedBy: TraceEventViewEmittedByEnum;
+    emittedBy: TraceEmitter;
     /**
      * 
      */
-    type: TraceEventViewTypeEnum;
+    type: TraceEventType;
     /**
      * 
      */
@@ -59,34 +62,6 @@ export interface TraceEventView {
     payload: object;
 }
 
-
-/**
- * @export
- */
-export const TraceEventViewEmittedByEnum = {
-    Sandbox: 'sandbox',
-    Orchestrator: 'orchestrator',
-    LlmService: 'llm_service',
-} as const;
-export type TraceEventViewEmittedByEnum = typeof TraceEventViewEmittedByEnum[keyof typeof TraceEventViewEmittedByEnum];
-
-/**
- * @export
- */
-export const TraceEventViewTypeEnum = {
-    SkillActivation: 'skill_activation',
-    ResourceRead: 'resource_read',
-    ToolCall: 'tool_call',
-    McpCall: 'mcp_call',
-    ScriptLog: 'script_log',
-    AgentOutput: 'agent_output',
-    Error: 'error',
-    Usage: 'usage',
-    RunLifecycle: 'run_lifecycle',
-    EvaluationStarted: 'evaluation_started',
-    EvaluationCompleted: 'evaluation_completed',
-} as const;
-export type TraceEventViewTypeEnum = typeof TraceEventViewTypeEnum[keyof typeof TraceEventViewTypeEnum];
 
 /**
  * @export

@@ -11,6 +11,9 @@
  * Do not edit it manually.
  */
 
+import type { TraceEmitter } from './TraceEmitter';
+import type { TraceEventType } from './TraceEventType';
+
 /**
  * One Run Trace event on the wire. The authority on this shape is
  * contracts/events/trace-event.schema.json - including the per-type payload
@@ -50,11 +53,11 @@ export interface TraceEvent {
     /**
      * 
      */
-    emittedBy: TraceEventEmittedByEnum;
+    emittedBy: TraceEmitter;
     /**
      * 
      */
-    type: TraceEventTypeEnum;
+    type: TraceEventType;
     /**
      * 
      */
@@ -76,34 +79,6 @@ export interface TraceEvent {
     payload: object;
 }
 
-
-/**
- * @export
- */
-export const TraceEventEmittedByEnum = {
-    Sandbox: 'sandbox',
-    Orchestrator: 'orchestrator',
-    LlmService: 'llm_service',
-} as const;
-export type TraceEventEmittedByEnum = typeof TraceEventEmittedByEnum[keyof typeof TraceEventEmittedByEnum];
-
-/**
- * @export
- */
-export const TraceEventTypeEnum = {
-    SkillActivation: 'skill_activation',
-    ResourceRead: 'resource_read',
-    ToolCall: 'tool_call',
-    McpCall: 'mcp_call',
-    ScriptLog: 'script_log',
-    AgentOutput: 'agent_output',
-    Error: 'error',
-    Usage: 'usage',
-    RunLifecycle: 'run_lifecycle',
-    EvaluationStarted: 'evaluation_started',
-    EvaluationCompleted: 'evaluation_completed',
-} as const;
-export type TraceEventTypeEnum = typeof TraceEventTypeEnum[keyof typeof TraceEventTypeEnum];
 
 /**
  * @export
