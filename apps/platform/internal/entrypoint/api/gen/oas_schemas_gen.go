@@ -832,232 +832,6 @@ func (s *BatchReflectionOutcome) UnmarshalText(data []byte) error {
 	}
 }
 
-type BrowseCatalogAgent string
-
-const (
-	BrowseCatalogAgentNative     BrowseCatalogAgent = "native"
-	BrowseCatalogAgentTranspiled BrowseCatalogAgent = "transpiled"
-	BrowseCatalogAgentFailed     BrowseCatalogAgent = "failed"
-	BrowseCatalogAgentUnverified BrowseCatalogAgent = "unverified"
-)
-
-// AllValues returns all BrowseCatalogAgent values.
-func (BrowseCatalogAgent) AllValues() []BrowseCatalogAgent {
-	return []BrowseCatalogAgent{
-		BrowseCatalogAgentNative,
-		BrowseCatalogAgentTranspiled,
-		BrowseCatalogAgentFailed,
-		BrowseCatalogAgentUnverified,
-	}
-}
-
-// MarshalText implements encoding.TextMarshaler.
-func (s BrowseCatalogAgent) MarshalText() ([]byte, error) {
-	switch s {
-	case BrowseCatalogAgentNative:
-		return []byte(s), nil
-	case BrowseCatalogAgentTranspiled:
-		return []byte(s), nil
-	case BrowseCatalogAgentFailed:
-		return []byte(s), nil
-	case BrowseCatalogAgentUnverified:
-		return []byte(s), nil
-	default:
-		return nil, errors.Errorf("invalid value: %q", s)
-	}
-}
-
-// UnmarshalText implements encoding.TextUnmarshaler.
-func (s *BrowseCatalogAgent) UnmarshalText(data []byte) error {
-	switch BrowseCatalogAgent(data) {
-	case BrowseCatalogAgentNative:
-		*s = BrowseCatalogAgentNative
-		return nil
-	case BrowseCatalogAgentTranspiled:
-		*s = BrowseCatalogAgentTranspiled
-		return nil
-	case BrowseCatalogAgentFailed:
-		*s = BrowseCatalogAgentFailed
-		return nil
-	case BrowseCatalogAgentUnverified:
-		*s = BrowseCatalogAgentUnverified
-		return nil
-	default:
-		return errors.Errorf("invalid value: %q", data)
-	}
-}
-
-type BrowseCatalogCategory string
-
-const (
-	BrowseCatalogCategoryDocuments BrowseCatalogCategory = "documents"
-	BrowseCatalogCategoryWriting   BrowseCatalogCategory = "writing"
-	BrowseCatalogCategoryData      BrowseCatalogCategory = "data"
-)
-
-// AllValues returns all BrowseCatalogCategory values.
-func (BrowseCatalogCategory) AllValues() []BrowseCatalogCategory {
-	return []BrowseCatalogCategory{
-		BrowseCatalogCategoryDocuments,
-		BrowseCatalogCategoryWriting,
-		BrowseCatalogCategoryData,
-	}
-}
-
-// MarshalText implements encoding.TextMarshaler.
-func (s BrowseCatalogCategory) MarshalText() ([]byte, error) {
-	switch s {
-	case BrowseCatalogCategoryDocuments:
-		return []byte(s), nil
-	case BrowseCatalogCategoryWriting:
-		return []byte(s), nil
-	case BrowseCatalogCategoryData:
-		return []byte(s), nil
-	default:
-		return nil, errors.Errorf("invalid value: %q", s)
-	}
-}
-
-// UnmarshalText implements encoding.TextUnmarshaler.
-func (s *BrowseCatalogCategory) UnmarshalText(data []byte) error {
-	switch BrowseCatalogCategory(data) {
-	case BrowseCatalogCategoryDocuments:
-		*s = BrowseCatalogCategoryDocuments
-		return nil
-	case BrowseCatalogCategoryWriting:
-		*s = BrowseCatalogCategoryWriting
-		return nil
-	case BrowseCatalogCategoryData:
-		*s = BrowseCatalogCategoryData
-		return nil
-	default:
-		return errors.Errorf("invalid value: %q", data)
-	}
-}
-
-type BrowseCatalogScript string
-
-const (
-	BrowseCatalogScriptYes BrowseCatalogScript = "yes"
-	BrowseCatalogScriptNo  BrowseCatalogScript = "no"
-)
-
-// AllValues returns all BrowseCatalogScript values.
-func (BrowseCatalogScript) AllValues() []BrowseCatalogScript {
-	return []BrowseCatalogScript{
-		BrowseCatalogScriptYes,
-		BrowseCatalogScriptNo,
-	}
-}
-
-// MarshalText implements encoding.TextMarshaler.
-func (s BrowseCatalogScript) MarshalText() ([]byte, error) {
-	switch s {
-	case BrowseCatalogScriptYes:
-		return []byte(s), nil
-	case BrowseCatalogScriptNo:
-		return []byte(s), nil
-	default:
-		return nil, errors.Errorf("invalid value: %q", s)
-	}
-}
-
-// UnmarshalText implements encoding.TextUnmarshaler.
-func (s *BrowseCatalogScript) UnmarshalText(data []byte) error {
-	switch BrowseCatalogScript(data) {
-	case BrowseCatalogScriptYes:
-		*s = BrowseCatalogScriptYes
-		return nil
-	case BrowseCatalogScriptNo:
-		*s = BrowseCatalogScriptNo
-		return nil
-	default:
-		return errors.Errorf("invalid value: %q", data)
-	}
-}
-
-type BrowseCatalogTier string
-
-const (
-	BrowseCatalogTierCurated BrowseCatalogTier = "curated"
-	BrowseCatalogTierIndexed BrowseCatalogTier = "indexed"
-)
-
-// AllValues returns all BrowseCatalogTier values.
-func (BrowseCatalogTier) AllValues() []BrowseCatalogTier {
-	return []BrowseCatalogTier{
-		BrowseCatalogTierCurated,
-		BrowseCatalogTierIndexed,
-	}
-}
-
-// MarshalText implements encoding.TextMarshaler.
-func (s BrowseCatalogTier) MarshalText() ([]byte, error) {
-	switch s {
-	case BrowseCatalogTierCurated:
-		return []byte(s), nil
-	case BrowseCatalogTierIndexed:
-		return []byte(s), nil
-	default:
-		return nil, errors.Errorf("invalid value: %q", s)
-	}
-}
-
-// UnmarshalText implements encoding.TextUnmarshaler.
-func (s *BrowseCatalogTier) UnmarshalText(data []byte) error {
-	switch BrowseCatalogTier(data) {
-	case BrowseCatalogTierCurated:
-		*s = BrowseCatalogTierCurated
-		return nil
-	case BrowseCatalogTierIndexed:
-		*s = BrowseCatalogTierIndexed
-		return nil
-	default:
-		return errors.Errorf("invalid value: %q", data)
-	}
-}
-
-type BrowseCatalogValidation string
-
-const (
-	BrowseCatalogValidationPassed     BrowseCatalogValidation = "passed"
-	BrowseCatalogValidationUnverified BrowseCatalogValidation = "unverified"
-)
-
-// AllValues returns all BrowseCatalogValidation values.
-func (BrowseCatalogValidation) AllValues() []BrowseCatalogValidation {
-	return []BrowseCatalogValidation{
-		BrowseCatalogValidationPassed,
-		BrowseCatalogValidationUnverified,
-	}
-}
-
-// MarshalText implements encoding.TextMarshaler.
-func (s BrowseCatalogValidation) MarshalText() ([]byte, error) {
-	switch s {
-	case BrowseCatalogValidationPassed:
-		return []byte(s), nil
-	case BrowseCatalogValidationUnverified:
-		return []byte(s), nil
-	default:
-		return nil, errors.Errorf("invalid value: %q", s)
-	}
-}
-
-// UnmarshalText implements encoding.TextUnmarshaler.
-func (s *BrowseCatalogValidation) UnmarshalText(data []byte) error {
-	switch BrowseCatalogValidation(data) {
-	case BrowseCatalogValidationPassed:
-		*s = BrowseCatalogValidationPassed
-		return nil
-	case BrowseCatalogValidationUnverified:
-		*s = BrowseCatalogValidationUnverified
-		return nil
-	default:
-		return errors.Errorf("invalid value: %q", data)
-	}
-}
-
 // Ref: #/components/schemas/BundleMember
 type BundleMember struct {
 	SkillID   uuid.UUID `json:"skill_id"`
@@ -17423,236 +17197,6 @@ func (o OptBool) Or(d bool) bool {
 	return d
 }
 
-// NewOptBrowseCatalogAgent returns new OptBrowseCatalogAgent with value set to v.
-func NewOptBrowseCatalogAgent(v BrowseCatalogAgent) OptBrowseCatalogAgent {
-	return OptBrowseCatalogAgent{
-		Value: v,
-		Set:   true,
-	}
-}
-
-// OptBrowseCatalogAgent is optional BrowseCatalogAgent.
-type OptBrowseCatalogAgent struct {
-	Value BrowseCatalogAgent
-	Set   bool
-}
-
-// IsSet returns true if OptBrowseCatalogAgent was set.
-func (o OptBrowseCatalogAgent) IsSet() bool { return o.Set }
-
-// Reset unsets value.
-func (o *OptBrowseCatalogAgent) Reset() {
-	var v BrowseCatalogAgent
-	o.Value = v
-	o.Set = false
-}
-
-// SetTo sets value to v.
-func (o *OptBrowseCatalogAgent) SetTo(v BrowseCatalogAgent) {
-	o.Set = true
-	o.Value = v
-}
-
-// Get returns value and boolean that denotes whether value was set.
-func (o OptBrowseCatalogAgent) Get() (v BrowseCatalogAgent, ok bool) {
-	if !o.Set {
-		return v, false
-	}
-	return o.Value, true
-}
-
-// Or returns value if set, or given parameter if does not.
-func (o OptBrowseCatalogAgent) Or(d BrowseCatalogAgent) BrowseCatalogAgent {
-	if v, ok := o.Get(); ok {
-		return v
-	}
-	return d
-}
-
-// NewOptBrowseCatalogCategory returns new OptBrowseCatalogCategory with value set to v.
-func NewOptBrowseCatalogCategory(v BrowseCatalogCategory) OptBrowseCatalogCategory {
-	return OptBrowseCatalogCategory{
-		Value: v,
-		Set:   true,
-	}
-}
-
-// OptBrowseCatalogCategory is optional BrowseCatalogCategory.
-type OptBrowseCatalogCategory struct {
-	Value BrowseCatalogCategory
-	Set   bool
-}
-
-// IsSet returns true if OptBrowseCatalogCategory was set.
-func (o OptBrowseCatalogCategory) IsSet() bool { return o.Set }
-
-// Reset unsets value.
-func (o *OptBrowseCatalogCategory) Reset() {
-	var v BrowseCatalogCategory
-	o.Value = v
-	o.Set = false
-}
-
-// SetTo sets value to v.
-func (o *OptBrowseCatalogCategory) SetTo(v BrowseCatalogCategory) {
-	o.Set = true
-	o.Value = v
-}
-
-// Get returns value and boolean that denotes whether value was set.
-func (o OptBrowseCatalogCategory) Get() (v BrowseCatalogCategory, ok bool) {
-	if !o.Set {
-		return v, false
-	}
-	return o.Value, true
-}
-
-// Or returns value if set, or given parameter if does not.
-func (o OptBrowseCatalogCategory) Or(d BrowseCatalogCategory) BrowseCatalogCategory {
-	if v, ok := o.Get(); ok {
-		return v
-	}
-	return d
-}
-
-// NewOptBrowseCatalogScript returns new OptBrowseCatalogScript with value set to v.
-func NewOptBrowseCatalogScript(v BrowseCatalogScript) OptBrowseCatalogScript {
-	return OptBrowseCatalogScript{
-		Value: v,
-		Set:   true,
-	}
-}
-
-// OptBrowseCatalogScript is optional BrowseCatalogScript.
-type OptBrowseCatalogScript struct {
-	Value BrowseCatalogScript
-	Set   bool
-}
-
-// IsSet returns true if OptBrowseCatalogScript was set.
-func (o OptBrowseCatalogScript) IsSet() bool { return o.Set }
-
-// Reset unsets value.
-func (o *OptBrowseCatalogScript) Reset() {
-	var v BrowseCatalogScript
-	o.Value = v
-	o.Set = false
-}
-
-// SetTo sets value to v.
-func (o *OptBrowseCatalogScript) SetTo(v BrowseCatalogScript) {
-	o.Set = true
-	o.Value = v
-}
-
-// Get returns value and boolean that denotes whether value was set.
-func (o OptBrowseCatalogScript) Get() (v BrowseCatalogScript, ok bool) {
-	if !o.Set {
-		return v, false
-	}
-	return o.Value, true
-}
-
-// Or returns value if set, or given parameter if does not.
-func (o OptBrowseCatalogScript) Or(d BrowseCatalogScript) BrowseCatalogScript {
-	if v, ok := o.Get(); ok {
-		return v
-	}
-	return d
-}
-
-// NewOptBrowseCatalogTier returns new OptBrowseCatalogTier with value set to v.
-func NewOptBrowseCatalogTier(v BrowseCatalogTier) OptBrowseCatalogTier {
-	return OptBrowseCatalogTier{
-		Value: v,
-		Set:   true,
-	}
-}
-
-// OptBrowseCatalogTier is optional BrowseCatalogTier.
-type OptBrowseCatalogTier struct {
-	Value BrowseCatalogTier
-	Set   bool
-}
-
-// IsSet returns true if OptBrowseCatalogTier was set.
-func (o OptBrowseCatalogTier) IsSet() bool { return o.Set }
-
-// Reset unsets value.
-func (o *OptBrowseCatalogTier) Reset() {
-	var v BrowseCatalogTier
-	o.Value = v
-	o.Set = false
-}
-
-// SetTo sets value to v.
-func (o *OptBrowseCatalogTier) SetTo(v BrowseCatalogTier) {
-	o.Set = true
-	o.Value = v
-}
-
-// Get returns value and boolean that denotes whether value was set.
-func (o OptBrowseCatalogTier) Get() (v BrowseCatalogTier, ok bool) {
-	if !o.Set {
-		return v, false
-	}
-	return o.Value, true
-}
-
-// Or returns value if set, or given parameter if does not.
-func (o OptBrowseCatalogTier) Or(d BrowseCatalogTier) BrowseCatalogTier {
-	if v, ok := o.Get(); ok {
-		return v
-	}
-	return d
-}
-
-// NewOptBrowseCatalogValidation returns new OptBrowseCatalogValidation with value set to v.
-func NewOptBrowseCatalogValidation(v BrowseCatalogValidation) OptBrowseCatalogValidation {
-	return OptBrowseCatalogValidation{
-		Value: v,
-		Set:   true,
-	}
-}
-
-// OptBrowseCatalogValidation is optional BrowseCatalogValidation.
-type OptBrowseCatalogValidation struct {
-	Value BrowseCatalogValidation
-	Set   bool
-}
-
-// IsSet returns true if OptBrowseCatalogValidation was set.
-func (o OptBrowseCatalogValidation) IsSet() bool { return o.Set }
-
-// Reset unsets value.
-func (o *OptBrowseCatalogValidation) Reset() {
-	var v BrowseCatalogValidation
-	o.Value = v
-	o.Set = false
-}
-
-// SetTo sets value to v.
-func (o *OptBrowseCatalogValidation) SetTo(v BrowseCatalogValidation) {
-	o.Set = true
-	o.Value = v
-}
-
-// Get returns value and boolean that denotes whether value was set.
-func (o OptBrowseCatalogValidation) Get() (v BrowseCatalogValidation, ok bool) {
-	if !o.Set {
-		return v, false
-	}
-	return o.Value, true
-}
-
-// Or returns value if set, or given parameter if does not.
-func (o OptBrowseCatalogValidation) Or(d BrowseCatalogValidation) BrowseCatalogValidation {
-	if v, ok := o.Get(); ok {
-		return v
-	}
-	return d
-}
-
 // NewOptCancelRunAcceptedContinuation returns new OptCancelRunAcceptedContinuation with value set to v.
 func NewOptCancelRunAcceptedContinuation(v CancelRunAcceptedContinuation) OptCancelRunAcceptedContinuation {
 	return OptCancelRunAcceptedContinuation{
@@ -20799,98 +20343,6 @@ func (o OptPublicSearchResultMatchReasonSource) Or(d PublicSearchResultMatchReas
 	return d
 }
 
-// NewOptPublicSearchSkillsAgent returns new OptPublicSearchSkillsAgent with value set to v.
-func NewOptPublicSearchSkillsAgent(v PublicSearchSkillsAgent) OptPublicSearchSkillsAgent {
-	return OptPublicSearchSkillsAgent{
-		Value: v,
-		Set:   true,
-	}
-}
-
-// OptPublicSearchSkillsAgent is optional PublicSearchSkillsAgent.
-type OptPublicSearchSkillsAgent struct {
-	Value PublicSearchSkillsAgent
-	Set   bool
-}
-
-// IsSet returns true if OptPublicSearchSkillsAgent was set.
-func (o OptPublicSearchSkillsAgent) IsSet() bool { return o.Set }
-
-// Reset unsets value.
-func (o *OptPublicSearchSkillsAgent) Reset() {
-	var v PublicSearchSkillsAgent
-	o.Value = v
-	o.Set = false
-}
-
-// SetTo sets value to v.
-func (o *OptPublicSearchSkillsAgent) SetTo(v PublicSearchSkillsAgent) {
-	o.Set = true
-	o.Value = v
-}
-
-// Get returns value and boolean that denotes whether value was set.
-func (o OptPublicSearchSkillsAgent) Get() (v PublicSearchSkillsAgent, ok bool) {
-	if !o.Set {
-		return v, false
-	}
-	return o.Value, true
-}
-
-// Or returns value if set, or given parameter if does not.
-func (o OptPublicSearchSkillsAgent) Or(d PublicSearchSkillsAgent) PublicSearchSkillsAgent {
-	if v, ok := o.Get(); ok {
-		return v
-	}
-	return d
-}
-
-// NewOptPublicSearchSkillsCategory returns new OptPublicSearchSkillsCategory with value set to v.
-func NewOptPublicSearchSkillsCategory(v PublicSearchSkillsCategory) OptPublicSearchSkillsCategory {
-	return OptPublicSearchSkillsCategory{
-		Value: v,
-		Set:   true,
-	}
-}
-
-// OptPublicSearchSkillsCategory is optional PublicSearchSkillsCategory.
-type OptPublicSearchSkillsCategory struct {
-	Value PublicSearchSkillsCategory
-	Set   bool
-}
-
-// IsSet returns true if OptPublicSearchSkillsCategory was set.
-func (o OptPublicSearchSkillsCategory) IsSet() bool { return o.Set }
-
-// Reset unsets value.
-func (o *OptPublicSearchSkillsCategory) Reset() {
-	var v PublicSearchSkillsCategory
-	o.Value = v
-	o.Set = false
-}
-
-// SetTo sets value to v.
-func (o *OptPublicSearchSkillsCategory) SetTo(v PublicSearchSkillsCategory) {
-	o.Set = true
-	o.Value = v
-}
-
-// Get returns value and boolean that denotes whether value was set.
-func (o OptPublicSearchSkillsCategory) Get() (v PublicSearchSkillsCategory, ok bool) {
-	if !o.Set {
-		return v, false
-	}
-	return o.Value, true
-}
-
-// Or returns value if set, or given parameter if does not.
-func (o OptPublicSearchSkillsCategory) Or(d PublicSearchSkillsCategory) PublicSearchSkillsCategory {
-	if v, ok := o.Get(); ok {
-		return v
-	}
-	return d
-}
-
 // NewOptPublicSearchSkillsPurpose returns new OptPublicSearchSkillsPurpose with value set to v.
 func NewOptPublicSearchSkillsPurpose(v PublicSearchSkillsPurpose) OptPublicSearchSkillsPurpose {
 	return OptPublicSearchSkillsPurpose{
@@ -20931,144 +20383,6 @@ func (o OptPublicSearchSkillsPurpose) Get() (v PublicSearchSkillsPurpose, ok boo
 
 // Or returns value if set, or given parameter if does not.
 func (o OptPublicSearchSkillsPurpose) Or(d PublicSearchSkillsPurpose) PublicSearchSkillsPurpose {
-	if v, ok := o.Get(); ok {
-		return v
-	}
-	return d
-}
-
-// NewOptPublicSearchSkillsScript returns new OptPublicSearchSkillsScript with value set to v.
-func NewOptPublicSearchSkillsScript(v PublicSearchSkillsScript) OptPublicSearchSkillsScript {
-	return OptPublicSearchSkillsScript{
-		Value: v,
-		Set:   true,
-	}
-}
-
-// OptPublicSearchSkillsScript is optional PublicSearchSkillsScript.
-type OptPublicSearchSkillsScript struct {
-	Value PublicSearchSkillsScript
-	Set   bool
-}
-
-// IsSet returns true if OptPublicSearchSkillsScript was set.
-func (o OptPublicSearchSkillsScript) IsSet() bool { return o.Set }
-
-// Reset unsets value.
-func (o *OptPublicSearchSkillsScript) Reset() {
-	var v PublicSearchSkillsScript
-	o.Value = v
-	o.Set = false
-}
-
-// SetTo sets value to v.
-func (o *OptPublicSearchSkillsScript) SetTo(v PublicSearchSkillsScript) {
-	o.Set = true
-	o.Value = v
-}
-
-// Get returns value and boolean that denotes whether value was set.
-func (o OptPublicSearchSkillsScript) Get() (v PublicSearchSkillsScript, ok bool) {
-	if !o.Set {
-		return v, false
-	}
-	return o.Value, true
-}
-
-// Or returns value if set, or given parameter if does not.
-func (o OptPublicSearchSkillsScript) Or(d PublicSearchSkillsScript) PublicSearchSkillsScript {
-	if v, ok := o.Get(); ok {
-		return v
-	}
-	return d
-}
-
-// NewOptPublicSearchSkillsTier returns new OptPublicSearchSkillsTier with value set to v.
-func NewOptPublicSearchSkillsTier(v PublicSearchSkillsTier) OptPublicSearchSkillsTier {
-	return OptPublicSearchSkillsTier{
-		Value: v,
-		Set:   true,
-	}
-}
-
-// OptPublicSearchSkillsTier is optional PublicSearchSkillsTier.
-type OptPublicSearchSkillsTier struct {
-	Value PublicSearchSkillsTier
-	Set   bool
-}
-
-// IsSet returns true if OptPublicSearchSkillsTier was set.
-func (o OptPublicSearchSkillsTier) IsSet() bool { return o.Set }
-
-// Reset unsets value.
-func (o *OptPublicSearchSkillsTier) Reset() {
-	var v PublicSearchSkillsTier
-	o.Value = v
-	o.Set = false
-}
-
-// SetTo sets value to v.
-func (o *OptPublicSearchSkillsTier) SetTo(v PublicSearchSkillsTier) {
-	o.Set = true
-	o.Value = v
-}
-
-// Get returns value and boolean that denotes whether value was set.
-func (o OptPublicSearchSkillsTier) Get() (v PublicSearchSkillsTier, ok bool) {
-	if !o.Set {
-		return v, false
-	}
-	return o.Value, true
-}
-
-// Or returns value if set, or given parameter if does not.
-func (o OptPublicSearchSkillsTier) Or(d PublicSearchSkillsTier) PublicSearchSkillsTier {
-	if v, ok := o.Get(); ok {
-		return v
-	}
-	return d
-}
-
-// NewOptPublicSearchSkillsValidation returns new OptPublicSearchSkillsValidation with value set to v.
-func NewOptPublicSearchSkillsValidation(v PublicSearchSkillsValidation) OptPublicSearchSkillsValidation {
-	return OptPublicSearchSkillsValidation{
-		Value: v,
-		Set:   true,
-	}
-}
-
-// OptPublicSearchSkillsValidation is optional PublicSearchSkillsValidation.
-type OptPublicSearchSkillsValidation struct {
-	Value PublicSearchSkillsValidation
-	Set   bool
-}
-
-// IsSet returns true if OptPublicSearchSkillsValidation was set.
-func (o OptPublicSearchSkillsValidation) IsSet() bool { return o.Set }
-
-// Reset unsets value.
-func (o *OptPublicSearchSkillsValidation) Reset() {
-	var v PublicSearchSkillsValidation
-	o.Value = v
-	o.Set = false
-}
-
-// SetTo sets value to v.
-func (o *OptPublicSearchSkillsValidation) SetTo(v PublicSearchSkillsValidation) {
-	o.Set = true
-	o.Value = v
-}
-
-// Get returns value and boolean that denotes whether value was set.
-func (o OptPublicSearchSkillsValidation) Get() (v PublicSearchSkillsValidation, ok bool) {
-	if !o.Set {
-		return v, false
-	}
-	return o.Value, true
-}
-
-// Or returns value if set, or given parameter if does not.
-func (o OptPublicSearchSkillsValidation) Or(d PublicSearchSkillsValidation) PublicSearchSkillsValidation {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -21943,6 +21257,236 @@ func (o OptSkillEnrichmentTags) Get() (v SkillEnrichmentTags, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptSkillEnrichmentTags) Or(d SkillEnrichmentTags) SkillEnrichmentTags {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptSkillFilterAgent returns new OptSkillFilterAgent with value set to v.
+func NewOptSkillFilterAgent(v SkillFilterAgent) OptSkillFilterAgent {
+	return OptSkillFilterAgent{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptSkillFilterAgent is optional SkillFilterAgent.
+type OptSkillFilterAgent struct {
+	Value SkillFilterAgent
+	Set   bool
+}
+
+// IsSet returns true if OptSkillFilterAgent was set.
+func (o OptSkillFilterAgent) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptSkillFilterAgent) Reset() {
+	var v SkillFilterAgent
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptSkillFilterAgent) SetTo(v SkillFilterAgent) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptSkillFilterAgent) Get() (v SkillFilterAgent, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptSkillFilterAgent) Or(d SkillFilterAgent) SkillFilterAgent {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptSkillFilterCategory returns new OptSkillFilterCategory with value set to v.
+func NewOptSkillFilterCategory(v SkillFilterCategory) OptSkillFilterCategory {
+	return OptSkillFilterCategory{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptSkillFilterCategory is optional SkillFilterCategory.
+type OptSkillFilterCategory struct {
+	Value SkillFilterCategory
+	Set   bool
+}
+
+// IsSet returns true if OptSkillFilterCategory was set.
+func (o OptSkillFilterCategory) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptSkillFilterCategory) Reset() {
+	var v SkillFilterCategory
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptSkillFilterCategory) SetTo(v SkillFilterCategory) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptSkillFilterCategory) Get() (v SkillFilterCategory, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptSkillFilterCategory) Or(d SkillFilterCategory) SkillFilterCategory {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptSkillFilterScript returns new OptSkillFilterScript with value set to v.
+func NewOptSkillFilterScript(v SkillFilterScript) OptSkillFilterScript {
+	return OptSkillFilterScript{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptSkillFilterScript is optional SkillFilterScript.
+type OptSkillFilterScript struct {
+	Value SkillFilterScript
+	Set   bool
+}
+
+// IsSet returns true if OptSkillFilterScript was set.
+func (o OptSkillFilterScript) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptSkillFilterScript) Reset() {
+	var v SkillFilterScript
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptSkillFilterScript) SetTo(v SkillFilterScript) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptSkillFilterScript) Get() (v SkillFilterScript, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptSkillFilterScript) Or(d SkillFilterScript) SkillFilterScript {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptSkillFilterTier returns new OptSkillFilterTier with value set to v.
+func NewOptSkillFilterTier(v SkillFilterTier) OptSkillFilterTier {
+	return OptSkillFilterTier{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptSkillFilterTier is optional SkillFilterTier.
+type OptSkillFilterTier struct {
+	Value SkillFilterTier
+	Set   bool
+}
+
+// IsSet returns true if OptSkillFilterTier was set.
+func (o OptSkillFilterTier) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptSkillFilterTier) Reset() {
+	var v SkillFilterTier
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptSkillFilterTier) SetTo(v SkillFilterTier) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptSkillFilterTier) Get() (v SkillFilterTier, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptSkillFilterTier) Or(d SkillFilterTier) SkillFilterTier {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptSkillFilterValidation returns new OptSkillFilterValidation with value set to v.
+func NewOptSkillFilterValidation(v SkillFilterValidation) OptSkillFilterValidation {
+	return OptSkillFilterValidation{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptSkillFilterValidation is optional SkillFilterValidation.
+type OptSkillFilterValidation struct {
+	Value SkillFilterValidation
+	Set   bool
+}
+
+// IsSet returns true if OptSkillFilterValidation was set.
+func (o OptSkillFilterValidation) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptSkillFilterValidation) Reset() {
+	var v SkillFilterValidation
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptSkillFilterValidation) SetTo(v SkillFilterValidation) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptSkillFilterValidation) Get() (v SkillFilterValidation, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptSkillFilterValidation) Or(d SkillFilterValidation) SkillFilterValidation {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -26983,109 +26527,6 @@ func (s *PublicSearchResultSummarySource) UnmarshalText(data []byte) error {
 	}
 }
 
-type PublicSearchSkillsAgent string
-
-const (
-	PublicSearchSkillsAgentNative     PublicSearchSkillsAgent = "native"
-	PublicSearchSkillsAgentTranspiled PublicSearchSkillsAgent = "transpiled"
-	PublicSearchSkillsAgentFailed     PublicSearchSkillsAgent = "failed"
-	PublicSearchSkillsAgentUnverified PublicSearchSkillsAgent = "unverified"
-)
-
-// AllValues returns all PublicSearchSkillsAgent values.
-func (PublicSearchSkillsAgent) AllValues() []PublicSearchSkillsAgent {
-	return []PublicSearchSkillsAgent{
-		PublicSearchSkillsAgentNative,
-		PublicSearchSkillsAgentTranspiled,
-		PublicSearchSkillsAgentFailed,
-		PublicSearchSkillsAgentUnverified,
-	}
-}
-
-// MarshalText implements encoding.TextMarshaler.
-func (s PublicSearchSkillsAgent) MarshalText() ([]byte, error) {
-	switch s {
-	case PublicSearchSkillsAgentNative:
-		return []byte(s), nil
-	case PublicSearchSkillsAgentTranspiled:
-		return []byte(s), nil
-	case PublicSearchSkillsAgentFailed:
-		return []byte(s), nil
-	case PublicSearchSkillsAgentUnverified:
-		return []byte(s), nil
-	default:
-		return nil, errors.Errorf("invalid value: %q", s)
-	}
-}
-
-// UnmarshalText implements encoding.TextUnmarshaler.
-func (s *PublicSearchSkillsAgent) UnmarshalText(data []byte) error {
-	switch PublicSearchSkillsAgent(data) {
-	case PublicSearchSkillsAgentNative:
-		*s = PublicSearchSkillsAgentNative
-		return nil
-	case PublicSearchSkillsAgentTranspiled:
-		*s = PublicSearchSkillsAgentTranspiled
-		return nil
-	case PublicSearchSkillsAgentFailed:
-		*s = PublicSearchSkillsAgentFailed
-		return nil
-	case PublicSearchSkillsAgentUnverified:
-		*s = PublicSearchSkillsAgentUnverified
-		return nil
-	default:
-		return errors.Errorf("invalid value: %q", data)
-	}
-}
-
-type PublicSearchSkillsCategory string
-
-const (
-	PublicSearchSkillsCategoryDocuments PublicSearchSkillsCategory = "documents"
-	PublicSearchSkillsCategoryWriting   PublicSearchSkillsCategory = "writing"
-	PublicSearchSkillsCategoryData      PublicSearchSkillsCategory = "data"
-)
-
-// AllValues returns all PublicSearchSkillsCategory values.
-func (PublicSearchSkillsCategory) AllValues() []PublicSearchSkillsCategory {
-	return []PublicSearchSkillsCategory{
-		PublicSearchSkillsCategoryDocuments,
-		PublicSearchSkillsCategoryWriting,
-		PublicSearchSkillsCategoryData,
-	}
-}
-
-// MarshalText implements encoding.TextMarshaler.
-func (s PublicSearchSkillsCategory) MarshalText() ([]byte, error) {
-	switch s {
-	case PublicSearchSkillsCategoryDocuments:
-		return []byte(s), nil
-	case PublicSearchSkillsCategoryWriting:
-		return []byte(s), nil
-	case PublicSearchSkillsCategoryData:
-		return []byte(s), nil
-	default:
-		return nil, errors.Errorf("invalid value: %q", s)
-	}
-}
-
-// UnmarshalText implements encoding.TextUnmarshaler.
-func (s *PublicSearchSkillsCategory) UnmarshalText(data []byte) error {
-	switch PublicSearchSkillsCategory(data) {
-	case PublicSearchSkillsCategoryDocuments:
-		*s = PublicSearchSkillsCategoryDocuments
-		return nil
-	case PublicSearchSkillsCategoryWriting:
-		*s = PublicSearchSkillsCategoryWriting
-		return nil
-	case PublicSearchSkillsCategoryData:
-		*s = PublicSearchSkillsCategoryData
-		return nil
-	default:
-		return errors.Errorf("invalid value: %q", data)
-	}
-}
-
 type PublicSearchSkillsPurpose string
 
 const (
@@ -27114,129 +26555,6 @@ func (s *PublicSearchSkillsPurpose) UnmarshalText(data []byte) error {
 	switch PublicSearchSkillsPurpose(data) {
 	case PublicSearchSkillsPurposeReference:
 		*s = PublicSearchSkillsPurposeReference
-		return nil
-	default:
-		return errors.Errorf("invalid value: %q", data)
-	}
-}
-
-type PublicSearchSkillsScript string
-
-const (
-	PublicSearchSkillsScriptYes PublicSearchSkillsScript = "yes"
-	PublicSearchSkillsScriptNo  PublicSearchSkillsScript = "no"
-)
-
-// AllValues returns all PublicSearchSkillsScript values.
-func (PublicSearchSkillsScript) AllValues() []PublicSearchSkillsScript {
-	return []PublicSearchSkillsScript{
-		PublicSearchSkillsScriptYes,
-		PublicSearchSkillsScriptNo,
-	}
-}
-
-// MarshalText implements encoding.TextMarshaler.
-func (s PublicSearchSkillsScript) MarshalText() ([]byte, error) {
-	switch s {
-	case PublicSearchSkillsScriptYes:
-		return []byte(s), nil
-	case PublicSearchSkillsScriptNo:
-		return []byte(s), nil
-	default:
-		return nil, errors.Errorf("invalid value: %q", s)
-	}
-}
-
-// UnmarshalText implements encoding.TextUnmarshaler.
-func (s *PublicSearchSkillsScript) UnmarshalText(data []byte) error {
-	switch PublicSearchSkillsScript(data) {
-	case PublicSearchSkillsScriptYes:
-		*s = PublicSearchSkillsScriptYes
-		return nil
-	case PublicSearchSkillsScriptNo:
-		*s = PublicSearchSkillsScriptNo
-		return nil
-	default:
-		return errors.Errorf("invalid value: %q", data)
-	}
-}
-
-type PublicSearchSkillsTier string
-
-const (
-	PublicSearchSkillsTierCurated PublicSearchSkillsTier = "curated"
-	PublicSearchSkillsTierIndexed PublicSearchSkillsTier = "indexed"
-)
-
-// AllValues returns all PublicSearchSkillsTier values.
-func (PublicSearchSkillsTier) AllValues() []PublicSearchSkillsTier {
-	return []PublicSearchSkillsTier{
-		PublicSearchSkillsTierCurated,
-		PublicSearchSkillsTierIndexed,
-	}
-}
-
-// MarshalText implements encoding.TextMarshaler.
-func (s PublicSearchSkillsTier) MarshalText() ([]byte, error) {
-	switch s {
-	case PublicSearchSkillsTierCurated:
-		return []byte(s), nil
-	case PublicSearchSkillsTierIndexed:
-		return []byte(s), nil
-	default:
-		return nil, errors.Errorf("invalid value: %q", s)
-	}
-}
-
-// UnmarshalText implements encoding.TextUnmarshaler.
-func (s *PublicSearchSkillsTier) UnmarshalText(data []byte) error {
-	switch PublicSearchSkillsTier(data) {
-	case PublicSearchSkillsTierCurated:
-		*s = PublicSearchSkillsTierCurated
-		return nil
-	case PublicSearchSkillsTierIndexed:
-		*s = PublicSearchSkillsTierIndexed
-		return nil
-	default:
-		return errors.Errorf("invalid value: %q", data)
-	}
-}
-
-type PublicSearchSkillsValidation string
-
-const (
-	PublicSearchSkillsValidationPassed     PublicSearchSkillsValidation = "passed"
-	PublicSearchSkillsValidationUnverified PublicSearchSkillsValidation = "unverified"
-)
-
-// AllValues returns all PublicSearchSkillsValidation values.
-func (PublicSearchSkillsValidation) AllValues() []PublicSearchSkillsValidation {
-	return []PublicSearchSkillsValidation{
-		PublicSearchSkillsValidationPassed,
-		PublicSearchSkillsValidationUnverified,
-	}
-}
-
-// MarshalText implements encoding.TextMarshaler.
-func (s PublicSearchSkillsValidation) MarshalText() ([]byte, error) {
-	switch s {
-	case PublicSearchSkillsValidationPassed:
-		return []byte(s), nil
-	case PublicSearchSkillsValidationUnverified:
-		return []byte(s), nil
-	default:
-		return nil, errors.Errorf("invalid value: %q", s)
-	}
-}
-
-// UnmarshalText implements encoding.TextUnmarshaler.
-func (s *PublicSearchSkillsValidation) UnmarshalText(data []byte) error {
-	switch PublicSearchSkillsValidation(data) {
-	case PublicSearchSkillsValidationPassed:
-		*s = PublicSearchSkillsValidationPassed
-		return nil
-	case PublicSearchSkillsValidationUnverified:
-		*s = PublicSearchSkillsValidationUnverified
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)
@@ -35078,6 +34396,232 @@ func (s *SkillFilesHeaders) SetResponse(val SkillFiles) {
 }
 
 func (*SkillFilesHeaders) getSkillFilesRes() {}
+
+type SkillFilterAgent string
+
+const (
+	SkillFilterAgentNative     SkillFilterAgent = "native"
+	SkillFilterAgentTranspiled SkillFilterAgent = "transpiled"
+	SkillFilterAgentFailed     SkillFilterAgent = "failed"
+	SkillFilterAgentUnverified SkillFilterAgent = "unverified"
+)
+
+// AllValues returns all SkillFilterAgent values.
+func (SkillFilterAgent) AllValues() []SkillFilterAgent {
+	return []SkillFilterAgent{
+		SkillFilterAgentNative,
+		SkillFilterAgentTranspiled,
+		SkillFilterAgentFailed,
+		SkillFilterAgentUnverified,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SkillFilterAgent) MarshalText() ([]byte, error) {
+	switch s {
+	case SkillFilterAgentNative:
+		return []byte(s), nil
+	case SkillFilterAgentTranspiled:
+		return []byte(s), nil
+	case SkillFilterAgentFailed:
+		return []byte(s), nil
+	case SkillFilterAgentUnverified:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SkillFilterAgent) UnmarshalText(data []byte) error {
+	switch SkillFilterAgent(data) {
+	case SkillFilterAgentNative:
+		*s = SkillFilterAgentNative
+		return nil
+	case SkillFilterAgentTranspiled:
+		*s = SkillFilterAgentTranspiled
+		return nil
+	case SkillFilterAgentFailed:
+		*s = SkillFilterAgentFailed
+		return nil
+	case SkillFilterAgentUnverified:
+		*s = SkillFilterAgentUnverified
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type SkillFilterCategory string
+
+const (
+	SkillFilterCategoryDocuments SkillFilterCategory = "documents"
+	SkillFilterCategoryWriting   SkillFilterCategory = "writing"
+	SkillFilterCategoryData      SkillFilterCategory = "data"
+)
+
+// AllValues returns all SkillFilterCategory values.
+func (SkillFilterCategory) AllValues() []SkillFilterCategory {
+	return []SkillFilterCategory{
+		SkillFilterCategoryDocuments,
+		SkillFilterCategoryWriting,
+		SkillFilterCategoryData,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SkillFilterCategory) MarshalText() ([]byte, error) {
+	switch s {
+	case SkillFilterCategoryDocuments:
+		return []byte(s), nil
+	case SkillFilterCategoryWriting:
+		return []byte(s), nil
+	case SkillFilterCategoryData:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SkillFilterCategory) UnmarshalText(data []byte) error {
+	switch SkillFilterCategory(data) {
+	case SkillFilterCategoryDocuments:
+		*s = SkillFilterCategoryDocuments
+		return nil
+	case SkillFilterCategoryWriting:
+		*s = SkillFilterCategoryWriting
+		return nil
+	case SkillFilterCategoryData:
+		*s = SkillFilterCategoryData
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type SkillFilterScript string
+
+const (
+	SkillFilterScriptYes SkillFilterScript = "yes"
+	SkillFilterScriptNo  SkillFilterScript = "no"
+)
+
+// AllValues returns all SkillFilterScript values.
+func (SkillFilterScript) AllValues() []SkillFilterScript {
+	return []SkillFilterScript{
+		SkillFilterScriptYes,
+		SkillFilterScriptNo,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SkillFilterScript) MarshalText() ([]byte, error) {
+	switch s {
+	case SkillFilterScriptYes:
+		return []byte(s), nil
+	case SkillFilterScriptNo:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SkillFilterScript) UnmarshalText(data []byte) error {
+	switch SkillFilterScript(data) {
+	case SkillFilterScriptYes:
+		*s = SkillFilterScriptYes
+		return nil
+	case SkillFilterScriptNo:
+		*s = SkillFilterScriptNo
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type SkillFilterTier string
+
+const (
+	SkillFilterTierCurated SkillFilterTier = "curated"
+	SkillFilterTierIndexed SkillFilterTier = "indexed"
+)
+
+// AllValues returns all SkillFilterTier values.
+func (SkillFilterTier) AllValues() []SkillFilterTier {
+	return []SkillFilterTier{
+		SkillFilterTierCurated,
+		SkillFilterTierIndexed,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SkillFilterTier) MarshalText() ([]byte, error) {
+	switch s {
+	case SkillFilterTierCurated:
+		return []byte(s), nil
+	case SkillFilterTierIndexed:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SkillFilterTier) UnmarshalText(data []byte) error {
+	switch SkillFilterTier(data) {
+	case SkillFilterTierCurated:
+		*s = SkillFilterTierCurated
+		return nil
+	case SkillFilterTierIndexed:
+		*s = SkillFilterTierIndexed
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type SkillFilterValidation string
+
+const (
+	SkillFilterValidationPassed     SkillFilterValidation = "passed"
+	SkillFilterValidationUnverified SkillFilterValidation = "unverified"
+)
+
+// AllValues returns all SkillFilterValidation values.
+func (SkillFilterValidation) AllValues() []SkillFilterValidation {
+	return []SkillFilterValidation{
+		SkillFilterValidationPassed,
+		SkillFilterValidationUnverified,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SkillFilterValidation) MarshalText() ([]byte, error) {
+	switch s {
+	case SkillFilterValidationPassed:
+		return []byte(s), nil
+	case SkillFilterValidationUnverified:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SkillFilterValidation) UnmarshalText(data []byte) error {
+	switch SkillFilterValidation(data) {
+	case SkillFilterValidationPassed:
+		*s = SkillFilterValidationPassed
+		return nil
+	case SkillFilterValidationUnverified:
+		*s = SkillFilterValidationUnverified
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
 
 // Ref: #/components/schemas/SkillGovernance
 type SkillGovernance struct {

@@ -32,16 +32,47 @@ type AdoptReflectionCandidateParams struct {
 // BrowseCatalogParams is parameters of browseCatalog operation.
 type BrowseCatalogParams struct {
 	Limit OptInt `json:",omitempty,omitzero"`
-	// As on `GET /api/skills/search`. Absent = not filtered.
-	Script OptBrowseCatalogScript `json:",omitempty,omitzero"`
-	// As on `GET /api/skills/search`. Absent = not filtered.
-	Validation OptBrowseCatalogValidation `json:",omitempty,omitzero"`
-	// As on `GET /api/skills/search`. Absent = not filtered.
-	Agent OptBrowseCatalogAgent `json:",omitempty,omitzero"`
-	// As on `GET /api/skills/search`. Absent = not filtered.
-	Tier OptBrowseCatalogTier `json:",omitempty,omitzero"`
-	// As on `GET /api/skills/search`. Absent = not filtered.
-	Category OptBrowseCatalogCategory `json:",omitempty,omitzero"`
+	// DISC-003 filter on whether the package carries runnable code, as recorded by the import scan: a
+	// script file in the tree, or code embedded in SKILL.md itself (SKILL-003). Absent = not filtered.
+	//
+	// A row the projection holds no scan for matches neither value. It is not known to have a script and
+	// it is not known to be free of one, and answering `no` for it would be the
+	// 不得自行推定為通過 that DISC-004 forbids. Such rows leave a filtered page and return when
+	// the filter is cleared.
+	Script OptSkillFilterScript `json:",omitempty,omitzero"`
+	// DISC-003 filter on the spec-validation axis of `compatibility`. `passed` is a skill with a saved
+	// version — static validation blocks the import on any error-level finding, so a stored version is
+	// the evidence. `unverified` is a skill with no saved content, which is never reported as failed.
+	// Absent = not filtered.
+	Validation OptSkillFilterValidation `json:",omitempty,omitzero"`
+	// DISC-002's Agent dimension, live since migration 0022. It filters the `runtime` axis of
+	// `compatibility` and only that axis, matching the measured verdict exactly rather than as a boolean:
+	// `unverified` is a value a caller can ask for, and a "not native" filter would silently mean
+	// transpiled-or-failed-or-never-measured, which are three different things to someone choosing a
+	// skill. Absent = not filtered.
+	//
+	// The `capability` axis is shown but not filterable. Every measured skill in the catalogue came back
+	// `activated` (45/45 in the M2 baseline), so a control on it separates nothing; it becomes a filter
+	// when a `not_activated` row exists and not before.
+	Agent OptSkillFilterAgent `json:",omitempty,omitzero"`
+	// DISC-002's 來源層級 dimension, live since migration 0042. Absent = not filtered.
+	//
+	// `curated` means the PDM-002 nine-item review passed and the version it examined is still the newest
+	// one; a curated skill whose content has moved on answers `indexed` here, because five of those nine
+	// checks are about specific bytes. So `indexed` is not "never reviewed" — it is "not currently
+	// carrying a review of what you are looking at", which is the question a reader is actually asking.
+	//
+	// `external` is not accepted. An external result was never imported and has no row, so it is a state
+	// of the search rather than a value this filter can select.
+	Tier OptSkillFilterTier `json:",omitempty,omitzero"`
+	// DISC-002's 類別 dimension (PDM-001's three shelves), live since migration 0053. Absent = not
+	// filtered.
+	//
+	// Matches the skill's stored category exactly. A skill with no category — every user-imported skill
+	// today, because the platform has not decided how one gets a category (05 R-19) — matches none of
+	// the three values; it is not silently filed under any of them, and its row says 尚未定值 rather
+	// than a guess (02:DISC-004).
+	Category OptSkillFilterCategory `json:",omitempty,omitzero"`
 }
 
 // CancelRunParams is parameters of cancelRun operation.
@@ -540,12 +571,12 @@ type PublicSearchSkillsParams struct {
 	// it is not known to be free of one, and answering `no` for it would be the
 	// 不得自行推定為通過 that DISC-004 forbids. Such rows leave a filtered page and return when
 	// the filter is cleared.
-	Script OptPublicSearchSkillsScript `json:",omitempty,omitzero"`
+	Script OptSkillFilterScript `json:",omitempty,omitzero"`
 	// DISC-003 filter on the spec-validation axis of `compatibility`. `passed` is a skill with a saved
 	// version — static validation blocks the import on any error-level finding, so a stored version is
 	// the evidence. `unverified` is a skill with no saved content, which is never reported as failed.
 	// Absent = not filtered.
-	Validation OptPublicSearchSkillsValidation `json:",omitempty,omitzero"`
+	Validation OptSkillFilterValidation `json:",omitempty,omitzero"`
 	// DISC-002's Agent dimension, live since migration 0022. It filters the `runtime` axis of
 	// `compatibility` and only that axis, matching the measured verdict exactly rather than as a boolean:
 	// `unverified` is a value a caller can ask for, and a "not native" filter would silently mean
@@ -555,7 +586,7 @@ type PublicSearchSkillsParams struct {
 	// The `capability` axis is shown but not filterable. Every measured skill in the catalogue came back
 	// `activated` (45/45 in the M2 baseline), so a control on it separates nothing; it becomes a filter
 	// when a `not_activated` row exists and not before.
-	Agent OptPublicSearchSkillsAgent `json:",omitempty,omitzero"`
+	Agent OptSkillFilterAgent `json:",omitempty,omitzero"`
 	// DISC-002's 來源層級 dimension, live since migration 0042. Absent = not filtered.
 	//
 	// `curated` means the PDM-002 nine-item review passed and the version it examined is still the newest
@@ -565,7 +596,7 @@ type PublicSearchSkillsParams struct {
 	//
 	// `external` is not accepted. An external result was never imported and has no row, so it is a state
 	// of the search rather than a value this filter can select.
-	Tier OptPublicSearchSkillsTier `json:",omitempty,omitzero"`
+	Tier OptSkillFilterTier `json:",omitempty,omitzero"`
 	// DISC-002's 類別 dimension (PDM-001's three shelves), live since migration 0053. Absent = not
 	// filtered.
 	//
@@ -573,7 +604,7 @@ type PublicSearchSkillsParams struct {
 	// today, because the platform has not decided how one gets a category (05 R-19) — matches none of
 	// the three values; it is not silently filed under any of them, and its row says 尚未定值 rather
 	// than a guess (02:DISC-004).
-	Category OptPublicSearchSkillsCategory `json:",omitempty,omitzero"`
+	Category OptSkillFilterCategory `json:",omitempty,omitzero"`
 }
 
 // PublishBundleParams is parameters of publishBundle operation.

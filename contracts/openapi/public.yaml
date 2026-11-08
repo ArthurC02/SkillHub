@@ -925,77 +925,11 @@ paths:
             reason a hit matched is DISC-002's answer to "should I use this",
             which the picker does not ask). Retrieval itself is unchanged.
             Absent = an ordinary search.
-        - name: script
-          in: query
-          required: false
-          schema: { type: string, enum: ["yes", "no"] }
-          description: |
-            DISC-003 filter on whether the package carries runnable code, as
-            recorded by the import scan: a script file in the tree, or code
-            embedded in SKILL.md itself (SKILL-003). Absent = not filtered.
-
-            A row the projection holds no scan for matches neither value. It is
-            not known to have a script and it is not known to be free of one,
-            and answering `no` for it would be the 不得自行推定為通過 that
-            DISC-004 forbids. Such rows leave a filtered page and return when
-            the filter is cleared.
-        - name: validation
-          in: query
-          required: false
-          schema: { type: string, enum: [passed, unverified] }
-          description: |
-            DISC-003 filter on the spec-validation axis of `compatibility`.
-            `passed` is a skill with a saved version — static validation blocks
-            the import on any error-level finding, so a stored version is the
-            evidence. `unverified` is a skill with no saved content, which is
-            never reported as failed. Absent = not filtered.
-        - name: agent
-          in: query
-          required: false
-          schema: { type: string, enum: [native, transpiled, failed, unverified] }
-          description: |
-            DISC-002's Agent dimension, live since migration 0022. It filters the
-            `runtime` axis of `compatibility` and only that axis, matching the
-            measured verdict **exactly** rather than as a boolean: `unverified`
-            is a value a caller can ask for, and a "not native" filter would
-            silently mean transpiled-or-failed-or-never-measured, which are three
-            different things to someone choosing a skill. Absent = not filtered.
-
-            The `capability` axis is shown but not filterable. Every measured
-            skill in the catalogue came back `activated` (45/45 in the M2
-            baseline), so a control on it separates nothing; it becomes a filter
-            when a `not_activated` row exists and not before.
-        - name: tier
-          in: query
-          required: false
-          schema: { type: string, enum: [curated, indexed] }
-          description: |
-            DISC-002's 來源層級 dimension, live since migration 0042. Absent =
-            not filtered.
-
-            `curated` means the PDM-002 nine-item review passed **and** the
-            version it examined is still the newest one; a curated skill whose
-            content has moved on answers `indexed` here, because five of those
-            nine checks are about specific bytes. So `indexed` is not "never
-            reviewed" — it is "not currently carrying a review of what you are
-            looking at", which is the question a reader is actually asking.
-
-            `external` is not accepted. An external result was never imported and
-            has no row, so it is a state of the search rather than a value this
-            filter can select.
-        - name: category
-          in: query
-          required: false
-          schema: { type: string, enum: [documents, writing, data] }
-          description: |
-            DISC-002's 類別 dimension (PDM-001's three shelves), live since
-            migration 0053. Absent = not filtered.
-
-            Matches the skill's stored category exactly. A skill with no
-            category — every user-imported skill today, because the platform
-            has not decided how one gets a category (05 R-19) — matches none of
-            the three values; it is not silently filed under any of them, and
-            its row says 尚未定值 rather than a guess (02:DISC-004).
+        - $ref: "#/components/parameters/SkillFilterScript"
+        - $ref: "#/components/parameters/SkillFilterValidation"
+        - $ref: "#/components/parameters/SkillFilterAgent"
+        - $ref: "#/components/parameters/SkillFilterTier"
+        - $ref: "#/components/parameters/SkillFilterCategory"
       responses:
         "200":
           description: Ranked matches with match reasons, or empty list.
@@ -1142,31 +1076,11 @@ paths:
           in: query
           required: false
           schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
-        - name: script
-          in: query
-          required: false
-          schema: { type: string, enum: ["yes", "no"] }
-          description: As on `GET /api/skills/search`. Absent = not filtered.
-        - name: validation
-          in: query
-          required: false
-          schema: { type: string, enum: [passed, unverified] }
-          description: As on `GET /api/skills/search`. Absent = not filtered.
-        - name: agent
-          in: query
-          required: false
-          schema: { type: string, enum: [native, transpiled, failed, unverified] }
-          description: As on `GET /api/skills/search`. Absent = not filtered.
-        - name: tier
-          in: query
-          required: false
-          schema: { type: string, enum: [curated, indexed] }
-          description: As on `GET /api/skills/search`. Absent = not filtered.
-        - name: category
-          in: query
-          required: false
-          schema: { type: string, enum: [documents, writing, data] }
-          description: As on `GET /api/skills/search`. Absent = not filtered.
+        - $ref: "#/components/parameters/SkillFilterScript"
+        - $ref: "#/components/parameters/SkillFilterValidation"
+        - $ref: "#/components/parameters/SkillFilterAgent"
+        - $ref: "#/components/parameters/SkillFilterTier"
+        - $ref: "#/components/parameters/SkillFilterCategory"
       responses:
         "200":
           description: A page of the catalogue, or an empty list when it is empty.
@@ -8386,6 +8300,83 @@ paths:
               $ref: "#/components/schemas/CreationAction"
 
 components:
+  parameters:
+    SkillFilterScript:
+      name: script
+      in: query
+      required: false
+      schema: { type: string, enum: ["yes", "no"] }
+      description: |
+        DISC-003 filter on whether the package carries runnable code, as
+        recorded by the import scan: a script file in the tree, or code
+        embedded in SKILL.md itself (SKILL-003). Absent = not filtered.
+
+        A row the projection holds no scan for matches neither value. It is
+        not known to have a script and it is not known to be free of one,
+        and answering `no` for it would be the 不得自行推定為通過 that
+        DISC-004 forbids. Such rows leave a filtered page and return when
+        the filter is cleared.
+    SkillFilterValidation:
+      name: validation
+      in: query
+      required: false
+      schema: { type: string, enum: [passed, unverified] }
+      description: |
+        DISC-003 filter on the spec-validation axis of `compatibility`.
+        `passed` is a skill with a saved version — static validation blocks
+        the import on any error-level finding, so a stored version is the
+        evidence. `unverified` is a skill with no saved content, which is
+        never reported as failed. Absent = not filtered.
+    SkillFilterAgent:
+      name: agent
+      in: query
+      required: false
+      schema: { type: string, enum: [native, transpiled, failed, unverified] }
+      description: |
+        DISC-002's Agent dimension, live since migration 0022. It filters the
+        `runtime` axis of `compatibility` and only that axis, matching the
+        measured verdict **exactly** rather than as a boolean: `unverified`
+        is a value a caller can ask for, and a "not native" filter would
+        silently mean transpiled-or-failed-or-never-measured, which are three
+        different things to someone choosing a skill. Absent = not filtered.
+
+        The `capability` axis is shown but not filterable. Every measured
+        skill in the catalogue came back `activated` (45/45 in the M2
+        baseline), so a control on it separates nothing; it becomes a filter
+        when a `not_activated` row exists and not before.
+    SkillFilterTier:
+      name: tier
+      in: query
+      required: false
+      schema: { type: string, enum: [curated, indexed] }
+      description: |
+        DISC-002's 來源層級 dimension, live since migration 0042. Absent =
+        not filtered.
+
+        `curated` means the PDM-002 nine-item review passed **and** the
+        version it examined is still the newest one; a curated skill whose
+        content has moved on answers `indexed` here, because five of those
+        nine checks are about specific bytes. So `indexed` is not "never
+        reviewed" — it is "not currently carrying a review of what you are
+        looking at", which is the question a reader is actually asking.
+
+        `external` is not accepted. An external result was never imported and
+        has no row, so it is a state of the search rather than a value this
+        filter can select.
+    SkillFilterCategory:
+      name: category
+      in: query
+      required: false
+      schema: { type: string, enum: [documents, writing, data] }
+      description: |
+        DISC-002's 類別 dimension (PDM-001's three shelves), live since
+        migration 0053. Absent = not filtered.
+
+        Matches the skill's stored category exactly. A skill with no
+        category — every user-imported skill today, because the platform
+        has not decided how one gets a category (05 R-19) — matches none of
+        the three values; it is not silently filed under any of them, and
+        its row says 尚未定值 rather than a guess (02:DISC-004).
   headers:
     ETag:
       description: A tag for this exact body; sent back as `If-None-Match` it turns an unchanged answer into a 304.

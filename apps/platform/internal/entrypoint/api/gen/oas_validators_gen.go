@@ -500,67 +500,6 @@ func (s BatchReflectionOutcome) Validate() error {
 	}
 }
 
-func (s BrowseCatalogAgent) Validate() error {
-	switch s {
-	case "native":
-		return nil
-	case "transpiled":
-		return nil
-	case "failed":
-		return nil
-	case "unverified":
-		return nil
-	default:
-		return errors.Errorf("invalid value: %v", s)
-	}
-}
-
-func (s BrowseCatalogCategory) Validate() error {
-	switch s {
-	case "documents":
-		return nil
-	case "writing":
-		return nil
-	case "data":
-		return nil
-	default:
-		return errors.Errorf("invalid value: %v", s)
-	}
-}
-
-func (s BrowseCatalogScript) Validate() error {
-	switch s {
-	case "yes":
-		return nil
-	case "no":
-		return nil
-	default:
-		return errors.Errorf("invalid value: %v", s)
-	}
-}
-
-func (s BrowseCatalogTier) Validate() error {
-	switch s {
-	case "curated":
-		return nil
-	case "indexed":
-		return nil
-	default:
-		return errors.Errorf("invalid value: %v", s)
-	}
-}
-
-func (s BrowseCatalogValidation) Validate() error {
-	switch s {
-	case "passed":
-		return nil
-	case "unverified":
-		return nil
-	default:
-		return errors.Errorf("invalid value: %v", s)
-	}
-}
-
 func (s *BundleMemberChange) Validate() error {
 	if s == nil {
 		return validate.ErrNilPointer
@@ -10125,70 +10064,9 @@ func (s PublicSearchResultSummarySource) Validate() error {
 	}
 }
 
-func (s PublicSearchSkillsAgent) Validate() error {
-	switch s {
-	case "native":
-		return nil
-	case "transpiled":
-		return nil
-	case "failed":
-		return nil
-	case "unverified":
-		return nil
-	default:
-		return errors.Errorf("invalid value: %v", s)
-	}
-}
-
-func (s PublicSearchSkillsCategory) Validate() error {
-	switch s {
-	case "documents":
-		return nil
-	case "writing":
-		return nil
-	case "data":
-		return nil
-	default:
-		return errors.Errorf("invalid value: %v", s)
-	}
-}
-
 func (s PublicSearchSkillsPurpose) Validate() error {
 	switch s {
 	case "reference":
-		return nil
-	default:
-		return errors.Errorf("invalid value: %v", s)
-	}
-}
-
-func (s PublicSearchSkillsScript) Validate() error {
-	switch s {
-	case "yes":
-		return nil
-	case "no":
-		return nil
-	default:
-		return errors.Errorf("invalid value: %v", s)
-	}
-}
-
-func (s PublicSearchSkillsTier) Validate() error {
-	switch s {
-	case "curated":
-		return nil
-	case "indexed":
-		return nil
-	default:
-		return errors.Errorf("invalid value: %v", s)
-	}
-}
-
-func (s PublicSearchSkillsValidation) Validate() error {
-	switch s {
-	case "passed":
-		return nil
-	case "unverified":
 		return nil
 	default:
 		return errors.Errorf("invalid value: %v", s)
@@ -14059,6 +13937,67 @@ func (s *SkillFilesHeaders) Validate() error {
 		return &validate.Error{Fields: failures}
 	}
 	return nil
+}
+
+func (s SkillFilterAgent) Validate() error {
+	switch s {
+	case "native":
+		return nil
+	case "transpiled":
+		return nil
+	case "failed":
+		return nil
+	case "unverified":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
+}
+
+func (s SkillFilterCategory) Validate() error {
+	switch s {
+	case "documents":
+		return nil
+	case "writing":
+		return nil
+	case "data":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
+}
+
+func (s SkillFilterScript) Validate() error {
+	switch s {
+	case "yes":
+		return nil
+	case "no":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
+}
+
+func (s SkillFilterTier) Validate() error {
+	switch s {
+	case "curated":
+		return nil
+	case "indexed":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
+}
+
+func (s SkillFilterValidation) Validate() error {
+	switch s {
+	case "passed":
+		return nil
+	case "unverified":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
 }
 
 func (s *SkillImportLimits) Validate() error {
