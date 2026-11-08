@@ -556,9 +556,8 @@ const (
 )
 
 func (h *Handler) resolveSkill(w http.ResponseWriter, r *http.Request) (SkillFacts, string, bool) {
-	var id pgtype.UUID
-	if err := id.Scan(r.PathValue("id")); err != nil {
-		httpx.WriteError(w, http.StatusNotFound, errSkillNotFound.Error())
+	id, ok := httpx.PathUUID(w, r, "id", errSkillNotFound.Error())
+	if !ok {
 		return SkillFacts{}, "", false
 	}
 	ctx := r.Context()
