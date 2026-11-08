@@ -283,9 +283,8 @@ type creditGrantResponse struct {
 }
 
 func (h *creditsHandler) Grant(w http.ResponseWriter, r *http.Request) {
-	var workspaceID pgtype.UUID
-	if err := workspaceID.Scan(r.PathValue("workspace_id")); err != nil {
-		httpx.WriteError(w, http.StatusNotFound, "workspace not found")
+	workspaceID, ok := httpx.PathUUID(w, r, "workspace_id", "workspace not found")
+	if !ok {
 		return
 	}
 
@@ -353,9 +352,8 @@ type creditAccountResponse struct {
 }
 
 func (h *creditsHandler) Account(w http.ResponseWriter, r *http.Request) {
-	var workspaceID pgtype.UUID
-	if err := workspaceID.Scan(r.PathValue("workspace_id")); err != nil {
-		httpx.WriteError(w, http.StatusNotFound, "not found")
+	workspaceID, ok := httpx.PathUUID(w, r, "workspace_id", "not found")
+	if !ok {
 		return
 	}
 	operator, ok := identity.SessionUser(r.Context())
