@@ -510,7 +510,7 @@ test("a balance at or above the threshold leaves the start button enabled and sh
 });
 test("a balance below the threshold disables the start button and names the deficit", async () => {
   const reason =
-    "餘額不足以開始新的創作會話：目前 10 點，這一場大約要 65 點，還差 55 點。請聯絡 operator 授予點數，或等待下次充值。";
+    "餘額不足以開始新的創作會話：目前 10 點，這一場大約要 65 點，還差 55 點。請聯絡管理者為這個帳號加點後再開始。";
   vi.stubGlobal(
     "fetch",
     vi.fn((url: string) => {

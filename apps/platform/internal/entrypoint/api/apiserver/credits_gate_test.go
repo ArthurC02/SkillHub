@@ -29,10 +29,9 @@ func TestCreditBalanceResponseBlocksBelowThresholdAndNamesTheDeficit(t *testing.
 	if view.BlockReason == "" {
 		t.Fatal("blocked response carries no BlockReason at all")
 	}
-	for _, want := range []string{"10", "65", "55"} {
-		if !strings.Contains(view.BlockReason, want) {
-			t.Errorf("BlockReason = %q; missing %q (balance/threshold/deficit must all be nameable)", view.BlockReason, want)
-		}
+	const want = "餘額不足以開始新的創作會話：目前 10 點，這一場大約要 65 點，還差 55 點。請聯絡管理者為這個帳號加點後再開始。"
+	if view.BlockReason != want {
+		t.Errorf("BlockReason = %q, want %q", view.BlockReason, want)
 	}
 }
 

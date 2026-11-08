@@ -93,7 +93,7 @@ func creditBalanceResponse(balance int64, canStart bool, est CreditSessionEstima
 		short := est.ThresholdCredits - balance
 		view.BlockReason = fmt.Sprintf(
 			"餘額不足以開始新的創作會話：目前 %d 點，這一場大約要 %d 點，還差 %d 點。"+
-				"請聯絡 operator 授予點數，或等待下次充值。",
+				"請聯絡管理者為這個帳號加點後再開始。",
 			balance, est.ThresholdCredits, short,
 		)
 	}
