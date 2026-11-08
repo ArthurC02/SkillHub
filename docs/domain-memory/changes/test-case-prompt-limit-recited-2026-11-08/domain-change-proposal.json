@@ -3,12 +3,12 @@
   "proposal_id": "test-case-prompt-limit-recited-2026-11-08",
   "proposer": "coding-agent",
   "requirement_id": "test-case-prompt-limit-recited",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-11-08T06:57:56.102390Z",
   "verified_at": "2026-11-08T06:58:44.533913Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-11-08T06:58:47.719376Z",
+  "applied_at": "2026-11-08T06:59:01.478530Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "1c72b71e7d1ea1fc7b3f7817fe36d0b5447e387a",
@@ -107,5 +107,9 @@
   ],
   "supersedes": [
     "testlab-harvest-rules-2026-10-17"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "03131658ebd5294cf34040ea41b18c72a55b537e",
+    "registry_digest": "sha256:3cf6c5f59e4412957ee96c41c0dd8debd123a91907081bd694f754d2bf776887"
+  }
 }
