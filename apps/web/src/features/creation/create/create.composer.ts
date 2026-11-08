@@ -5,9 +5,9 @@ import {
   compositionCommand,
   compositionMode,
   compositionProblem,
-  diagramProblem,
-  readImage,
+  CREATION_MAX_DIAGRAM_BYTES,
 } from "./create.model";
+import { diagramProblem, readDiagram } from "../diagram.model";
 
 type Reference = { id: string; name: string };
 
@@ -30,7 +30,7 @@ export function useComposer(
   };
   const chooseFile = (picked?: File) => {
     if (!picked) return;
-    const problem = diagramProblem(picked);
+    const problem = diagramProblem(picked, CREATION_MAX_DIAGRAM_BYTES);
     if (problem) {
       clearFile();
       onProblem(new Error(problem));
@@ -57,7 +57,8 @@ export function useComposer(
     const problem = compositionProblem(message.trim(), !!file, refs.length);
     if (problem) throw new Error(problem);
     const mode = compositionMode(file, refs.length);
-    const diagram = mode === "diagram" && file ? await readImage(file) : undefined;
+    const diagram =
+      mode === "diagram" && file ? await readDiagram(file, CREATION_MAX_DIAGRAM_BYTES) : undefined;
     if (mode === "diagram" && !diagram) throw new Error("請先選擇流程圖。");
     let value = session;
     if (!value) {

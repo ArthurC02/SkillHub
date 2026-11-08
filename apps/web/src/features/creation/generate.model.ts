@@ -1,32 +1,10 @@
 import type { GenerationFailure } from "../../core/api/types";
-import { bytes } from "../../shared/format";
-
-export const GENERATE_DIAGRAM_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;
+import { diagramLimit } from "./diagram.model";
 
 export const GENERATE_MAX_DIAGRAM_BYTES = 4000000; // one-number: generateMaxDiagramBytes
-export const GENERATE_DIAGRAM_LIMIT = `${GENERATE_MAX_DIAGRAM_BYTES.toLocaleString("en-US")} 位元組（約 ${bytes(GENERATE_MAX_DIAGRAM_BYTES)}）`;
+export const GENERATE_DIAGRAM_LIMIT = diagramLimit(GENERATE_MAX_DIAGRAM_BYTES);
 
 export const GENERATE_MAX_REFERENCES = 3; // one-number: generateMaxReferences
-
-export function generateDiagramProblem(file: File): string | undefined {
-  if (!GENERATE_DIAGRAM_TYPES.includes(file.type as (typeof GENERATE_DIAGRAM_TYPES)[number]))
-    return "圖片格式需為 PNG、JPEG 或 WebP。";
-  if (file.size > GENERATE_MAX_DIAGRAM_BYTES)
-    return `圖片超過 ${GENERATE_DIAGRAM_LIMIT}的上限，請換一張較小的圖。`;
-  return undefined;
-}
-
-export function readGenerateDiagram(file: File): Promise<{ media_type: string; data: string }> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = String(reader.result);
-      resolve({ media_type: file.type, data: result.slice(result.indexOf(",") + 1) });
-    };
-    reader.onerror = () => reject(new Error("讀取圖片失敗，請重新選擇。"));
-    reader.readAsDataURL(file);
-  });
-}
 
 export const FAILURE_SENTENCE: Record<
   GenerationFailure["failure"],

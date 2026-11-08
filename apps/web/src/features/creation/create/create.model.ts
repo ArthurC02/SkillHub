@@ -9,7 +9,7 @@ import type {
 import type { CommandExtra } from "./create.commands";
 import type { CategorizedFindings, ImportFinding } from "../../../core/api/types";
 import { isCategorizedFindings } from "../import.service";
-import { bytes } from "../../../shared/format";
+import { diagramLimit } from "../diagram.model";
 import { criterionTally, labelOf, OVERALL_LABEL } from "../../../shared/verdict";
 
 export type DraftInspection = { findings: CategorizedFindings } | { refusal: string };
@@ -50,27 +50,7 @@ export function readDraftInspection(raw: string, blocked: boolean): DraftInspect
 }
 
 export const CREATION_MAX_DIAGRAM_BYTES = 4_000_000; // one-number: creationMaxDiagramBytes
-export const CREATION_DIAGRAM_LIMIT = `${CREATION_MAX_DIAGRAM_BYTES.toLocaleString("en-US")} 位元組（約 ${bytes(CREATION_MAX_DIAGRAM_BYTES)}）`;
-
-export function diagramProblem(file: File): string | undefined {
-  if (!["image/png", "image/jpeg", "image/webp"].includes(file.type))
-    return "流程圖只收 PNG、JPEG 或 WebP。";
-  if (file.size === 0 || file.size > CREATION_MAX_DIAGRAM_BYTES)
-    return `請選擇最多 ${CREATION_DIAGRAM_LIMIT} 以內的流程圖。`;
-  return undefined;
-}
-
-export function readImage(file: File): Promise<{ media_type: string; data: string }> {
-  const problem = diagramProblem(file);
-  if (problem) return Promise.reject(new Error(problem));
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("流程圖無法讀取，請重新選擇。"));
-    reader.onload = () =>
-      resolve({ media_type: file.type, data: String(reader.result).split(",")[1] });
-    reader.readAsDataURL(file);
-  });
-}
+export const CREATION_DIAGRAM_LIMIT = diagramLimit(CREATION_MAX_DIAGRAM_BYTES);
 
 type RunObservation = {
   execution_status: string;

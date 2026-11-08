@@ -419,15 +419,21 @@ test("GEN-005: the diagram's accepted types and size ceiling are stated before t
   );
 });
 
-test("GEN-005: a diagram one byte past the ceiling is refused with the same ceiling the picker states", async () => {
-  const { generateDiagramProblem } = await import("./generate.model");
-  const png = (size: number) => new File([new Uint8Array(size)], "flow.png", { type: "image/png" });
+test.each([
+  [0, "請選擇最多 4,000,000 位元組（約 3.8 MB） 以內的流程圖。"],
+  [1, undefined],
+  [4_000_000, undefined],
+  [4_000_001, "請選擇最多 4,000,000 位元組（約 3.8 MB） 以內的流程圖。"],
+])(
+  "GEN-005: a %i-byte diagram is judged against the ceiling the picker states",
+  async (size, problem) => {
+    const { diagramProblem } = await import("./diagram.model");
+    const { GENERATE_MAX_DIAGRAM_BYTES } = await import("./generate.model");
+    const png = new File([new Uint8Array(size)], "flow.png", { type: "image/png" });
 
-  expect(generateDiagramProblem(png(4_000_000))).toBeUndefined();
-  expect(generateDiagramProblem(png(4_000_001))).toBe(
-    "圖片超過 4,000,000 位元組（約 3.8 MB）的上限，請換一張較小的圖。",
-  );
-});
+    expect(diagramProblem(png, GENERATE_MAX_DIAGRAM_BYTES)).toBe(problem);
+  },
+);
 
 test("GEN-003: every failure value in the contract has a sentence", async () => {
   const { FAILURE_SENTENCE } = await import("./generate.model");
@@ -587,7 +593,7 @@ test("GEN-005: an oversized file is refused client-side with an alert, and nothi
   });
 
   const alert = container.querySelector('[role="alert"]');
-  expect(alert?.textContent).toContain("上限");
+  expect(alert?.textContent).toBe("請選擇最多 4,000,000 位元組（約 3.8 MB） 以內的流程圖。");
   expect(posted.some((p) => p.path === "/skills/generate")).toBe(false);
 });
 
@@ -629,7 +635,7 @@ test("GEN-005: a diagram file with an unsupported MIME type is refused with its 
   });
 
   const alert = container.querySelector('[role="alert"]');
-  expect(alert?.textContent).toBe("圖片格式需為 PNG、JPEG 或 WebP。");
+  expect(alert?.textContent).toBe("流程圖只收 PNG、JPEG 或 WebP。");
   expect(posted.some((p) => p.path === "/skills/generate")).toBe(false);
 });
 

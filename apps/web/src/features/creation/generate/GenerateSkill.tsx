@@ -5,11 +5,11 @@ import { useGenerateAllowance, useGenerateSkill } from "../generate.service";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import {
   GENERATE_DIAGRAM_LIMIT,
+  GENERATE_MAX_DIAGRAM_BYTES,
   GENERATE_MAX_REFERENCES,
-  generateDiagramProblem,
   generateFailureMessage,
-  readGenerateDiagram,
 } from "../generate.model";
+import { diagramProblem, readDiagram } from "../diagram.model";
 import { isCategorizedFindings } from "../import.service";
 import type { GenerateDiagram, GenerateRejected } from "../../../core/api/types";
 import { GenerateHistory } from "./components/GenerateHistory";
@@ -43,14 +43,14 @@ function useGenerateDiagram() {
     if (!file) return;
     setDiagram(undefined);
     setDiagramName("");
-    const problem = generateDiagramProblem(file);
+    const problem = diagramProblem(file, GENERATE_MAX_DIAGRAM_BYTES);
     if (problem) {
       setDiagramError(problem);
       event.target.value = "";
       return;
     }
     setReading(true);
-    readGenerateDiagram(file).then(
+    readDiagram(file, GENERATE_MAX_DIAGRAM_BYTES).then(
       (read) => {
         setDiagram({
           media_type: read.media_type as GenerateDiagram["media_type"],
