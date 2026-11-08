@@ -87,11 +87,13 @@ type Limits struct {
 }
 
 func (l Limits) Valid() bool {
-	return finite(l.MaxCostUSD) && finite(l.MaxCallCostUSD) && l.MaxCostUSD > 0 && l.MaxCallCostUSD > 0 && l.MaxCallCostUSD <= l.MaxCostUSD && l.MaxSteps > 0 && l.MaxToolCalls > 0 && l.CallTimeout >= time.Second && l.CallTimeout <= MaxCallTimeout && l.SessionTimeout >= l.CallTimeout && l.Retention >= l.SessionTimeout+l.activeStep()+attemptWrapUp && l.MaxOutputTokens > 0 && l.MaxOutputTokens <= 16000
+	return finite(l.MaxCostUSD) && finite(l.MaxCallCostUSD) && l.MaxCostUSD > 0 && l.MaxCallCostUSD > 0 && l.MaxCallCostUSD <= l.MaxCostUSD && l.MaxSteps > 0 && l.MaxToolCalls > 0 && l.CallTimeout >= time.Second && l.CallTimeout <= MaxCallTimeout && l.SessionTimeout >= l.CallTimeout && l.Retention >= l.SessionTimeout+l.activeStep()+attemptWrapUp && l.MaxOutputTokens > 0 && l.MaxOutputTokens <= MaxOutputTokens
 }
 func (l Limits) activeStep() time.Duration { return l.CallTimeout + activeStepSlack }
 
-const MaxCallTimeout = 120 * time.Second
+const MaxCallTimeout = 120 * time.Second // one-number: creationMaxCallSeconds
+
+const MaxOutputTokens = 16000 // one-number: creationMaxOutputTokens
 
 const LongestStep = MaxCallTimeout + activeStepSlack + attemptWrapUp
 

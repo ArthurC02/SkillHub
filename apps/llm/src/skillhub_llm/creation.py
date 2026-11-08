@@ -224,8 +224,8 @@ class CreationStepRequest(BaseModel):
         Literal["search_catalog", "search_knowledge", "validate_draft", "fetch_url"]
     ]
     mcp_tools: list[CreationMCPTool] = Field(default_factory=list, max_length=MAX_MCP_TOOLS)
-    timeout_seconds: int = Field(..., ge=1, le=120)
-    max_output_tokens: int = Field(..., ge=1, le=16000)
+    timeout_seconds: int = Field(..., ge=1, le=120)  # one-number: creationMaxCallSeconds
+    max_output_tokens: int = Field(..., ge=1, le=16000)  # one-number: creationMaxOutputTokens
 
 
 class CreationDecision(BaseModel):

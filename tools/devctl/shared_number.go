@@ -30,6 +30,7 @@ type sharedNumberSite struct {
 var sharedNumberRoster = []string{
 
 	"creationMaxAcceptanceCriteria",
+	"creationMaxCallSeconds",
 	"creationMaxChallengeCases",
 	"creationMaxChallengeCriteria",
 	"creationMaxChallengeNameRunes",
@@ -38,6 +39,7 @@ var sharedNumberRoster = []string{
 	"creationMaxDiagramItemRunes",
 	"creationMaxDiagramItems",
 	"creationMaxMCPTools",
+	"creationMaxOutputTokens",
 	"creationMaxSampleInputRunes",
 	"creationMaxSearchRewriteChars",
 	"creationMaxSearchRewrites",
