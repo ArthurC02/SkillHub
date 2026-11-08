@@ -42,7 +42,7 @@ const (
 	MaxCriterionChars = limits.AcceptanceCriterionTextMaxLength
 	MaxCriteria       = 20 // one-number: maxCriteria
 
-	maxConfirmedCreationCriteria = 12
+	maxConfirmedCreationCriteria = 12 // one-number: creationMaxAcceptanceCriteria
 )
 
 var (
@@ -537,7 +537,7 @@ func validateDraft(name, prompt string) (string, string, error) {
 	case prompt == "":
 		return "", "", fmt.Errorf("%w: Prompt 不能空白", ErrInvalid)
 	case utf8.RuneCountInString(prompt) > MaxPromptChars:
-		return "", "", fmt.Errorf("%w: Prompt 最多 %d 個字", ErrInvalid, MaxPromptChars)
+		return "", "", ErrPromptTooLong
 	}
 	return name, prompt, nil
 }

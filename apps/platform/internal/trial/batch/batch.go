@@ -18,7 +18,7 @@ import (
 
 const (
 	MinBatchTrials       = 1
-	MaxBatchTrials       = 10
+	MaxBatchTrials       = limits.CreateEvaluationBatchBodyTrialsMaximum
 	MaxBatchTestCases    = limits.CreateEvaluationBatchBodyTestCaseIdsMaxItems
 	BatchAdvanceInterval = time.Minute
 )

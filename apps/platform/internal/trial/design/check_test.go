@@ -45,3 +45,12 @@ func TestAContinuationPromptIsHeldToThePromptLimit(t *testing.T) {
 		t.Errorf("a prompt at the limit was refused as too long")
 	}
 }
+
+func TestADraftPromptOverTheLimitIsRefusedAsPromptTooLong(t *testing.T) {
+	if _, _, err := validateDraft("name", strings.Repeat("a", MaxPromptChars+1)); !errors.Is(err, ErrPromptTooLong) {
+		t.Errorf("one character past the limit: got %v, want ErrPromptTooLong", err)
+	}
+	if _, _, err := validateDraft("name", strings.Repeat("a", MaxPromptChars)); err != nil {
+		t.Errorf("a prompt at the limit was refused: %v", err)
+	}
+}
