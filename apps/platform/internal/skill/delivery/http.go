@@ -300,13 +300,9 @@ func excludedViews(in []ExcludedTestCase) []excludedCaseView {
 }
 
 func pathIDs(w http.ResponseWriter, r *http.Request) (skillID, versionID pgtype.UUID, ok bool) {
-	if err := skillID.Scan(r.PathValue("id")); err != nil {
-		httpx.WriteError(w, http.StatusNotFound, "找不到這個 Skill 版本")
+	if skillID, ok = httpx.PathUUID(w, r, "id", "找不到這個 Skill 版本"); !ok {
 		return skillID, versionID, false
 	}
-	if err := versionID.Scan(r.PathValue("versionId")); err != nil {
-		httpx.WriteError(w, http.StatusNotFound, "找不到這個 Skill 版本")
-		return skillID, versionID, false
-	}
-	return skillID, versionID, true
+	versionID, ok = httpx.PathUUID(w, r, "versionId", "找不到這個 Skill 版本")
+	return skillID, versionID, ok
 }

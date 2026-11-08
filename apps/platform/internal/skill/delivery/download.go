@@ -471,12 +471,8 @@ func (h *Handler) DeleteDownload(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func artifactID(w http.ResponseWriter, r *http.Request) (id pgtype.UUID, ok bool) {
-	if err := id.Scan(r.PathValue("artifactId")); err != nil {
-		httpx.WriteError(w, http.StatusNotFound, "download not found")
-		return id, false
-	}
-	return id, true
+func artifactID(w http.ResponseWriter, r *http.Request) (pgtype.UUID, bool) {
+	return httpx.PathUUID(w, r, "artifactId", "download not found")
 }
 
 func sanitizeHeaderValue(s string) string {
