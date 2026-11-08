@@ -132,7 +132,7 @@ func downloadOnce(client *http.Client, url string) ([]byte, bool, error) {
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
-		return nil, response.StatusCode >= 500, fmt.Errorf("GET %s: %s", url, response.Status)
+		return nil, response.StatusCode >= http.StatusInternalServerError, fmt.Errorf("GET %s: %s", url, response.Status)
 	}
 	body, err := io.ReadAll(response.Body)
 	return body, err != nil, err
