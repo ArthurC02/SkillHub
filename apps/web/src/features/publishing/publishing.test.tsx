@@ -2334,7 +2334,9 @@ test("PublisherSection：未註冊時顯示名稱規則、永久警語與表單"
   stub({ "/me/publisher": { body: { error: "no publisher" }, status: 404 } });
   await render(<PublisherSection />, () => text().includes("還沒有註冊發佈者名稱"));
 
-  expect(text()).toContain("小寫英文字母、數字與連字號");
+  expect(text()).toContain(
+    "名稱規則：1～64 字元，只能是小寫英文字母、數字與連字號（-），開頭與結尾必須是英數字，不能有連續兩個連字號。",
+  );
   expect(text()).toContain("沒有改名的功能");
   expect(container.querySelector("form")).not.toBeNull();
 });
@@ -2569,6 +2571,9 @@ test("PublisherSection：422 name_shape 顯示中文", async () => {
   await act(async () => button("註冊")?.click());
   await waitFor(() => text().includes("名稱格式不對"));
 
+  expect(text()).toContain(
+    "名稱格式不對：1～64 字元，只能是小寫英文字母、數字與連字號（-），開頭與結尾必須是英數字，不能有連續兩個連字號。",
+  );
   expect(text()).not.toContain("lowercase letters");
 });
 

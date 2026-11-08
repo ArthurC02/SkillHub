@@ -1,3 +1,4 @@
+import { PublishSkillBodyNameMaxLength } from "@skillhub/api-client-ts/limits";
 import { ApiError, isWriteResultUnknown, userFacingReason } from "../../core/api/client";
 import type { SkillDetail } from "../../core/api/types";
 import { packagingGate } from "../packaging";
@@ -20,6 +21,8 @@ export type PublishingRefusalReason =
   | "license_not_declarable"
   | "held_for_evaluation";
 
+const NAME_SHAPE = `1～${PublishSkillBodyNameMaxLength} 字元，只能是小寫英文字母、數字與連字號（-），開頭與結尾必須是英數字，不能有連續兩個連字號。`;
+
 export const PUBLISHING_REFUSAL_LABEL: Record<PublishingRefusalReason, string> = {
   no_publisher: "這個帳號還沒有註冊發佈者名稱；先在「發佈者名稱」註冊一個，才能發佈。",
   already_registered: "這個帳號已經有一個發佈者名稱了，一個帳號只能有一個，不能再註冊第二個。",
@@ -27,8 +30,7 @@ export const PUBLISHING_REFUSAL_LABEL: Record<PublishingRefusalReason, string> =
   name_held:
     "這個名稱屬於一個已刪除的小工具，刪除後 90 天內保留，免得舊連結指到別的內容；換一個名稱，或 90 天後再用。",
   name_is_permanent: "這個小工具已經用另一個名稱發佈過，名稱一經建立就不能更改。",
-  name_shape:
-    "名稱格式不對：1～64 字元，只能是小寫英文字母、數字與連字號，開頭與結尾要是英數字，不能有連續兩個連字號。",
+  name_shape: `名稱格式不對：${NAME_SHAPE}`,
   name_reserved: "這個名稱是保留字，用來避免冒充平台或上游供應商，換一個名稱再試一次。",
   license_hold: "這個小工具的內容因授權問題尚未釐清而被保留，所以不能發佈。",
   not_redistributable: "這個小工具的授權不允許再散布，所以不能發佈。",
@@ -41,8 +43,7 @@ export const PUBLISHING_REFUSAL_LABEL: Record<PublishingRefusalReason, string> =
   held_for_evaluation: "這一版是評估中的候選，還沒被採用，所以不能發佈；先在那一輪採用它，再發佈。",
 };
 
-export const PUBLISHER_NAME_RULE =
-  "名稱規則：1～64 字元，只能是小寫英文字母、數字與連字號（-），開頭與結尾必須是英數字，不能有連續兩個連字號。";
+export const PUBLISHER_NAME_RULE = `名稱規則：${NAME_SHAPE}`;
 
 export const PUBLISHER_NAME_PERMANENT = "註冊之後這個名稱就是永久的：沒有改名的功能。";
 
