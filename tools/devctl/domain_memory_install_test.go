@@ -161,3 +161,43 @@ func TestTheToolRefusesToRunAnInstallThatIsNotThePin(t *testing.T) {
 		t.Fatalf("err = %v, want the install command named", err)
 	}
 }
+
+func TestDownloadRetriesATransientServerErrorThenSucceeds(t *testing.T) {
+	t.Parallel()
+	attempts := &atomic.Int32{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if attempts.Add(1) < 3 {
+			http.Error(w, "gateway timeout", http.StatusGatewayTimeout)
+			return
+		}
+		_, _ = w.Write([]byte("payload"))
+	}))
+	t.Cleanup(server.Close)
+	body, err := downloadWithRetry(server.Client(), server.URL, 3, 0)
+	if err != nil {
+		t.Fatalf("download after two 504s = %v, want success", err)
+	}
+	if string(body) != "payload" {
+		t.Fatalf("body = %q, want the served payload", body)
+	}
+	if got := attempts.Load(); got != 3 {
+		t.Fatalf("made %d attempts, want 3: two 504s then the body", got)
+	}
+}
+
+func TestDownloadDoesNotRetryAClientError(t *testing.T) {
+	t.Parallel()
+	attempts := &atomic.Int32{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		attempts.Add(1)
+		http.Error(w, "nope", http.StatusNotFound)
+	}))
+	t.Cleanup(server.Close)
+	_, err := downloadWithRetry(server.Client(), server.URL, 3, 0)
+	if err == nil || !strings.Contains(err.Error(), "404") {
+		t.Fatalf("err = %v, want a 404 reported without retry", err)
+	}
+	if got := attempts.Load(); got != 1 {
+		t.Fatalf("made %d attempts on a 404, want 1: a client error is not retried", got)
+	}
+}

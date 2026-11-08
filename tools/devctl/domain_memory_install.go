@@ -97,16 +97,45 @@ func installedDomainMemoryProblem(root string, pin domainMemoryRelease, asset st
 	return ""
 }
 
+const downloadAttempts = 5
+
+const downloadPause = 2 * time.Second
+
+const downloadPauseCap = 30 * time.Second
+
 func download(client *http.Client, url string) ([]byte, error) {
+	return downloadWithRetry(client, url, downloadAttempts, downloadPause)
+}
+
+func downloadWithRetry(client *http.Client, url string, attempts int, pause time.Duration) ([]byte, error) {
+	var err error
+	for attempt := 1; ; attempt++ {
+		var body []byte
+		var retryable bool
+		if body, retryable, err = downloadOnce(client, url); err == nil {
+			return body, nil
+		}
+		if !retryable || attempt >= attempts {
+			return nil, err
+		}
+		time.Sleep(pause)
+		if pause *= 2; pause > downloadPauseCap {
+			pause = downloadPauseCap
+		}
+	}
+}
+
+func downloadOnce(client *http.Client, url string) ([]byte, bool, error) {
 	response, err := client.Get(url)
 	if err != nil {
-		return nil, err
+		return nil, true, err
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GET %s: %s", url, response.Status)
+		return nil, response.StatusCode >= 500, fmt.Errorf("GET %s: %s", url, response.Status)
 	}
-	return io.ReadAll(response.Body)
+	body, err := io.ReadAll(response.Body)
+	return body, err != nil, err
 }
 
 func installDomainMemory(root, releases string, out io.Writer) error {

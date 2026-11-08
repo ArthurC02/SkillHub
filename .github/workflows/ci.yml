@@ -638,7 +638,7 @@ jobs:
       - name: Hook launcher tests
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'hook launcher tests' cargo test --quiet --manifest-path tools/harness/Cargo.toml
       - name: Install the pinned Domain Memory plugin
-        run: go -C tools/devctl run . domain-memory-install
+        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'install the pinned Domain Memory plugin' go -C tools/devctl run . domain-memory-install
       - name: devctl tests
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'devctl tests' go -C tools/devctl test -race -count=1 ./...
       - name: Agent automation contract
@@ -733,7 +733,7 @@ jobs:
         run: bash tools/ci/shell-lint.sh
 
       - name: Install the pinned Domain Memory plugin
-        run: go -C tools/devctl run . domain-memory-install
+        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'install the pinned Domain Memory plugin' go -C tools/devctl run . domain-memory-install
 
       - name: Tools scripts — characterisation tests
         run: |
