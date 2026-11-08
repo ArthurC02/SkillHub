@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { ApiError, userFacingReason } from "../../../../core/api/client";
+import { userFacingReason } from "../../../../core/api/client";
 import { queryKeys } from "../../../../core/api/queryKeys";
 import { Loading } from "../../../../shared/ui/Loading";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
@@ -121,8 +121,7 @@ export function BatchImprovement({
 
 function reflectFailureSentence(error: Error): string {
   if (isApplyResultUnknown(error)) return "無法確認這次找改進是否完成；重新整理頁面就會看到結果。";
-  if (error instanceof ApiError) return userFacingReason(error) ?? "找改進失敗，可以再試一次。";
-  return "找改進失敗，可以再試一次。";
+  return userFacingReason(error) ?? "找改進失敗，可以再試一次。";
 }
 
 const APPLY_EFFECT = "會建立一個新版本，不會覆寫這一批跑過的版本。";

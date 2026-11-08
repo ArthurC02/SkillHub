@@ -9,25 +9,28 @@ import { useRestoreSkill, useTakedownSkill } from "../../skill";
 
 const STALE_STATE = "重新整理清單看看最新狀態。";
 
+const TAKEDOWN_FAILED = "下架沒有成功，可以再試一次。";
+const RESTORE_FAILED = "恢復上架沒有成功，可以再試一次。";
+
 function takedownFailureSentence(error: unknown) {
   if (isWriteResultUnknown(error))
     return "無法確認是否已經下架；請先重新整理清單確認，再決定是否重試。";
-  if (!(error instanceof ApiError)) return "下架沒有成功，可以再試一次。";
+  if (!(error instanceof ApiError)) return TAKEDOWN_FAILED;
   if (error.status === 400) return "請寫下下架理由。";
   if (error.status === 404) return "找不到這個小工具；它可能已被刪除。";
   if (error.status === 409) return `它已經下架了；${STALE_STATE}`;
-  return "下架沒有成功，可以再試一次。";
+  return TAKEDOWN_FAILED;
 }
 
 function restoreFailureSentence(error: unknown) {
   if (isWriteResultUnknown(error))
     return "無法確認是否已經恢復上架；請先重新整理清單確認，再決定是否重試。";
-  if (!(error instanceof ApiError)) return "恢復上架沒有成功，可以再試一次。";
+  if (!(error instanceof ApiError)) return RESTORE_FAILED;
   if (error.status === 403)
     return "這次下架不能由你恢復：它是平台營運下架的，或已經超過 30 天的恢復期限。";
   if (error.status === 404) return "找不到這個小工具；它可能已被刪除。";
   if (error.status === 409) return `它已經不在下架狀態了；${STALE_STATE}`;
-  return "恢復上架沒有成功，可以再試一次。";
+  return RESTORE_FAILED;
 }
 
 export function TakedownNotice({
