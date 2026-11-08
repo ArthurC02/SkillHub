@@ -3,12 +3,12 @@
   "proposal_id": "query-bounds-shared-parser-recited-2026-11-08",
   "proposer": "coding-agent",
   "requirement_id": "query-bounds-shared-parser-recited",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-11-08T08:44:46.071139Z",
   "verified_at": "2026-11-08T08:46:40.266900Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-11-08T08:46:43.212815Z",
+  "applied_at": "2026-11-08T08:46:56.908253Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "24dadb6ef2fdb2520f742ceb1039725ee540872c",
@@ -260,5 +260,9 @@
   "supersedes": [
     "findings-recite-2026-10-26",
     "shifted-recite-2026-10-24"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "7d143a0174ff9b8b01f39d14c389b6b5f6b64a74",
+    "registry_digest": "sha256:df60bbfdac25bee0817f71a9e7c164f09260f2720f00fafe84e6a570dc68f183"
+  }
 }
