@@ -104,11 +104,7 @@ func main() {
 	_ = node.closer()
 }
 
-const (
-	defaultWorkloadUserID     = 65532
-	defaultP02IntervalSeconds = 300
-	defaultP02TimeoutSeconds  = 30
-)
+const defaultWorkloadUserID = 65532
 
 func newRunManager(node openedDriver, kind string, cleanMode cleanNode, log *slog.Logger) *sandbox.Manager {
 	modes, egressAllow, egressUnenforced := declaredEgress(kind, cleanMode, log)
@@ -134,8 +130,8 @@ func newRunManager(node openedDriver, kind string, cleanMode cleanNode, log *slo
 func residentP02Probe() *sandbox.P02Probe {
 	return sandbox.NewP02Probe(
 		splitList(os.Getenv("SKILLHUB_SANDBOX_P02_TARGETS")),
-		time.Duration(envInt("SKILLHUB_SANDBOX_P02_INTERVAL_SECONDS", defaultP02IntervalSeconds))*time.Second,
-		time.Duration(envInt("SKILLHUB_SANDBOX_P02_TIMEOUT_SECONDS", defaultP02TimeoutSeconds))*time.Second,
+		time.Duration(envInt("SKILLHUB_SANDBOX_P02_INTERVAL_SECONDS", 0))*time.Second,
+		time.Duration(envInt("SKILLHUB_SANDBOX_P02_TIMEOUT_SECONDS", 0))*time.Second,
 	)
 }
 
