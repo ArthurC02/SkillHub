@@ -162,9 +162,8 @@ func (h *Handler) SaveVersion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var skillID pgtype.UUID
-	if err := skillID.Scan(r.PathValue("id")); err != nil {
-		httpx.WriteError(w, http.StatusNotFound, ErrSkillNotFound.Error())
+	skillID, ok := httpx.PathUUID(w, r, "id", ErrSkillNotFound.Error())
+	if !ok {
 		return
 	}
 

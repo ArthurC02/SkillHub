@@ -5,8 +5,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
-
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 )
@@ -70,9 +68,8 @@ func (s *Service) AddTool(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Service) RetireTool(w http.ResponseWriter, r *http.Request) {
-	var id pgtype.UUID
-	if id.Scan(r.PathValue("id")) != nil {
-		httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
+	id, ok := httpx.PathUUID(w, r, "id", ErrNotFound.Error())
+	if !ok {
 		return
 	}
 	var body struct {
