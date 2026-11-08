@@ -39,9 +39,8 @@ func (h *Handler) SetCurationTier(w http.ResponseWriter, r *http.Request) {
 	if !httpx.DecodeJSON(w, r, maxJSONBodyBytes, &body, "body must be JSON with a value and a note") {
 		return
 	}
-	var skillID pgtype.UUID
-	if err := skillID.Scan(r.PathValue("id")); err != nil {
-		httpx.WriteError(w, http.StatusNotFound, errSkillNotFound.Error())
+	skillID, ok := httpx.PathUUID(w, r, "id", errSkillNotFound.Error())
+	if !ok {
 		return
 	}
 	user, ok := sessionActor(w, r)

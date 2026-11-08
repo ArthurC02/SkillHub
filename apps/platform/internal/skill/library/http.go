@@ -90,9 +90,8 @@ func (h *Handler) Fork(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var skillID pgtype.UUID
-	if err := skillID.Scan(r.PathValue("id")); err != nil {
-		httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
+	skillID, ok := httpx.PathUUID(w, r, "id", ErrNotFound.Error())
+	if !ok {
 		return
 	}
 
@@ -122,9 +121,8 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var skillID pgtype.UUID
-	if err := skillID.Scan(r.PathValue("id")); err != nil {
-		httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
+	skillID, ok := httpx.PathUUID(w, r, "id", ErrNotFound.Error())
+	if !ok {
 		return
 	}
 
@@ -165,9 +163,8 @@ func (h *Handler) Takedown(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var skillID pgtype.UUID
-	if err := skillID.Scan(r.PathValue("id")); err != nil {
-		httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
+	skillID, ok := httpx.PathUUID(w, r, "id", ErrNotFound.Error())
+	if !ok {
 		return
 	}
 	var body struct {
@@ -207,9 +204,8 @@ func (h *Handler) Restore(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var skillID pgtype.UUID
-	if err := skillID.Scan(r.PathValue("id")); err != nil {
-		httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
+	skillID, ok := httpx.PathUUID(w, r, "id", ErrNotFound.Error())
+	if !ok {
 		return
 	}
 	_, err := h.Takedowns.Restore(r.Context(), ws, skillID)
@@ -234,9 +230,8 @@ func (h *Handler) SetCategory(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var skillID pgtype.UUID
-	if err := skillID.Scan(r.PathValue("id")); err != nil {
-		httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
+	skillID, ok := httpx.PathUUID(w, r, "id", ErrNotFound.Error())
+	if !ok {
 		return
 	}
 	var body struct {
@@ -283,9 +278,8 @@ func (h *Handler) Versions(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var skillID pgtype.UUID
-	if err := skillID.Scan(r.PathValue("id")); err != nil {
-		httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
+	skillID, ok := httpx.PathUUID(w, r, "id", ErrNotFound.Error())
+	if !ok {
 		return
 	}
 

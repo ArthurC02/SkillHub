@@ -57,9 +57,8 @@ func sessionActor(w http.ResponseWriter, r *http.Request) (identity.User, bool) 
 }
 
 func (h *Handler) changeRestriction(w http.ResponseWriter, r *http.Request, reason *string, note string) {
-	var skillID pgtype.UUID
-	if err := skillID.Scan(r.PathValue("id")); err != nil {
-		httpx.WriteError(w, http.StatusNotFound, errSkillNotFound.Error())
+	skillID, ok := httpx.PathUUID(w, r, "id", errSkillNotFound.Error())
+	if !ok {
 		return
 	}
 	user, ok := sessionActor(w, r)
