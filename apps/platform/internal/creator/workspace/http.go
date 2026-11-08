@@ -429,9 +429,8 @@ func (h *Handler) ExpediteErasure(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusNotFound, "not found")
 		return
 	}
-	var userID pgtype.UUID
-	if err := userID.Scan(r.PathValue("user_id")); err != nil {
-		httpx.WriteError(w, http.StatusNotFound, "not found")
+	userID, ok := httpx.PathUUID(w, r, "user_id", "not found")
+	if !ok {
 		return
 	}
 	var body struct {
