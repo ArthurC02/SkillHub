@@ -28,17 +28,8 @@ type Handler struct {
 const maxJSONBytes = utf8.UTFMax*(MaxNameChars+MaxPromptChars+MaxCriteria*MaxCriterionChars) + 64<<10
 
 func (h *Handler) workspace(w http.ResponseWriter, r *http.Request) (identity.Workspace, bool) {
-	user, ok := identity.SessionUser(r.Context())
-	if !ok {
-		httpx.WriteError(w, http.StatusUnauthorized, "not authenticated")
-		return identity.Workspace{}, false
-	}
-	ws, err := h.Identity.PersonalWorkspace(r.Context(), user)
-	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "讀取 Workspace 失敗")
-		return identity.Workspace{}, false
-	}
-	return ws, true
+	_, ws, ok := identity.SessionWorkspace(h.Identity, w, r)
+	return ws, ok
 }
 
 func pathUUID(w http.ResponseWriter, r *http.Request, name string) (pgtype.UUID, bool) {
