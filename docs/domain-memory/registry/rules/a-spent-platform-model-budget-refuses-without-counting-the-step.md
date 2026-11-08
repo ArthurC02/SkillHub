@@ -15,7 +15,7 @@ sources:
   - resource: "apps/platform/internal/skill/admission/model_adapter.go#L82-84"
     excerpt_sha256: "sha256:2c79547d31a02acc5cf2dfd02ae75a7a4dd7b34a31ce96d00a61db5e8dfac790"
   - resource: "apps/platform/internal/skill/admission/http.go#L393-394"
-    excerpt_sha256: "sha256:c6678889555641355305e51fe83f7455946efdd1413394ba50c2ba9cac7faa56"
+    excerpt_sha256: "sha256:6db68a258a534533e664361fc8092d68be9216ffc205aa607e853af658edb17d"
   - resource: "apps/platform/internal/trial/design/criteria_adapter.go#L30-32"
     excerpt_sha256: "sha256:40a04ab23f5aed9b9dfd8652ab06d501a6430c195b096b04d0b3ef9fc10cf49e"
   - resource: "apps/platform/internal/trial/design/http.go#L77-78"
