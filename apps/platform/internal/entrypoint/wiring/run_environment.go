@@ -11,10 +11,7 @@ import (
 	run "github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
 
-const (
-	gatewayAdminTimeout    = 20 * time.Second
-	sandboxProviderTimeout = 30 * time.Second
-)
+const gatewayAdminTimeout = 20 * time.Second
 
 func GatewayFromEnv() *run.Gateway {
 	budget := runBudgetFromEnv()
@@ -70,7 +67,7 @@ func NewRunRegistryFromEnv() *run.Registry {
 			continue
 		}
 		providers = append(providers, run.NewProviderWithClient(
-			name, baseURL, os.Getenv("SKILLHUB_SANDBOX_TOKEN_"+strings.ToUpper(name)), internalHTTPClient(sandboxProviderTimeout)))
+			name, baseURL, os.Getenv("SKILLHUB_SANDBOX_TOKEN_"+strings.ToUpper(name)), internalHTTPClient(run.ProviderRequestTimeout)))
 	}
 	return run.NewRegistry(providers...)
 }

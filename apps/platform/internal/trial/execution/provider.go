@@ -280,7 +280,7 @@ func (p *httpProvider) Authenticated() bool { return p.token != "" }
 
 const (
 	providerResponseLimit  = 4 << 20
-	providerRequestTimeout = 30 * time.Second
+	ProviderRequestTimeout = 30 * time.Second
 )
 
 type providerError struct {
@@ -507,7 +507,7 @@ func NewProvider(name, baseURL, token string) SandboxProvider {
 
 func NewProviderWithClient(name, baseURL, token string, client *http.Client) SandboxProvider {
 	if client == nil {
-		client = &http.Client{Timeout: providerRequestTimeout}
+		client = &http.Client{Timeout: ProviderRequestTimeout}
 	}
 	return &httpProvider{name: name, baseURL: baseURL, token: token, HTTP: client}
 }
