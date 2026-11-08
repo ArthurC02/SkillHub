@@ -233,12 +233,7 @@ func writePublishingError(w http.ResponseWriter, err error) {
 }
 
 func skillIDFrom(w http.ResponseWriter, r *http.Request) (pgtype.UUID, bool) {
-	var skillID pgtype.UUID
-	if err := skillID.Scan(r.PathValue("id")); err != nil {
-		httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
-		return pgtype.UUID{}, false
-	}
-	return skillID, true
+	return httpx.PathUUID(w, r, "id", ErrNotFound.Error())
 }
 
 func (h *Handler) OwnPublisher(w http.ResponseWriter, r *http.Request) {
