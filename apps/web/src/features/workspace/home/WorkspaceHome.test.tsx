@@ -105,7 +105,7 @@ for (const previous of ["empty", "active", "error"] as const) {
               : [],
         });
       }
-      if (url.endsWith("/skills"))
+      if (url.includes("/skills?"))
         return json({ skills: [], total: 0, limit: 100, truncated: false });
       if (url.endsWith("/me/publications")) return json({ publications: [] });
       if (url.endsWith("/creation-sessions")) return json([]);
@@ -203,7 +203,7 @@ test("workspace home separates decisions, active work, and owned assets from ser
         ],
       });
     }
-    if (url.endsWith("/skills")) {
+    if (url.includes("/skills?")) {
       return json({
         skills: [
           {
@@ -285,7 +285,7 @@ test.each([
         });
       }
       if (url.includes("/runs?")) return json({ runs: [] });
-      if (url.endsWith("/skills")) {
+      if (url.includes("/skills?")) {
         return json({ skills: [], total: 0, limit: 100, truncated: false });
       }
       if (url.endsWith("/me/publications")) return json({ publications: [] });
@@ -323,7 +323,7 @@ test("workspace home does not claim complete 試跑紀錄 coverage when older pa
         ),
       });
     }
-    if (url.endsWith("/skills")) {
+    if (url.includes("/skills?")) {
       return json({ skills: [], total: 0, limit: 100, truncated: false });
     }
     if (url.endsWith("/me/publications")) return json({ publications: [] });
@@ -353,7 +353,7 @@ test("workspace home resumes exact publication, release, and Catalog exposure co
       });
     }
     if (url.includes("/runs?")) return json({ runs: [] });
-    if (url.endsWith("/skills")) {
+    if (url.includes("/skills?")) {
       return json({ skills: [], total: 0, limit: 100, truncated: false });
     }
     if (url.endsWith("/me/publications")) {
@@ -430,7 +430,7 @@ test("workspace home keeps a publication read failure distinct from an empty res
       });
     }
     if (url.includes("/runs?")) return json({ runs: [] });
-    if (url.endsWith("/skills")) {
+    if (url.includes("/skills?")) {
       return json({ skills: [], total: 0, limit: 100, truncated: false });
     }
     if (url.endsWith("/me/publications")) {
@@ -518,7 +518,7 @@ test("workspace home resumes the three most recent actionable creation sessions"
       ]);
     }
     if (url.includes("/runs?")) return json({ runs: [] });
-    if (url.endsWith("/skills")) {
+    if (url.includes("/skills?")) {
       return json({ skills: [], total: 0, limit: 100, truncated: false });
     }
     if (url.endsWith("/me/publications")) return json({ publications: [] });
@@ -578,7 +578,7 @@ test("workspace home keeps a creation read failure distinct from an empty contin
     }
     if (url.endsWith("/creation-sessions")) return json({ error: "service unavailable" }, 503);
     if (url.includes("/runs?")) return json({ runs: [] });
-    if (url.endsWith("/skills")) {
+    if (url.includes("/skills?")) {
       return json({ skills: [], total: 0, limit: 100, truncated: false });
     }
     if (url.endsWith("/me/publications")) return json({ publications: [] });
@@ -608,7 +608,7 @@ test("workspace home omits the continuation section when the recent session slic
     }
     if (url.endsWith("/creation-sessions")) return json([]);
     if (url.includes("/runs?")) return json({ runs: [] });
-    if (url.endsWith("/skills")) {
+    if (url.includes("/skills?")) {
       return json({ skills: [], total: 0, limit: 100, truncated: false });
     }
     if (url.endsWith("/me/publications")) return json({ publications: [] });
@@ -641,7 +641,7 @@ test("workspace home surfaces a refresh failure after an earlier empty creation 
       return creationReads === 1 ? json([]) : json({ error: "service unavailable" }, 503);
     }
     if (url.includes("/runs?")) return json({ runs: [] });
-    if (url.endsWith("/skills")) {
+    if (url.includes("/skills?")) {
       return json({ skills: [], total: 0, limit: 100, truncated: false });
     }
     if (url.endsWith("/me/publications")) return json({ publications: [] });
@@ -701,7 +701,7 @@ test.each([0, 99, 101])(
         });
       }
       if (url.includes("/runs?")) return json({ runs: [] });
-      if (url.endsWith("/skills")) {
+      if (url.includes("/skills?")) {
         return json({ skills: [], total: 0, limit: 100, truncated: false });
       }
       if (url.endsWith("/me/publications")) return json({ publications: [] });
@@ -763,7 +763,7 @@ test("workspace home without active work does not show a stale refresh control",
     if (url.includes("/runs?")) {
       return json({ runs: [run("run-done", "Already good", "succeeded", "met")] });
     }
-    if (url.endsWith("/skills")) {
+    if (url.includes("/skills?")) {
       return json({ skills: [], total: 0, limit: 100, truncated: false });
     }
     if (url.endsWith("/me/publications")) return json({ publications: [] });

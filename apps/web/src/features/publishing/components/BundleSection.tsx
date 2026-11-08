@@ -11,7 +11,7 @@ import { API_BASE_URL, canRetainLoadedPage } from "../../../core/api/client";
 import type { SkillDetail, SkillVersionSummary } from "../../../core/api/types";
 import {
   useEmbeddedSkillDetails,
-  useEmbeddedSkillVersions,
+  useSkillVersionsOf,
   useOwnSkillPages,
   ownSkillsFromPages,
 } from "../../skill";
@@ -96,7 +96,7 @@ function useMemberChoices(): {
   );
   const skillIds = useMemo(() => loadedSkills?.skills.map((s) => s.skill_id) ?? [], [loadedSkills]);
   const details = useEmbeddedSkillDetails(skillIds);
-  const versions = useEmbeddedSkillVersions(skillIds);
+  const versions = useSkillVersionsOf(skillIds);
   const queries = [ownSkills, ...details, ...versions];
 
   const choices: MemberChoice[] = [];

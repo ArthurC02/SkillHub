@@ -196,7 +196,7 @@ function stubHomeSummaries(page: App, empty: boolean) {
       recovered: { runs: [RUNS.runs[1]] },
     },
     {
-      pattern: "**/skills",
+      pattern: "**/skills?*",
       error: "你的資產",
       heading: "workspace-assets-heading",
       initial: empty

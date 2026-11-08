@@ -6,7 +6,7 @@ import { queryClient } from "../../core/api/queryClient";
 import { queryKeys } from "../../core/api/queryKeys";
 import { SessionNotReadyError } from "../../core/api/client";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
-import { useForkSkill, useOwnSkills } from "./skills.service";
+import { OWN_SKILL_PAGE_SIZE, useForkSkill, useOwnSkillPages } from "./skills.service";
 
 const SOURCE = "11111111-1111-1111-1111-111111111111";
 const RECEIPT = {
@@ -42,7 +42,7 @@ function Harness({ observe = false }: { observe?: boolean }) {
 }
 
 function OwnSkillsObserver() {
-  useOwnSkills();
+  useOwnSkillPages();
   return null;
 }
 
@@ -76,7 +76,9 @@ test("a confirmed fork is acknowledged while its active Library reread is still 
   try {
     await render(true);
     await pollUntil(
-      () => queryClient.getQueryState(queryKeys.skills.own)?.status === "success",
+      () =>
+        queryClient.getQueryState(queryKeys.skills.ownPages(OWN_SKILL_PAGE_SIZE))?.status ===
+        "success",
       () => `reads ${reads}`,
       DEFAULT_WAIT_MS,
     );
@@ -89,7 +91,9 @@ test("a confirmed fork is acknowledged while its active Library reread is still 
     await act(async () => Promise.resolve());
     expect(queryClient.getMutationCache().getAll()[0]!.state.status).toBe("success");
     expect(queryClient.getMutationCache().getAll()[0]!.state.data).toEqual(RECEIPT);
-    expect(queryClient.getQueryState(queryKeys.skills.own)?.fetchStatus).toBe("fetching");
+    expect(
+      queryClient.getQueryState(queryKeys.skills.ownPages(OWN_SKILL_PAGE_SIZE))?.fetchStatus,
+    ).toBe("fetching");
   } finally {
     release();
   }

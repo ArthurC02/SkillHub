@@ -18,7 +18,7 @@ import {
   useOwnPublications,
   type OwnerPublicationSummary,
 } from "../../publishing";
-import { useOwnSkills } from "../../skill";
+import { ownSkillsFromPages, useOwnSkillPages } from "../../skill";
 import {
   RunVerdict,
   RunSourceLinks,
@@ -158,10 +158,10 @@ function WorkspaceHomeContent({
 }
 
 function WorkspaceAssets() {
-  const skills = useOwnSkills();
+  const skills = useOwnSkillPages();
   const busy = skills.fetchStatus !== "idle";
   const paused = skills.fetchStatus === "paused";
-  const skillData = skills.error ? undefined : skills.data;
+  const skillData = skills.error ? undefined : ownSkillsFromPages(skills.data?.pages);
   const owned = skillData?.skills.slice(0, 4) ?? [];
   return (
     <section className="workspace-home-section">
