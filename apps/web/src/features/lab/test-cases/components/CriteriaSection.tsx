@@ -8,10 +8,8 @@ import { useAddCriterion, useSuggestCriteria } from "../../testcases.service";
 import type { TestCase } from "../../testcases.service";
 import { MutationError } from "./MutationError";
 import { CriterionRow } from "./CriterionRow";
-import { textLengthReason } from "../test-cases.model";
+import { CREDIT_REFUSED, textLengthReason } from "../test-cases.model";
 import { useRevealOnChange } from "../../../../shared/ui/useRevealOnChange";
-
-const CREDIT_REFUSED = "點數不足，這次沒有呼叫模型、也沒有扣點。請管理者加點後再試。";
 
 const MAX_CRITERIA = 20; // one-number: maxCriteria
 
