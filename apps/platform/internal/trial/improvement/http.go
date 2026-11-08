@@ -84,7 +84,7 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	runID, ok := pathUUID(w, r)
+	runID, ok := httpx.PathUUID(w, r, "id", ErrNotFound.Error())
 	if !ok {
 		return
 	}
@@ -121,7 +121,7 @@ func (h *Handler) Revisions(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	runID, ok := pathUUID(w, r)
+	runID, ok := httpx.PathUUID(w, r, "id", ErrNotFound.Error())
 	if !ok {
 		return
 	}
@@ -159,7 +159,7 @@ func (h *Handler) SetFeedback(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	runID, ok := pathUUID(w, r)
+	runID, ok := httpx.PathUUID(w, r, "id", ErrNotFound.Error())
 	if !ok {
 		return
 	}
@@ -384,15 +384,6 @@ func orEmptyResults(r []verdict.CriterionResult) []verdict.CriterionResult {
 		return []verdict.CriterionResult{}
 	}
 	return r
-}
-
-func pathUUID(w http.ResponseWriter, r *http.Request) (pgtype.UUID, bool) {
-	var id pgtype.UUID
-	if err := id.Scan(r.PathValue("id")); err != nil {
-		httpx.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
-		return id, false
-	}
-	return id, true
 }
 
 func optionalTime(t pgtype.Timestamptz) *string {

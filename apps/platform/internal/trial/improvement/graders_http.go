@@ -90,7 +90,7 @@ func (h *GraderHandler) create(w http.ResponseWriter, r *http.Request, workspace
 }
 
 func (h *GraderHandler) revise(w http.ResponseWriter, r *http.Request, workspaceID pgtype.UUID) {
-	graderID, ok := pathUUID(w, r)
+	graderID, ok := httpx.PathUUID(w, r, "id", ErrNotFound.Error())
 	if !ok {
 		return
 	}

@@ -71,7 +71,7 @@ func (h *Handler) Comparison(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	runID, ok := pathUUID(w, r)
+	runID, ok := httpx.PathUUID(w, r, "id", ErrNotFound.Error())
 	if !ok {
 		return
 	}

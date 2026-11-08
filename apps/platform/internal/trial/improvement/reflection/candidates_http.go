@@ -96,9 +96,8 @@ func roundPath(w http.ResponseWriter, r *http.Request) (EvaluateAsk, bool) {
 	if !ok {
 		return EvaluateAsk{}, false
 	}
-	var reflectionID pgtype.UUID
-	if err := reflectionID.Scan(r.PathValue("reflectionId")); err != nil {
-		httpx.WriteError(w, http.StatusNotFound, eval.ErrNotFound.Error())
+	reflectionID, ok := httpx.PathUUID(w, r, "reflectionId", eval.ErrNotFound.Error())
+	if !ok {
 		return EvaluateAsk{}, false
 	}
 	return EvaluateAsk{SkillID: ids[0], BatchID: ids[1], ReflectionID: reflectionID}, true

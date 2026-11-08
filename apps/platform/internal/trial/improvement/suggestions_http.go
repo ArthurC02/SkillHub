@@ -63,7 +63,7 @@ func (h *Handler) Suggestions(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	runID, ok := pathUUID(w, r)
+	runID, ok := httpx.PathUUID(w, r, "id", ErrNotFound.Error())
 	if !ok {
 		return
 	}
@@ -115,7 +115,7 @@ func (h *Handler) Decide(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	id, ok := pathUUID(w, r)
+	id, ok := httpx.PathUUID(w, r, "id", ErrNotFound.Error())
 	if !ok {
 		return
 	}
@@ -150,7 +150,7 @@ func (h *Handler) Diff(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	id, ok := pathUUID(w, r)
+	id, ok := httpx.PathUUID(w, r, "id", ErrNotFound.Error())
 	if !ok {
 		return
 	}
@@ -183,7 +183,7 @@ func (h *Handler) ApplySuggestions(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	skillID, ok := pathUUID(w, r)
+	skillID, ok := httpx.PathUUID(w, r, "id", ErrNotFound.Error())
 	if !ok {
 		return
 	}
