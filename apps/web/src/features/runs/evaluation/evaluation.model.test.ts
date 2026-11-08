@@ -1,10 +1,10 @@
 import { expect, test } from "vitest";
-import { RunStatusEnum } from "@skillhub/api-client-ts";
+import { RunStatus } from "@skillhub/api-client-ts";
 import { awaitsEvaluation, evaluationPanelState } from "./evaluation.model";
 
 const AWAITS_EVALUATION = new Set(["succeeded", "failed"]);
 
-test.each(Object.values(RunStatusEnum))(
+test.each(Object.values(RunStatus))(
   "a %s run is polled for an evaluation exactly when the panel says one is coming",
   (status) => {
     const expected = AWAITS_EVALUATION.has(status);

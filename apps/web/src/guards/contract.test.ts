@@ -197,7 +197,7 @@ const LABEL_TABLES: Array<{
   },
   {
     what: "試跑紀錄.status → 執行狀態措辭",
-    values: generated.RunStatusEnum,
+    values: generated.RunStatus,
     table: async () => (await import("../features/runs/runs.model")).RUN_STATUS_LABEL,
   },
   {
@@ -324,7 +324,7 @@ for (const { what, values, table } of FALLBACK_TABLES) {
 test("04 丙-43: 進行中 ∪ 終態 is exactly the contract's RunStatus", async () => {
   const { IN_FLIGHT_RUN_STATUSES, TERMINAL_RUN_STATUSES, RUN_STATUSES } =
     await import("../features/runs/trace.service");
-  const contract = new Set<string>(Object.values(generated.RunStatusEnum));
+  const contract = new Set<string>(Object.values(generated.RunStatus));
 
   expect(new Set<string>(RUN_STATUSES), "RUN_STATUSES has drifted from the contract").toEqual(
     contract,
@@ -343,7 +343,7 @@ test("every contract run status is classified on purpose: a new one is neither i
   const { IN_FLIGHT_RUN_STATUSES, TERMINAL_RUN_STATUSES } =
     await import("../features/runs/trace.service");
   const endsTheRun = new Set(["succeeded", "failed", "cancelled", "timed_out"]);
-  const unclassified = Object.values(generated.RunStatusEnum).filter(
+  const unclassified = Object.values(generated.RunStatus).filter(
     (s) => !IN_FLIGHT_RUN_STATUSES.has(s) && !endsTheRun.has(s),
   );
   expect(unclassified, "a contract status the web would silently treat as terminal").toEqual([]);
