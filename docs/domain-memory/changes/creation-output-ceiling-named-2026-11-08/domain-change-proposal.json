@@ -3,12 +3,12 @@
   "proposal_id": "creation-output-ceiling-named-2026-11-08",
   "proposer": "coding-agent",
   "requirement_id": "creation-output-ceiling-named",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-11-08T13:54:54.791968Z",
   "verified_at": "2026-11-08T13:55:48.179390Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-11-08T13:55:51.421459Z",
+  "applied_at": "2026-11-08T13:56:05.885421Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "33112eab49b529ff4178841a7e9d47df3938b814",
@@ -107,5 +107,9 @@
   ],
   "supersedes": [
     "purge-grace-and-longest-step-recited-2026-11-08"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "c7338dd829ab8e564d4d9c3052bac5c6dc843d03",
+    "registry_digest": "sha256:486b0b86a062237a822fb4b440697e1b653cdca9bb9e53ff6be7745fd5ef0835"
+  }
 }
