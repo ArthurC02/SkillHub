@@ -252,3 +252,24 @@ def test_a_confirmed_legacy_diagram_echoed_in_another_json_layout_does_not_reope
     assert response.status_code == 200
     assert response.json()["outcome"] == "draft"
     assert response.json()["diagram_understanding"] == understanding
+
+
+@pytest.mark.parametrize(
+    ("field", "length", "status"),
+    [
+        ("message content", 20000, 200),
+        ("message content", 20001, 422),
+        ("draft validation report", 20000, 200),
+        ("draft validation report", 20001, 422),
+    ],
+)
+def test_a_request_text_field_is_accepted_up_to_its_cap(field, length, status):
+    text = "x" * length
+    reply = base.decision(outcome="draft", message="ok", draft=base.SKILL)
+    if field == "message content":
+        req, results = base.request(messages=[{"role": "user", "content": text}]), [reply]
+    else:
+        report = {"content_hash": "c" * 64, "report": text, "blocked": False}
+        req, results = review_request(draft_validation=report), [{"edits": []}, reply]
+    response, _ = post(req, results)
+    assert response.status_code == status

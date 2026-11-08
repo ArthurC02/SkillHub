@@ -87,7 +87,7 @@ Reason = Literal["diagram_incomplete"]
 class CreationMessage(BaseModel):
     model_config = ConfigDict(extra="forbid")
     role: Literal["user", "assistant", "tool"]
-    content: str = Field(..., max_length=20000)
+    content: str = Field(..., max_length=TEXT_MAX_CHARS)
 
 
 class CreationToolIntent(BaseModel):
@@ -101,7 +101,7 @@ class CreationDraftValidation(BaseModel):
     model_config = ConfigDict(extra="forbid")
     content_hash: str
     blocked: bool
-    report: str = Field(..., max_length=20000)
+    report: str = Field(..., max_length=TEXT_MAX_CHARS)
 
 
 class CreationMCPTool(BaseModel):
