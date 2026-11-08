@@ -9,11 +9,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build && node scripts/check-bundle-origins.mjs",
-    "typecheck": "tsc -b --noEmit",
+    "typecheck": "npm --prefix ../../packages/api-client-ts run build && tsc -b --noEmit",
     "lint": "oxlint --deny-warnings",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "vitest run",
+    "test": "npm --prefix ../../packages/api-client-ts run build && vitest run",
     "test:e2e": "playwright test",
     "preview": "vite preview"
   },
