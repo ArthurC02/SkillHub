@@ -15,7 +15,7 @@ const (
 )
 
 var pythonRatchetSkippedDirs = map[string]bool{
-	"node_modules": true, ".venv": true, "__pycache__": true, "target": true, "dist": true,
+	dirNodeModules: true, dirVenv: true, dirPycache: true, "target": true, dirDist: true,
 }
 
 func pythonRatchetProblems(root string) []string {
