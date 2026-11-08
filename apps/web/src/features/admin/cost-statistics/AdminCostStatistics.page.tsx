@@ -4,7 +4,7 @@ import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { ListFreshness } from "../../../shared/ui/ListFreshness";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import { AdminPage } from "../components/AdminPage";
-import { COST_KIND } from "../admin.model";
+import { COST_KIND, staleReadNotice } from "../admin.model";
 
 export function AdminCostStatistics() {
   const stats = useCostStatistics();
@@ -22,9 +22,7 @@ export function AdminCostStatistics() {
         }}
         retrying={stats.isFetching}
       >
-        <p role="alert">
-          暫時無法讀取成本統計。{stats.data ? "先前載入的數字已隱藏。" : "請稍後再試。"}
-        </p>
+        <p role="alert">{staleReadNotice("成本統計", "先前載入的數字", Boolean(stats.data))}</p>
       </ReadFailure>
       {stats.data && !stats.error && (
         <ListFreshness

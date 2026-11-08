@@ -1,3 +1,4 @@
+import { staleReadNotice } from "../admin.model";
 import { useState } from "react";
 import { useAccountLookup } from "../admin.service";
 import { ApiError } from "../../../core/api/client";
@@ -55,9 +56,7 @@ export function AdminAccounts() {
           <p role="status">沒有 email 是「{email}」的帳號。已刪除的帳號查不到。</p>
         ) : (
           <ReadFailure error={account.error} what="帳號">
-            <p role="alert">
-              暫時無法讀取帳號。{account.data ? "先前查到的內容已隱藏。" : "請稍後再試。"}
-            </p>
+            <p role="alert">{staleReadNotice("帳號", "先前查到的內容", Boolean(account.data))}</p>
             <button type="button" disabled={reading} onClick={() => void account.refetch()}>
               {reading ? "重新讀取中…" : "再試一次"}
             </button>

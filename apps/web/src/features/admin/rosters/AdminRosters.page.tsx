@@ -1,3 +1,4 @@
+import { staleReadNotice } from "../admin.model";
 import { useRosters } from "../admin.service";
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
@@ -10,9 +11,7 @@ export function AdminRosters() {
     <AdminPage heading="名冊" lede="要改名冊只能改部署設定再重啟，後台不提供編輯。">
       {rosters.isPending && <Loading what="名冊" />}
       <ReadFailure error={rosters.error} what="名冊">
-        <p role="alert">
-          暫時無法讀取名冊。{rosters.data ? "先前載入的名冊已隱藏。" : "請稍後再試。"}
-        </p>
+        <p role="alert">{staleReadNotice("名冊", "先前載入的名冊", Boolean(rosters.data))}</p>
         <button type="button" disabled={rosters.isFetching} onClick={() => void rosters.refetch()}>
           {rosters.isFetching ? "重新讀取中…" : "再試一次"}
         </button>

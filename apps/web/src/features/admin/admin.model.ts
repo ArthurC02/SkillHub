@@ -68,3 +68,7 @@ export const REDISTRIBUTION_LABEL: Record<string, string> = {
   self_supplied: "使用者自己提供",
   generated: "平台生成",
 };
+
+export function staleReadNotice(what: string, hidden: string, hadData: boolean): string {
+  return `暫時無法讀取${what}。${hadData ? `${hidden}已隱藏。` : "請稍後再試。"}`;
+}

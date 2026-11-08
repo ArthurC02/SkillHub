@@ -3,7 +3,7 @@ import { useCreditLedger } from "../../admin.service";
 import { Loading } from "../../../../shared/ui/Loading";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
-import { ENTRY_KIND } from "../../admin.model";
+import { ENTRY_KIND, staleReadNotice } from "../../admin.model";
 import { GrantForm } from "./GrantForm";
 import "./CreditPanel.css";
 
@@ -22,9 +22,7 @@ export function CreditPanel({ workspaceId }: { workspaceId: string }) {
       </h2>
       {(ledger.isPending || reading) && <Loading what="點數" paused={paused} />}
       <ReadFailure error={ledger.error} what="點數">
-        <p role="alert">
-          暫時無法讀取點數。{ledger.data ? "先前載入的餘額與分錄已隱藏。" : "請稍後再試。"}
-        </p>
+        <p role="alert">{staleReadNotice("點數", "先前載入的餘額與分錄", Boolean(ledger.data))}</p>
         <button type="button" disabled={reading} onClick={reread}>
           再試一次
         </button>

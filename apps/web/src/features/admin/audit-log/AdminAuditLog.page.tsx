@@ -5,7 +5,7 @@ import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { ListFreshness } from "../../../shared/ui/ListFreshness";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import { AdminPage } from "../components/AdminPage";
-import { ACTION_LABEL } from "../admin.model";
+import { ACTION_LABEL, staleReadNotice } from "../admin.model";
 import type { OperatorAuditEvent } from "../admin.service";
 import { MetadataCell } from "./components/MetadataCell";
 import { usePaginationFocus } from "../../../shared/ui/usePaginationFocus";
@@ -69,9 +69,7 @@ export function AdminAuditLog() {
         retrying={busy}
         focusTarget="main-content"
       >
-        <p role="alert">
-          暫時無法讀取動作紀錄。{log.data ? "先前載入的內容已隱藏。" : "請稍後再試。"}
-        </p>
+        <p role="alert">{staleReadNotice("動作紀錄", "先前載入的內容", Boolean(log.data))}</p>
       </ReadFailure>
       {showRows && (
         <ListFreshness

@@ -1,3 +1,4 @@
+import { staleReadNotice } from "../admin.model";
 import { useEffect, useRef } from "react";
 import { Link, useSearch } from "@tanstack/react-router";
 import { ApiError } from "../../../core/api/client";
@@ -119,9 +120,7 @@ function ExposureQueueSection() {
       </h2>
       {queue.isPending && <Loading what="待審清單" />}
       <ReadFailure error={queue.error} what="待審清單">
-        <p role="alert">
-          暫時無法讀取待審清單。{queue.data ? "先前載入的內容已隱藏。" : "請稍後再試。"}
-        </p>
+        <p role="alert">{staleReadNotice("待審清單", "先前載入的內容", Boolean(queue.data))}</p>
         <button type="button" disabled={queue.isFetching} onClick={() => void queue.refetch()}>
           {queue.isFetching ? "重新讀取中…" : "再試一次"}
         </button>
