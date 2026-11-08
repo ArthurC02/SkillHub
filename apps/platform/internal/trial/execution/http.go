@@ -319,9 +319,8 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var skillID pgtype.UUID
-	if err := skillID.Scan(r.PathValue("id")); err != nil {
-		httpx.WriteError(w, http.StatusNotFound, messageRunNotFound)
+	skillID, ok := httpx.PathUUID(w, r, "id", messageRunNotFound)
+	if !ok {
 		return
 	}
 	var body struct {
@@ -368,9 +367,8 @@ func (h *Handler) Continue(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var runID pgtype.UUID
-	if err := runID.Scan(r.PathValue("id")); err != nil {
-		httpx.WriteError(w, http.StatusNotFound, messageRunNotFound)
+	runID, ok := httpx.PathUUID(w, r, "id", messageRunNotFound)
+	if !ok {
 		return
 	}
 	var body struct {
@@ -521,7 +519,7 @@ func (h *Handler) Artifacts(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	runID, ok := pathUUID(w, r, "id")
+	runID, ok := httpx.PathUUID(w, r, "id", messageRunNotFound)
 	if !ok {
 		return
 	}
@@ -551,11 +549,11 @@ func (h *Handler) DeleteArtifact(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	runID, ok := pathUUID(w, r, "id")
+	runID, ok := httpx.PathUUID(w, r, "id", messageRunNotFound)
 	if !ok {
 		return
 	}
-	artifactID, ok := pathUUID(w, r, "artifactId")
+	artifactID, ok := httpx.PathUUID(w, r, "artifactId", messageRunNotFound)
 	if !ok {
 		return
 	}
@@ -564,14 +562,6 @@ func (h *Handler) DeleteArtifact(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
-}
-
-func pathUUID(w http.ResponseWriter, r *http.Request, name string) (id pgtype.UUID, ok bool) {
-	if err := id.Scan(r.PathValue(name)); err != nil {
-		httpx.WriteError(w, http.StatusNotFound, messageRunNotFound)
-		return id, false
-	}
-	return id, true
 }
 
 func parseLimit(r *http.Request) (int32, error) {
@@ -587,9 +577,8 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var runID pgtype.UUID
-	if err := runID.Scan(r.PathValue("id")); err != nil {
-		httpx.WriteError(w, http.StatusNotFound, messageRunNotFound)
+	runID, ok := httpx.PathUUID(w, r, "id", messageRunNotFound)
+	if !ok {
 		return
 	}
 
@@ -643,9 +632,8 @@ func (h *Handler) Cancel(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	var runID pgtype.UUID
-	if err := runID.Scan(r.PathValue("id")); err != nil {
-		httpx.WriteError(w, http.StatusNotFound, messageRunNotFound)
+	runID, ok := httpx.PathUUID(w, r, "id", messageRunNotFound)
+	if !ok {
 		return
 	}
 

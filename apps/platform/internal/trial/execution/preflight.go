@@ -668,8 +668,7 @@ type preflightTarget struct {
 }
 
 func preflightIDs(w http.ResponseWriter, r *http.Request, version, testCase string) (target preflightTarget, ok bool) {
-	if err := target.skillID.Scan(r.PathValue("id")); err != nil {
-		httpx.WriteError(w, http.StatusNotFound, messageRunNotFound)
+	if target.skillID, ok = httpx.PathUUID(w, r, "id", messageRunNotFound); !ok {
 		return target, false
 	}
 	if target.versionID.Scan(version) != nil || target.testCaseID.Scan(testCase) != nil {
