@@ -64,6 +64,7 @@ export function EvaluationBatch() {
           <BatchState
             batch={data.batch}
             versionNumber={versionNumber}
+            versionsRead={versions}
             skillId={skillId}
             batchId={batchId}
           />

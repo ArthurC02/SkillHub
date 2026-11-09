@@ -101,19 +101,22 @@ test("RunStatusTable keeps each side connected to its own 試跑紀錄 and immut
   ]);
 });
 
-test("RunStatusTable distinguishes an absent output from an error-free run", async () => {
-  const sides = [sideWithoutRerunLink("run-a", true), sideWithoutRerunLink("run-b", false)].map(
-    (side) => ({ ...side, final_output: undefined, errors: [] }),
-  );
+test("RunStatusTable tells a field the server did not report from a measured zero", async () => {
+  const sides = [
+    { ...sideWithoutRerunLink("run-a", true), final_output: undefined, errors: undefined },
+    { ...sideWithoutRerunLink("run-b", false), final_output: "", errors: [] },
+  ];
   await mount(<RunStatusTable sides={sides} />);
 
-  const rows = Array.from(container.querySelectorAll("tbody tr"));
-  expect(rows.find((row) => row.textContent?.includes("最終輸出"))?.textContent).toContain(
-    "未產生",
-  );
-  expect(rows.find((row) => row.textContent?.includes("錯誤"))?.textContent).toContain(
-    "沒有錯誤紀錄",
-  );
+  const cells = (header: string) =>
+    Array.from(
+      Array.from(container.querySelectorAll("tbody tr"))
+        .find((row) => row.querySelector("th")?.textContent === header)
+        ?.querySelectorAll("td") ?? [],
+      (cell) => cell.textContent,
+    );
+  expect(cells("最終輸出")).toEqual(["未測量", "0 字"]);
+  expect(cells("錯誤")).toEqual(["未測量", "0 筆"]);
 });
 
 test("RunStatusTable keeps untrusted provider wording behind technical details", async () => {

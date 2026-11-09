@@ -172,7 +172,7 @@ test("gives runs from the same Version distinct accessible comparison names", as
 test("keeps an unresolved owner Version ID without guessing a version number", async () => {
   await mount({ candidates: [candidate("run-2", "unknown-version")], versions: [] });
 
-  expect(text()).toContain("Version：編號未知");
+  expect(text()).toContain("Version：版本編號未測量");
   expect(text()).toContain("unknown-version");
   expect(text()).not.toContain("v1");
   expect(container.querySelector("a")?.getAttribute("href")).toBe(
@@ -184,7 +184,7 @@ test("keeps candidate Runs visible while Version numbers are loading", async () 
   await mount({ candidates: [candidate()], versionsPending: true });
 
   expect(text()).toContain("載入候選試跑紀錄的 Version 編號");
-  expect(text()).toContain("Version：編號載入中");
+  expect(text()).toContain("Version：版本編號處理中");
   expect(text()).not.toContain("Version IDversion-1");
 });
 
@@ -226,7 +226,7 @@ test("a Version read failure is not presented as a resolved or absent Version", 
   expect(container.querySelector('[role="alert"]')?.textContent).toContain(
     "候選試跑紀錄的 Version 編號",
   );
-  expect(text()).toContain("Version：編號未知");
+  expect(text()).toContain("Version：版本編號測量失敗");
   expect(text()).toContain("version-1");
   expect(text()).not.toContain("service unavailable");
 });

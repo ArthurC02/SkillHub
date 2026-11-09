@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { Loading } from "../../../../shared/ui/Loading";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
+import { versionNumberWord, type VersionsRead } from "../../../skill";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
 import { useEvaluationBatches } from "../batches.service";
 import { STATUS_LABEL, type EvaluationBatch } from "../batches.model";
@@ -8,10 +9,12 @@ import { STATUS_LABEL, type EvaluationBatch } from "../batches.model";
 export function BatchList({
   skillId,
   versionNumbers,
+  versionsRead,
   newest,
 }: {
   skillId: string;
   versionNumbers: Map<string, number>;
+  versionsRead: VersionsRead;
   newest?: { version_id: string; version_number: number };
 }) {
   const batches = useEvaluationBatches(skillId);
@@ -61,7 +64,7 @@ export function BatchList({
                       params={{ skillId, batchId: batch.id }}
                       search={{ against: undefined }}
                     >
-                      {number === undefined ? "版本編號未知" : `v${number}`}・每題 {batch.trials} 次
+                      {versionNumberWord(number, versionsRead)}・每題 {batch.trials} 次
                       {batch.with_skill_withheld ? "＋不載入小工具的對照" : ""}
                     </Link>
                   </p>

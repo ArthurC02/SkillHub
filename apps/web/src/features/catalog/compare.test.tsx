@@ -94,8 +94,8 @@ test("EVAL-003 waits for the 測試題 before loading candidate runs", async () 
 test.each([
   ["canonical source", "canonical", false, "比較基準：v1"],
   ["case-equivalent source", "uppercase", false, "比較基準：v1"],
-  ["unmapped source", "missing", false, "比較基準：版本編號未知"],
-  ["unreadable metadata", "canonical", true, "比較基準：版本編號未知"],
+  ["unmapped source", "missing", false, "比較基準：版本編號未測量"],
+  ["unreadable metadata", "canonical", true, "比較基準：版本編號測量失敗"],
 ] as const)(
   "comparison identifies its %s without borrowing a candidate version",
   async (_name, identity, failed, expected) => {

@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import type { SkillVersionSummary } from "../../../../core/api/types";
 import { Loading } from "../../../../shared/ui/Loading";
+import { versionNumberWord } from "../../../skill";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
 import { formatAt } from "../../../../shared/ui/Timestamp.model";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
@@ -105,6 +106,7 @@ function CandidateList({
             run={run}
             versions={versions}
             versionsPending={versionsPending}
+            versionsError={versionsError}
             onPick={onPick}
             focusRef={run.run_id === continuationRunId ? continuationRef : undefined}
           />
@@ -128,12 +130,14 @@ function CandidateRow({
   run,
   versions,
   versionsPending,
+  versionsError,
   onPick,
   focusRef,
 }: {
   run: RunListItem;
   versions: SkillVersionSummary[];
   versionsPending: boolean;
+  versionsError: Error | null;
   onPick: (id: string) => void;
   focusRef?: (element: HTMLButtonElement | null) => void;
 }) {
@@ -149,7 +153,10 @@ function CandidateRow({
           to="/skills/$skillId/versions/$versionId"
           params={{ skillId: run.skill_id, versionId: run.skill_version_id }}
         >
-          {versionLabel ?? (versionsPending ? "編號載入中" : "編號未知")}
+          {versionNumberWord(version?.version_number, {
+            isPending: versionsPending,
+            error: versionsError,
+          })}
         </Link>
       </p>
       {!version && !versionsPending && (

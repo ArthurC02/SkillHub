@@ -7,6 +7,11 @@ import { RerunCell } from "./RerunCell";
 import { SIDE_LABEL, costNote } from "./ComparisonTables.model";
 import { credits } from "../../../../shared/format";
 import { Reveal } from "../../../../shared/ui/Reveal";
+import type { Absence } from "../../../../shared/ui/absence";
+
+const UNREPORTED: Absence = "未測量";
+
+const absentOrZero = (value: unknown, zero: string) => (value === undefined ? UNREPORTED : zero);
 
 function RunStatusHeader({ sides }: { sides: ComparisonSide[] }) {
   return (
@@ -79,7 +84,7 @@ export function RunStatusTable({ sides }: { sides: ComparisonSide[] }) {
                     <Reveal text={s.final_output} />
                   </pre>
                 ) : (
-                  "未產生"
+                  absentOrZero(s.final_output, "0 字")
                 )}
               </td>
             ))}
@@ -91,7 +96,7 @@ export function RunStatusTable({ sides }: { sides: ComparisonSide[] }) {
                 {s.errors && s.errors.length > 0 ? (
                   <RunErrorDetails errors={s.errors} />
                 ) : (
-                  "沒有錯誤紀錄"
+                  absentOrZero(s.errors, "0 筆")
                 )}
               </td>
             ))}

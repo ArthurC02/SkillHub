@@ -10,7 +10,7 @@ import { useRun, useRuns } from "../runs.service";
 import { ComparisonLead } from "./components/ComparisonLead";
 import { ComparisonTables } from "./components/ComparisonTables";
 import { CompareCandidatesPicker } from "./components/CompareCandidatesPicker";
-import { SkillWorkspaceNav, useSkillVersions } from "../../skill";
+import { SkillWorkspaceNav, useSkillVersions, versionNumberWord } from "../../skill";
 import { usePaginationFocus } from "../../../shared/ui/usePaginationFocus";
 
 export function RunCompare() {
@@ -141,7 +141,7 @@ function sourceVersionLabel(
           (candidate) => candidate.version_id.toLowerCase() === versionId.toLowerCase(),
         )
       : undefined;
-  return version ? `v${version.version_number}` : "版本編號未知";
+  return versionNumberWord(version?.version_number, { isPending: false, error: query.error });
 }
 
 function readFeedback(

@@ -4,6 +4,9 @@ import { bytes, ESTIMATE_MARK } from "../../../shared/format";
 import type { CostEstimate, PreflightSummary, RunQuota } from "../lab.service";
 import { SCRIPT_LABEL } from "../preflight/preflight.model";
 import { ResourceLimitsFacts } from "./ResourceLimitsFacts";
+import type { Absence } from "../../../shared/ui/absence";
+
+const UNASSIGNED: Absence = "尚未定值";
 
 const isolationLabels: Record<string, string> = {
   strong: "強（獨立核心）",
@@ -116,8 +119,7 @@ export function PreflightFacts({
       <dt>Provider</dt>
       <dd>
         {summary.provider.name}
-        {summary.provider.isolation_strength &&
-          `（隔離:${isolationText(summary.provider.isolation_strength)}）`}
+        {`（隔離:${summary.provider.isolation_strength ? isolationText(summary.provider.isolation_strength) : UNASSIGNED}）`}
       </dd>
 
       <ResourceLimitsFacts resourceLimits={summary.resource_limits} provider={summary.provider} />

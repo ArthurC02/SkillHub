@@ -34,7 +34,9 @@ function CatalogHeader({
             )}
             {truncated ? `共 ${total} 個，顯示前 ${results.length} 個` : `共 ${total} 個小工具`}
           </p>
-          <p className="catalog-order">{results[0]?.rank_note ?? "未提供目錄排序說明。"}</p>
+          {results[0]?.rank === null && (
+            <p className="catalog-order">{results[0].rank_note ?? "排序說明：未測量"}</p>
+          )}
         </div>
       )}
     </div>

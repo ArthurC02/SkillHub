@@ -91,7 +91,7 @@ export function SearchResultRow({
       {(hit.rank !== null || rankNoteInList) && (
         <p className="rank">
           {hit.rank === null
-            ? (hit.rank_note ?? "未計算語意相似度。")
+            ? (hit.rank_note ?? "排序說明：未測量")
             : `相似度 ${hit.rank.toFixed(2)}`}
         </p>
       )}

@@ -72,8 +72,8 @@ const writes = (page: App) => page.requests.filter((request) => request.method !
 for (const { mode, expected } of [
   { mode: "canonical", expected: SOURCE_LABEL },
   { mode: "uppercase", expected: SOURCE_LABEL },
-  { mode: "missing", expected: "比較基準：版本編號未知" },
-  { mode: "error", expected: "比較基準：版本編號未知" },
+  { mode: "missing", expected: "比較基準：版本編號未測量" },
+  { mode: "error", expected: "比較基準：版本編號測量失敗" },
   { mode: "empty", expected: SOURCE_LABEL },
 ] as const) {
   test(`source Version context is truthful for ${mode} metadata`, async () => {
@@ -145,7 +145,7 @@ for (const mode of ["pending", "paused", "source-error"] as const) {
         self ? "暫時無法讀取目前這次試跑" : "暫時無法讀取候選試跑紀錄的 Version 編號",
       );
       if (self) await expect(context).toHaveCount(0);
-      else await expect(context).toHaveText("比較基準：版本編號未知");
+      else await expect(context).toHaveText("比較基準：版本編號測量失敗");
       await page.getByText("直接輸入試跑紀錄 ID", { exact: true }).click();
       const field = page.getByLabel("要比較的另一個試跑紀錄 ID");
       await field.fill("恢復基準資訊前保留的比較 ID");

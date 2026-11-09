@@ -190,6 +190,36 @@ test("DISC-006: catalog serializes filters and explains one truncated result lis
   expect(container.textContent).not.toContain("未計算語意相似度");
 });
 
+test.each([
+  ["an unranked page without a note", { rank: null, rank_note: undefined }, "排序說明：未測量"],
+  ["a ranked page", { rank: 0.82, rank_note: undefined }, undefined],
+] as const)("DISC-006: the catalog order line for %s", async (_name, rank, want) => {
+  stubCatalog({
+    results: [
+      {
+        ...HIT_FACETS,
+        skill_id: "8f6b4724-c3e9-5df0-82e0-5dd4096af602",
+        name: "Catalog One",
+        summary: "A browsable skill.",
+        ...rank,
+        verified_at: "2026-09-03T00:00:00Z",
+        match_reason: "",
+        match_reason_source: "template",
+      },
+    ],
+    limit: 20,
+    total: 1,
+    truncated: false,
+  });
+  await render(<App />);
+  await act(async () => {
+    await router.navigate({ to: "/" });
+  });
+  await waitFor(() => container.textContent?.includes("Catalog One") ?? false);
+
+  expect(container.querySelector(".catalog-order")?.textContent).toBe(want);
+});
+
 const CATALOG_ROW = {
   ...HIT_FACETS,
   skill_id: "8f6b4724-c3e9-5df0-82e0-5dd4096af602",

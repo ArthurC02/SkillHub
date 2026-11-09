@@ -3,7 +3,7 @@ import { isUnusableRecordRequest } from "../../../../core/api/client";
 import { Loading } from "../../../../shared/ui/Loading";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { formatAt } from "../../../../shared/ui/Timestamp.model";
-import { useSkillVersions } from "../../../skill";
+import { useSkillVersions, versionNumberWord } from "../../../skill";
 import { useEvaluationBatchComparison, useEvaluationBatches } from "../batches.service";
 import { PairedSummary } from "./PairedSummary";
 import { pairedFromComparison } from "../batches.model";
@@ -72,7 +72,7 @@ export function BatchComparison({
                 const number = numbers.get(b.skill_version_id.toLowerCase());
                 return (
                   <option key={b.id} value={b.id}>
-                    {number === undefined ? "版本編號未知" : `v${number}`}・每題 {b.trials} 次・
+                    {versionNumberWord(number, versions)}・每題 {b.trials} 次・
                     {formatAt(b.created_at)}
                   </option>
                 );

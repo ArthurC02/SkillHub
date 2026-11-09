@@ -71,7 +71,12 @@ export function EvaluationBatches() {
         )}
       </section>
 
-      <BatchList skillId={skillId} versionNumbers={versionNumbers} newest={newest} />
+      <BatchList
+        skillId={skillId}
+        versionNumbers={versionNumbers}
+        versionsRead={versions}
+        newest={newest}
+      />
     </section>
   );
 }

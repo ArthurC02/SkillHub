@@ -54,7 +54,11 @@ export function DownloadArtifactFacts({ artifact }: { artifact: DownloadArtifact
             自己；用來判斷內容和上次一不一樣）：<code>{artifact.manifest_hash}</code>
           </li>
           <li>打包器版本：{artifact.packager_version ?? "未測量"}</li>
-          <li>Profile 版本：{artifact.profile_version ?? "無（標準套件沒有 Profile）"}</li>
+          <li>
+            Profile 版本：
+            {artifact.profile_version ??
+              (artifact.target === "standard" ? "不適用（標準套件沒有 Profile）" : "未測量")}
+          </li>
           {artifact.plugin ? (
             <li>
               Plugin：{artifact.plugin.name} v{artifact.plugin.version}
