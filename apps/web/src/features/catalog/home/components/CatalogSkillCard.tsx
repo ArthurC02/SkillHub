@@ -35,7 +35,7 @@ function CompactRisk({ hit }: { hit: PublicSearchResult }) {
 }
 
 function dependencySummary(dependencies: string[]) {
-  if (dependencies.length === 0) return "未提供";
+  if (dependencies.length === 0) return "未測量";
   if (dependencies.length <= 2) return dependencies.join("、");
   return `${dependencies.slice(0, 2).join("、")} ＋${dependencies.length - 2} 項`;
 }
