@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch, isLastingReadFailure } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
-import { isTraceAdvanced, isTraceSummary, RUN_STATUSES } from "./trace-response.model";
+import { isTraceAdvanced, isTraceSummary, RUN_POLL_MS, RUN_STATUSES } from "./trace-response.model";
 export { RUN_STATUSES } from "./trace-response.model";
 
 export type TraceMode = "general" | "advanced";
@@ -105,7 +105,7 @@ export function useTrace<M extends TraceMode>(runId: string, mode: M, active?: b
         const data = query.state.data as TraceSummary | undefined;
         if (data?.status && TERMINAL_RUN_STATUSES.has(data.status)) return false;
       }
-      return 3000;
+      return RUN_POLL_MS;
     },
     gcTime: mode === "advanced" ? 0 : undefined,
   });

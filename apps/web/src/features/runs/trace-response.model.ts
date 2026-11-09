@@ -1,5 +1,7 @@
 import type { TraceAdvanced, TraceSummary } from "./trace.service";
 
+export const RUN_POLL_MS = 3000;
+
 export const RUN_STATUSES = [
   "queued",
   "provisioning",

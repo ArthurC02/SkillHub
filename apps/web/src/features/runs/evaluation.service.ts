@@ -15,6 +15,7 @@ import {
   isRunSuggestionsResponse,
   isSuggestionDiffResponse,
 } from "./evaluation-response.model";
+import { RUN_POLL_MS } from "./trace-response.model";
 
 export type EvaluationVerdict = "met" | "partially_met" | "not_met" | "undetermined";
 export type CriterionVerdict = "passed" | "failed" | "undetermined";
@@ -227,10 +228,10 @@ export function useEvaluation(runId: string, revision?: string, awaitCurrent = f
       )
         return false;
       if (query.state.data?.status === "pending") {
-        return evaluationReadCount(query.state) < EVALUATION_POLL_MAX_PENDING ? 3000 : false;
+        return evaluationReadCount(query.state) < EVALUATION_POLL_MAX_PENDING ? RUN_POLL_MS : false;
       }
       if (!(error instanceof ApiError) || error.status !== 404) return false;
-      return query.state.errorUpdateCount < EVALUATION_POLL_MAX_404 ? 3000 : false;
+      return query.state.errorUpdateCount < EVALUATION_POLL_MAX_404 ? RUN_POLL_MS : false;
     },
   });
   useRevisionsFollowCurrent(
