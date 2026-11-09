@@ -550,6 +550,18 @@ func TestSecretsBlockWithoutEchoingValue(t *testing.T) {
 	}
 }
 
+func TestAnSKKeyBlocksFromTwentyCharactersAsTheRunMaskHidesIt(t *testing.T) {
+	for _, tc := range []struct {
+		tail    int
+		blocked bool
+	}{{19, false}, {20, true}} {
+		r := Validate(pkg(goodMD, map[string]string{"config.env": "KEY=sk-" + strings.Repeat("a", tc.tail)}))
+		if got := codes(r)[CodePossibleSecret] == SeverityError; got != tc.blocked {
+			t.Errorf("sk- with %d characters: possible-secret error = %v, want %v (%+v)", tc.tail, got, tc.blocked, r.Findings)
+		}
+	}
+}
+
 func TestAllowedToolsBothShapes(t *testing.T) {
 	list := "---\nname: x\ndescription: d\nlicense: MIT\nallowed-tools:\n  - Bash\n  - Read\n---\n"
 	csv := "---\nname: x\ndescription: d\nlicense: MIT\nallowed-tools: Bash, Read\n---\n"

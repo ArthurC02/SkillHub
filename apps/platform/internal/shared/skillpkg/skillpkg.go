@@ -814,7 +814,7 @@ var (
 	secretPatterns = []*regexp.Regexp{
 		regexp.MustCompile(`AKIA[0-9A-Z]{16}`),
 		regexp.MustCompile(`gh[pousr]_[A-Za-z0-9]{36,}`),
-		regexp.MustCompile(`sk-[A-Za-z0-9_-]{32,}`),
+		regexp.MustCompile(`sk-[A-Za-z0-9_-]{20,}`),
 		regexp.MustCompile(`xox[baprs]-[A-Za-z0-9-]{10,}`),
 		regexp.MustCompile(`-----BEGIN [A-Z ]*PRIVATE KEY-----`),
 		regexp.MustCompile(`(?i)aws_secret_access_key\s*=\s*\S{20}`),
