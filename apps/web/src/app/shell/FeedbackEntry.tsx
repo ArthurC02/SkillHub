@@ -2,6 +2,7 @@ import { useRef, useState, type RefObject } from "react";
 import { LoginRequired, ReadFailure } from "../../shared/ui/LoginRequired";
 import { unauthenticated } from "../../shared/ui/LoginRequired.model";
 import { useMe } from "../../core/session/me.service";
+import { textLengthReason } from "../../shared/textLength.model";
 import {
   BUILD_ID,
   FEEDBACK_MAX_MESSAGE,
@@ -138,11 +139,9 @@ export function FeedbackEntry({
       messageInput.current?.focus();
       return;
     }
-    if (runes(trimmed) > FEEDBACK_MAX_MESSAGE) {
-      setInvalid(
-        `內容最多 ${FEEDBACK_MAX_MESSAGE} 字，目前 ${runes(trimmed)} 字。` +
-          "請刪掉一些再送出，這樣才不會有一半被丟掉。",
-      );
+    const tooLong = textLengthReason(trimmed, "內容", FEEDBACK_MAX_MESSAGE);
+    if (tooLong) {
+      setInvalid(`${tooLong}請刪掉一些再送出，這樣才不會有一半被丟掉。`);
       messageInput.current?.focus();
       return;
     }

@@ -585,7 +585,7 @@ test("DISC-001 搜尋文字超過 2000 字：送出前擋下並說明，不打�
 
   const alert = container.querySelector('[role="alert"]');
   const input = container.querySelector<HTMLInputElement>('input[aria-label="任務描述"]')!;
-  expect(alert?.textContent).toBe("搜尋文字最多 2000 字，目前 2001 字。");
+  expect(alert?.textContent).toBe("搜尋文字最多 2000 個字，目前 2001 個字。");
   expect(input.getAttribute("aria-invalid")).toBe("true");
   expect(input.getAttribute("aria-describedby")).toBe(alert?.id);
   expect(calls.some((url) => url.includes("/api/skills/search"))).toBe(false);
@@ -610,7 +610,7 @@ test.each([
     );
     const alert = container.querySelector('[role="alert"]');
     expect(alert?.textContent ?? null).toBe(
-      searched ? null : "搜尋文字最多 2000 字，目前 2001 字。",
+      searched ? null : "搜尋文字最多 2000 個字，目前 2001 個字。",
     );
     expect(container.textContent).not.toContain("再試一次");
   },

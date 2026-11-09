@@ -11,6 +11,7 @@ import type { CommandExtra } from "./create.commands";
 import type { CategorizedFindings, ImportFinding } from "../../../core/api/types";
 import { isCategorizedFindings } from "../import.service";
 import { byteLimit } from "../../../shared/format";
+import { textLengthReason } from "../../../shared/textLength.model";
 import { criterionTally, labelOf, OVERALL_LABEL } from "../../../shared/verdict";
 
 export type DraftInspection = { findings: CategorizedFindings } | { refusal: string };
@@ -349,8 +350,8 @@ export function compositionMode(file: File | undefined, referenceCount: number):
 export function compositionProblem(note: string, hasFile: boolean, referenceCount: number) {
   if (!hasFile && referenceCount === 0 && !note)
     return "還沒有要送出的內容：寫一句話，或附上流程圖、挑一個參考小工具。";
-  if ([...note].length > MAX_MESSAGE_RUNES)
-    return `文字說明最多 ${MAX_MESSAGE_RUNES} 字，目前 ${[...note].length} 字，請先剪短。`;
+  const tooLong = textLengthReason(note, "文字說明", MAX_MESSAGE_RUNES);
+  if (tooLong) return `${tooLong}請先剪短。`;
   if (hasFile && referenceCount > 0)
     return "流程圖和參考小工具一次只能送一種。先送其中一種，Agent 讀完之後再送另一種；文字說明可以跟著任一種一起送。";
   return undefined;

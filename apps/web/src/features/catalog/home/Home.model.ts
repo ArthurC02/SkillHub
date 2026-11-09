@@ -2,6 +2,7 @@ import { PublicSearchSkillsQMaxLength } from "@skillhub/api-client-ts/limits";
 import { MAX_COMPARE } from "../../skill";
 import type { HomeSearch } from "../../../app/router";
 import type { SearchFilters } from "../../../core/api/types";
+import { textLengthReason } from "../../../shared/textLength.model";
 
 export const SEARCH_MAX_QUERY = PublicSearchSkillsQMaxLength;
 
@@ -29,10 +30,7 @@ export function filtersFromSearch(
 }
 
 export function queryLengthError(trimmed: string): string | null {
-  const count = runes(trimmed);
-  return count > SEARCH_MAX_QUERY
-    ? `搜尋文字最多 ${SEARCH_MAX_QUERY} 字，目前 ${count} 字。`
-    : null;
+  return textLengthReason(trimmed, "搜尋文字", SEARCH_MAX_QUERY);
 }
 
 export function linkedQueryError(query: string | undefined): string {

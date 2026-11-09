@@ -229,7 +229,9 @@ test("BETA-003 an over-long report says how long it is instead of being cut in h
   await submit();
 
   expect(calls).toHaveLength(0);
-  expect(container.querySelector('[role="alert"]')?.textContent).toContain("目前 2001 字");
+  expect(container.querySelector('[role="alert"]')?.textContent).toContain(
+    "內容最多 2000 個字，目前 2001 個字。請刪掉一些再送出",
+  );
 });
 
 test("a report at exactly the length ceiling is accepted, not refused", async () => {

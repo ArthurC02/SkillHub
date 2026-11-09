@@ -64,7 +64,7 @@ test("queryLengthError accepts a query at the 2000-rune boundary", () => {
 });
 
 test("queryLengthError rejects a query one rune past the boundary, naming the count", () => {
-  expect(queryLengthError("a".repeat(2001))).toBe("搜尋文字最多 2000 字，目前 2001 字。");
+  expect(queryLengthError("a".repeat(2001))).toBe("搜尋文字最多 2000 個字，目前 2001 個字。");
 });
 
 test("clearedFilterFields undefines every filter field", () => {

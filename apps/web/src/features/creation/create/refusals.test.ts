@@ -48,7 +48,7 @@ describe("compositionProblem", () => {
 
   test("a sentence of 4001 characters is refused and says both numbers", () => {
     expect(compositionProblem("字".repeat(4001), false, 0)).toBe(
-      "文字說明最多 4000 字，目前 4001 字，請先剪短。",
+      "文字說明最多 4000 個字，目前 4001 個字。請先剪短。",
     );
   });
 
