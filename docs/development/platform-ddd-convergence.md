@@ -227,18 +227,18 @@ gen.GetSkillParams{ID: skillID.value(), WorkspaceID: workspaceID.value()}
 
 ### 5.6 Go 只寫不讀的封閉詞彙
 
-六個欄位的 `CHECK (… IN (…))` 是封閉詞彙，Go 會寫進去，但**沒有任何一處依它們的值分支**：`analytics_events.event_name`、`cost_events.ref_type`、`credit_entries.ref_type`、`creation_receipts.kind`、`evaluation_model_usage.operation`、`object_reconcile_sightings.resource_kind`。寫入端各是一組常數或兩處字面值，值寫進去之後沒有人讀回來做判斷，J1 問的那種領域問題不存在。
+五個欄位的 `CHECK (… IN (…))` 是封閉詞彙，Go 會寫進去，但**沒有任何一處依它們的值分支**：`cost_events.ref_type`、`credit_entries.ref_type`、`creation_receipts.kind`、`evaluation_model_usage.operation`、`object_reconcile_sightings.resource_kind`。寫入端各是一組常數或兩處字面值，值寫進去之後沒有人讀回來做判斷，J1 問的那種領域問題不存在。
 
 ```
-git grep -nE '(==|!=|case) *"(search_performed|skill_detail_viewed|session_started|download_started|creation_session|skill_version|operator_grant|command|attempt|judge|suggest|dataset|artifact)"' -- 'apps/platform/internal/*.go' | awk '!/_test\.go/ && !/\/gen\//'
-git grep -nE '(==|!=|case) *(Event(SearchPerformed|SkillDetailViewed|SessionStarted|DownloadStarted)|Ref(CreationSession|Run|SkillVersion|OperatorGrant)|kind(Dataset|Artifact))\b' -- 'apps/platform/internal/*.go' | awk '!/_test\.go/ && !/\/gen\//'
+git grep -nE '(==|!=|case) *"(creation_session|skill_version|operator_grant|command|attempt|judge|suggest|dataset|artifact)"' -- 'apps/platform/internal/*.go' | awk '!/_test\.go/ && !/\/gen\//'
+git grep -nE '(==|!=|case) *(Ref(CreationSession|Run|SkillVersion|OperatorGrant)|kind(Dataset|Artifact))\b' -- 'apps/platform/internal/*.go' | awk '!/_test\.go/ && !/\/gen\//'
 ```
 
 兩支都應該沒有輸出。讀這些值的只有 SQL：`db/queries/cost.sql` 的會話加總以 `ref_type = 'creation_session'` 選列，與 §5.1 的 `kind` 同一形狀。
 
-寫入端寫了 CHECK 不收的值時，交易會失敗；唯一例外是 `analytics_events`，寫入失敗只記一行 log（`analytics event not recorded`）不回報，所以新增事件卻忘了 migration 時只有 log 看得到。
+寫入端寫了 CHECK 不收的值時，交易會失敗。`analytics_events.event_name` 與 `skill_runtime_compatibility.runtime` 不在此列：前者寫入失敗只記一行 log 不回報，後者的值也是搜尋篩選的允許清單，兩者都由 `domain-vocabulary` 對帳 Go 常數與 CHECK。
 
-`domain-vocabulary` 的 `unreconciledVocabularies` 逐筆列出這六個欄位，以及同一個形狀的 `skill_runtime_compatibility.runtime`：Go 不依這些值分支，寫入端由既有資料庫規則限制。**重開條件**：Go 開始依其中任何一個值分支——屆時照 §3 形狀在擁有者型別化、接進對帳，並刪掉那一筆。
+`domain-vocabulary` 的 `unreconciledVocabularies` 逐筆列出這五個欄位：Go 不依這些值分支，寫入端由既有資料庫規則限制。**重開條件**：Go 開始依其中任何一個值分支——屆時照 §3 形狀在擁有者型別化、接進對帳，並刪掉那一筆。
 
 ### 5.7 creation 的 Session aggregate 與金額的 value type
 

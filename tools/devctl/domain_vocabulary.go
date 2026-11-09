@@ -69,6 +69,25 @@ func goConstEnum(path, typeName string) vocabularySource {
 	}
 }
 
+func goUntypedConstEnum(path, namePrefix string) vocabularySource {
+	return vocabularySource{
+		label: fmt.Sprintf("%s (untyped %s* constants)", path, namePrefix),
+		read: func(repo vocabularyRepo) (map[string]bool, error) {
+			byName, err := repoConstStrings(repo, path, untypedConst)
+			if err != nil {
+				return nil, err
+			}
+			values := map[string]bool{}
+			for name, value := range byName {
+				if strings.HasPrefix(name, namePrefix) {
+					values[value] = true
+				}
+			}
+			return values, nil
+		},
+	}
+}
+
 func goListedConstEnum(listPath, listName, constPath, constType string) vocabularySource {
 	return vocabularySource{
 		label: fmt.Sprintf("%s (%s)", listPath, listName),
@@ -545,20 +564,34 @@ var domainVocabularies = []domainVocabulary{
 			goConstEnum("apps/platform/internal/trial/improvement/checks/deterministic.go", "capability"),
 		},
 	},
+	{
+		name: "skill runtime compatibility runtime",
+		sources: []vocabularySource{
+			sqlColumnCheck("skill_runtime_compatibility", "runtime"),
+			goListedConstEnum(
+				"apps/platform/internal/skill/discovery/http.go", "agentRuntimeValues",
+				"apps/platform/internal/skill/discovery/http.go", untypedConst),
+		},
+	},
+	{
+		name: "analytics event name",
+		sources: []vocabularySource{
+			sqlColumnCheck("analytics_events", "event_name"),
+			goUntypedConstEnum("apps/platform/internal/product/learning/analytics.go", "Event"),
+		},
+	},
 }
 
 const reasonNeverBranchesOnColumn = "Go writes it and never branches on it (platform-ddd-convergence.md §5.6)"
 
 var unreconciledVocabularies = map[string]string{
 	"artifacts.kind":                           "Go never reads or writes it; every query spells the kind itself (platform-ddd-convergence.md §5.1)",
-	"analytics_events.event_name":              reasonNeverBranchesOnColumn,
 	"cost_events.ref_type":                     reasonNeverBranchesOnColumn,
 	"credit_entries.ref_type":                  reasonNeverBranchesOnColumn,
 	"creation_receipts.kind":                   reasonNeverBranchesOnColumn,
 	"evaluation_model_usage.operation":         reasonNeverBranchesOnColumn,
 	"object_reconcile_sightings.resource_kind": reasonNeverBranchesOnColumn,
 	"outbox_events.event_type":                 "the outbox package's own tests reconcile it against the migration and the event catalogue",
-	"skill_runtime_compatibility.runtime":      "Go only displays it; nothing branches on its value (platform-ddd-convergence.md §5.6)",
 }
 
 func domainVocabularyProblems(root string) []string {
@@ -710,8 +743,7 @@ func repoConstStrings(repo vocabularyRepo, relative, typeName string) (map[strin
 func constStringsIn(path string, file *ast.File, typeName string) (map[string]string, error) {
 	values := map[string]string{}
 	for _, value := range constSpecs(file) {
-		declared, ok := value.Type.(*ast.Ident)
-		if !ok || declared.Name != typeName {
+		if !declaresType(value, typeName) {
 			continue
 		}
 		if err := addConstStrings(path, value, values); err != nil {
@@ -719,6 +751,16 @@ func constStringsIn(path string, file *ast.File, typeName string) (map[string]st
 		}
 	}
 	return values, nil
+}
+
+const untypedConst = ""
+
+func declaresType(value *ast.ValueSpec, typeName string) bool {
+	if typeName == untypedConst {
+		return value.Type == nil
+	}
+	declared, ok := value.Type.(*ast.Ident)
+	return ok && declared.Name == typeName
 }
 
 func constSpecs(file *ast.File) []*ast.ValueSpec {
@@ -814,6 +856,9 @@ func compositeIdentifiers(path, listName string, expression ast.Expr) ([]string,
 	}
 	var names []string
 	for _, element := range composite.Elts {
+		if entry, isMapEntry := element.(*ast.KeyValueExpr); isMapEntry {
+			element = entry.Key
+		}
 		switch identifier := element.(type) {
 		case *ast.Ident:
 			names = append(names, identifier.Name)
