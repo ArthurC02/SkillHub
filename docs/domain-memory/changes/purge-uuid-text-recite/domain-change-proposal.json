@@ -3,12 +3,12 @@
   "proposal_id": "purge-uuid-text-recite",
   "proposer": "agent:coding-agent",
   "requirement_id": "purge-uuid-text-recite",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-11-09T09:51:40.816403Z",
   "verified_at": "2026-11-09T09:52:39.463720Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-11-09T09:53:04.991329Z",
+  "applied_at": "2026-11-09T09:53:19.296898Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "b213cf6e6a1b8268de8d36e6132f74ed0641d74e",
@@ -99,5 +99,9 @@
   ],
   "supersedes": [
     "shifted-recite-2026-10-24"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "05f577a473288258270cfaa32bbdaf42cdf28712",
+    "registry_digest": "sha256:d1d0e0f050c8a5361c1380616685d7e31c473e033d65b3fce873ed0ec848d68a"
+  }
 }
