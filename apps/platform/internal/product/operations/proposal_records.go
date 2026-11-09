@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"slices"
 	"strconv"
 	"time"
 
@@ -95,15 +96,15 @@ func (s *Service) Proposal(ctx context.Context, id pgtype.UUID) (gen.GetProposal
 	return row, err
 }
 
+var proposalViews = []string{"all", "proposed", "processing", "closed"}
+
 func (h *Handler) Proposals(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
 	view := "all"
 	if query.Has("view") {
 		view = query.Get("view")
 	}
-	switch view {
-	case "all", "proposed", "processing", "closed":
-	default:
+	if !slices.Contains(proposalViews, view) {
 		httpx.WriteError(w, http.StatusBadRequest, "view must be all, proposed, processing or closed")
 		return
 	}

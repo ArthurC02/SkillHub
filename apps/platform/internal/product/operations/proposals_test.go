@@ -2,6 +2,10 @@ package operations
 
 import (
 	"context"
+	"os"
+	"path/filepath"
+	"regexp"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -28,5 +32,20 @@ func TestAnAgentMayNotProposeARegisteredActionItsDefinitionDoesNotList(t *testin
 	}
 	if previewed["run-unlisted"] {
 		t.Error("the unlisted action was previewed before being refused")
+	}
+}
+
+func TestTheProposalViewsAreTheContractsViews(t *testing.T) {
+	body, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "..", "contracts", "openapi", "public.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := regexp.MustCompile(`(?s)operationId: listPlatformAgentProposals\b.*?- name: view\n.*?enum: \[([^\]]*)\]`).FindSubmatch(body)
+	if found == nil {
+		t.Fatal("the contract's listPlatformAgentProposals declares no view enum")
+	}
+	want := strings.Split(string(found[1]), ", ")
+	if !slices.Equal(proposalViews, want) {
+		t.Errorf("proposalViews = %q, the contract declares %q", proposalViews, want)
 	}
 }

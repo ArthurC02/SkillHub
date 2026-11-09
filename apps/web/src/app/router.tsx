@@ -5,6 +5,7 @@ import {
   lazyRouteComponent,
   redirect,
 } from "@tanstack/react-router";
+import type { PlatformAgentFindingStatusEnum } from "@skillhub/api-client-ts";
 import { CreationActionMessageMaxLength } from "@skillhub/api-client-ts/limits";
 import { RootLayout } from "./RootLayout";
 import { RouteNotFound } from "../shared/ui/RouteNotFound";
@@ -581,7 +582,13 @@ const adminAgentsRoute = createRoute({
     proposal_offset?: number;
     run?: string;
   } => ({
-    status: (["resolved", "dismissed", "recovered"] as const).find((s) => s === search.status),
+    status: (
+      [
+        "resolved",
+        "dismissed",
+        "recovered",
+      ] as const satisfies readonly PlatformAgentFindingStatusEnum[]
+    ).find((s) => s === search.status),
     finding:
       typeof search.finding === "string" && UUID.test(search.finding) ? search.finding : undefined,
     proposal:
