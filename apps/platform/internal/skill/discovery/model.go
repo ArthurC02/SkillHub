@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"strings"
 	"time"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/textx"
 )
 
 type ModelUsage struct {
@@ -81,9 +83,7 @@ func candidateTags(tags []string) []string {
 		if tag == "" {
 			continue
 		}
-		if runes := []rune(tag); len(runes) > candidateTagRunes {
-			tag = string(runes[:candidateTagRunes])
-		}
+		tag, _ = textx.CutRunes(tag, candidateTagRunes)
 		out = append(out, tag)
 		if len(out) == candidateTagsMaxItems {
 			break
