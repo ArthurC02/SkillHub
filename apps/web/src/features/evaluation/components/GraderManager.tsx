@@ -23,7 +23,7 @@ import {
 } from "../evaluation.service";
 import "./GraderManager.css";
 
-const SCOPE_LABEL: Record<GraderScope, string> = {
+export const SCOPE_LABEL: Record<GraderScope, string> = {
   platform: "平台通用",
   workspace: "這個 Workspace 專用",
 };

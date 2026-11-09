@@ -3,6 +3,7 @@ import { useId, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { textLengthReason } from "../../../shared/textLength.model";
+import { SCOPE_LABEL } from "./GraderManager";
 import {
   PROMPT_GRADER,
   atLeastReason,
@@ -92,7 +93,7 @@ function ValuesField({
           {missingGrader && <option value={values[0]}>已指定的版本（名稱未知）</option>}
           {graders.map((g) => (
             <option key={g.version_id} value={g.version_id}>
-              {g.name} v{g.version}（{g.scope === "platform" ? "平台通用" : "這個 Workspace"}）
+              {g.name} v{g.version}（{SCOPE_LABEL[g.scope]}）
             </option>
           ))}
         </select>{" "}

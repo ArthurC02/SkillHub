@@ -338,7 +338,7 @@ test("a prompt grader picks a version from both the platform's and the workspace
   const options = Array.from(field<HTMLSelectElement>("#check-node-0-grader").options).map(
     (o) => o.textContent,
   );
-  expect(options).toEqual(["選一個評分器", "引用出處 v1（平台通用）", "語氣 v2（這個 Workspace）"]);
+  expect(options).toEqual(["選一個評分器", "引用出處 v1（平台通用）", "語氣 v2（這個 Workspace 專用）"]);
 
   await act(async () => setValue(field("#check-node-0-grader"), WORKSPACE_GRADER.version_id));
   expect(latest).toEqual({ kind: "prompt_grader", values: [WORKSPACE_GRADER.version_id] });
