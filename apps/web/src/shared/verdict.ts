@@ -1,3 +1,7 @@
+import type { Absence } from "./ui/absence";
+
+const UNMEASURED: Absence = "未測量";
+
 type Overall = "met" | "partially_met" | "not_met" | "undetermined";
 type CriterionOutcome = "passed" | "failed" | "undetermined";
 
@@ -19,6 +23,10 @@ export function labelOf(
   value: string,
 ): string | undefined {
   return Object.hasOwn(table, value) ? table[value] : undefined;
+}
+
+export function verdictWord(table: Readonly<Record<string, string>>, value?: string): string {
+  return labelOf(table, value ?? "") ?? (value || UNMEASURED);
 }
 
 export function criterionTally(results: readonly { result?: string }[]): string {

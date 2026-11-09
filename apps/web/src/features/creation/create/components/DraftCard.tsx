@@ -3,7 +3,7 @@ import type { CreationSnapshot, CreationState, CreationSessionRead } from "../..
 import { runStatusLabel, type RunListItem } from "../../../runs";
 import { Reveal } from "../../../../shared/ui/Reveal";
 import { findRunObservation, readDraftInspection } from "../create.model";
-import { labelOf, OVERALL_LABEL } from "../../../../shared/verdict";
+import { OVERALL_LABEL, verdictWord } from "../../../../shared/verdict";
 import type { Perform } from "../create.commands";
 import { DraftFindings } from "./DraftFindings";
 
@@ -159,7 +159,7 @@ function DraftCandidate({
           {run && (
             <p>
               試跑結果：{runStatusLabel(run.execution_status)}；評估：
-              {labelOf(OVERALL_LABEL, run.evaluation?.overall ?? "") ?? (run.evaluation?.overall || "未測量")}
+              {verdictWord(OVERALL_LABEL, run.evaluation?.overall)}
             </p>
           )}
         </>

@@ -114,7 +114,9 @@ export function EvaluationReport({
           {evaluation.injection_check && (
             <li>{INJECTION_CHECK_LINE[evaluation.injection_check.status]}</li>
           )}
-          <li>Rubric 版本：{evaluation.rubric_version ?? "不適用（沒有 rubric，不是採用預設 rubric）"}</li>
+          <li>
+            Rubric 版本：{evaluation.rubric_version ?? "不適用（沒有 rubric，不是採用預設 rubric）"}
+          </li>
           <li>
             評估時間：
             {evaluation.evaluated_at ? <Timestamp at={evaluation.evaluated_at} /> : "尚未完成"}

@@ -4,7 +4,7 @@ import { FETCH_STATUS_LABEL } from "../create.model";
 import {
   CRITERION_LABEL,
   criterionTally,
-  labelOf,
+  verdictWord,
   OVERALL_LABEL,
 } from "../../../../shared/verdict";
 
@@ -62,7 +62,7 @@ export function ToolObservation({ raw }: { raw: string }) {
         <>
           <span className="creation-text">
             試跑結果：{runStatusLabel(asRun.execution_status)}；評估：
-            {labelOf(OVERALL_LABEL, overall) ?? (overall || "未測量")}
+            {verdictWord(OVERALL_LABEL, overall)}
             {results.length > 0 && `（${criterionTally(results)}）`}
           </span>
           {!!asRun.evaluation?.summary && (
@@ -72,7 +72,7 @@ export function ToolObservation({ raw }: { raw: string }) {
             <ul>
               {results.map((c, i) => (
                 <li key={i}>
-                  {labelOf(CRITERION_LABEL, c.result ?? "") ?? (c.result || "未測量")}：{c.text}
+                  {verdictWord(CRITERION_LABEL, c.result)}：{c.text}
                   {!!c.reason && `——${c.reason}`}
                 </li>
               ))}
