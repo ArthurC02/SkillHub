@@ -5,7 +5,6 @@ import (
 	"math"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -133,17 +132,16 @@ func (h *operatorAuditHandler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 func parseOperatorAuditCursor(raw string) (time.Time, int64, error) {
-	at, rawID, found := strings.Cut(raw, "_")
-	when, timeErr := time.Parse(time.RFC3339Nano, at)
+	when, rawID, ok := httpx.SplitKeysetCursor(raw)
 	id, idErr := strconv.ParseInt(rawID, 10, 64)
-	if !found || timeErr != nil || idErr != nil || id <= 0 {
+	if !ok || idErr != nil || id <= 0 {
 		return time.Time{}, 0, fmt.Errorf("cursor is invalid")
 	}
 	return when, id, nil
 }
 
 func operatorAuditCursor(record audit.Record) string {
-	return record.OccurredAt.UTC().Format(time.RFC3339Nano) + "_" + strconv.FormatInt(record.ID, 10)
+	return httpx.KeysetCursor(record.OccurredAt, strconv.FormatInt(record.ID, 10))
 }
 
 func optionalUUID(id pgtype.UUID) *string {

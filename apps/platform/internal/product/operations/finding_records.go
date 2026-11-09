@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -96,7 +95,7 @@ func (s *Service) Findings(ctx context.Context, statuses []string, beforeAt pgty
 	if len(rows) > findingListLimit {
 		rows = rows[:findingListLimit]
 		last := rows[len(rows)-1]
-		nextCursor = last.LastSeenAt.Time.UTC().Format(time.RFC3339Nano) + "_" + pgconv.UUIDString(last.ID)
+		nextCursor = httpx.KeysetCursor(last.LastSeenAt.Time, pgconv.UUIDString(last.ID))
 	}
 	return findingsPage{rows: rows, counts: counts, nextCursor: nextCursor}, nil
 }
@@ -104,9 +103,8 @@ func (s *Service) Findings(ctx context.Context, statuses []string, beforeAt pgty
 func findingCursor(raw string) (pgtype.Timestamptz, pgtype.UUID, error) {
 	var beforeAt pgtype.Timestamptz
 	var beforeID pgtype.UUID
-	at, id, found := strings.Cut(raw, "_")
-	when, err := time.Parse(time.RFC3339Nano, at)
-	if !found || err != nil || beforeID.Scan(id) != nil {
+	when, id, ok := httpx.SplitKeysetCursor(raw)
+	if !ok || beforeID.Scan(id) != nil {
 		return beforeAt, beforeID, errors.New("cursor is invalid")
 	}
 	beforeAt = pgconv.Timestamptz(when)

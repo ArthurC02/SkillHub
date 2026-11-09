@@ -8,7 +8,6 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"strings"
 	"time"
 	"unicode/utf8"
 
@@ -183,16 +182,15 @@ func parseStatementCursor(raw string) (time.Time, pgtype.UUID, error) {
 	if raw == "" {
 		return time.Time{}, id, nil
 	}
-	at, rawID, _ := strings.Cut(raw, "_")
-	t, err := time.Parse(time.RFC3339Nano, at)
-	if err != nil || id.Scan(rawID) != nil {
+	t, rawID, ok := httpx.SplitKeysetCursor(raw)
+	if !ok || id.Scan(rawID) != nil {
 		return time.Time{}, id, errors.New("before must be a cursor this endpoint returned")
 	}
 	return t, id, nil
 }
 
 func statementCursor(e credit.StatementEntry) string {
-	return e.CreatedAt.UTC().Format(time.RFC3339Nano) + "_" + pgconv.UUIDString(e.ID)
+	return httpx.KeysetCursor(e.CreatedAt, pgconv.UUIDString(e.ID))
 }
 
 func (h *creditsHandler) Statement(w http.ResponseWriter, r *http.Request) {
