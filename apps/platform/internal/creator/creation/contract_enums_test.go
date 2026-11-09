@@ -131,3 +131,26 @@ func TestNeedsAttentionIsAnActivityClassificationTheContractDeclares(t *testing.
 		t.Errorf("%q is not among the contract's classifications %v", creationNeedsAttention, want)
 	}
 }
+
+func TestThePendingActionsAreTheContractsPendingActions(t *testing.T) {
+	actions := []PendingAction{
+		NothingPending,
+		PendingBriefConfirmation,
+		PendingDiagramDescription,
+		PendingDiagramAnswers,
+		PendingDiagramInterpretation,
+		PendingReferenceChoice,
+		PendingDuplicateAcknowledgement,
+		PendingFetchPermission,
+	}
+	var got []string
+	for _, action := range actions {
+		got = append(got, string(action))
+	}
+	want := contractEnum(t, publicContract, "CreationSnapshot", "pending_action")
+	slices.Sort(got)
+	slices.Sort(want)
+	if !slices.Equal(got, want) {
+		t.Errorf("the pending actions are %q, the contract declares %q", got, want)
+	}
+}

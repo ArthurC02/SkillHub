@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from "react";
+import type { CreationSnapshotPendingActionEnum } from "@skillhub/api-client-ts";
 import type {
   CreationSession,
   CreationSnapshot,
@@ -21,6 +22,12 @@ import {
   RoundTimeline,
 } from "./SessionCards";
 import { DraftCard } from "./DraftCard";
+
+const DIAGRAM_INTERPRETATION_STEPS: ReadonlySet<string> =
+  new Set<CreationSnapshotPendingActionEnum>([
+    "answer_diagram_uncertainties",
+    "confirm_diagram_interpretation",
+  ]);
 
 type DiagramAnswers = Record<string, string>;
 
@@ -130,10 +137,7 @@ function DiagramCards({
     p.pending_action === "confirm_diagram" &&
     !confirmDescription &&
     Boolean(p.diagram_understanding);
-  const confirmInterpretation = [
-    "answer_diagram_uncertainties",
-    "confirm_diagram_interpretation",
-  ].includes(p.pending_action);
+  const confirmInterpretation = DIAGRAM_INTERPRETATION_STEPS.has(p.pending_action);
   return (
     <>
       {p.diagram_understanding && (

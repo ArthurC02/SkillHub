@@ -2796,6 +2796,17 @@ func (s *CreationSnapshot) Validate() error {
 		})
 	}
 	if err := func() error {
+		if err := s.PendingAction.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		failures = append(failures, validate.FieldError{
+			Name:  "pending_action",
+			Error: err,
+		})
+	}
+	if err := func() error {
 		var failures []validate.FieldError
 		for i, elem := range s.Duplicates {
 			if err := func() error {
@@ -2870,6 +2881,29 @@ func (s *CreationSnapshot) Validate() error {
 		return &validate.Error{Fields: failures}
 	}
 	return nil
+}
+
+func (s CreationSnapshotPendingAction) Validate() error {
+	switch s {
+	case "":
+		return nil
+	case "confirm_brief":
+		return nil
+	case "confirm_diagram":
+		return nil
+	case "answer_diagram_uncertainties":
+		return nil
+	case "confirm_diagram_interpretation":
+		return nil
+	case "confirm_references":
+		return nil
+	case "confirm_duplicate":
+		return nil
+	case "confirm_fetch":
+		return nil
+	default:
+		return errors.Errorf("invalid value: %v", s)
+	}
 }
 
 func (s *CreditLedger) Validate() error {

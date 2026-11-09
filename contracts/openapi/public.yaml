@@ -14321,6 +14321,7 @@ components:
           $ref: "#/components/schemas/CreationCandidate"
         pending_action:
           type: "string"
+          enum: ["", confirm_brief, confirm_diagram, answer_diagram_uncertainties, confirm_diagram_interpretation, confirm_references, confirm_duplicate, confirm_fetch]
         budget_credits:
           type: "integer"
         reserved_credits:

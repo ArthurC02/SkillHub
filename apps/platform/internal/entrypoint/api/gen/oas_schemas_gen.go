@@ -5092,17 +5092,17 @@ type CreationSnapshot struct {
 	// Every picture the person put into this conversation, in order, each tied to the turn it arrived
 	// with. Metadata only: the platform keeps the digest and refuses the bytes, so a client that did not
 	// itself send the picture has its description and not the picture.
-	Attachments     []CreationAttachment `json:"attachments"`
-	References      []CreationReference  `json:"references"`
-	Draft           OptCreationDraft     `json:"draft"`
-	Candidate       OptCreationCandidate `json:"candidate"`
-	PendingAction   string               `json:"pending_action"`
-	BudgetCredits   int                  `json:"budget_credits"`
-	ReservedCredits int                  `json:"reserved_credits"`
-	SpentCredits    OptInt               `json:"spent_credits"`
-	UsageUnknown    bool                 `json:"usage_unknown"`
-	Steps           int                  `json:"steps"`
-	ToolCalls       int                  `json:"tool_calls"`
+	Attachments     []CreationAttachment          `json:"attachments"`
+	References      []CreationReference           `json:"references"`
+	Draft           OptCreationDraft              `json:"draft"`
+	Candidate       OptCreationCandidate          `json:"candidate"`
+	PendingAction   CreationSnapshotPendingAction `json:"pending_action"`
+	BudgetCredits   int                           `json:"budget_credits"`
+	ReservedCredits int                           `json:"reserved_credits"`
+	SpentCredits    OptInt                        `json:"spent_credits"`
+	UsageUnknown    bool                          `json:"usage_unknown"`
+	Steps           int                           `json:"steps"`
+	ToolCalls       int                           `json:"tool_calls"`
 	// Automatic re-queues after the model answered outcome=draft with no draft (at most one per session).
 	DraftRetries OptInt `json:"draft_retries"`
 	// The attached Run's evaluation finished and was not met; a draft identical to the one that ran is
@@ -5236,7 +5236,7 @@ func (s *CreationSnapshot) GetCandidate() OptCreationCandidate {
 }
 
 // GetPendingAction returns the value of PendingAction.
-func (s *CreationSnapshot) GetPendingAction() string {
+func (s *CreationSnapshot) GetPendingAction() CreationSnapshotPendingAction {
 	return s.PendingAction
 }
 
@@ -5446,7 +5446,7 @@ func (s *CreationSnapshot) SetCandidate(val OptCreationCandidate) {
 }
 
 // SetPendingAction sets the value of PendingAction.
-func (s *CreationSnapshot) SetPendingAction(val string) {
+func (s *CreationSnapshot) SetPendingAction(val CreationSnapshotPendingAction) {
 	s.PendingAction = val
 }
 
@@ -5568,6 +5568,89 @@ func (s *CreationSnapshot) SetDiagramBytes(val OptInt) {
 // SetPreviousDraft sets the value of PreviousDraft.
 func (s *CreationSnapshot) SetPreviousDraft(val OptCreationDraft) {
 	s.PreviousDraft = val
+}
+
+type CreationSnapshotPendingAction string
+
+const (
+	CreationSnapshotPendingActionEmpty                        CreationSnapshotPendingAction = ""
+	CreationSnapshotPendingActionConfirmBrief                 CreationSnapshotPendingAction = "confirm_brief"
+	CreationSnapshotPendingActionConfirmDiagram               CreationSnapshotPendingAction = "confirm_diagram"
+	CreationSnapshotPendingActionAnswerDiagramUncertainties   CreationSnapshotPendingAction = "answer_diagram_uncertainties"
+	CreationSnapshotPendingActionConfirmDiagramInterpretation CreationSnapshotPendingAction = "confirm_diagram_interpretation"
+	CreationSnapshotPendingActionConfirmReferences            CreationSnapshotPendingAction = "confirm_references"
+	CreationSnapshotPendingActionConfirmDuplicate             CreationSnapshotPendingAction = "confirm_duplicate"
+	CreationSnapshotPendingActionConfirmFetch                 CreationSnapshotPendingAction = "confirm_fetch"
+)
+
+// AllValues returns all CreationSnapshotPendingAction values.
+func (CreationSnapshotPendingAction) AllValues() []CreationSnapshotPendingAction {
+	return []CreationSnapshotPendingAction{
+		CreationSnapshotPendingActionEmpty,
+		CreationSnapshotPendingActionConfirmBrief,
+		CreationSnapshotPendingActionConfirmDiagram,
+		CreationSnapshotPendingActionAnswerDiagramUncertainties,
+		CreationSnapshotPendingActionConfirmDiagramInterpretation,
+		CreationSnapshotPendingActionConfirmReferences,
+		CreationSnapshotPendingActionConfirmDuplicate,
+		CreationSnapshotPendingActionConfirmFetch,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s CreationSnapshotPendingAction) MarshalText() ([]byte, error) {
+	switch s {
+	case CreationSnapshotPendingActionEmpty:
+		return []byte(s), nil
+	case CreationSnapshotPendingActionConfirmBrief:
+		return []byte(s), nil
+	case CreationSnapshotPendingActionConfirmDiagram:
+		return []byte(s), nil
+	case CreationSnapshotPendingActionAnswerDiagramUncertainties:
+		return []byte(s), nil
+	case CreationSnapshotPendingActionConfirmDiagramInterpretation:
+		return []byte(s), nil
+	case CreationSnapshotPendingActionConfirmReferences:
+		return []byte(s), nil
+	case CreationSnapshotPendingActionConfirmDuplicate:
+		return []byte(s), nil
+	case CreationSnapshotPendingActionConfirmFetch:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *CreationSnapshotPendingAction) UnmarshalText(data []byte) error {
+	switch CreationSnapshotPendingAction(data) {
+	case CreationSnapshotPendingActionEmpty:
+		*s = CreationSnapshotPendingActionEmpty
+		return nil
+	case CreationSnapshotPendingActionConfirmBrief:
+		*s = CreationSnapshotPendingActionConfirmBrief
+		return nil
+	case CreationSnapshotPendingActionConfirmDiagram:
+		*s = CreationSnapshotPendingActionConfirmDiagram
+		return nil
+	case CreationSnapshotPendingActionAnswerDiagramUncertainties:
+		*s = CreationSnapshotPendingActionAnswerDiagramUncertainties
+		return nil
+	case CreationSnapshotPendingActionConfirmDiagramInterpretation:
+		*s = CreationSnapshotPendingActionConfirmDiagramInterpretation
+		return nil
+	case CreationSnapshotPendingActionConfirmReferences:
+		*s = CreationSnapshotPendingActionConfirmReferences
+		return nil
+	case CreationSnapshotPendingActionConfirmDuplicate:
+		*s = CreationSnapshotPendingActionConfirmDuplicate
+		return nil
+	case CreationSnapshotPendingActionConfirmFetch:
+		*s = CreationSnapshotPendingActionConfirmFetch
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
 }
 
 // One account's Credit standing (CRED-001). No field here is denominated in money: Credit is the

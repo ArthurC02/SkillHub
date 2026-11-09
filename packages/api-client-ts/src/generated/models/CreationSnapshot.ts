@@ -98,7 +98,7 @@ export interface CreationSnapshot {
     /**
      * 
      */
-    pendingAction: string;
+    pendingAction: CreationSnapshotPendingActionEnum;
     /**
      * 
      */
@@ -196,4 +196,21 @@ export interface CreationSnapshot {
      */
     previousDraft?: CreationDraft;
 }
+
+
+/**
+ * @export
+ */
+export const CreationSnapshotPendingActionEnum = {
+    Empty: '',
+    ConfirmBrief: 'confirm_brief',
+    ConfirmDiagram: 'confirm_diagram',
+    AnswerDiagramUncertainties: 'answer_diagram_uncertainties',
+    ConfirmDiagramInterpretation: 'confirm_diagram_interpretation',
+    ConfirmReferences: 'confirm_references',
+    ConfirmDuplicate: 'confirm_duplicate',
+    ConfirmFetch: 'confirm_fetch',
+} as const;
+export type CreationSnapshotPendingActionEnum = typeof CreationSnapshotPendingActionEnum[keyof typeof CreationSnapshotPendingActionEnum];
+
 

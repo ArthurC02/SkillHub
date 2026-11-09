@@ -14233,7 +14233,7 @@ func (s *CreationSnapshot) encodeFields(e *jx.Encoder) {
 	}
 	{
 		e.FieldStart("pending_action")
-		e.Str(s.PendingAction)
+		s.PendingAction.Encode(e)
 	}
 	{
 		e.FieldStart("budget_credits")
@@ -14654,9 +14654,7 @@ func (s *CreationSnapshot) Decode(d *jx.Decoder) error {
 		case "pending_action":
 			requiredBitSet[2] |= 1 << 1
 			if err := func() error {
-				v, err := d.Str()
-				s.PendingAction = string(v)
-				if err != nil {
+				if err := s.PendingAction.Decode(d); err != nil {
 					return err
 				}
 				return nil
@@ -14984,6 +14982,58 @@ func (s *CreationSnapshot) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *CreationSnapshot) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes CreationSnapshotPendingAction as json.
+func (s CreationSnapshotPendingAction) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes CreationSnapshotPendingAction from json.
+func (s *CreationSnapshotPendingAction) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode CreationSnapshotPendingAction to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch CreationSnapshotPendingAction(v) {
+	case CreationSnapshotPendingActionEmpty:
+		*s = CreationSnapshotPendingActionEmpty
+	case CreationSnapshotPendingActionConfirmBrief:
+		*s = CreationSnapshotPendingActionConfirmBrief
+	case CreationSnapshotPendingActionConfirmDiagram:
+		*s = CreationSnapshotPendingActionConfirmDiagram
+	case CreationSnapshotPendingActionAnswerDiagramUncertainties:
+		*s = CreationSnapshotPendingActionAnswerDiagramUncertainties
+	case CreationSnapshotPendingActionConfirmDiagramInterpretation:
+		*s = CreationSnapshotPendingActionConfirmDiagramInterpretation
+	case CreationSnapshotPendingActionConfirmReferences:
+		*s = CreationSnapshotPendingActionConfirmReferences
+	case CreationSnapshotPendingActionConfirmDuplicate:
+		*s = CreationSnapshotPendingActionConfirmDuplicate
+	case CreationSnapshotPendingActionConfirmFetch:
+		*s = CreationSnapshotPendingActionConfirmFetch
+	default:
+		*s = CreationSnapshotPendingAction(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s CreationSnapshotPendingAction) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *CreationSnapshotPendingAction) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }

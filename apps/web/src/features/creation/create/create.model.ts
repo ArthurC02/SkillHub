@@ -1,4 +1,5 @@
 import { CreationActionMessageMaxLength } from "@skillhub/api-client-ts/limits";
+import type { CreationSnapshotPendingActionEnum } from "@skillhub/api-client-ts";
 import type { CreditBalance } from "../../../core/session/credits.service";
 import type {
   CreationAction,
@@ -164,7 +165,7 @@ const CREATION_FOCUS_BY_ACTION: Partial<Record<string, CreationFocus>> = {
     description: "比較現有小工具與目前草稿，再決定沿用、調整或繼續建立。",
     target: "creation-duplicate-decision",
   },
-};
+} satisfies Partial<Record<CreationSnapshotPendingActionEnum, CreationFocus>>;
 
 export function creationFocus(session: CreationSession | undefined): CreationFocus | undefined {
   if (!session || ["saved", "cancelled", "failed"].includes(session.state)) return undefined;
