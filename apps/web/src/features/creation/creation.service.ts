@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { CreationActionKindEnum } from "@skillhub/api-client-ts";
 import { replaceEqualDeep, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   API_BASE_URL,
@@ -164,26 +165,7 @@ export interface CreationLimits {
 export interface CreationAction {
   command_id: string;
   expected_revision: number;
-  kind:
-    | "message"
-    | "confirm_brief"
-    | "confirm_diagram"
-    | "answer_diagram_uncertainty"
-    | "confirm_diagram_interpretation"
-    | "select_references"
-    | "confirm_references"
-    | "materialize"
-    | "finalize"
-    | "cancel"
-    | "diagram"
-    | "attach_run"
-    | "raise_budget"
-    | "confirm_fetch"
-    | "decline_fetch"
-    | "adopt_reference"
-    | "decline_references"
-    | "confirm_duplicate"
-    | "stop_step";
+  kind: CreationActionKindEnum;
   message?: string;
   reference_skill_ids?: string[];
   content_hash?: string;
