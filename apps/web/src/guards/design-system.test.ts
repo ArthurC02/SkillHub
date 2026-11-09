@@ -87,6 +87,37 @@ test("§2.9: the absence words the app may render are the document's table, minu
   expect(new Set(ABSENCE_WORDS)).toEqual(new Set(stated.filter((word) => word !== "0")));
 });
 
+const RETIRED_ABSENCE_LITERALS = [
+  "未提供",
+  "未提供錯誤代碼",
+  "未提供原始訊息",
+  "未提供目錄排序說明。",
+  "未計算語意相似度。",
+  "沒有回報",
+  "沒有掃描紀錄",
+  "版本編號未知",
+  "編號未知",
+  "編號載入中",
+  "未產生",
+  "沒有錯誤紀錄",
+  "無評估",
+  "無結果",
+];
+
+test("§2.9: a retired absence word does not come back as a whole string literal", () => {
+  const productSources = readdirSync(src, { recursive: true })
+    .map((f) => String(f).replaceAll("\\", "/"))
+    .filter((f) => /\.tsx?$/.test(f) && !/\.test\.tsx?$/.test(f) && !f.startsWith("testing/"));
+  expect(productSources.length, "no product source was read").toBeGreaterThan(100);
+  const offenders = productSources.flatMap((f) => {
+    const text = readFileSync(join(src, f), "utf8");
+    return RETIRED_ABSENCE_LITERALS.filter((word) => text.includes(`"${word}"`)).map(
+      (word) => `${f}: "${word}"`,
+    );
+  });
+  expect(offenders, "use the §2.9 table word for why the value is missing").toEqual([]);
+});
+
 test("§2.7: colour lives in tokens, and nothing multiplies it", () => {
   const body = css.replace(/\/\*[\s\S]*?\*\//g, "").replace(/--[\w-]+:[^;]+;/g, "");
   expect(
