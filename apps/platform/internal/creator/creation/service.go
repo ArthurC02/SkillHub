@@ -10,6 +10,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation/webfetch"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	limits "github.com/ArthurC02/skillhub/apps/platform/internal/shared/contractlimits/gen"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -325,10 +326,7 @@ func digest(v any) string {
 	return hex.EncodeToString(h[:])
 }
 func UUID(id pgtype.UUID) string {
-	if !id.Valid {
-		return ""
-	}
-	return fmt.Sprintf("%x-%x-%x-%x-%x", id.Bytes[:4], id.Bytes[4:6], id.Bytes[6:8], id.Bytes[8:10], id.Bytes[10:])
+	return pgconv.UUIDString(id)
 }
 func ParseID(v string) (pgtype.UUID, error) {
 	var id pgtype.UUID

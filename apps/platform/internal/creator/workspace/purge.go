@@ -31,7 +31,7 @@ type PurgeStore interface {
 const purgeLedgerPrefix = "purge-ledger/"
 
 func purgeLedgerKey(userID pgtype.UUID) string {
-	return purgeLedgerPrefix + uuidText(userID)
+	return purgeLedgerPrefix + pgconv.UUIDString(userID)
 }
 
 type WorkspacePurge func(ctx context.Context, tx pgx.Tx, workspaceID pgtype.UUID) error
@@ -46,7 +46,7 @@ const (
 )
 
 func anonymizedEmail(userID pgtype.UUID) string {
-	return "deleted-" + uuidText(userID) + "@deleted.invalid"
+	return "deleted-" + pgconv.UUIDString(userID) + "@deleted.invalid"
 }
 
 var errAccountPurgeDeferred = errors.New("identity: account purge deferred while workspace work is active")
@@ -144,8 +144,8 @@ func (s *Service) PurgeExpiredAccounts(ctx context.Context, store PurgeStore, gr
 				continue
 			}
 
-			slog.Error("account purge failed", "user_id", uuidText(id), "error", err)
-			failures = append(failures, fmt.Errorf("purge account %s: %w", uuidText(id), err))
+			slog.Error("account purge failed", "user_id", pgconv.UUIDString(id), "error", err)
+			failures = append(failures, fmt.Errorf("purge account %s: %w", pgconv.UUIDString(id), err))
 			continue
 		}
 		purged++
@@ -210,7 +210,7 @@ func (r PurgeLedgerReplay) Run(ctx context.Context, store PurgeStore) (replayed 
 		}
 		resurrected, err := r.replay(ctx, store, userID)
 		if err != nil {
-			failures = append(failures, fmt.Errorf("replay purge of account %s: %w", uuidText(userID), err))
+			failures = append(failures, fmt.Errorf("replay purge of account %s: %w", pgconv.UUIDString(userID), err))
 			continue
 		}
 		if resurrected {
@@ -367,10 +367,4 @@ func anonymizeAccount(ctx context.Context, q *gen.Queries, userID pgtype.UUID) e
 		return err
 	}
 	return nil
-}
-
-func uuidText(u pgtype.UUID) string {
-	v, _ := u.Value()
-	s, _ := v.(string)
-	return s
 }

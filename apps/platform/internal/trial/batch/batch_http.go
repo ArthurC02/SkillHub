@@ -269,13 +269,6 @@ func uuidStrings(ids []pgtype.UUID) []string {
 	return out
 }
 
-func optionalUUIDString(id pgtype.UUID) string {
-	if !id.Valid {
-		return ""
-	}
-	return pgconv.UUIDString(id)
-}
-
 func viewOfBatch(b Batch) batchView {
 	return batchView{
 		ID: pgconv.UUIDString(b.ID), SkillID: pgconv.UUIDString(b.SkillID), SkillVersionID: pgconv.UUIDString(b.VersionID),
@@ -316,7 +309,7 @@ func viewOfArm(arm ArmReport) armView {
 		trials := make([]batchTrialView, len(tc.Trials))
 		for j, t := range tc.Trials {
 			trials[j] = batchTrialView{
-				Trial: t.Trial, RunID: optionalUUIDString(t.RunID), EndRunID: optionalUUIDString(t.EndRunID), Outcome: t.Outcome,
+				Trial: t.Trial, RunID: pgconv.UUIDString(t.RunID), EndRunID: pgconv.UUIDString(t.EndRunID), Outcome: t.Outcome,
 			}
 		}
 		view.TestCases[i] = batchTestCaseView{

@@ -278,8 +278,8 @@ func (s *Service) improvementOriginOf(
 	}
 	return improvementOrigin{
 		Kind:         "improvement",
-		EvaluationID: optionalUUID(sugs[0].EvaluationID),
-		ReflectionID: optionalUUID(sugs[0].ReflectionID),
+		EvaluationID: pgconv.UUIDString(sugs[0].EvaluationID),
+		ReflectionID: pgconv.UUIDString(sugs[0].ReflectionID),
 		Suggestions:  refs,
 		Base:         base,
 		RootSource:   root,
@@ -345,11 +345,4 @@ func rfc3339(ts pgtype.Timestamptz) string {
 		return time.Unix(0, 0).UTC().Format(time.RFC3339)
 	}
 	return ts.Time.UTC().Format(time.RFC3339)
-}
-
-func optionalUUID(id pgtype.UUID) string {
-	if !id.Valid {
-		return ""
-	}
-	return pgconv.UUIDString(id)
 }
