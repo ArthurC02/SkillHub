@@ -56,3 +56,23 @@ func TestTheRunBudgetRangeIsTheSameInGoAndTheTable(t *testing.T) {
 		t.Errorf("the table check = %v micros, want %v from the Go dollars", got, want)
 	}
 }
+
+func TestTheContinuationRoundsRangeIsTheSameInGoTheContractAndTheTable(t *testing.T) {
+	want := [2]int64{MinContinuationRounds, MaxContinuationRounds}
+	sqlLo, sqlHi := repoFileBounds(t, []string{"db", "migrations", "0117_run_continuations.sql"},
+		`continuation_rounds BETWEEN (\d+) AND (\d+)`)
+	apiLo, apiHi := repoFileBounds(t, []string{"contracts", "openapi", "public.yaml"},
+		`(?s)operationId: setContinuationRounds\b.*?rounds: \{ type: integer, minimum: (\d+), maximum: (\d+) \}`)
+	for _, tc := range []struct {
+		name string
+		got  [2]int64
+	}{
+		{"the table check", [2]int64{sqlLo, sqlHi}},
+		{"the contract", [2]int64{apiLo, apiHi}},
+		{"the generated contract maximum", [2]int64{MinContinuationRounds, limits.SetContinuationRoundsBodyRoundsMaximum}},
+	} {
+		if tc.got != want {
+			t.Errorf("%s = %v, want %v", tc.name, tc.got, want)
+		}
+	}
+}
