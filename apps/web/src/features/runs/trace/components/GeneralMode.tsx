@@ -100,7 +100,7 @@ export function GeneralMode({
       <h3>用量</h3>
       {trace.usage ? (
         <ul>
-          <li>模型：{trace.usage.model || "未知"}</li>
+          <li>模型：{trace.usage.model || "未測量"}</li>
           <li>
             Token：輸入 {trace.usage.input_tokens}、輸出 {trace.usage.output_tokens}
           </li>

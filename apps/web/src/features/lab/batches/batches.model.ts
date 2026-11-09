@@ -120,7 +120,7 @@ export function haltSentence(batch: EvaluationBatch): string | undefined {
   const reason = batch.stop_reason ?? "";
   return (
     HALT_SENTENCE[reason] ??
-    `有一次試跑被拒絕，批次${batch.status === "paused" ? "暫停" : "停止"}了（原因代碼：${reason || "未提供"}）。`
+    `有一次試跑被拒絕，批次${batch.status === "paused" ? "暫停" : "停止"}了（原因代碼：${reason || "未測量"}）。`
   );
 }
 

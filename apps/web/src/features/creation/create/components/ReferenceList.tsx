@@ -14,8 +14,8 @@ function referenceTierLabel(tier?: string): string {
 function referenceScanLabel(scanStatus?: string, warnings?: number): string {
   if (scanStatus === "scanned")
     return (warnings ?? 0) > 0 ? `已掃描，${warnings} 個警告` : "已掃描，無警告";
-  if (scanStatus === "unavailable") return "沒有掃描紀錄";
-  return "未知";
+  if (scanStatus === "unavailable") return "未測量（沒有掃描紀錄）";
+  return "未測量";
 }
 
 export function ReferenceList({

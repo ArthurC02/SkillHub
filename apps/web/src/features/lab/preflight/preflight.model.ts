@@ -28,7 +28,7 @@ export const tokens = (n: number) => `${n}`;
 export const SCRIPT_LABEL: Record<PreflightSummary["scripts"]["status"], string> = {
   none: "無(靜態掃描未發現 Script 或內嵌程式碼)",
   present: "有",
-  unavailable: "未知(套件無法讀取,未完成掃描)",
+  unavailable: "測量失敗(套件無法讀取,未完成掃描)",
 };
 
 export function runCeilingCredits(value: unknown): number | undefined {

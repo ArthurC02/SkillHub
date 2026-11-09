@@ -137,7 +137,7 @@ test("RunStatusTable keeps untrusted provider wording behind technical details",
   expect(disclosures.every((item) => !item.hasAttribute("open"))).toBe(true);
   expect(disclosures[0]?.textContent).toContain("provision/provider_error");
   expect(disclosures[0]?.textContent).toContain("no slot");
-  expect(disclosures[1]?.textContent).toContain("未提供錯誤代碼");
+  expect(disclosures[1]?.textContent).toContain("錯誤代碼未測量");
   expect(errorRow?.textContent).toContain("這次試跑留有錯誤紀錄");
 });
 

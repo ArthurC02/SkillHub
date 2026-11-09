@@ -62,7 +62,7 @@ export function ToolObservation({ raw }: { raw: string }) {
         <>
           <span className="creation-text">
             試跑結果：{runStatusLabel(asRun.execution_status)}；評估：
-            {labelOf(OVERALL_LABEL, overall) ?? "無評估"}
+            {labelOf(OVERALL_LABEL, overall) ?? (overall || "未測量")}
             {results.length > 0 && `（${criterionTally(results)}）`}
           </span>
           {!!asRun.evaluation?.summary && (
@@ -72,7 +72,7 @@ export function ToolObservation({ raw }: { raw: string }) {
             <ul>
               {results.map((c, i) => (
                 <li key={i}>
-                  {labelOf(CRITERION_LABEL, c.result ?? "") ?? c.result ?? "無結果"}：{c.text}
+                  {labelOf(CRITERION_LABEL, c.result ?? "") ?? (c.result || "未測量")}：{c.text}
                   {!!c.reason && `——${c.reason}`}
                 </li>
               ))}

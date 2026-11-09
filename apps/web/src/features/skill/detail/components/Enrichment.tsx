@@ -1,4 +1,5 @@
 import type { SkillEnrichment, SkillTags } from "../../../../core/api/types";
+import { IN_PROGRESS } from "../../../../shared/ui/absence";
 
 const TAG_BUCKETS: Array<{ key: keyof SkillTags; label: string }> = [
   { key: "inputs", label: "輸入" },
@@ -14,7 +15,7 @@ export function Enrichment({ enrichment }: { enrichment: SkillEnrichment }) {
         <p className="note">{enrichment.note}</p>
         {TAG_BUCKETS.map(({ key, label }) => (
           <p key={key}>
-            {label}：<span className="note">未知（尚未產生索引摘要）</span>
+            {label}：<span className="note">{IN_PROGRESS}（尚未產生索引摘要）</span>
           </p>
         ))}
       </>

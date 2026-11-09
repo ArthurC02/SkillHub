@@ -159,7 +159,7 @@ function DraftCandidate({
           {run && (
             <p>
               試跑結果：{runStatusLabel(run.execution_status)}；評估：
-              {labelOf(OVERALL_LABEL, run.evaluation?.overall ?? "") ?? "無評估"}
+              {labelOf(OVERALL_LABEL, run.evaluation?.overall ?? "") ?? (run.evaluation?.overall || "未測量")}
             </p>
           )}
         </>

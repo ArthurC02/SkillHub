@@ -142,7 +142,7 @@ function TraceStreamStats({ streams }: { streams: TraceAdvanced["streams"] }) {
                 <td>{stream.received}</td>
                 <td>
                   {stream.missing_count === 0
-                    ? "無"
+                    ? "0"
                     : `${stream.missing_seq?.join("、") || "未列出"}${
                         stream.missing_count > (stream.missing_seq?.length || 0)
                           ? `（共 ${stream.missing_count} 個）`

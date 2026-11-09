@@ -1584,10 +1584,10 @@ test("resume shows unknown costs and confirms the displayed diagram revision", a
   );
   await render();
   await resume();
-  expect(box.textContent, "費用未知時工具列要說「未知」，不能顯示成 0").toContain("費用 未知");
+  expect(box.textContent, "費用未知時工具列要說「未測量」，不能顯示成 0").toContain("費用 未測量");
   expect(box.textContent, "未知的費用被顯示成一個數字").not.toMatch(/費用 \d/);
   expect(box.querySelector(".creation-bar .creation-details > summary")!.textContent).toContain(
-    "費用 未知 / 1300 點",
+    "費用 未測量 / 1300 點",
   );
   await click("確認流程圖理解");
   expect(posts[0]).toMatchObject({ kind: "confirm_diagram", expected_revision: 7 });

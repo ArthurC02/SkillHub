@@ -111,7 +111,7 @@ function ToolEntry({ tool }: { tool: MCPTool }) {
         {tool.retired_at && <span className="badge">已退役</span>}
       </p>
       <p>{tool.purpose}</p>
-      <p>參數：{tool.parameters || "無"}</p>
+      <p>參數：{tool.parameters || "0 個"}</p>
       <p>位址：{tool.server_url}</p>
       <p>
         加入理由：{tool.reason}（<Timestamp at={tool.created_at} />）

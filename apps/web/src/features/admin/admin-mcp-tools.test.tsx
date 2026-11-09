@@ -20,7 +20,7 @@ test("SKILL-007: the MCP tool list names each tool by its reference and keeps re
   expect(has("參數：title, start, end")()).toBe(true);
   expect(has("位址：https://mcp.example.com/calendar")()).toBe(true);
   expect(has("加入理由：sales asked for meeting follow-ups")()).toBe(true);
-  expect(has("參數：無")()).toBe(true);
+  expect(has("參數：0 個")()).toBe(true);
   expect(has("已退役")()).toBe(true);
   expect(has("退役理由：the pilot ended")()).toBe(true);
   const retireControls = Array.from(container.querySelectorAll("summary")).map(

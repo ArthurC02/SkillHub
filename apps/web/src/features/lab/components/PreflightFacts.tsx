@@ -8,7 +8,7 @@ import { ResourceLimitsFacts } from "./ResourceLimitsFacts";
 const isolationLabels: Record<string, string> = {
   strong: "強（獨立核心）",
   weak: "弱（與主機共用核心）",
-  none: "無（沒有隔離邊界）",
+  none: "無隔離邊界",
 };
 
 function isolationText(strength: string) {
@@ -62,7 +62,7 @@ export function PreflightFacts({
       <dt>Dataset</dt>
       <dd>
         {summary.datasets.length === 0 ? (
-          "無"
+          "0 項"
         ) : (
           <ul>
             {summary.datasets.map((d) => (
@@ -88,10 +88,10 @@ export function PreflightFacts({
       </dd>
 
       <dt>工具</dt>
-      <dd>{summary.tools.length === 0 ? "無（沒有授予任何工具）" : summary.tools.join("、")}</dd>
+      <dd>{summary.tools.length === 0 ? "0 項（沒有授予任何工具）" : summary.tools.join("、")}</dd>
 
       <dt>MCP Server</dt>
-      <dd>{summary.mcp_servers.length === 0 ? "無" : summary.mcp_servers.join("、")}</dd>
+      <dd>{summary.mcp_servers.length === 0 ? "0 項" : summary.mcp_servers.join("、")}</dd>
 
       <dt>網路</dt>
       <dd>
@@ -104,7 +104,7 @@ export function PreflightFacts({
       <dt>Secrets</dt>
       <dd>
         {summary.injected_secrets.length === 0 ? (
-          "無（不會注入任何 Secret）"
+          "0 項（不會注入任何 Secret）"
         ) : (
           <>
             {summary.injected_secrets.join("、")}

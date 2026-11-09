@@ -5,7 +5,7 @@ type RunErrorRecord = {
 };
 
 function errorIdentifier(error: RunErrorRecord): string {
-  return [error.category, error.code].filter(Boolean).join("/") || "未提供錯誤代碼";
+  return [error.category, error.code].filter(Boolean).join("/") || "錯誤代碼未測量";
 }
 
 export function RunErrorDetails({ errors }: { errors: RunErrorRecord[] }) {
@@ -17,7 +17,7 @@ export function RunErrorDetails({ errors }: { errors: RunErrorRecord[] }) {
         <ul>
           {errors.map((error, index) => (
             <li key={`${error.category ?? ""}-${error.code ?? ""}-${index}`}>
-              <code>{errorIdentifier(error)}</code> {error.message || "未提供原始訊息"}
+              <code>{errorIdentifier(error)}</code> {error.message || "原始訊息未測量"}
             </li>
           ))}
         </ul>

@@ -32,9 +32,9 @@ function AgentSummary({ agent }: { agent: PlatformAgent }) {
         {agent.daily_spend_cap_overridden
           ? `（營運者設定；預設 ${usd(agent.default_daily_spend_cap_usd_micros)}）`
           : "（預設）"}
-        ；可讀：{agent.tools.join("、") || "無"}
+        ；可讀：{agent.tools.join("、") || "0 項"}
       </p>
-      <p className="note">可提案：{agent.actions.map(actionLabel).join("、") || "無"}</p>
+      <p className="note">可提案：{agent.actions.map(actionLabel).join("、") || "0 項"}</p>
       <p className="note">模型角色：{agent.model_role}</p>
       <p className="note">
         負責營運者：

@@ -149,7 +149,7 @@ function SessionCostDetails({
   return (
     <details className="creation-details">
       <summary>
-        費用 {p.spent_credits === undefined || p.usage_unknown ? "未知" : p.spent_credits} /{" "}
+        費用 {p.spent_credits === undefined || p.usage_unknown ? "未測量" : p.spent_credits} /{" "}
         {points(p.budget_credits)}
         {limits && !terminal && <NextStep {...nextStepBudget(p, limits.min_budget_credits)} />}
       </summary>
