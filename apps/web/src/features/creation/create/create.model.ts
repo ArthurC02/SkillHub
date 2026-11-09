@@ -10,7 +10,7 @@ import { isCreationWorking } from "../creation.service";
 import type { CommandExtra } from "./create.commands";
 import type { CategorizedFindings, ImportFinding } from "../../../core/api/types";
 import { isCategorizedFindings } from "../import.service";
-import { diagramLimit } from "../diagram.model";
+import { byteLimit } from "../../../shared/format";
 import { criterionTally, labelOf, OVERALL_LABEL } from "../../../shared/verdict";
 
 export type DraftInspection = { findings: CategorizedFindings } | { refusal: string };
@@ -51,7 +51,7 @@ export function readDraftInspection(raw: string, blocked: boolean): DraftInspect
 }
 
 export const CREATION_MAX_DIAGRAM_BYTES = 4_000_000; // one-number: creationMaxDiagramBytes
-export const CREATION_DIAGRAM_LIMIT = diagramLimit(CREATION_MAX_DIAGRAM_BYTES);
+export const CREATION_DIAGRAM_LIMIT = byteLimit(CREATION_MAX_DIAGRAM_BYTES);
 
 type RunObservation = {
   execution_status: string;

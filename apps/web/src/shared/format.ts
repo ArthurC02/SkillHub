@@ -7,6 +7,8 @@ export function bytes(n: number): string {
   return `${n} B`;
 }
 
+export const byteLimit = (n: number) => `${n.toLocaleString("en-US")} 位元組（約 ${bytes(n)}）`;
+
 export const points = (n: number) => `${n} 點`;
 
 export const credits = (value: number | null) => (value === null ? "未測量" : points(value));

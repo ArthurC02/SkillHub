@@ -5,8 +5,11 @@ import { ApiError } from "../../../core/api/client";
 import { useSkillFiles } from "../skills.service";
 import type { SkillFileEntry } from "../../../core/api/types";
 import { Reveal } from "../../../shared/ui/Reveal";
+import { byteLimit } from "../../../shared/format";
 import { SkillWorkspaceNav } from "../components/SkillWorkspaceNav";
 import "./SkillFiles.page.css";
+
+const SKILL_MD_PREVIEW_BYTES = 1024 ** 2;
 
 export function SkillFiles() {
   const { skillId } = useParams({ from: "/skills/$skillId/files" });
@@ -79,8 +82,8 @@ export function SkillFiles() {
               {data.skill_md_truncated && (
                 <p className="notice" role="status">
                   {skillMdBytes === undefined
-                    ? "內容過長，以下只顯示前 1 MiB。"
-                    : `共 ${skillMdBytes} bytes，這裡只顯示前 1 MiB，因為這個端點的單次上限是 1 MiB。`}
+                    ? `內容過長，以下只顯示前 ${byteLimit(SKILL_MD_PREVIEW_BYTES)}。`
+                    : `共 ${skillMdBytes.toLocaleString("en-US")} 位元組，這裡只顯示前 ${byteLimit(SKILL_MD_PREVIEW_BYTES)}，那是這個端點的單次上限。`}
                 </p>
               )}
               <pre className="skill-md">

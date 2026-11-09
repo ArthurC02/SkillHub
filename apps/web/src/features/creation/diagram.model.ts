@@ -1,15 +1,11 @@
-import { bytes } from "../../shared/format";
+import { byteLimit } from "../../shared/format";
 
 const DIAGRAM_TYPES = ["image/png", "image/jpeg", "image/webp"];
-
-export function diagramLimit(maxBytes: number): string {
-  return `${maxBytes.toLocaleString("en-US")} 位元組（約 ${bytes(maxBytes)}）`;
-}
 
 export function diagramProblem(file: File, maxBytes: number): string | undefined {
   if (!DIAGRAM_TYPES.includes(file.type)) return "流程圖只收 PNG、JPEG 或 WebP。";
   if (file.size === 0 || file.size > maxBytes)
-    return `請選擇最多 ${diagramLimit(maxBytes)} 以內的流程圖。`;
+    return `請選擇最多 ${byteLimit(maxBytes)} 以內的流程圖。`;
   return undefined;
 }
 

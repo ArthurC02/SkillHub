@@ -1,10 +1,10 @@
 import { GenerateSkillBodyReferenceSkillIdsMaxItems } from "@skillhub/api-client-ts/limits";
 import type { GenerationFailure } from "../../core/api/types";
 import { isInAppWords } from "../../core/api/client";
-import { diagramLimit } from "./diagram.model";
+import { byteLimit } from "../../shared/format";
 
 export const GENERATE_MAX_DIAGRAM_BYTES = 4000000; // one-number: generateMaxDiagramBytes
-export const GENERATE_DIAGRAM_LIMIT = diagramLimit(GENERATE_MAX_DIAGRAM_BYTES);
+export const GENERATE_DIAGRAM_LIMIT = byteLimit(GENERATE_MAX_DIAGRAM_BYTES);
 
 export const GENERATE_MAX_REFERENCES = GenerateSkillBodyReferenceSkillIdsMaxItems;
 
