@@ -1,0 +1,103 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "purge-uuid-text-recite",
+  "proposer": "agent:coding-agent",
+  "requirement_id": "purge-uuid-text-recite",
+  "status": "verified",
+  "change_classification": "routine",
+  "submitted_at": "2026-11-09T09:51:40.816403Z",
+  "verified_at": "2026-11-09T09:52:39.463720Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "b213cf6e6a1b8268de8d36e6132f74ed0641d74e",
+    "registry_digest": "sha256:486b0b86a062237a822fb4b440697e1b653cdca9bb9e53ff6be7745fd5ef0835",
+    "committed_digest": "sha256:486b0b86a062237a822fb4b440697e1b653cdca9bb9e53ff6be7745fd5ef0835"
+  },
+  "affected_contexts": [
+    "identity"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "<context-id>",
+    "invariant": "<falsifiable-rule>",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "<existing-or-proposed-collaboration>",
+    "consistency": "<synchronous-or-eventual>",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": null,
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "purge-waits-for-grace-and-quiet-workspace",
+        "statement": "An account purge starts only when the deletion request is older than the 30-day grace at the moment of claiming and every Run in each of the Account's workspaces has finished cleanup; otherwise the purge is deferred (not failed) and retried by a later sweep.",
+        "contexts": [
+          "identity"
+        ],
+        "examples": [
+          "A request made now is not claimed by a sweep whose cutoff is 30 days ago; the Account does not start purging.",
+          "An Account with a Run still cleaning up its sandbox is skipped this sweep without an error."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/workspace/purge.go",
+            "lines": {
+              "start": 276,
+              "end": 296
+            },
+            "excerpt_sha256": "sha256:c4b66529e4c8621f1fd079b3d377ca3c6eb2786f42c93bc3b4e125ddb0371cea"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/purge.go",
+            "lines": {
+              "start": 126,
+              "end": 155
+            },
+            "content_sha256": "sha256:fb7434f029a634032fbacd2be68e3cacb7e1cfcceb0909113c19ea4491bce6c7",
+            "excerpt_sha256": "sha256:a42a5713b19f6611e608d65b12c4dc064e1bc73b0c4f248750616e5f29394d9a",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/creator/workspace/purge_grace_integration_test.go",
+            "lines": {
+              "start": 15,
+              "end": 46
+            },
+            "excerpt_sha256": "sha256:ce16089656ce432c4662d7f0e9c79995d1a4a7bd0e66e3a4808e35e21dcd706e"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-11-09T09:52:38.601650Z",
+      "scope": "Re-cite the purge-grace rule after its excerpt switched to pgconv.UUIDString; the rule is unchanged",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "b213cf6e6a1b8268de8d36e6132f74ed0641d74e",
+        "registry_digest": "sha256:486b0b86a062237a822fb4b440697e1b653cdca9bb9e53ff6be7745fd5ef0835",
+        "committed_digest": "sha256:486b0b86a062237a822fb4b440697e1b653cdca9bb9e53ff6be7745fd5ef0835"
+      }
+    }
+  ],
+  "supersedes": [
+    "shifted-recite-2026-10-24"
+  ]
+}

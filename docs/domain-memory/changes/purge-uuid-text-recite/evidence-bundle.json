@@ -1,0 +1,29 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "purge-uuid-text-recite",
+  "proposal_id": "purge-uuid-text-recite",
+  "registry_revision": {
+    "observed_commit": "b213cf6e6a1b8268de8d36e6132f74ed0641d74e",
+    "registry_digest": "sha256:486b0b86a062237a822fb4b440697e1b653cdca9bb9e53ff6be7745fd5ef0835",
+    "committed_digest": "sha256:486b0b86a062237a822fb4b440697e1b653cdca9bb9e53ff6be7745fd5ef0835"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": ".domain-memory/domain-memory.exe verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/purge-uuid-text-recite --path apps/platform/internal/creator/workspace/purge.go --path apps/platform/internal/creator/workspace/purge_grace_integration_test.go",
+      "command_profile": "verify-evidence",
+      "exit_code": 0,
+      "output_sha256": "sha256:c04dc6c3ffa3375204c9b24fceff7b304f315d5b5c97386f6ba117debf270852",
+      "finished_at": "2026-11-09T09:51:51.972935Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

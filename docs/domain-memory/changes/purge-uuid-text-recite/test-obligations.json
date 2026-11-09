@@ -1,0 +1,16 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "purge-uuid-text-recite",
+  "proposal_id": "purge-uuid-text-recite",
+  "obligations": [
+    {
+      "id": "evidence-current",
+      "source_type": "acceptance-criterion",
+      "source_id": "citations-current",
+      "expected_outcome": "verify-evidence reports current for every citation of the updated records.",
+      "level": "architecture",
+      "status": "planned",
+      "check": ".domain-memory/domain-memory.exe verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/purge-uuid-text-recite --path apps/platform/internal/creator/workspace/purge.go --path apps/platform/internal/creator/workspace/purge_grace_integration_test.go"
+    }
+  ]
+}
