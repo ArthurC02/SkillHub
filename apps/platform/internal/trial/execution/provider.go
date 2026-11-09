@@ -25,6 +25,15 @@ const (
 	ProviderStateCancelled ProviderRunState = "cancelled"
 )
 
+type ProviderResultStatus string
+
+const (
+	ResultSucceeded ProviderResultStatus = "succeeded"
+	ResultFailed    ProviderResultStatus = "failed"
+	ResultCancelled ProviderResultStatus = "cancelled"
+	ResultTimedOut  ProviderResultStatus = "timed_out"
+)
+
 func (s ProviderRunState) Terminal() bool {
 	return s == ProviderStateCompleted || s == ProviderStateFailed || s == ProviderStateCancelled
 }
@@ -208,10 +217,10 @@ type RunArtifact struct {
 }
 
 type RunResult struct {
-	RunID        string `json:"run_id"`
-	RunAttemptID string `json:"run_attempt_id"`
-	Status       string `json:"status"`
-	AgentOutput  string `json:"agent_output,omitempty"`
+	RunID        string               `json:"run_id"`
+	RunAttemptID string               `json:"run_attempt_id"`
+	Status       ProviderResultStatus `json:"status"`
+	AgentOutput  string               `json:"agent_output,omitempty"`
 
 	Artifacts          []RunArtifact `json:"artifacts,omitempty"`
 	ArtifactsTruncated bool          `json:"artifacts_truncated,omitempty"`

@@ -20,7 +20,7 @@ type Plan struct {
 	StuckRunning bool
 
 	FinalState   run.ProviderRunState
-	ResultStatus string
+	ResultStatus run.ProviderResultStatus
 	ErrorClass   string
 	AgentOutput  string
 
@@ -335,21 +335,21 @@ func (f *Fake) view(fr *fakeRun) run.ProviderRun {
 			RunID: fr.runID, RunAttemptID: fr.attemptID, Status: resultStatus,
 			AgentOutput: f.Plan.AgentOutput,
 		}
-		if resultStatus != "succeeded" {
+		if resultStatus != run.ResultSucceeded {
 			class := f.Plan.ErrorClass
 			if class == "" {
 				class = "execution"
 			}
-			result.Error = &run.RunError{Class: class, Message: "fake provider: " + resultStatus}
+			result.Error = &run.RunError{Class: class, Message: "fake provider: " + string(resultStatus)}
 		}
 		view.Result = &result
 	}
 	return view
 }
 
-func (f *Fake) stateOf(fr *fakeRun) (run.ProviderRunState, string) {
+func (f *Fake) stateOf(fr *fakeRun) (run.ProviderRunState, run.ProviderResultStatus) {
 	if fr.cancelled {
-		return run.ProviderStateCancelled, "cancelled"
+		return run.ProviderStateCancelled, run.ResultCancelled
 	}
 	switch {
 	case fr.polls <= f.Plan.CreatingPolls:
@@ -363,7 +363,7 @@ func (f *Fake) stateOf(fr *fakeRun) (run.ProviderRunState, string) {
 	}
 	status := f.Plan.ResultStatus
 	if status == "" {
-		status = "succeeded"
+		status = run.ResultSucceeded
 	}
 	return state, status
 }

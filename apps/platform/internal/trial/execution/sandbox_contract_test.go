@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -32,6 +33,7 @@ type contractProperty struct {
 	Required   []string                    `yaml:"required"`
 	Items      *contractProperty           `yaml:"items"`
 	AllOf      []contractProperty          `yaml:"allOf"`
+	Enum       []string                    `yaml:"enum"`
 }
 
 func resolved(p contractProperty, schemas map[string]contractProperty) contractProperty {
@@ -245,5 +247,22 @@ func TestBothSidesOfTheSandboxContractCarryExactlyItsFields(t *testing.T) {
 	sort.Strings(problems)
 	if len(problems) > 0 {
 		t.Errorf("the sandbox contract and its Go types disagree:\n  %s", strings.Join(problems, "\n  "))
+	}
+}
+
+func TestTheProviderResultStatusesAreTheContractsTerminalOnes(t *testing.T) {
+	declared := []ProviderResultStatus{ResultSucceeded, ResultFailed, ResultCancelled, ResultTimedOut}
+	var got []string
+	for _, s := range declared {
+		got = append(got, string(s))
+	}
+	want := resolved(readSandboxContract(t)["RunResult"], readSandboxContract(t)).Properties["status"].Enum
+	if len(want) == 0 {
+		t.Fatal("the contract's RunResult.status has no enum: this check is dead")
+	}
+	slices.Sort(got)
+	want = slices.Sorted(slices.Values(want))
+	if !slices.Equal(got, want) {
+		t.Errorf("provider result statuses %v, contract enum %v", got, want)
 	}
 }

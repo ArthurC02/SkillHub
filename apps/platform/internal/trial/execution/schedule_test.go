@@ -251,7 +251,7 @@ func TestMatchChecksEveryResourceCeiling(t *testing.T) {
 }
 
 func TestClassifyResultSeparatesWorkloadFailureFromProviderFailure(t *testing.T) {
-	result := func(status, class string) *RunResult {
+	result := func(status ProviderResultStatus, class string) *RunResult {
 		r := &RunResult{Status: status}
 		if class != "" {
 			r.Error = &RunError{Class: class, Message: "provider said so"}

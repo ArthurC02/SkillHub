@@ -274,7 +274,7 @@ func TestARefusalNamesWhichOneItWas(t *testing.T) {
 	}
 }
 
-func withStatus(pr ProviderRun, status string) ProviderRun {
+func withStatus(pr ProviderRun, status ProviderResultStatus) ProviderRun {
 	result := *pr.Result
 	result.Status = status
 	pr.Result = &result

@@ -563,16 +563,16 @@ func classifyResult(pr ProviderRun) (ending runEnding, errClass string) {
 	}
 
 	switch {
-	case pr.State == ProviderStateCancelled || pr.Result.Status == "cancelled":
+	case pr.State == ProviderStateCancelled || pr.Result.Status == ResultCancelled:
 		return runEnding{gen.RunStatusCancelled, failureCancelled, orDefault(message, "是使用者要求停止的")},
 			orDefault(errClass, errClassCancelled)
-	case pr.Result.Status == "timed_out":
+	case pr.Result.Status == ResultTimedOut:
 		return runEnding{gen.RunStatusTimedOut, failureTimeout, orDefault(message, "執行沙箱在它自己的時間上限把工作負載停掉了")},
 			orDefault(errClass, errClassTimeout)
 	case errClass == errClassResourceLimit:
 		return runEnding{gen.RunStatusFailed, failureResourceLimit, orDefault(message, "工作負載撞到了這次申請的資源上限")},
 			errClassResourceLimit
-	case pr.State == ProviderStateCompleted && pr.Result.Status == "succeeded":
+	case pr.State == ProviderStateCompleted && pr.Result.Status == ResultSucceeded:
 		return runEnding{gen.RunStatusSucceeded, "", ""}, ""
 	case pr.State == ProviderStateCompleted:
 		return runEnding{gen.RunStatusFailed, failureWorkload, orDefault(message, "工作負載跑起來了,而且自己回報失敗")},
