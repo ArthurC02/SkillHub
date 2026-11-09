@@ -616,7 +616,7 @@ func (s *Service) General(ctx context.Context, workspaceID, runID pgtype.UUID) (
 		summary.Complete = false
 	}
 	if last := lastEventOf(health); !last.IsZero() {
-		summary.LastEventAt = last.UTC().Format("2006-01-02T15:04:05Z")
+		summary.LastEventAt = last.UTC().Format(time.RFC3339)
 	}
 
 	if nothingWasCollected(run, health) {

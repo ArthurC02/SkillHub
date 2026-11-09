@@ -328,7 +328,7 @@ func (s *Service) SkillDetail(ctx context.Context, skill SkillFacts, viewer pgty
 		VersionID:     pgconv.UUIDString(ver.ID),
 		VersionNumber: ver.VersionNumber,
 		ContentHash:   ver.ContentHash,
-		CreatedAt:     timeString(ver.CreatedAt),
+		CreatedAt:     pgconv.RFC3339(ver.CreatedAt),
 	}
 	out.License = licenseFrom(ver)
 	out.Tier = tierLabel(curationTier(skill, ver.ID))
@@ -385,7 +385,7 @@ func (s *Service) attachMeasuredCompat(ctx context.Context, ver VersionFacts, ou
 		out.Compat.Capability = axis(capabilityWords, c.Capability)
 		out.Compat.Runtime = axis(runtimeWords, c.Runtime)
 		out.Compat.RuntimeImage = c.RuntimeImage
-		out.Compat.MeasuredAt = timeString(c.MeasuredAt)
+		out.Compat.MeasuredAt = pgconv.RFC3339(c.MeasuredAt)
 		out.Compat.Note = compatMeasuredNote
 	}
 	return nil
@@ -858,9 +858,9 @@ func sourceFrom(s SourceFacts) *sourceInfo {
 	out := &sourceInfo{
 		Type:             s.SourceType,
 		ContentHash:      s.ContentHash,
-		FetchedAt:        timeString(s.FetchedAt),
-		LastCheckedAt:    timeString(s.LastCheckedAt),
-		UnavailableSince: timeString(s.UnavailableSince),
+		FetchedAt:        pgconv.RFC3339(s.FetchedAt),
+		LastCheckedAt:    pgconv.RFC3339(s.LastCheckedAt),
+		UnavailableSince: pgconv.RFC3339(s.UnavailableSince),
 	}
 	if s.SourceURL != nil {
 		out.URL = *s.SourceURL
@@ -938,13 +938,6 @@ func fileTree(fsys fs.FS) []fileEntry {
 	})
 	sort.Slice(out, func(i, j int) bool { return out[i].Path < out[j].Path })
 	return out
-}
-
-func timeString(t pgtype.Timestamptz) string {
-	if !t.Valid {
-		return ""
-	}
-	return t.Time.UTC().Format("2006-01-02T15:04:05Z")
 }
 
 func (h *Handler) viewerWorkspace(r *http.Request) pgtype.UUID {

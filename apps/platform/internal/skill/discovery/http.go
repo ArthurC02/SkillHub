@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 )
 
@@ -152,7 +153,7 @@ func resultFacets(r *searchResult, f facetColumns) {
 	r.Category = categoryLabel(f.category, f.categorySource)
 	r.Dependencies = dependencyTags(f.tagsJSON)
 	r.Risk = riskHint(f.scanJSON)
-	r.VerifiedAt = timeString(f.verifiedAt)
+	r.VerifiedAt = pgconv.RFC3339(f.verifiedAt)
 	r.Compat = f.compat
 	r.Compat.SpecValidation = axis(specWords, compatUnverified)
 	if f.verifiedAt.Valid {
@@ -169,7 +170,7 @@ func measuredCompat(capability, runtime, image *string, measuredAt pgtype.Timest
 		Capability:   axis(capabilityWords, stringOrEmpty(capability)),
 		Runtime:      axis(runtimeWords, stringOrEmpty(runtime)),
 		RuntimeImage: stringOrEmpty(image),
-		MeasuredAt:   timeString(measuredAt),
+		MeasuredAt:   pgconv.RFC3339(measuredAt),
 	}
 }
 
