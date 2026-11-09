@@ -1,4 +1,5 @@
 import { Reveal } from "../../../../shared/ui/Reveal";
+import { exactBytes } from "../../../../shared/format";
 import { runStatusLabel } from "../../../runs";
 import { FETCH_STATUS_LABEL } from "../create.model";
 import {
@@ -41,7 +42,7 @@ export function ToolObservation({ raw }: { raw: string }) {
         <>
           <span className="creation-text">
             讀取網頁 {f.url}：{FETCH_STATUS_LABEL[f.status] ?? f.status}
-            {f.bytes !== undefined && `（${f.bytes} 位元組）`}
+            {f.bytes !== undefined && `（${exactBytes(f.bytes)}）`}
           </span>
           {!!text && (
             <details>

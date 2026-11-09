@@ -1,4 +1,5 @@
 import type { CreationAttachment } from "../../creation.service";
+import { exactBytes } from "../../../../shared/format";
 import "./Attachments.css";
 
 export function Attachments({
@@ -20,7 +21,7 @@ export function Attachments({
               <p className="note">平台不保存原圖，所以重新整理之後這裡只剩它的說明。</p>
             )}
             <span className="note">
-              流程圖 · {a.media_type} · {a.bytes} 位元組
+              流程圖 · {a.media_type} · {exactBytes(a.bytes)}
             </span>
           </li>
         );

@@ -5,6 +5,7 @@ import type {
   CreationSnapshot,
 } from "../../creation.service";
 import { Reveal } from "../../../../shared/ui/Reveal";
+import { exactBytes } from "../../../../shared/format";
 import { FETCH_STATUS_LABEL, parseDiagramUnderstanding } from "../create.model";
 import type { Perform } from "../create.commands";
 import { DiagramUnderstandingView } from "./DiagramUnderstandingView";
@@ -308,7 +309,7 @@ export function FetchedPages({ fetches }: { fetches: CreationFetch[] }) {
         {fetches.map((f, i) => (
           <li key={i}>
             {f.url}：{FETCH_STATUS_LABEL[f.status] ?? f.status}
-            {f.bytes !== undefined && `（${f.bytes} 位元組）`}
+            {f.bytes !== undefined && `（${exactBytes(f.bytes)}）`}
           </li>
         ))}
       </ul>

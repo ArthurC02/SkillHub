@@ -5,7 +5,7 @@ import { ApiError } from "../../../core/api/client";
 import { useSkillFiles } from "../skills.service";
 import type { SkillFileEntry } from "../../../core/api/types";
 import { Reveal } from "../../../shared/ui/Reveal";
-import { byteLimit } from "../../../shared/format";
+import { byteLimit, exactBytes } from "../../../shared/format";
 import { SkillWorkspaceNav } from "../components/SkillWorkspaceNav";
 import "./SkillFiles.page.css";
 
@@ -83,7 +83,7 @@ export function SkillFiles() {
                 <p className="notice" role="status">
                   {skillMdBytes === undefined
                     ? `內容過長，以下只顯示前 ${byteLimit(SKILL_MD_PREVIEW_BYTES)}。`
-                    : `共 ${skillMdBytes.toLocaleString("en-US")} 位元組，這裡只顯示前 ${byteLimit(SKILL_MD_PREVIEW_BYTES)}，那是這個端點的單次上限。`}
+                    : `共 ${exactBytes(skillMdBytes)}，這裡只顯示前 ${byteLimit(SKILL_MD_PREVIEW_BYTES)}，那是這個端點的單次上限。`}
                 </p>
               )}
               <pre className="skill-md">
@@ -113,7 +113,7 @@ function FileTree({ entries }: { entries: SkillFileEntry[] }) {
         {entries.map((entry) => (
           <li key={entry.path} className={entry.is_script ? "file-script" : undefined}>
             <span>{entry.path}</span>
-            <span className="file-size">{entry.size} bytes</span>
+            <span className="file-size">{exactBytes(entry.size)}</span>
             {entry.is_script && (
               <span className="script-tag" title="此檔案為可執行 Script">
                 Script

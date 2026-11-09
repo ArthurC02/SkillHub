@@ -764,7 +764,7 @@ test("a fetch observation reads as a sentence, and the page text is not the defa
   const bubble = box.querySelector('.creation-log > li[data-role="tool"]')!;
   expect(bubble.textContent).toContain("讀取網頁 https://example.com/spec");
   expect(bubble.textContent).toContain("已讀取");
-  expect(bubble.textContent).toContain("2048 位元組");
+  expect(bubble.textContent).toContain("2,048 位元組");
   expect(bubble.textContent, "整包 JSON 還是原樣倒出來").not.toContain('{"fetch"');
   const details = bubble.querySelector("details")!;
   expect(details, "網頁全文沒有被收起來").not.toBe(null);
@@ -1196,7 +1196,7 @@ test("a conversation without the browser that sent the picture describes it inst
   await resume();
   expect(box.querySelector(".creation-attachment img"), "沒有人手上有這張圖").toBe(null);
   expect(box.textContent).toContain("image/png");
-  expect(box.textContent).toContain("1234 位元組");
+  expect(box.textContent).toContain("1,234 位元組");
   expect(box.textContent).toContain("平台不保存原圖");
 });
 test("references are cleared once they have been sent, so the next turn can be words", async () => {

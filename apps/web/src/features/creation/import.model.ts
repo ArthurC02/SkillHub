@@ -1,9 +1,9 @@
 import type { SkillImportLimits } from "./import.service";
-import { bytes } from "../../shared/format";
+import { bytes, exactBytes } from "../../shared/format";
 
 function sizesApart(size: number, ceiling: number): [string, string] {
   if (bytes(size) !== bytes(ceiling)) return [bytes(size), bytes(ceiling)];
-  return [`${size.toLocaleString("en-US")} 位元組`, `${ceiling.toLocaleString("en-US")} 位元組`];
+  return [exactBytes(size), exactBytes(ceiling)];
 }
 
 export function importRefusal(

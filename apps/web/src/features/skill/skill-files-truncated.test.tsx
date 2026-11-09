@@ -19,3 +19,14 @@ test.each([
     expect(page.locator("main .skill-files-preview .notice").text()).toBe(want),
   );
 });
+
+test("each file in the tree states its size in exact bytes", async () => {
+  const page = app();
+  page.route("**/files", () => ({
+    json: { ...FILES, tree: [{ path: "scripts/run.py", size: 12_345, is_script: true }] },
+  }));
+  await page.goto(`/skills/${SKILL}/files`);
+  await page.eventually(() =>
+    expect(page.locator("main .file-tree .file-size").text()).toBe("12,345 位元組"),
+  );
+});
