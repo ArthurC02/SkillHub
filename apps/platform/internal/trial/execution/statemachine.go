@@ -24,18 +24,18 @@ var (
 
 type FailureClass string
 
-type Status string
+type Status = gen.RunStatus
 
 const (
-	StatusQueued       Status = "queued"
-	StatusProvisioning Status = "provisioning"
-	StatusPreparing    Status = "preparing"
-	StatusRunning      Status = "running"
-	StatusEvaluating   Status = "evaluating"
-	StatusSucceeded    Status = "succeeded"
-	StatusFailed       Status = "failed"
-	StatusCancelled    Status = "cancelled"
-	StatusTimedOut     Status = "timed_out"
+	StatusQueued       = gen.RunStatusQueued
+	StatusProvisioning = gen.RunStatusProvisioning
+	StatusPreparing    = gen.RunStatusPreparing
+	StatusRunning      = gen.RunStatusRunning
+	StatusEvaluating   = gen.RunStatusEvaluating
+	StatusSucceeded    = gen.RunStatusSucceeded
+	StatusFailed       = gen.RunStatusFailed
+	StatusCancelled    = gen.RunStatusCancelled
+	StatusTimedOut     = gen.RunStatusTimedOut
 )
 
 const (

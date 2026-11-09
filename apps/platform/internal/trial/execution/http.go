@@ -76,20 +76,21 @@ type labelled struct {
 	Note  string `json:"note"`
 }
 
-var cleanupWords = map[string][2]string{
-	"pending": {"待清理",
+var cleanupWords = map[gen.RunCleanupStatus][2]string{
+	gen.RunCleanupStatusPending: {"待清理",
 		"沙箱還沒有被拆除。與這次 Run 的成敗無關——那是上面那一列。"},
-	"cleaning_up": {"清理中",
+	gen.RunCleanupStatusCleaningUp: {"清理中",
 		"沙箱正在拆除。這是暫時狀態,會自己結束。"},
-	"cleaned": {"已清理",
+	gen.RunCleanupStatusCleaned: {"已清理",
 		"沙箱與其資源已回收。"},
-	"failed": {"清理失敗",
+	gen.RunCleanupStatusFailed: {"清理失敗",
 		"沙箱沒有被成功拆除,平台會重試;殘留由對帳器接手(RUN-007 冪等清理)。" +
 			"這不代表這次 Run 失敗。"},
 }
 
-func cleanupWord(v string) labelled {
-	if w, ok := cleanupWords[v]; ok {
+func cleanupWord(status gen.RunCleanupStatus) labelled {
+	v := string(status)
+	if w, ok := cleanupWords[status]; ok {
 		return labelled{Value: v, Label: w[0], Note: w[1]}
 	}
 	return labelled{
@@ -292,7 +293,7 @@ func toRunResponse(run RunView) runResponse {
 		TestCaseSnapshot:  pgconv.UUIDString(run.TestCaseSnapshotID),
 		Provider:          run.Provider,
 		FailureClass:      failureClassWord(run.FailureClass),
-		CleanupStatus:     cleanupWord(run.CleanupStatus),
+		CleanupStatus:     cleanupWord(gen.RunCleanupStatus(run.CleanupStatus)),
 		CancelRequestedAt: formatTime(run.CancelRequestedAt),
 		CreatedAt:         formatTime(run.CreatedAt),
 		StartedAt:         formatTime(run.StartedAt),
@@ -488,7 +489,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 			TestCaseID:     pgconv.UUIDString(row.TestCaseID),
 			Provider:       row.Provider,
 			FailureClass:   failureClassWord(row.FailureClass),
-			CleanupStatus:  cleanupWord(row.CleanupStatus),
+			CleanupStatus:  cleanupWord(gen.RunCleanupStatus(row.CleanupStatus)),
 			CreatedAt:      formatTime(row.CreatedAt),
 			StartedAt:      formatTime(row.StartedAt),
 			FinishedAt:     formatTime(row.FinishedAt),
