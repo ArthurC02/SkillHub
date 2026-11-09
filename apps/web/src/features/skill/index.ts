@@ -9,7 +9,6 @@ export {
   useCorrectedSkillSearch,
   useMatchReasons,
   withMatchReasons,
-  isSkillAlreadyGone,
   unreadableSkillSentence,
   useDeleteSkill,
   useRestoreSkill,

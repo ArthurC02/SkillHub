@@ -2,7 +2,7 @@ import { Loading } from "../../../../shared/ui/Loading";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { focusFeedback } from "../../../../shared/ui/focusFeedback";
 import { useContinuationFocus } from "../../../../shared/ui/useContinuationFocus";
-import { ApiError } from "../../../../core/api/client";
+import { ApiError, isNotFound } from "../../../../core/api/client";
 import { queryKeys } from "../../../../core/api/queryKeys";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -181,7 +181,7 @@ function SuggestionsContent({
   const decisionsUnsettled = [...decisionStates.values()].some(
     (state) => state.pending || state.unconfirmed,
   );
-  const notFound = suggestions.error instanceof ApiError && suggestions.error.status === 404;
+  const notFound = isNotFound(suggestions.error);
   if (suggestions.isPending) return <Loading what="改善建議" />;
   if (notFound) return null;
   if (suggestions.error)

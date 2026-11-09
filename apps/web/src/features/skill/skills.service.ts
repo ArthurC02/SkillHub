@@ -14,6 +14,7 @@ import {
   ApiError,
   SessionNotReadyError,
   apiFetch,
+  isNotFound,
   isWriteResultUnknown,
 } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
@@ -394,16 +395,12 @@ export function unreadableSkillSentence(error: unknown): string | undefined {
   return undefined;
 }
 
-export function isSkillAlreadyGone(error: unknown) {
-  return error instanceof ApiError && error.status === 404;
-}
-
 export function useDeleteSkill() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: deleteSkill,
     onSettled: (_, error) => {
-      if (!error || isSkillAlreadyGone(error) || isWriteResultUnknown(error)) {
+      if (!error || isNotFound(error) || isWriteResultUnknown(error)) {
         void client.invalidateQueries({ queryKey: queryKeys.skills.own });
       }
     },

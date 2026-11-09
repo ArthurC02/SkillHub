@@ -1,13 +1,11 @@
 import { staleReadNotice } from "../admin.model";
 import { useState } from "react";
 import { useAccountLookup } from "../admin.service";
-import { ApiError } from "../../../core/api/client";
+import { isNotFound } from "../../../core/api/client";
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { AdminPage } from "../components/AdminPage";
 import { AccountCard } from "./components/AccountCard";
-
-const notFound = (error: unknown) => error instanceof ApiError && error.status === 404;
 
 export function AdminAccounts() {
   const [draft, setDraft] = useState("");
@@ -52,7 +50,7 @@ export function AdminAccounts() {
         <Loading what="帳號" paused={account.fetchStatus === "paused"} />
       )}
       {!queryChanged &&
-        (notFound(account.error) ? (
+        (isNotFound(account.error) ? (
           <p role="status">沒有 email 是「{email}」的帳號。已刪除的帳號查不到。</p>
         ) : (
           <ReadFailure error={account.error} what="帳號">
