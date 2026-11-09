@@ -25,7 +25,7 @@ export function ListFreshness({
       {inFlight
         ? `有${subject}還在進行中；${pollSeconds ? `每 ${pollSeconds} 秒自動更新；` : ""}`
         : ""}
-      這份{subject}清單上次取得於 <Timestamp at={new Date(updatedAt).toISOString()} relative />。{" "}
+      這份{subject}清單上次取得於 <Timestamp at={updatedAt} relative />。{" "}
       <button type="button" disabled={fetching || paused} onClick={() => void refetch()}>
         {paused ? "等待連線…" : fetching ? "重新整理中…" : "重新整理"}
       </button>

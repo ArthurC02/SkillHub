@@ -111,8 +111,7 @@ function GovernanceResults({ q }: { q: string }) {
         <p className="note">
           {skills.data && readable && (
             <>
-              治理狀態上次取得於{" "}
-              <Timestamp at={new Date(skills.dataUpdatedAt).toISOString()} relative />。{" "}
+              治理狀態上次取得於 <Timestamp at={skills.dataUpdatedAt} relative />。{" "}
             </>
           )}
           <button

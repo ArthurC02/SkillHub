@@ -39,7 +39,7 @@ export function Timestamp({
   relative = false,
   precision = "minute",
 }: {
-  at: string;
+  at: string | number;
   relative?: boolean;
   precision?: TimestampPrecision;
 }) {
@@ -60,11 +60,11 @@ export function Timestamp({
   }, [dateTime, relative]);
 
   if (Number.isNaN(dateTime)) {
-    return <time dateTime={at}>{formatAt(at, precision)}</time>;
+    return <time dateTime={String(at)}>{formatAt(at, precision)}</time>;
   }
 
   return (
-    <time dateTime={at}>
+    <time dateTime={typeof at === "number" ? date.toISOString() : at}>
       {formatAt(at, precision)}
       {relative && `（${ago(date, now)}）`}
     </time>

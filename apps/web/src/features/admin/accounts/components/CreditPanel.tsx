@@ -34,8 +34,7 @@ export function CreditPanel({ workspaceId }: { workspaceId: string }) {
             點
           </p>
           <p className="note">
-            餘額與分錄上次取得於{" "}
-            <Timestamp at={new Date(ledger.dataUpdatedAt).toISOString()} relative />。{" "}
+            餘額與分錄上次取得於 <Timestamp at={ledger.dataUpdatedAt} relative />。{" "}
             <button type="button" disabled={reading} onClick={reread}>
               重新整理點數
             </button>

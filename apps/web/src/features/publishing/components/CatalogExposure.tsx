@@ -189,7 +189,7 @@ function ExposureRefresh({
     <p className="note">
       {updatedAt ? (
         <>
-          狀態上次取得於 <Timestamp at={new Date(updatedAt).toISOString()} relative />。{" "}
+          狀態上次取得於 <Timestamp at={updatedAt} relative />。{" "}
         </>
       ) : null}
       <button type="button" disabled={fetching} onClick={() => void refetch()}>

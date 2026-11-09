@@ -126,7 +126,7 @@ function Priorities() {
       {availableAt.length > 0 && (
         <p className="note">
           已取得 {availableAt.length}/4 項狀態；其中最早取得於{" "}
-          <Timestamp at={new Date(Math.min(...availableAt)).toISOString()} relative />。
+          <Timestamp at={Math.min(...availableAt)} relative />。
         </p>
       )}
       <div className="admin-home-priority-list">

@@ -15,7 +15,7 @@ const ABSOLUTE = {
   second: new Intl.DateTimeFormat("zh-TW", { ...OPTIONS, second: "2-digit" }),
 };
 
-export function formatAt(at: string, precision: TimestampPrecision = "minute"): string {
+export function formatAt(at: string | number, precision: TimestampPrecision = "minute"): string {
   const date = new Date(at);
   if (Number.isNaN(date.getTime())) return `${at}（無法解讀的時間格式）`;
   return ABSOLUTE[precision].format(date);

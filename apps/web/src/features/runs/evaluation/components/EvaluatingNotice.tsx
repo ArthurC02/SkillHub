@@ -19,7 +19,7 @@ export function EvaluatingNotice({
       </p>
       <p className="note">沒有可顯示的中間進度。關閉此頁不會取消平台上的評估。</p>
       <p className="note">
-        評估狀態上次取得於 <Timestamp at={new Date(updatedAt).toISOString()} relative />
+        評估狀態上次取得於 <Timestamp at={updatedAt} relative />
       </p>
       <p className="note">
         {pendingPollStopped

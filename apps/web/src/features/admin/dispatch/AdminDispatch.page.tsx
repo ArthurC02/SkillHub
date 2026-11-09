@@ -229,8 +229,7 @@ export function AdminDispatch() {
       <p className="note">
         {status.data && !status.error && (
           <>
-            派送狀態上次取得於{" "}
-            <Timestamp at={new Date(status.dataUpdatedAt).toISOString()} relative />。{" "}
+            派送狀態上次取得於 <Timestamp at={status.dataUpdatedAt} relative />。{" "}
           </>
         )}
         <button type="button" disabled={status.isFetching} onClick={() => void status.refetch()}>

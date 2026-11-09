@@ -205,7 +205,7 @@ function AgentRunDetail({ id }: { id: string }) {
           </p>
           <p className="note">
             狀態每 {AGENT_RUN_POLL_MS / 1000} 秒自動更新；上次取得於{" "}
-            <Timestamp at={new Date(detail.dataUpdatedAt).toISOString()} relative />。{" "}
+            <Timestamp at={detail.dataUpdatedAt} relative />。{" "}
             <button
               type="button"
               disabled={detail.isFetching}

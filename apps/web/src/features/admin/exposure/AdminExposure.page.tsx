@@ -61,8 +61,7 @@ function ExposureCaseSection({ publication }: { publication: string }) {
       <p className="note">
         {exposureCase.data && readable && (
           <>
-            審核資料上次取得於{" "}
-            <Timestamp at={new Date(exposureCase.dataUpdatedAt).toISOString()} relative />。{" "}
+            審核資料上次取得於 <Timestamp at={exposureCase.dataUpdatedAt} relative />。{" "}
           </>
         )}
         <button
