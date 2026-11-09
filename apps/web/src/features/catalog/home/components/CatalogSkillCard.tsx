@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import type { PublicSearchResult } from "../../../../core/api/types";
+import type { Absence } from "../../../../shared/ui/absence";
 import { LabelledBadge } from "../../../../shared/ui/LabelledBadge";
 import { StateIcon } from "../../../../shared/ui/StateIcon";
 import { formatAt } from "../../../../shared/ui/Timestamp.model";
@@ -34,8 +35,10 @@ function CompactRisk({ hit }: { hit: PublicSearchResult }) {
   return <span className="badge">掃描未見警告 ≠ 安全</span>;
 }
 
+const UNMEASURED: Absence = "未測量";
+
 function dependencySummary(dependencies: string[]) {
-  if (dependencies.length === 0) return "未測量";
+  if (dependencies.length === 0) return UNMEASURED;
   if (dependencies.length <= 2) return dependencies.join("、");
   return `${dependencies.slice(0, 2).join("、")} ＋${dependencies.length - 2} 項`;
 }
@@ -102,7 +105,7 @@ export function CatalogSkillCard({
         </div>
         <div>
           <dt>最近驗證</dt>
-          <dd>{hit.verified_at ? <VerifiedDate at={hit.verified_at} /> : "未測量"}</dd>
+          <dd>{hit.verified_at ? <VerifiedDate at={hit.verified_at} /> : UNMEASURED}</dd>
         </div>
       </dl>
     </li>
