@@ -3,7 +3,7 @@ import { useId, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { textLengthReason } from "../../../shared/textLength.model";
-import { SCOPE_LABEL } from "./GraderManager";
+import { SCOPE_LABEL } from "../grader.model";
 import {
   PROMPT_GRADER,
   atLeastReason,

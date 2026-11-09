@@ -21,12 +21,8 @@ import {
   type Grader,
   type GraderScope,
 } from "../evaluation.service";
+import { SCOPE_LABEL } from "../grader.model";
 import "./GraderManager.css";
-
-export const SCOPE_LABEL: Record<GraderScope, string> = {
-  platform: "平台通用",
-  workspace: "這個 Workspace 專用",
-};
 
 type UnconfirmedWrite = { error: unknown; name: string };
 

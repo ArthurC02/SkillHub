@@ -15,7 +15,9 @@ export function NotEvaluatedNotice({
       </p>
       <p>目前尚未取得這次試跑的評估結果。未評估不等於通過，也不等於未通過。</p>
       {showPollingNote && !stoppedAsking && (
-        <p className="note">這一頁每 {RUN_POLL_MS / 1000} 秒再查一次；若平台提供評估，結果會自己出現在這裡。</p>
+        <p className="note">
+          這一頁每 {RUN_POLL_MS / 1000} 秒再查一次；若平台提供評估，結果會自己出現在這裡。
+        </p>
       )}
       {showPollingNote && stoppedAsking && (
         <p className="note" role="status">
