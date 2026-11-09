@@ -5,22 +5,29 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"gopkg.in/yaml.v3"
 )
 
-func contractEnum(t *testing.T, schema, property string) []string {
+const (
+	internalContract = "llm-internal.yaml"
+	publicContract   = "public.yaml"
+)
+
+func contractEnum(t *testing.T, contract, schema, property string) []string {
 	t.Helper()
 	path := filepath.Join("..", "..", "..", "..", "..",
-		"contracts", "openapi", "llm-internal.yaml")
+		"contracts", "openapi", contract)
 	raw, err := os.ReadFile(path)
 	if err != nil {
-		t.Fatalf("reading the internal contract: %v", err)
+		t.Fatalf("reading %s: %v", contract, err)
 	}
 	var spec struct {
 		Components struct {
 			Schemas map[string]struct {
+				Enum       []string `yaml:"enum"`
 				Properties map[string]struct {
 					Enum []string `yaml:"enum"`
 				} `yaml:"properties"`
@@ -28,9 +35,12 @@ func contractEnum(t *testing.T, schema, property string) []string {
 		} `yaml:"components"`
 	}
 	if err := yaml.Unmarshal(raw, &spec); err != nil {
-		t.Fatalf("parsing the internal contract: %v", err)
+		t.Fatalf("parsing %s: %v", contract, err)
 	}
-	values := spec.Components.Schemas[schema].Properties[property].Enum
+	values := spec.Components.Schemas[schema].Enum
+	if property != "" {
+		values = spec.Components.Schemas[schema].Properties[property].Enum
+	}
 	if len(values) == 0 {
 		t.Fatalf("%s.%s declares no values; this test would pass on an empty set", schema, property)
 	}
@@ -38,7 +48,7 @@ func contractEnum(t *testing.T, schema, property string) []string {
 }
 
 func TestEveryReasonTheContractDeclaresHasASentenceForTheUser(t *testing.T) {
-	for _, code := range contractEnum(t, "CreationStepResponse", "reason") {
+	for _, code := range contractEnum(t, internalContract, "CreationStepResponse", "reason") {
 		t.Run(code, func(t *testing.T) {
 			sentence, err := reasonSentence(code)
 			if err != nil {
@@ -62,7 +72,7 @@ func TestEveryReasonTheScreenGivesHasASentenceForTheUser(t *testing.T) {
 
 func TestTheSentenceTableNamesNoReasonNothingGives(t *testing.T) {
 	given := map[string]bool{}
-	for _, code := range contractEnum(t, "CreationStepResponse", "reason") {
+	for _, code := range contractEnum(t, internalContract, "CreationStepResponse", "reason") {
 		given[code] = true
 	}
 	for _, code := range screenReasons {
@@ -77,7 +87,7 @@ func TestTheSentenceTableNamesNoReasonNothingGives(t *testing.T) {
 }
 
 func TestEveryOutcomeTheContractDeclaresReachesABranch(t *testing.T) {
-	for _, outcome := range contractEnum(t, "CreationStepResponse", "outcome") {
+	for _, outcome := range contractEnum(t, internalContract, "CreationStepResponse", "outcome") {
 		t.Run(outcome, func(t *testing.T) {
 			s := &Service{}
 			e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}}
@@ -92,7 +102,7 @@ func TestEveryOutcomeTheContractDeclaresReachesABranch(t *testing.T) {
 }
 
 func TestEveryToolTheContractDeclaresHasSomethingToRun(t *testing.T) {
-	for _, kind := range contractEnum(t, "CreationToolIntent", "kind") {
+	for _, kind := range contractEnum(t, internalContract, "CreationToolIntent", "kind") {
 		t.Run(kind, func(t *testing.T) {
 			s := &Service{}
 			e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}}
@@ -102,5 +112,22 @@ func TestEveryToolTheContractDeclaresHasSomethingToRun(t *testing.T) {
 					"request is refused as an invalid command", kind)
 			}
 		})
+	}
+}
+
+func TestTheSessionStatesAreTheContractsStates(t *testing.T) {
+	var states []string
+	for _, state := range AllStates() {
+		states = append(states, string(state))
+	}
+	if want := contractEnum(t, publicContract, "CreationSession", "state"); !slices.Equal(states, want) {
+		t.Errorf("AllStates() = %v, the contract declares %v", states, want)
+	}
+}
+
+func TestNeedsAttentionIsAnActivityClassificationTheContractDeclares(t *testing.T) {
+	want := contractEnum(t, publicContract, "WorkspaceActivityClassification", "")
+	if !slices.Contains(want, creationNeedsAttention) {
+		t.Errorf("%q is not among the contract's classifications %v", creationNeedsAttention, want)
 	}
 }
