@@ -14,6 +14,7 @@ import { AdminPage } from "../components/AdminPage";
 import { ActionForm } from "../components/ActionForm";
 import { useSettingDraft } from "../components/useSettingDraft";
 import { SettingsResult } from "./SettingsResult";
+import { unverifiedSettingSentence } from "./SettingsResult.model";
 import { InjectionCheck } from "./InjectionCheck";
 import { ReflectionCandidates } from "./ReflectionCandidates";
 import { MCPTools } from "./MCPTools";
@@ -80,7 +81,7 @@ function JudgePanel({
       {toggle.isSuccess && (
         <SettingsResult id="admin-settings-judge-panel-result" verified={!unverified}>
           {unverified
-            ? "評審團變更請求已完成；目前設定尚未確認，請重新整理。"
+            ? unverifiedSettingSentence("評審團")
             : toggle.variables.enabled
               ? "已開啟，需要模型判定的條件由三個判定投票。"
               : "已關閉，下一次評估回到一個判定。"}
@@ -190,7 +191,7 @@ function ContinuationRounds({
       {set.isSuccess && (
         <SettingsResult id="admin-settings-rounds-result" verified={!unverified}>
           {unverified
-            ? "輪數變更請求已完成；目前設定尚未確認，請重新整理。"
+            ? unverifiedSettingSentence("輪數")
             : `已改為 ${set.variables.rounds} 輪，下一次回答就照這個值。`}
         </SettingsResult>
       )}

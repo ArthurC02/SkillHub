@@ -7,6 +7,7 @@ import { useReflectionCandidatesSetting, type PlatformSettings } from "../admin.
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import { ActionForm } from "../components/ActionForm";
 import { SettingsResult } from "./SettingsResult";
+import { unverifiedSettingSentence } from "./SettingsResult.model";
 
 type Setting = PlatformSettings["reflection_candidates"];
 type ReflectionCandidatesProps = { setting: Setting; readable: boolean; refreshing: boolean };
@@ -122,7 +123,7 @@ export function ReflectionCandidates({ setting, readable, refreshing }: Reflecti
       {save.isSuccess && (
         <SettingsResult id="admin-settings-reflection-candidates-result" verified={!unverified}>
           {unverified
-            ? "候選數變更請求已完成；目前設定尚未確認，請重新整理。"
+            ? unverifiedSettingSentence("候選數")
             : `已儲存，下一輪找改進會問 ${save.variables.count} 個候選。`}
         </SettingsResult>
       )}

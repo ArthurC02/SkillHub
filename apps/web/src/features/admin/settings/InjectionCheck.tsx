@@ -4,6 +4,7 @@ import { useInjectionCheckSwitch, type PlatformSettings } from "../admin.service
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import { ActionForm } from "../components/ActionForm";
 import { SettingsResult } from "./SettingsResult";
+import { unverifiedSettingSentence } from "./SettingsResult.model";
 
 type Check = PlatformSettings["injection_check"];
 type InjectionCheckProps = { check: Check; readable: boolean; refreshing: boolean };
@@ -97,7 +98,7 @@ export function InjectionCheck({ check, readable, refreshing }: InjectionCheckPr
       {toggle.isSuccess && (
         <SettingsResult id="admin-settings-injection-check-result" verified={!unverified}>
           {unverified
-            ? "注入檢查變更請求已完成；目前設定尚未確認，請重新整理。"
+            ? unverifiedSettingSentence("注入檢查")
             : toggle.variables.enabled
               ? "已開啟，下一次需要模型判定的評估會先檢查輸出。"
               : "已關閉，下一次評估不再檢查輸出。"}

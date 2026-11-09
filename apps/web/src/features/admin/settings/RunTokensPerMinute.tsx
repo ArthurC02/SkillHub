@@ -2,6 +2,7 @@ import { useRunTokensPerMinute, type RunSettings } from "../admin.service";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import { ActionForm } from "../components/ActionForm";
 import { SettingsResult } from "./SettingsResult";
+import { unverifiedSettingSentence } from "./SettingsResult.model";
 import { useSettingDraft } from "../components/useSettingDraft";
 
 type Rate = RunSettings["tokens_per_minute"];
@@ -107,7 +108,7 @@ export function RunTokensPerMinute({ setting, readable, refreshing }: RunTokensP
       {set.isSuccess && (
         <SettingsResult id="admin-settings-run-tpm-result" verified={!unverified}>
           {unverified
-            ? "每分鐘 tokens 上限變更請求已完成；目前設定尚未確認，請重新整理。"
+            ? unverifiedSettingSentence("每分鐘 tokens 上限")
             : resultSentence(set.variables.limit, setting.default_limit)}
         </SettingsResult>
       )}

@@ -2,6 +2,7 @@ import { useRunModelBudget, type RunSettings } from "../admin.service";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import { ActionForm } from "../components/ActionForm";
 import { SettingsResult } from "./SettingsResult";
+import { unverifiedSettingSentence } from "./SettingsResult.model";
 import { useSettingDraft } from "../components/useSettingDraft";
 import { points } from "../../../shared/format";
 
@@ -111,7 +112,7 @@ export function RunModelBudget({ setting, readable, refreshing }: RunModelBudget
       {set.isSuccess && (
         <SettingsResult id="admin-settings-run-budget-result" verified={!unverified}>
           {unverified
-            ? "花費上限變更請求已完成；目前設定尚未確認，請重新整理。"
+            ? unverifiedSettingSentence("花費上限")
             : resultSentence(set.variables.credits, setting.default_credits)}
         </SettingsResult>
       )}
