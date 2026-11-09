@@ -1,5 +1,6 @@
 import { ApiError } from "../../../core/api/client";
 import type { IconState } from "../../../shared/ui/StateIcon";
+import type { RunStatus } from "../trace.service";
 import {
   EVALUATION_POLL_MAX_404,
   type CriterionResult,
@@ -12,8 +13,10 @@ import {
   type SuggestionOutcome,
 } from "../evaluation.service";
 
+const EVALUATED_AFTER: ReadonlySet<string> = new Set<RunStatus>(["succeeded", "failed"]);
+
 export function awaitsEvaluation(runStatus: string | undefined): boolean {
-  return runStatus === "succeeded" || runStatus === "failed";
+  return EVALUATED_AFTER.has(runStatus ?? "");
 }
 
 export type EvaluationPanelState = {

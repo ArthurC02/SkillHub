@@ -10,6 +10,7 @@ import {
   runStatusLabel,
   type RunActivityGroup,
 } from "../runs.model";
+import type { RunStatus } from "../trace.service";
 import { RunVerdict } from "../components/RunVerdict";
 import { RunSourceLinks } from "../components/RunSourceLinks";
 import { ListFreshness } from "../../../shared/ui/ListFreshness";
@@ -126,7 +127,11 @@ export function WorkspaceRuns() {
   );
 }
 
-const REASON_EXPECTED = new Set(["failed", "cancelled", "timed_out"]);
+const REASON_EXPECTED: ReadonlySet<string> = new Set<RunStatus>([
+  "failed",
+  "cancelled",
+  "timed_out",
+]);
 
 const ACTIVITY_GROUPS: Array<{
   key: RunActivityGroup;

@@ -3,7 +3,8 @@ import { expect, test } from "vitest";
 import { focusManager } from "@tanstack/react-query";
 import { queryClient } from "../../core/api/queryClient";
 import { queryKeys } from "../../core/api/queryKeys";
-import { daysOf, seriesOf, usd } from "./admin.service";
+import { usd } from "../../shared/format";
+import { daysOf, seriesOf } from "./admin.service";
 import {
   ADMIN_COST_STATISTICS,
   ADMIN_TREND_JOURNEYS,
@@ -89,6 +90,7 @@ test("OPS-007: unreadable cost statistics hide cached figures and recover on ret
 
 test("OPS-007: nonzero micro-dollar costs remain distinct from zero and missing values", () => {
   expect(usd(null)).toBe("未測量");
+  expect(usd(undefined)).toBe("未測量");
   expect(usd(0)).toBe("$0.0000");
   expect(usd(1)).toBe("$0.000001");
   expect(usd(49)).toBe("$0.000049");

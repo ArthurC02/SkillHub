@@ -1,4 +1,5 @@
-import { useCostStatistics, usd } from "../admin.service";
+import { usd } from "../../../shared/format";
+import { useCostStatistics } from "../admin.service";
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { ListFreshness } from "../../../shared/ui/ListFreshness";

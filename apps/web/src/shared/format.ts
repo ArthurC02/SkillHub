@@ -11,4 +11,14 @@ export const points = (n: number) => `${n} 點`;
 
 export const credits = (value: number | null) => (value === null ? "未測量" : points(value));
 
+const usdFormatter = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 4,
+  maximumFractionDigits: 6,
+});
+
+export const usd = (micros: number | null | undefined) =>
+  micros == null ? "未測量" : usdFormatter.format(micros / 1_000_000);
+
 export const ESTIMATE_MARK = "（估計值）";

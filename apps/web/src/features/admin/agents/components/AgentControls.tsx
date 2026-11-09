@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { usd } from "../../../../shared/format";
 import {
-  usd,
   usePlatformAgentSpendCap,
   usePlatformAgentSwitch,
   type usePlatformAgentBrake,

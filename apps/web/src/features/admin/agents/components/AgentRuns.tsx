@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
+import { usd } from "../../../../shared/format";
 import {
-  usd,
   usePlatformAgentSteps,
   type PlatformAgentRun,
   type PlatformAgentRunStatus,
@@ -118,8 +118,7 @@ export function AgentRunSteps({ run, live }: { run: string; live: boolean }) {
               </p>
               <p className="note">
                 模型 {step.model}；輸入 {step.prompt_tokens} tokens、輸出 {step.completion_tokens}{" "}
-                tokens；花費 {step.usd_micros === undefined ? "未測量" : usd(step.usd_micros)}；
-                記錄於 <Timestamp at={step.created_at} />
+                tokens；花費 {usd(step.usd_micros)}； 記錄於 <Timestamp at={step.created_at} />
               </p>
               <details className="agent-step-raw">
                 <summary>{step.result === "" ? "查看輸入" : "查看輸入與結果"}</summary>

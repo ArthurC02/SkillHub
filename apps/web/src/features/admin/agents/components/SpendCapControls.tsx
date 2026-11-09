@@ -1,10 +1,10 @@
 import { useEffect, useRef } from "react";
 import {
   MAX_AGENT_SPEND_CAP_MICROS,
-  usd,
   type usePlatformAgentSpendCap,
   type PlatformAgent,
 } from "../../admin.service";
+import { usd } from "../../../../shared/format";
 import { ActionForm } from "../../components/ActionForm";
 import { useSettingDraft } from "../../components/useSettingDraft";
 

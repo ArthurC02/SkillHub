@@ -74,7 +74,7 @@ export type TraceAdvanced = {
 
 export type RunStatus = (typeof RUN_STATUSES)[number];
 
-export const IN_FLIGHT_RUN_STATUSES = new Set<string>([
+export const IN_FLIGHT_RUN_STATUSES: ReadonlySet<string> = new Set<RunStatus>([
   "queued",
   "provisioning",
   "preparing",

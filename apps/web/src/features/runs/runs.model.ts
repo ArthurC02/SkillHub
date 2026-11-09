@@ -2,7 +2,10 @@ import { IN_FLIGHT_RUN_STATUSES, type RunStatus } from "./trace.service";
 
 export type RunActivityGroup = "needs_attention" | "in_flight" | "recent";
 
-const RUN_STATUSES_NEEDING_ATTENTION = new Set(["failed", "timed_out"]);
+const RUN_STATUSES_NEEDING_ATTENTION: ReadonlySet<string> = new Set<RunStatus>([
+  "failed",
+  "timed_out",
+]);
 const RUN_VERDICTS_NEEDING_ATTENTION = new Set([
   "not_met",
   "partially_met",

@@ -1,7 +1,7 @@
 import { RUN_STATUS_LABEL } from "../../runs";
 import { Link, useSearch } from "@tanstack/react-router";
+import { usd } from "../../../shared/format";
 import {
-  usd,
   useTrend,
   daysOf,
   TREND_DAYS,
