@@ -816,6 +816,7 @@ var (
 		regexp.MustCompile(`gh[pousr]_[A-Za-z0-9]{36,}`),
 		regexp.MustCompile(`sk-[A-Za-z0-9_-]{20,}`),
 		regexp.MustCompile(`xox[baprs]-[A-Za-z0-9-]{10,}`),
+		regexp.MustCompile(`AIza[A-Za-z0-9_-]{35}`),
 		regexp.MustCompile(`-----BEGIN [A-Z ]*PRIVATE KEY-----`),
 		regexp.MustCompile(`(?i)aws_secret_access_key\s*=\s*\S{20}`),
 	}

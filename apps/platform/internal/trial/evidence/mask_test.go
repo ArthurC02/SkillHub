@@ -21,6 +21,7 @@ var scannerShapes = []struct {
 	{"slack token", "xox" + "b-" + "0000000000-000000000000-notarealslacktoken"},
 	{"private key block", "-----BEGIN " + "RSA PRIVATE KEY-----"},
 	{"aws secret assignment", "aws_secret_access_key = " + strings.Repeat("0", 40)},
+	{"google api key", "AI" + "za" + strings.Repeat("0", 35)},
 }
 
 func TestMaskerCoversEveryShapeThePackageScannerBlocks(t *testing.T) {
@@ -76,7 +77,6 @@ func scannerPatternsFromSource(t *testing.T) []string {
 
 func TestMaskerRedactsShapesNeitherDetectorHad(t *testing.T) {
 	for _, sample := range []string{
-		"AI" + "za" + strings.Repeat("0", 35),
 		"AWS_SESSION_TOKEN=" + strings.Repeat("0", 40),
 
 		"SKILLHUB_SANDBOX_TOKEN_SELF_HOSTED=" + strings.Repeat("0", 40),

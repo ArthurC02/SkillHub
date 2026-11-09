@@ -562,6 +562,18 @@ func TestAnSKKeyBlocksFromTwentyCharactersAsTheRunMaskHidesIt(t *testing.T) {
 	}
 }
 
+func TestAGoogleAPIKeyBlocksAsTheRunMaskHidesIt(t *testing.T) {
+	for _, tc := range []struct {
+		tail    int
+		blocked bool
+	}{{34, false}, {35, true}} {
+		r := Validate(pkg(goodMD, map[string]string{"config.env": "KEY=AI" + "za" + strings.Repeat("a", tc.tail)}))
+		if got := codes(r)[CodePossibleSecret] == SeverityError; got != tc.blocked {
+			t.Errorf("AIza with %d characters: possible-secret error = %v, want %v (%+v)", tc.tail, got, tc.blocked, r.Findings)
+		}
+	}
+}
+
 func TestAllowedToolsBothShapes(t *testing.T) {
 	list := "---\nname: x\ndescription: d\nlicense: MIT\nallowed-tools:\n  - Bash\n  - Read\n---\n"
 	csv := "---\nname: x\ndescription: d\nlicense: MIT\nallowed-tools: Bash, Read\n---\n"
