@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/evidence"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/execution"
 )
@@ -224,14 +225,6 @@ func evaluationRun(row gen.Run, runtimeSnapshot []byte) EvaluationRun {
 		SkillVersionID: row.SkillVersionID, TestCaseSnapshotID: row.TestCaseSnapshotID,
 		Status: string(row.Status), StatusReason: row.StatusReason, RuntimeSnapshot: runtimeSnapshot,
 		Terminal: run.IsTerminal(row.Status), Succeeded: row.Status == gen.RunStatusSucceeded,
-		StartedAt: timePtr(row.StartedAt), FinishedAt: timePtr(row.FinishedAt), FailureClass: row.FailureClass,
+		StartedAt: pgconv.TimePtr(row.StartedAt), FinishedAt: pgconv.TimePtr(row.FinishedAt), FailureClass: row.FailureClass,
 	}
-}
-
-func timePtr(value pgtype.Timestamptz) *time.Time {
-	if !value.Valid {
-		return nil
-	}
-	at := value.Time
-	return &at
 }

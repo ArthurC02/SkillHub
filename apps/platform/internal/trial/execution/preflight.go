@@ -578,7 +578,7 @@ func (s *Service) ConfirmPermissions(
 }
 
 func permissionConfirmation(row gen.RunPermissionConfirmation) PermissionConfirmation {
-	return PermissionConfirmation{SummaryHash: row.SummaryHash, ConfirmedAt: timePointer(row.ConfirmedAt)}
+	return PermissionConfirmation{SummaryHash: row.SummaryHash, ConfirmedAt: pgconv.TimePtr(row.ConfirmedAt)}
 }
 
 func (s *Service) requirePermissionConfirmation(ctx context.Context, q *gen.Queries, p CreateParams, held heldInputs) error {

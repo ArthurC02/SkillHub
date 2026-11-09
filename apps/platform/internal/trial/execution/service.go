@@ -626,10 +626,10 @@ func runView(row gen.Run) RunView {
 		Provider:           row.Provider,
 		FailureClass:       deref(row.FailureClass),
 		CleanupStatus:      string(row.CleanupStatus),
-		CancelRequestedAt:  timePointer(row.CancelRequestedAt),
-		CreatedAt:          timePointer(row.CreatedAt),
-		StartedAt:          timePointer(row.StartedAt),
-		FinishedAt:         timePointer(row.FinishedAt),
+		CancelRequestedAt:  pgconv.TimePtr(row.CancelRequestedAt),
+		CreatedAt:          pgconv.TimePtr(row.CreatedAt),
+		StartedAt:          pgconv.TimePtr(row.StartedAt),
+		FinishedAt:         pgconv.TimePtr(row.FinishedAt),
 		ArtifactsTruncated: row.ArtifactsTruncated,
 	}
 }
@@ -702,18 +702,10 @@ func runSummary(row gen.ListWorkspaceRunsRow, version VersionSummary, testCaseID
 		SkillName:      version.SkillName,
 		SkillVersionID: row.SkillVersionID,
 		TestCaseID:     testCaseID,
-		CreatedAt:      timePointer(row.CreatedAt),
-		StartedAt:      timePointer(row.StartedAt),
-		FinishedAt:     timePointer(row.FinishedAt),
+		CreatedAt:      pgconv.TimePtr(row.CreatedAt),
+		StartedAt:      pgconv.TimePtr(row.StartedAt),
+		FinishedAt:     pgconv.TimePtr(row.FinishedAt),
 	}
-}
-
-func timePointer(ts pgtype.Timestamptz) *time.Time {
-	if !ts.Valid {
-		return nil
-	}
-	t := ts.Time
-	return &t
 }
 
 func (s *Service) runLinks(
@@ -763,8 +755,8 @@ func artifact(row gen.Artifact) Artifact {
 		ContentType: row.ContentType,
 		SizeBytes:   row.SizeBytes,
 		ContentHash: row.ContentHash,
-		CreatedAt:   timePointer(row.CreatedAt),
-		ExpiresAt:   timePointer(row.ExpiresAt),
+		CreatedAt:   pgconv.TimePtr(row.CreatedAt),
+		ExpiresAt:   pgconv.TimePtr(row.ExpiresAt),
 		Purged:      row.PurgedAt.Valid,
 	}
 }
@@ -805,7 +797,7 @@ func (s *Service) History(ctx context.Context, workspaceID, runID pgtype.UUID) (
 	transitions := make([]StatusTransition, len(rows))
 	for i, row := range rows {
 		transitions[i] = StatusTransition{
-			From: derefStatus(row.FromStatus), To: string(row.ToStatus), Reason: deref(row.Reason), OccurredAt: timePointer(row.OccurredAt),
+			From: derefStatus(row.FromStatus), To: string(row.ToStatus), Reason: deref(row.Reason), OccurredAt: pgconv.TimePtr(row.OccurredAt),
 		}
 	}
 	return transitions, nil
@@ -844,8 +836,8 @@ func runAttempt(row gen.RunAttempt) Attempt {
 		ProviderRunID: deref(row.ProviderRunID),
 		ErrorClass:    deref(row.ErrorClass),
 		ErrorMessage:  deref(row.ErrorMessage),
-		StartedAt:     timePointer(row.StartedAt),
-		FinishedAt:    timePointer(row.FinishedAt),
+		StartedAt:     pgconv.TimePtr(row.StartedAt),
+		FinishedAt:    pgconv.TimePtr(row.FinishedAt),
 	}
 }
 

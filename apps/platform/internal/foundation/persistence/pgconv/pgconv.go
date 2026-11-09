@@ -51,3 +51,11 @@ func Clone[T any](value *T) *T {
 	cloned := *value
 	return &cloned
 }
+
+func TimePtr(ts pgtype.Timestamptz) *time.Time {
+	if !ts.Valid {
+		return nil
+	}
+	at := ts.Time
+	return &at
+}

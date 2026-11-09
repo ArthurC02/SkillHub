@@ -58,3 +58,13 @@ func TestOnlyAUniqueViolationIsReportedWithItsConstraint(t *testing.T) {
 		})
 	}
 }
+
+func TestTimePtrIsNilForNullAndTheTimeOtherwise(t *testing.T) {
+	if got := TimePtr(pgtype.Timestamptz{}); got != nil {
+		t.Errorf("NULL timestamp = %v, want nil", *got)
+	}
+	at := time.Date(2026, 8, 19, 12, 30, 0, 0, time.UTC)
+	if got := TimePtr(pgtype.Timestamptz{Time: at, Valid: true}); got == nil || !got.Equal(at) {
+		t.Errorf("valid timestamp = %v, want %v", got, at)
+	}
+}
