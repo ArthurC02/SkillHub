@@ -1,6 +1,6 @@
 import { RUN_STATUS_LABEL } from "../../runs";
 import { Link, useSearch } from "@tanstack/react-router";
-import { usd } from "../../../shared/format";
+import { points, usd } from "../../../shared/format";
 import {
   useTrend,
   daysOf,
@@ -19,10 +19,6 @@ import { ENTRY_KIND, ACTION_LABEL, COST_KIND } from "../admin.model";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import { TrendSection } from "./components/TrendSection";
 import "./AdminTrends.page.css";
-
-const usdAmount = (micros: number) => usd(micros);
-
-const creditAmount = (credits: number) => `${credits} 點`;
 
 const countOf = (bucket: DailyCount) => bucket.count;
 
@@ -70,7 +66,7 @@ function TrendOverview({
       <dl>
         <div>
           <dt>模型成本（含估計）</dt>
-          <dd>{usdAmount(periodTotal(cost, totalOf))}</dd>
+          <dd>{usd(periodTotal(cost, totalOf))}</dd>
         </div>
         <div>
           <dt>點數淨異動</dt>
@@ -266,7 +262,7 @@ export function AdminTrends() {
         heading="每日成本（美元，含估計值）"
         query={cost}
         value={totalOf}
-        format={usdAmount}
+        format={usd}
         labels={COST_KIND}
         valueHeading="美元"
       />
@@ -275,7 +271,7 @@ export function AdminTrends() {
         heading="每日點數異動（淨額）"
         query={credits}
         value={totalOf}
-        format={creditAmount}
+        format={points}
         labels={ENTRY_KIND}
         valueHeading="點數"
       >

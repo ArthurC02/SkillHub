@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { SetInjectionCheckBodyCreditsPerMillionTokensMaximum as MAX_PRICE } from "@skillhub/api-client-ts/limits";
 import { useInjectionCheckSwitch, type PlatformSettings } from "../admin.service";
+import { points } from "../../../shared/format";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import { ActionForm } from "../components/ActionForm";
 import { SettingsResult } from "./SettingsResult";
@@ -22,7 +23,7 @@ function CheckFacts({ check }: { check: Check }) {
       <p>
         {check.credits_per_million_tokens === undefined
           ? "尚未定價"
-          : `每百萬輸入 token ${check.credits_per_million_tokens} 點`}
+          : `每百萬輸入 token ${points(check.credits_per_million_tokens)}`}
       </p>
       <p className="note">
         開啟後，需要模型判定的評估會另外問一次：試跑的輸出、產出檔與執行紀錄裡，有沒有對評審下指令的文字。結果顯示在判定旁邊，不改變判定。

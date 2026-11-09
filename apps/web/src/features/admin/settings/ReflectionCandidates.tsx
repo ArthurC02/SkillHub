@@ -4,6 +4,7 @@ import {
   SetReflectionCandidatesBodyRoundCreditCapMaximum as MAX_CAP,
 } from "@skillhub/api-client-ts/limits";
 import { useReflectionCandidatesSetting, type PlatformSettings } from "../admin.service";
+import { points } from "../../../shared/format";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import { ActionForm } from "../components/ActionForm";
 import { SettingsResult } from "./SettingsResult";
@@ -19,7 +20,7 @@ function SettingFacts({ setting }: { setting: Setting }) {
         每輪 {setting.count} 個候選；
         {setting.round_credit_cap === undefined
           ? "每輪點數上限尚未設定"
-          : `每輪最多 ${setting.round_credit_cap} 點`}
+          : `每輪最多 ${points(setting.round_credit_cap)}`}
       </p>
       <p className="note">
         一輪找改進時，每個候選各問一次模型，各自先看指示、Script
