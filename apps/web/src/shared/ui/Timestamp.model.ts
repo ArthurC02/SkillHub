@@ -7,9 +7,10 @@ const OPTIONS = {
   hour12: false,
 } satisfies Intl.DateTimeFormatOptions;
 
-export type TimestampPrecision = "minute" | "second";
+export type TimestampPrecision = "day" | "minute" | "second";
 
 const ABSOLUTE = {
+  day: new Intl.DateTimeFormat("zh-TW", { year: "numeric", month: "2-digit", day: "2-digit" }),
   minute: new Intl.DateTimeFormat("zh-TW", OPTIONS),
   second: new Intl.DateTimeFormat("zh-TW", { ...OPTIONS, second: "2-digit" }),
 };

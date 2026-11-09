@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import type { PublicSearchResult } from "../../../../core/api/types";
 import { LabelledBadge } from "../../../../shared/ui/LabelledBadge";
 import { StateIcon } from "../../../../shared/ui/StateIcon";
+import { formatAt } from "../../../../shared/ui/Timestamp.model";
 import "./CatalogSkillCard.css";
 
 function SummarySource({ source }: { source: PublicSearchResult["summary_source"] }) {
@@ -40,8 +41,7 @@ function dependencySummary(dependencies: string[]) {
 }
 
 function VerifiedDate({ at }: { at: string }) {
-  const matched = /^(\d{4})-(\d{2})-(\d{2})/.exec(at);
-  return <time dateTime={at}>{matched ? matched.slice(1).join("/") : at}</time>;
+  return <time dateTime={at}>{formatAt(at, "day")}</time>;
 }
 
 export function CatalogSkillCard({

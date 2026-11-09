@@ -610,7 +610,7 @@ test("the catalogue presents every product in one compact scan surface", async (
     expect(text).toContain("尚未試跑");
     expect(text).toContain("依賴未提供");
     expect(text).toContain("掃描未見警告≠安全");
-    expect(card.querySelector('time[datetime="2026-09-03T00:00:00Z"]')).not.toBeNull();
+    expect(card.querySelector('time[datetime="2026-09-03T00:00:00Z"]')?.textContent).toBe("2026/09/03");
     expect(card.querySelector(".result-facets")).toBeNull();
   }
 });
