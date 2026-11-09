@@ -9,6 +9,7 @@ import type {
   PublicSearchResponse,
   ReasonedSearchResult,
 } from "../../core/api/types";
+import { runeCount } from "../../shared/textLength.model";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -136,7 +137,7 @@ function isInterpretation(value: unknown): boolean {
     Array.isArray(value.keywords) &&
     value.keywords.length <= INTENT_KEYWORD_LIMIT &&
     value.keywords.every(
-      (word) => isText(word) && [...word].length > 0 && [...word].length <= INTENT_KEYWORD_LENGTH,
+      (word) => isText(word) && runeCount(word) > 0 && runeCount(word) <= INTENT_KEYWORD_LENGTH,
     ) &&
     Object.keys(filters).every(
       (key) => Object.hasOwn(filterValues, key) && isMember(filters[key], filterValues[key]),

@@ -4,6 +4,7 @@ import { useId, useState } from "react";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { isWriteResultUnknown, serverReason } from "../../../../core/api/client";
 import { useSaveRunAsTestCase } from "../../runs.service";
+import { runeCount } from "../../../../shared/textLength.model";
 
 function saveFailureSentence(error: unknown) {
   if (isWriteResultUnknown(error))
@@ -13,7 +14,7 @@ function saveFailureSentence(error: unknown) {
 
 function blockedBy(name: string) {
   if (name === "") return "先填測試題名稱。";
-  if ([...name].length > MAX_NAME) return `名稱最多 ${MAX_NAME} 個字。`;
+  if (runeCount(name) > MAX_NAME) return `名稱最多 ${MAX_NAME} 個字。`;
   return undefined;
 }
 

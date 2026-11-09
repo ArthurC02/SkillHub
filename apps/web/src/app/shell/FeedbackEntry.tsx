@@ -2,7 +2,7 @@ import { useRef, useState, type RefObject } from "react";
 import { LoginRequired, ReadFailure } from "../../shared/ui/LoginRequired";
 import { unauthenticated } from "../../shared/ui/LoginRequired.model";
 import { useMe } from "../../core/session/me.service";
-import { textLengthReason } from "../../shared/textLength.model";
+import { textLengthReason, runeCount } from "../../shared/textLength.model";
 import {
   BUILD_ID,
   FEEDBACK_MAX_MESSAGE,
@@ -12,8 +12,6 @@ import {
   type FeedbackKind,
 } from "./feedback.service";
 import { KIND_LABEL, KIND_NOTE } from "./FeedbackEntry.model";
-
-const runes = (s: string) => [...s].length;
 
 function FeedbackMessageField({
   message,
@@ -49,7 +47,7 @@ function FeedbackMessageField({
         />
         <br />
         <span className="note">
-          {runes(message)}／{FEEDBACK_MAX_MESSAGE} 字
+          {runeCount(message)}／{FEEDBACK_MAX_MESSAGE} 字
         </span>
       </p>
 

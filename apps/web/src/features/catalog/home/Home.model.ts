@@ -6,8 +6,6 @@ import { textLengthReason } from "../../../shared/textLength.model";
 
 export const SEARCH_MAX_QUERY = PublicSearchSkillsQMaxLength;
 
-export const runes = (s: string) => [...s].length;
-
 export function parseSelection(value: string | undefined): string[] {
   return value ? value.split(",").filter(Boolean).slice(0, MAX_COMPARE) : [];
 }

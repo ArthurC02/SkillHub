@@ -10,6 +10,7 @@ import { RootLayout } from "./RootLayout";
 import { RouteNotFound } from "../shared/ui/RouteNotFound";
 import { RouteError } from "../shared/ui/RouteError";
 import type { AgentRuntime, SkillCategory } from "../core/api/types";
+import { runeCount } from "../shared/textLength.model";
 
 const rootRoute = createRootRoute({ shellComponent: RootLayout });
 
@@ -33,7 +34,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const openingTask = (value: unknown) =>
   typeof value === "string" &&
   value.trim() !== "" &&
-  [...value].length <= CreationActionMessageMaxLength
+  runeCount(value) <= CreationActionMessageMaxLength
     ? value
     : undefined;
 const PUBLICATION_REFERENCE = /^[^/]+\/[^/]+$/;

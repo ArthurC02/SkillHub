@@ -10,6 +10,7 @@ import {
 } from "../../testcases.service";
 import { MutationError } from "./MutationError";
 import { CREDIT_REFUSED } from "../test-cases.model";
+import { runeCount } from "../../../../shared/textLength.model";
 
 function suggestFailureSentence(error: unknown) {
   const status = error instanceof ApiError ? error.status : 0;
@@ -76,7 +77,7 @@ export function SuggestTestCases({ skillId, version }: { skillId: string; versio
   const [adopted, setAdopted] = useState<AdoptedTestCase | null>(null);
   const suggest = useSuggestTestCases(skillId);
   const adopt = useAdoptTestCaseSuggestion(skillId);
-  const tooLong = [...focus].length > SuggestTestCasesBodyFocusMaxLength;
+  const tooLong = runeCount(focus) > SuggestTestCasesBodyFocusMaxLength;
   const drop = (s: TestCaseSuggestion) =>
     setProposals((current) => current?.filter((p) => p !== s) ?? null);
 

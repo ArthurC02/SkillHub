@@ -18,6 +18,7 @@ import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import { ActionForm } from "../components/ActionForm";
+import { runeCount } from "../../../shared/textLength.model";
 
 const SERVER_FORM = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const TOOL_FORM = /^[A-Za-z0-9]+([_-][A-Za-z0-9]+)*$/;
@@ -28,7 +29,7 @@ const EMPTY: Fields = { server: "", tool: "", purpose: "", parameters: "", serve
 
 function fits(value: string, max: number, form?: RegExp) {
   const text = value.trim();
-  return text !== "" && [...text].length <= max && (!form || form.test(text));
+  return text !== "" && runeCount(text) <= max && (!form || form.test(text));
 }
 
 function complete(f: Fields) {

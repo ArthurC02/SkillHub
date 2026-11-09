@@ -8,8 +8,7 @@ import {
 } from "../../runs.service";
 import type { TraceSummary } from "../../trace.service";
 import { ContinuationFailure } from "./ContinuationFailure";
-
-const characterCount = (text: string) => [...text].length;
+import { runeCount } from "../../../../shared/textLength.model";
 
 function ContinuationNote({ room }: { room?: ContinuationRoom }) {
   if (room?.answered)
@@ -51,9 +50,7 @@ export function AnswerQuestions({
   const unknown = Boolean(continuation.error) && isContinuationResultUnknown(continuation.error);
   const trimmed = answers.map((answer) => answer.trim());
   const blank = trimmed.some((answer) => answer === "");
-  const tooLong = trimmed.some(
-    (answer) => characterCount(answer) > ContinueRunBodyAnswersItemMaxLength,
-  );
+  const tooLong = trimmed.some((answer) => runeCount(answer) > ContinueRunBodyAnswersItemMaxLength);
   const blocked = !readConfirmed || blank || tooLong;
 
   const setAnswer = (index: number, value: string) => {

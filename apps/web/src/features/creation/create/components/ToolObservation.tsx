@@ -8,6 +8,7 @@ import {
   verdictWord,
   OVERALL_LABEL,
 } from "../../../../shared/verdict";
+import { runeCount } from "../../../../shared/textLength.model";
 
 type FetchObservation = {
   fetch: { url: string; status: string; bytes?: number; text?: string };
@@ -46,7 +47,7 @@ export function ToolObservation({ raw }: { raw: string }) {
           </span>
           {!!text && (
             <details>
-              <summary>讀到的網頁內容（{[...text].length} 字）</summary>
+              <summary>讀到的網頁內容（{runeCount(text)} 字）</summary>
               <pre className="skill-md">
                 <Reveal text={text} />
               </pre>
