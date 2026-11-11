@@ -1,3 +1,4 @@
+import type { PublishingRefusalReasonEnum } from "@skillhub/api-client-ts";
 import { PublishSkillBodyNameMaxLength } from "@skillhub/api-client-ts/limits";
 import { ApiError, isWriteResultUnknown, userFacingReason } from "../../core/api/client";
 import type { SkillDetail } from "../../core/api/types";
@@ -5,7 +6,8 @@ import { packagingGate } from "../packaging";
 
 export { DECLARABLE_LICENSES } from "./owner-publication.model";
 
-export type PublishingRefusalReason =
+export type PublishingRefusalReason = Extract<
+  PublishingRefusalReasonEnum,
   | "no_publisher"
   | "already_registered"
   | "name_taken"
@@ -19,7 +21,8 @@ export type PublishingRefusalReason =
   | "validation_blocked"
   | "rights_not_attested"
   | "license_not_declarable"
-  | "held_for_evaluation";
+  | "held_for_evaluation"
+>;
 
 const NAME_SHAPE = `1～${PublishSkillBodyNameMaxLength} 字元，只能是小寫英文字母、數字與連字號（-），開頭與結尾必須是英數字，不能有連續兩個連字號。`;
 
