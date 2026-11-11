@@ -1,5 +1,8 @@
 import { CreationActionMessageMaxLength } from "@skillhub/api-client-ts/limits";
-import type { CreationSnapshotPendingActionEnum } from "@skillhub/api-client-ts";
+import type {
+  CreationSessionStateEnum,
+  CreationSnapshotPendingActionEnum,
+} from "@skillhub/api-client-ts";
 import type { CreditBalance } from "../../../core/session/credits.service";
 import type {
   CreationAction,
@@ -14,6 +17,12 @@ import { isCategorizedFindings } from "../import.service";
 import { byteLimit } from "../../../shared/format";
 import { textLengthReason } from "../../../shared/textLength.model";
 import { criterionTally, labelOf, OVERALL_LABEL } from "../../../shared/verdict";
+
+const ENDED_STATES: ReadonlySet<string> = new Set<CreationSessionStateEnum>([
+  "saved",
+  "cancelled",
+  "failed",
+]);
 
 export type DraftInspection = { findings: CategorizedFindings } | { refusal: string };
 
@@ -168,7 +177,7 @@ const CREATION_FOCUS_BY_ACTION: Partial<Record<string, CreationFocus>> = {
 } satisfies Partial<Record<CreationSnapshotPendingActionEnum, CreationFocus>>;
 
 export function creationFocus(session: CreationSession | undefined): CreationFocus | undefined {
-  if (!session || ["saved", "cancelled", "failed"].includes(session.state)) return undefined;
+  if (!session || ENDED_STATES.has(session.state)) return undefined;
   const pendingAction = session.snapshot.pending_action;
   if (pendingAction) return CREATION_FOCUS_BY_ACTION[pendingAction];
   if (session.state === "needs_reupload") {

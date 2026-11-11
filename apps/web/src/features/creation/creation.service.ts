@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
-import type { CreationActionKindEnum } from "@skillhub/api-client-ts";
+import type {
+  CreationActionKindEnum,
+  CreationMessageRoleEnum,
+  CreationReferenceScanStatusEnum,
+  CreationReferenceTierEnum,
+  CreationSessionStateEnum,
+} from "@skillhub/api-client-ts";
 import { replaceEqualDeep, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   API_BASE_URL,
@@ -10,17 +16,7 @@ import {
 import { useMe } from "../../core/session/me.service";
 import { queryKeys } from "../../core/api/queryKeys";
 import { readCreationSession, readCreationSessions } from "./creation-response.model";
-export type CreationState =
-  | "queued"
-  | "working"
-  | "waiting_input"
-  | "waiting_confirmation"
-  | "draft_ready"
-  | "candidate_ready"
-  | "saved"
-  | "cancelled"
-  | "failed"
-  | "needs_reupload";
+export type CreationState = CreationSessionStateEnum;
 const CREATION_STATE_LABELS: Record<CreationState, string> = {
   queued: "等待處理",
   working: "正在創作",
@@ -60,8 +56,8 @@ export interface CreationReference {
   description?: string;
   compatibility?: string;
   allowed_tools?: string;
-  tier?: "curated" | "indexed" | "unknown";
-  scan_status?: "scanned" | "unavailable" | "unknown";
+  tier?: CreationReferenceTierEnum;
+  scan_status?: CreationReferenceScanStatusEnum;
   warnings?: number;
 }
 export type CreationFetch = { url: string; sha256?: string; bytes?: number; status: string };
@@ -88,7 +84,7 @@ export interface CreationDiagramInterpretation {
   uncertainties: CreationDiagramUncertainty[];
 }
 export interface CreationSnapshot {
-  messages: { role: "user" | "assistant" | "tool"; content: string; created_at?: string }[];
+  messages: { role: CreationMessageRoleEnum; content: string; created_at?: string }[];
   brief: string;
   brief_confirmed: boolean;
   acceptance_criteria: string[];
