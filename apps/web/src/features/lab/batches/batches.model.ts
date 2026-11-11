@@ -1,19 +1,16 @@
+import type {
+  CandidatePairedVerdictVerdictEnum,
+  EvaluationBatchStatusEnum,
+  EvaluationBatchTrialOutcomeEnum,
+} from "@skillhub/api-client-ts";
 import {
   CreateEvaluationBatchBodyTestCaseIdsMaxItems as MAX_TEST_CASES,
   CreateEvaluationBatchBodyTrialsMaximum as MAX_TRIALS,
 } from "@skillhub/api-client-ts/limits";
 
-export type BatchStatus = "launching" | "launched" | "paused" | "stopped";
+export type BatchStatus = EvaluationBatchStatusEnum;
 
-export type TrialOutcome =
-  | "pending"
-  | "running"
-  | "awaiting_answer"
-  | "met"
-  | "partially_met"
-  | "not_met"
-  | "undetermined"
-  | "not_evaluated";
+export type TrialOutcome = EvaluationBatchTrialOutcomeEnum;
 
 export type EvaluationBatch = {
   id: string;
@@ -326,13 +323,7 @@ export function unconfirmedTestCases(body: unknown): string[] | undefined {
   return ids.length > 0 ? ids : undefined;
 }
 
-export type DifferenceVerdict =
-  | "improved"
-  | "likely_improved"
-  | "no_clear_difference"
-  | "likely_worse"
-  | "worse"
-  | "too_few_pairs";
+export type DifferenceVerdict = CandidatePairedVerdictVerdictEnum;
 
 const VERDICTS = new Set<string>([
   "improved",

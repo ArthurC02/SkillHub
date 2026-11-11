@@ -1,3 +1,7 @@
+import type {
+  RunPermissionSummaryBlockedEnum,
+  RunPermissionSummaryContentScriptsStatusEnum,
+} from "@skillhub/api-client-ts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, apiFetch, isWriteResultUnknown } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
@@ -16,7 +20,7 @@ export interface PreflightSummary {
   test_case_id: string;
   datasets: PreflightDataset[];
   dataset_total_bytes: number;
-  scripts: { status: "none" | "present" | "unavailable"; findings: string[] };
+  scripts: { status: RunPermissionSummaryContentScriptsStatusEnum; findings: string[] };
   tools: string[];
   mcp_servers: string[];
   network: { mode: string; allow: string[] };
@@ -65,18 +69,7 @@ export interface PreflightResponse {
   estimated_cost: CostEstimate;
   ceiling_credits?: number;
   quota?: RunQuota;
-  blocked?:
-    | "access_restricted"
-    | "capability_mismatch"
-    | "scan_blocked"
-    | "scan_unavailable"
-    | "content_not_curated"
-    | "credit_balance"
-    | "platform_model_budget"
-    | "workspace_concurrency"
-    | "quota_daily"
-    | "quota_window"
-    | "quota_unavailable";
+  blocked?: RunPermissionSummaryBlockedEnum;
   notes: string[];
 }
 
