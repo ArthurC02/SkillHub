@@ -1,3 +1,4 @@
+import type { CreditStatementEntryKindEnum } from "@skillhub/api-client-ts";
 import { useEffect, useRef } from "react";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "../api/client";
@@ -39,7 +40,7 @@ export function useCreditsRereadWhenSessionCloses(hasSession: boolean) {
 
 export interface CreditStatementEntry {
   id: string;
-  kind: "debit" | "grant" | "topup" | "adjustment";
+  kind: CreditStatementEntryKindEnum;
   label: string;
   delta_credits: number;
   estimated: boolean;

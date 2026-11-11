@@ -6,7 +6,11 @@ import {
   SessionNotReadyError,
 } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
-import type { DeclarableLicense, OwnerCatalogExposureStateEnum } from "@skillhub/api-client-ts";
+import type {
+  BundleMemberChangeChangeEnum,
+  DeclarableLicense,
+  OwnerCatalogExposureStateEnum,
+} from "@skillhub/api-client-ts";
 import type { CategorizedFindings, Labelled } from "../../core/api/types";
 import { readPublicPublication } from "./public-publication.model";
 import { readOwnerPublications } from "./owner-publications.model";
@@ -65,7 +69,7 @@ export interface OwnerPublicationSummary {
 
 export interface BundleMemberChange {
   name: string;
-  change: "added" | "removed" | "changed";
+  change: BundleMemberChangeChangeEnum;
   from?: number;
   to?: number;
 }

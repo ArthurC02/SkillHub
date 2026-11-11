@@ -1,5 +1,12 @@
+import type { BundleMemberChangeChangeEnum } from "@skillhub/api-client-ts";
 import { isCategorizedFindings } from "../../core/api/findings";
 import type { PublicPublication } from "./publishing.service";
+
+const MEMBER_CHANGES: ReadonlySet<string> = new Set<BundleMemberChangeChangeEnum>([
+  "added",
+  "removed",
+  "changed",
+]);
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -27,7 +34,7 @@ function isMemberChange(value: unknown) {
     isObject(value) &&
     typeof value.name === "string" &&
     typeof value.change === "string" &&
-    ["added", "removed", "changed"].includes(value.change) &&
+    MEMBER_CHANGES.has(value.change) &&
     isOptionalInteger(value.from) &&
     isOptionalInteger(value.to)
   );

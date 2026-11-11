@@ -1,3 +1,8 @@
+import type {
+  DownloadArtifactStatusEnum,
+  PackagingPreviewExcludedFilesInnerReasonEnum,
+  PackagingBlockedReason,
+} from "@skillhub/api-client-ts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { API_BASE_URL, apiFetch } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
@@ -25,13 +30,7 @@ export interface PackagingEnvVar {
   example?: string;
 }
 
-export type PackagingBlockedReason =
-  | "taken_down"
-  | "license_hold"
-  | "not_redistributable"
-  | "license_unknown"
-  | "validation_blocked"
-  | "file_removed_by_packager";
+export type { PackagingBlockedReason };
 
 export interface PackageValidation {
   blocked: boolean;
@@ -56,7 +55,7 @@ export interface ExcludedTestCase {
 
 export interface ExcludedFile {
   path: string;
-  reason: "excluded_dir" | "credential_file" | "not_a_regular_file" | "unsafe_path";
+  reason: PackagingPreviewExcludedFilesInnerReasonEnum;
   label: string;
   note: string;
   referenced_by_skill_md?: boolean;
@@ -98,7 +97,7 @@ export interface DownloadArtifact {
   size_bytes: number;
   content_hash: string;
   manifest_hash: string;
-  status: "quarantined" | "available" | "rejected";
+  status: DownloadArtifactStatusEnum;
   servable: boolean;
   serve_state: Labelled;
   version_number?: number;

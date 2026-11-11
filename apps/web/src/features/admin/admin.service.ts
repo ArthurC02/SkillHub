@@ -1,3 +1,13 @@
+import type {
+  CreditLedgerEntryKindEnum,
+  EnrichmentFindingRuleEnum,
+  OperatorAuditEventActorKindEnum,
+  PlatformAgentFindingEventKindEnum,
+  PlatformAgentFindingStatusEnum,
+  PlatformAgentProposalStatusEnum,
+  PlatformAgentProposalTierEnum,
+  PlatformAgentRunStatusEnum,
+} from "@skillhub/api-client-ts";
 import {
   SetPlatformAgentSpendCapBodyDailySpendCapUsdMicrosMaximum,
   SetReflectionCandidatesBodyCountMaximum as MAX_REFLECTION_CANDIDATES,
@@ -6,6 +16,13 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tansta
 import { ApiError, apiFetch, isLastingReadFailure } from "../../core/api/client";
 import { useMe } from "../../core/session/me.service";
 import { queryKeys } from "../../core/api/queryKeys";
+
+const LEDGER_KINDS: ReadonlySet<string> = new Set<CreditLedgerEntryKindEnum>([
+  "debit",
+  "grant",
+  "topup",
+  "adjustment",
+]);
 
 export const AGENT_RUN_POLL_MS = 3000;
 
@@ -20,7 +37,7 @@ export type AccountLookup = {
 };
 
 export type CreditLedgerEntry = {
-  kind: "debit" | "grant" | "topup" | "adjustment";
+  kind: CreditLedgerEntryKindEnum;
   delta_credits: number;
   ref_type: string | null;
   estimated: boolean;
@@ -68,7 +85,7 @@ export type ModelCallBudget = {
 export type Rosters = { operator_user_ids: string[]; beta_allowlist: string[] };
 
 export type OperatorAuditEvent = {
-  actor_kind: "person" | "agent" | "system";
+  actor_kind: OperatorAuditEventActorKindEnum;
   actor_user_id: string | null;
   actor_agent_id: string | null;
   action: string;
@@ -97,7 +114,7 @@ export type ExposureQueueEntry = {
 };
 
 export type EnrichmentFinding = {
-  rule: "runtime_not_in_limitations" | "unsupported_appraisal" | "non_english_in_en_example";
+  rule: EnrichmentFindingRuleEnum;
   field: string;
   token?: string;
 };
@@ -220,7 +237,7 @@ function isCreditLedgerEntry(value: unknown): value is CreditLedgerEntry {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const entry = value as Partial<CreditLedgerEntry>;
   return (
-    ["debit", "grant", "topup", "adjustment"].includes(entry.kind ?? "") &&
+    LEDGER_KINDS.has(entry.kind ?? "") &&
     Number.isSafeInteger(entry.delta_credits) &&
     (entry.ref_type === null || typeof entry.ref_type === "string") &&
     typeof entry.estimated === "boolean" &&
@@ -543,7 +560,7 @@ export type PlatformAgentBrake = {
   engaged_by_user_id?: string;
 };
 
-export type PlatformAgentRunStatus = "running" | "completed" | "incomplete" | "stopped" | "failed";
+export type PlatformAgentRunStatus = PlatformAgentRunStatusEnum;
 
 export type PlatformAgentRun = {
   id: string;
@@ -996,7 +1013,7 @@ export function usePlatformAgentRun(id: string) {
   });
 }
 
-export type FindingStatus = "open" | "acknowledged" | "resolved" | "dismissed" | "recovered";
+export type FindingStatus = PlatformAgentFindingStatusEnum;
 
 export type PlatformAgentFinding = {
   id: string;
@@ -1013,7 +1030,7 @@ export type PlatformAgentFinding = {
 
 export type PlatformAgentFindingEvent = {
   seq: number;
-  kind: "opened" | "seen" | "reopened" | "recovered" | "acknowledged" | "resolved" | "dismissed";
+  kind: PlatformAgentFindingEventKindEnum;
   run_id?: string;
   operator_user_id?: string;
   text?: string;
@@ -1075,14 +1092,13 @@ export function useMoveFinding() {
   });
 }
 
-export type ProposalStatus =
-  "proposed" | "approved" | "rejected" | "expired" | "running" | "succeeded" | "failed";
+export type ProposalStatus = PlatformAgentProposalStatusEnum;
 
 export type PlatformAgentProposal = {
   id: string;
   agent: string;
   action: string;
-  tier: "read_only" | "reversible" | "destructive";
+  tier: PlatformAgentProposalTierEnum;
   reason: string;
   status: ProposalStatus;
   proposed_at: string;
