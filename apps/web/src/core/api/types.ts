@@ -1,5 +1,19 @@
+import type {
+  DataRetentionPolicyEventsInnerNameEnum,
+  FindingSeverityEnum,
+  GenerationFailureFailureEnum,
+  ImportResultShapeEnum,
+  SearchFiltersAgentEnum,
+  SearchFiltersCategoryEnum,
+  SearchInterpretationFallbackReasonEnum,
+  SearchInterpretationStatusEnum,
+  SearchResultRiskLevelEnum,
+  SkillLicenseSourceEnum,
+  SkillRedistributionEnum,
+  SkillSourceTypeEnum,
+} from "@skillhub/api-client-ts";
 export type ImportFinding = {
-  severity: "error" | "warning" | "info";
+  severity: FindingSeverityEnum;
   code: string;
   path?: string;
   message: string;
@@ -21,7 +35,7 @@ export type UploadResult = {
   findings: CategorizedFindings;
 };
 
-export type SourceShape = "skill" | "plugin" | "tree";
+export type SourceShape = ImportResultShapeEnum;
 
 export type ImportedPlugin = {
   name: string;
@@ -71,7 +85,7 @@ export interface SkillDeletion {
 }
 
 export interface AnalyticsEventDisclosure {
-  name: "search_performed" | "skill_detail_viewed" | "session_started" | "download_started";
+  name: DataRetentionPolicyEventsInnerNameEnum;
   when: string;
   attributes: string[];
   not_recorded: string;
@@ -103,9 +117,9 @@ export interface Labelled<V extends string = string> {
   note: string;
 }
 
-export type Redistribution = "allowed" | "blocked" | "unknown" | "self_supplied" | "generated";
+export type Redistribution = SkillRedistributionEnum;
 
-export type FindingSeverity = "error" | "warning" | "info";
+export type FindingSeverity = FindingSeverityEnum;
 
 export interface Finding {
   severity: FindingSeverity;
@@ -125,7 +139,7 @@ export type MatchReasonSource = "model" | "template";
 
 export interface SearchResultRisk {
   scan_status: "scanned" | "unavailable";
-  level: "none" | "disclosed" | "warning" | "unknown";
+  level: SearchResultRiskLevelEnum;
   warnings: number;
   disclosures: Disclosure[];
   note: string;
@@ -193,11 +207,11 @@ export interface SearchCorrection {
 }
 
 export interface SearchInterpretation extends SearchCorrection {
-  status: "analyzed" | "corrected" | "fallback" | "skipped";
+  status: SearchInterpretationStatusEnum;
   filters: SearchFilters;
   model?: string;
   prompt_version?: string;
-  fallback_reason?: "unavailable" | "timeout" | "invalid_response" | "budget_exhausted";
+  fallback_reason?: SearchInterpretationFallbackReasonEnum;
 }
 
 export interface SearchFilters {
@@ -208,10 +222,10 @@ export interface SearchFilters {
   category?: SkillCategory;
 }
 
-export type SkillCategory = "documents" | "writing" | "data";
+export type SkillCategory = SearchFiltersCategoryEnum;
 
 export interface SkillSource {
-  type: "git" | "upload" | "generated";
+  type: SkillSourceTypeEnum;
   url?: string;
   source_version?: string;
   fetched_at?: string;
@@ -275,8 +289,7 @@ export interface GenerateAllowance {
 
 export interface GenerationFailure {
   occurred_at: string;
-  failure:
-    "quota" | "unavailable" | "gateway" | "unpackageable" | "rejected" | "blocked" | "credit" | "";
+  failure: GenerationFailureFailureEnum;
   attempts: number;
   codes?: string[];
   truncated?: boolean;
@@ -289,8 +302,7 @@ export interface GenerateSkillResult extends UploadResult {
   generator_prompt_version: string;
 }
 
-export type LicenseSource =
-  "manifest" | "manifest-referenced-file" | "package-license-file" | "repo-license-file";
+export type LicenseSource = SkillLicenseSourceEnum;
 
 export interface SkillLicense {
   expression?: string;
@@ -318,7 +330,7 @@ export type CompatibilityResult = "unverified" | "passed" | "failed";
 
 export type AgentCapability = "activated" | "not_activated" | "unverified";
 
-export type AgentRuntime = "native" | "transpiled" | "failed" | "unverified";
+export type AgentRuntime = SearchFiltersAgentEnum;
 
 export interface SkillCompatibility {
   spec_validation: Labelled<CompatibilityResult>;
