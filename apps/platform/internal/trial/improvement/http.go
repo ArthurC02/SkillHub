@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"time"
 	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -390,6 +389,6 @@ func optionalTime(t pgtype.Timestamptz) *string {
 	if !t.Valid {
 		return nil
 	}
-	s := t.Time.UTC().Format(time.RFC3339)
+	s := pgconv.RFC3339(t)
 	return &s
 }

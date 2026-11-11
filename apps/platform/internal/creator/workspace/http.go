@@ -643,7 +643,7 @@ func (h *Handler) requestDeletion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, accountDeletionResponse{
-		DeletionRequestedAt: updated.DeletionRequestedAt.Time.UTC().Format(time.RFC3339),
+		DeletionRequestedAt: pgconv.RFC3339(updated.DeletionRequestedAt),
 		PurgeAfter:          updated.DeletionRequestedAt.Time.Add(h.PurgeGrace).UTC().Format(time.RFC3339),
 		Cancellable:         true,
 		Scope:               deletionScope,

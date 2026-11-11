@@ -192,7 +192,7 @@ func (h *Handler) Takedown(w http.ResponseWriter, r *http.Request) {
 
 	httpx.WriteJSON(w, http.StatusOK, takenDownSkillResponse{
 		SkillID:     pgconv.UUIDString(skill.ID),
-		TakenDownAt: skill.TakedownAt.Time.UTC().Format(time.RFC3339),
+		TakenDownAt: pgconv.RFC3339(skill.TakedownAt),
 		Reason:      body.Reason,
 		Note: "removed from search and from the fork path; the skill, its versions " +
 			"and their sources are retained, and existing forks and past runs are unaffected",
@@ -294,7 +294,7 @@ func (h *Handler) Versions(w http.ResponseWriter, r *http.Request) {
 			VersionID:     pgconv.UUIDString(v.ID),
 			VersionNumber: v.VersionNumber,
 			ContentHash:   v.ContentHash,
-			CreatedAt:     v.CreatedAt.Time.UTC().Format(time.RFC3339),
+			CreatedAt:     pgconv.RFC3339(v.CreatedAt),
 			Held:          v.HeldForEvaluation,
 			Promoted:      v.Promoted,
 		})
@@ -426,7 +426,7 @@ func verificationOf(scan ScanVerification) skillVerification {
 			Note:  "這個 Skill 還沒有任何版本,沒有可掃描的內容。",
 		}
 	case ScanInherited:
-		at := scan.ScannedAt.Time.UTC().Format(time.RFC3339)
+		at := pgconv.RFC3339(scan.ScannedAt)
 		return skillVerification{
 			Value: "scanned",
 			Label: "已掃描（來源）",
@@ -444,7 +444,7 @@ func verificationOf(scan ScanVerification) skillVerification {
 				"(已下架、不在公開目錄,或內容已經不同),平台也沒有在你的工作區重跑。",
 		}
 	default:
-		at := scan.ScannedAt.Time.UTC().Format(time.RFC3339)
+		at := pgconv.RFC3339(scan.ScannedAt)
 		return skillVerification{
 			Value:     "scanned",
 			Label:     "已掃描",

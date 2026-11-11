@@ -115,8 +115,8 @@ func toTestCaseResponse(tc TestCase) (testCaseResponse, error) {
 		AcceptanceCriteria: criteria,
 		Rubric:             rubric,
 		SimulatedUserFacts: append([]string{}, tc.SimulatedUserFacts...),
-		CreatedAt:          tc.CreatedAt.Time.UTC().Format(time.RFC3339),
-		UpdatedAt:          tc.UpdatedAt.Time.UTC().Format(time.RFC3339),
+		CreatedAt:          pgconv.RFC3339(tc.CreatedAt),
+		UpdatedAt:          pgconv.RFC3339(tc.UpdatedAt),
 	}, nil
 }
 
@@ -566,7 +566,7 @@ func (h *Handler) ListDatasets(w http.ResponseWriter, r *http.Request) {
 func toDatasetResponseDTO(d Dataset) datasetResponse {
 	return datasetResponse{
 		DatasetID: pgconv.UUIDString(d.ID), FileName: d.FileName, ContentType: d.ContentType,
-		SizeBytes: d.SizeBytes, ContentHash: d.ContentHash, ExpiresAt: d.ExpiresAt.Time.UTC().Format(time.RFC3339),
+		SizeBytes: d.SizeBytes, ContentHash: d.ContentHash, ExpiresAt: pgconv.RFC3339(d.ExpiresAt),
 	}
 }
 

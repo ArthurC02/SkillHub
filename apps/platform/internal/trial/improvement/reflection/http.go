@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -155,7 +154,7 @@ func (h *Handler) view(ctx context.Context, workspaceID pgtype.UUID, rec eval.Re
 		ReflectionID: pgconv.UUIDString(row.ID), BatchID: pgconv.UUIDString(row.BatchID),
 		DevTestCaseIDs: make([]string, len(row.DevTestCaseIds)), Outcome: row.Outcome,
 		RunsRead: row.RunsRead, RunsNotRead: row.RunsNotRead,
-		CreatedAt:   row.CreatedAt.Time.UTC().Format(time.RFC3339),
+		CreatedAt:   pgconv.RFC3339(row.CreatedAt),
 		Suggestions: suggestions,
 		Candidates:  candidatesOf(rec),
 	}

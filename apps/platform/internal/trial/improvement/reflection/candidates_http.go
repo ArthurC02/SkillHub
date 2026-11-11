@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -85,7 +84,7 @@ func viewOfStandings(s CandidateStandings) *evaluationView {
 	if s.Adopted != nil {
 		out.Adopted = &adoptionView{
 			Candidate: s.Adopted.Candidate, SkillVersionID: pgconv.UUIDString(s.Adopted.VersionID),
-			AdoptedAt: s.Adopted.AdoptedAt.Time.UTC().Format(time.RFC3339),
+			AdoptedAt: pgconv.RFC3339(s.Adopted.AdoptedAt),
 		}
 	}
 	return out

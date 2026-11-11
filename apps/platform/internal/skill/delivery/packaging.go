@@ -496,8 +496,8 @@ func (s *Service) buildManifest(
 
 	m := Manifest{
 		SchemaVersion:          ManifestSchemaVersion,
-		PackagedAt:             p.Version.CreatedAt.Time.UTC().Format(time.RFC3339),
-		SourceVersionCreatedAt: p.Version.CreatedAt.Time.UTC().Format(time.RFC3339),
+		PackagedAt:             pgconv.RFC3339(p.Version.CreatedAt),
+		SourceVersionCreatedAt: pgconv.RFC3339(p.Version.CreatedAt),
 		PackagerVersion:        PackagerVersion,
 		ProfileID:              p.Profile.ID,
 		ProfileVersion:         p.Profile.Version,

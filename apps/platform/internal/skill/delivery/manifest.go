@@ -195,9 +195,7 @@ func (s *Service) compatibilityOf(ctx context.Context, versionID pgtype.UUID) (C
 
 	if c.Capability != unverified || c.Behaviour != unverified {
 		c.RuntimeImage = row.RuntimeImage
-		if row.MeasuredAt.Valid {
-			c.MeasuredAt = row.MeasuredAt.Time.UTC().Format(time.RFC3339)
-		}
+		c.MeasuredAt = pgconv.RFC3339(row.MeasuredAt)
 	}
 	return c, nil
 }

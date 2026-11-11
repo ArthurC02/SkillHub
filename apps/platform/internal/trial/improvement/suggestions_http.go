@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -49,9 +48,7 @@ func toSuggestionView(row Suggestion) SuggestionView {
 		ExpectedImpact: row.ExpectedImpact,
 		Decision:       row.Decision,
 	}
-	if row.DecidedAt.Valid {
-		out.DecidedAt = row.DecidedAt.Time.UTC().Format(time.RFC3339)
-	}
+	out.DecidedAt = pgconv.RFC3339(row.DecidedAt)
 	if row.AppliedSkillVersionID.Valid {
 		out.AppliedSkillVersionID = pgconv.UUIDString(row.AppliedSkillVersionID)
 	}
