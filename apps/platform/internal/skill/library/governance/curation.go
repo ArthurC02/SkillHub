@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
@@ -43,7 +44,7 @@ func (h *Handler) SetCurationTier(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	user, ok := sessionActor(w, r)
+	user, ok := identity.SessionActor(w, r)
 	if !ok {
 		return
 	}

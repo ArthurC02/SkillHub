@@ -14,11 +14,6 @@ import (
 
 const maxBatchBodyBytes = 8 << 10
 
-func sessionWorkspace(identities *identity.Service, w http.ResponseWriter, r *http.Request) (identity.Workspace, bool) {
-	_, ws, ok := identity.SessionWorkspace(identities, w, r)
-	return ws, ok
-}
-
 type BatchHandler struct {
 	Svc      *BatchService
 	Identity *identity.Service
@@ -131,7 +126,7 @@ func (h *BatchHandler) CreateBatch(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *BatchHandler) ListBatches(w http.ResponseWriter, r *http.Request) {
-	ws, ok := sessionWorkspace(h.Identity, w, r)
+	_, ws, ok := identity.SessionWorkspace(h.Identity, w, r)
 	if !ok {
 		return
 	}
@@ -152,7 +147,7 @@ func (h *BatchHandler) ListBatches(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *BatchHandler) BatchReport(w http.ResponseWriter, r *http.Request) {
-	ws, ok := sessionWorkspace(h.Identity, w, r)
+	_, ws, ok := identity.SessionWorkspace(h.Identity, w, r)
 	if !ok {
 		return
 	}
@@ -177,7 +172,7 @@ func (h *BatchHandler) BatchReport(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *BatchHandler) ResumeBatch(w http.ResponseWriter, r *http.Request) {
-	ws, ok := sessionWorkspace(h.Identity, w, r)
+	_, ws, ok := identity.SessionWorkspace(h.Identity, w, r)
 	if !ok {
 		return
 	}
@@ -215,7 +210,7 @@ type batchComparisonView struct {
 }
 
 func (h *BatchHandler) CompareBatches(w http.ResponseWriter, r *http.Request) {
-	ws, ok := sessionWorkspace(h.Identity, w, r)
+	_, ws, ok := identity.SessionWorkspace(h.Identity, w, r)
 	if !ok {
 		return
 	}
@@ -247,7 +242,7 @@ func (h *BatchHandler) CompareBatches(w http.ResponseWriter, r *http.Request) {
 
 func (h *BatchHandler) sessionUser(w http.ResponseWriter, r *http.Request) (identity.Workspace, pgtype.UUID, bool) {
 	user, _ := identity.SessionUser(r.Context())
-	ws, ok := sessionWorkspace(h.Identity, w, r)
+	_, ws, ok := identity.SessionWorkspace(h.Identity, w, r)
 	return ws, user.ID, ok
 }
 

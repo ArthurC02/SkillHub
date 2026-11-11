@@ -47,21 +47,12 @@ func (h *Handler) ClearRestriction(w http.ResponseWriter, r *http.Request) {
 	h.changeRestriction(w, r, nil, body.Note)
 }
 
-func sessionActor(w http.ResponseWriter, r *http.Request) (identity.User, bool) {
-	user, ok := identity.SessionUser(r.Context())
-	if !ok {
-		httpx.WriteError(w, http.StatusNotFound, "not found")
-		return user, false
-	}
-	return user, true
-}
-
 func (h *Handler) changeRestriction(w http.ResponseWriter, r *http.Request, reason *string, note string) {
 	skillID, ok := httpx.PathUUID(w, r, "id", errSkillNotFound.Error())
 	if !ok {
 		return
 	}
-	user, ok := sessionActor(w, r)
+	user, ok := identity.SessionActor(w, r)
 	if !ok {
 		return
 	}

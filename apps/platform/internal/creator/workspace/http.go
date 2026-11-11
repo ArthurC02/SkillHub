@@ -393,9 +393,8 @@ func (h *Handler) LookupAccount(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "email is required")
 		return
 	}
-	operator, ok := SessionUser(r.Context())
+	operator, ok := SessionActor(w, r)
 	if !ok {
-		httpx.WriteError(w, http.StatusNotFound, "not found")
 		return
 	}
 	found, ok, err := h.Service.LookupAccount(r.Context(), email, operator.ID)
@@ -426,9 +425,8 @@ func (h *Handler) LookupAccount(w http.ResponseWriter, r *http.Request) {
 const maxErasureBodyBytes = 4096
 
 func (h *Handler) ExpediteErasure(w http.ResponseWriter, r *http.Request) {
-	operator, ok := SessionUser(r.Context())
+	operator, ok := SessionActor(w, r)
 	if !ok {
-		httpx.WriteError(w, http.StatusNotFound, "not found")
 		return
 	}
 	userID, ok := httpx.PathUUID(w, r, "user_id", "not found")
@@ -495,6 +493,15 @@ func (h *Handler) LogInviteRoster(ctx context.Context) error {
 func SessionUser(ctx context.Context) (User, bool) {
 	u, ok := ctx.Value(ctxKey{}).(User)
 	return u, ok
+}
+
+func SessionActor(w http.ResponseWriter, r *http.Request) (User, bool) {
+	user, ok := SessionUser(r.Context())
+	if !ok {
+		httpx.WriteError(w, http.StatusNotFound, "not found")
+		return user, false
+	}
+	return user, true
 }
 
 func SessionWorkspace(svc *Service, w http.ResponseWriter, r *http.Request) (User, Workspace, bool) {
