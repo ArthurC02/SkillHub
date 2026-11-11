@@ -1,9 +1,10 @@
+import type { CriterionResultResultEnum, EvaluationOverallEnum } from "@skillhub/api-client-ts";
 import type { Absence } from "./ui/absence";
 
 const UNMEASURED: Absence = "未測量";
 
-type Overall = "met" | "partially_met" | "not_met" | "undetermined";
-type CriterionOutcome = "passed" | "failed" | "undetermined";
+type Overall = EvaluationOverallEnum;
+type CriterionOutcome = CriterionResultResultEnum;
 
 export const OVERALL_LABEL: Record<Overall, string> = {
   met: "符合",

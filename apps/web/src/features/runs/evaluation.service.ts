@@ -1,3 +1,18 @@
+import type {
+  CheckStepResultEnum,
+  CriterionResultResultEnum,
+  DeterministicFindingCategoryEnum,
+  DeterministicFindingSeverityEnum,
+  EvaluationCostSourceEnum,
+  EvaluationInjectionCheckStatusEnum,
+  EvaluationOverallEnum,
+  EvaluationStatusEnum,
+  EvidenceRefKindEnum,
+  EvidenceRefReattributedFromEnum,
+  ImprovementSuggestionCategoryEnum,
+  ImprovementSuggestionDecisionEnum,
+  RunComparisonRunsInnerEvaluationStatusEnum,
+} from "@skillhub/api-client-ts";
 import { useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -17,16 +32,16 @@ import {
 } from "./evaluation-response.model";
 import { RUN_POLL_MS } from "./trace-response.model";
 
-export type EvaluationVerdict = "met" | "partially_met" | "not_met" | "undetermined";
-export type CriterionVerdict = "passed" | "failed" | "undetermined";
+export type EvaluationVerdict = EvaluationOverallEnum;
+export type CriterionVerdict = CriterionResultResultEnum;
 export type VerdictSource = "rule" | "model" | "user";
 
 export type EvidenceMatch = "exact" | "normalized" | "not_found" | "not_checked";
 
 export type EvidenceRef = {
-  kind: "trace_event" | "artifact" | "agent_output";
+  kind: EvidenceRefKindEnum;
   match?: EvidenceMatch;
-  reattributed_from?: "trace_event" | "artifact" | "agent_output";
+  reattributed_from?: EvidenceRefReattributedFromEnum;
   trace_event_id?: string;
   occurred_at?: string;
   artifact_path?: string;
@@ -47,30 +62,30 @@ export type CriterionResult = {
   steps?: Array<{
     path: string;
     kind: string;
-    result: "passed" | "failed" | "undetermined";
+    result: CheckStepResultEnum;
     reason: string;
   }>;
 };
 
 export type DeterministicFinding = {
-  category: "spec" | "activation" | "execution" | "effect" | "compatibility" | "cost";
-  severity: "error" | "warning" | "info";
+  category: DeterministicFindingCategoryEnum;
+  severity: DeterministicFindingSeverityEnum;
   message: string;
   evidence: EvidenceRef[];
 };
 
 export type EvaluationCost = {
   evaluation_credits: number | null;
-  source: "gateway" | "estimated" | "unreported";
+  source: EvaluationCostSourceEnum;
   note: string;
 };
 
-export type InjectionCheckStatus = "flagged" | "clear" | "unchecked";
+export type InjectionCheckStatus = EvaluationInjectionCheckStatusEnum;
 
 export type Evaluation = {
   evaluation_id: string;
   run_id: string;
-  status: "pending" | "completed" | "failed";
+  status: EvaluationStatusEnum;
   overall: EvaluationVerdict;
   summary?: string;
   criterion_results: CriterionResult[];
@@ -102,11 +117,11 @@ export type SuggestionBlockedReason =
   | "access_restricted"
   | "diff_unavailable";
 
-export type SuggestionDecision = "pending" | "accepted" | "rejected";
+export type SuggestionDecision = ImprovementSuggestionDecisionEnum;
 
 export type ImprovementSuggestion = {
   suggestion_id: string;
-  category: "skill" | "runtime" | "mcp" | "tool" | "dataset";
+  category: ImprovementSuggestionCategoryEnum;
   problem: string;
   evidence: EvidenceRef[];
   target_path: string;
@@ -165,7 +180,7 @@ export type ComparisonSide = {
   status: string;
   evaluation?: {
     evaluation_id: string;
-    status: "pending" | "completed" | "failed";
+    status: RunComparisonRunsInnerEvaluationStatusEnum;
     overall: EvaluationVerdict;
     cost: EvaluationCost;
   };
