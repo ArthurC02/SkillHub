@@ -158,13 +158,13 @@ dev 的出口網路是 `skillhub_egress`，`internal: true`：上面的容器沒
 
 ```bash
 # build / vet / test（Docker 整合測試會自動 skip）
-docker run --rm -v "$PWD:/src" -w /src/apps/sandbox golang:1.27.3 \
+docker run --rm -v "$PWD:/src" -w /src/apps/sandbox golang:1.27.4 \
   sh -c "go build ./... && go vet ./... && go test ./..."
 
 # 含 Docker 整合測試：把 socket 掛進測試容器
 # 這是「測試基礎設施」而非產品路徑——產品程式碼永遠不會把 docker.sock 掛進沙箱
 docker run --rm -v "$PWD:/src" -v /var/run/docker.sock:/var/run/docker.sock \
-  -w /src/apps/sandbox golang:1.27.3 go test -count=1 ./...
+  -w /src/apps/sandbox golang:1.27.4 go test -count=1 ./...
 
 # lint（與 apps/platform 同一版本與設定）
 docker run --rm -v "$PWD:/src" -w /src/apps/sandbox \
