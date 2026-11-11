@@ -33,7 +33,7 @@ FROM python:3.14.10-slim-bookworm@sha256:516b51cb9db2ef061e465c803e50f64361b82ce
 RUN apt-get update \
     # Upgrades this one package to pick up a fixed CVE without floating the
     # pinned base digest or doing a drifting whole-image apt-get upgrade.
-    && apt-get install -y --no-install-recommends --only-upgrade libpcre2-8-0 openssl libssl3 perl-base \
+    && apt-get install -y --no-install-recommends --only-upgrade libpcre2-8-0 openssl libssl3 perl-base apt libapt-pkg6.0 \
     && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd --gid 65532 skillhub \
