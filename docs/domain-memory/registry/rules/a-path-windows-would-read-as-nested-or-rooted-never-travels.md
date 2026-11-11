@@ -3,10 +3,10 @@ type: Business Rule
 status: stable
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-17T17:12:31.935298Z"
+    at: "2026-11-11T17:10:17.837079Z"
 sources:
-  - resource: "apps/platform/internal/skill/delivery/export.go#L76-82"
-    excerpt_sha256: "sha256:2f4b2a7d37b976cbe7edb1ed5693db648f1845d5a9dcf4985e3c54e93b36507c"
+  - resource: "apps/platform/internal/skill/delivery/export.go#L78-84"
+    excerpt_sha256: "sha256:6809fe0290eb6f6525a084edd8ba852e1267703d18d80f2bf8108af187cc0a61"
   - resource: "apps/platform/internal/skill/delivery/export_path_test.go#L9-31"
     excerpt_sha256: "sha256:f918b61117ac9ad181e028ab7bc46f393317ca5b5e13e10efaf58fc8d8ac1bf7"
 ---

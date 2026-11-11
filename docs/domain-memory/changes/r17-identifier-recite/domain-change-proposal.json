@@ -3,12 +3,12 @@
   "proposal_id": "r17-identifier-recite",
   "proposer": "agent:coding-agent",
   "requirement_id": "r17-identifier-recite",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-11-11T17:10:16.553227Z",
   "verified_at": "2026-11-11T17:10:18.811412Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-11-11T17:10:39.222474Z",
+  "applied_at": "2026-11-11T17:10:51.746034Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "c26bbdd0deae731e49fd761fb911e5c33acb2b95",
@@ -177,5 +177,9 @@
     "identity-packaging-harvest",
     "packaging-harvest-rules-2026-10-18",
     "purge-grace-and-longest-step-recited-2026-11-08"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "b8852ef2d6a8a831448f736fb11ce232da62ec3f",
+    "registry_digest": "sha256:619981773e2d658f730791a172e634b35602c39b882464071d6243b74f9b3b55"
+  }
 }
