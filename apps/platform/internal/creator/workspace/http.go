@@ -24,6 +24,8 @@ import (
 	limits "github.com/ArthurC02/skillhub/apps/platform/internal/shared/contractlimits/gen"
 )
 
+const deletionIrreversible = "刪除已經不可逆，無法再變更"
+
 const (
 	sessionCookie = "sh_session"
 	stateCookie   = "sh_oauth_state"
@@ -636,7 +638,7 @@ func (h *Handler) requestDeletion(w http.ResponseWriter, r *http.Request) {
 	updated, err := h.Service.RequestAccountDeletion(r.Context(), user)
 	if err != nil {
 		if errors.Is(err, ErrAccountPurging) {
-			httpx.WriteError(w, http.StatusConflict, "刪除已經不可逆，無法再變更")
+			httpx.WriteError(w, http.StatusConflict, deletionIrreversible)
 			return
 		}
 		httpx.WriteError(w, http.StatusInternalServerError, "刪除要求沒有記錄成功，可以再試一次")
@@ -654,7 +656,7 @@ func (h *Handler) cancelDeletion(w http.ResponseWriter, r *http.Request) {
 	user, _ := SessionUser(r.Context())
 	if _, err := h.Service.CancelAccountDeletion(r.Context(), user); err != nil {
 		if errors.Is(err, ErrAccountPurging) {
-			httpx.WriteError(w, http.StatusConflict, "刪除已經不可逆，無法再變更")
+			httpx.WriteError(w, http.StatusConflict, deletionIrreversible)
 			return
 		}
 		httpx.WriteError(w, http.StatusInternalServerError, "取消刪除沒有記錄成功，可以再試一次")

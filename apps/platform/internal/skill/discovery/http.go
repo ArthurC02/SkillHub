@@ -16,6 +16,8 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 )
 
+const searchFailed = "搜尋失敗，這不是你的輸入造成的，稍後再試一次"
+
 type Handler struct {
 	Svc      *Service
 	Identity *identity.Service
@@ -608,7 +610,7 @@ func (h *Handler) Search(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := h.Svc.SearchWorkspace(r.Context(), ws.ID, q, limit)
 	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "搜尋失敗，這不是你的輸入造成的，稍後再試一次")
+		httpx.WriteError(w, http.StatusInternalServerError, searchFailed)
 		return
 	}
 
