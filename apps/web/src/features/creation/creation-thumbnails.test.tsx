@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { CreationSession } from "./create/components/CreationSession";
 import type { CreationSession as Session } from "./creation.service";
 import { pollUntil } from "../../testing/poll";
+import { CREATION_LIMITS } from "../../testing/fixtures/creation";
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children, to }: { children: ReactNode; to: string }) => <a href={to}>{children}</a>,
@@ -18,16 +19,6 @@ vi.mock("./components/ReferencePicker", () => ({
 
 let box: HTMLDivElement, root: Root, q: QueryClient;
 let revoke: ReturnType<typeof vi.fn<(url: string) => void>>;
-
-const LIMITS = {
-  min_budget_credits: 130,
-  max_budget_credits: 6500,
-  max_steps: 20,
-  max_tool_calls: 10,
-  call_timeout_seconds: 120,
-  session_timeout_seconds: 3600,
-  retention_seconds: 604800,
-};
 
 const sample = (patch: Partial<Session> = {}): Session => ({
   id: "s1",
@@ -99,7 +90,7 @@ async function sendDiagram() {
         if (posts === 1) sent.id = JSON.parse(String(init.body)).id;
         return response(posts === 1 ? sample({ id: sent.id }) : sent);
       }
-      if (url.endsWith("/creation-sessions/limits")) return response(LIMITS);
+      if (url.endsWith("/creation-sessions/limits")) return response(CREATION_LIMITS);
       if (url.endsWith("/me/credits")) return response({ error: "not found" }, 404);
       return response(url.endsWith("/creation-sessions") ? [] : sent);
     }),

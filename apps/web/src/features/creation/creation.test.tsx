@@ -16,6 +16,7 @@ import {
 import { pollUntil } from "../../testing/poll";
 import { ME, RUNS } from "../../testing/fixtures/platform";
 import { queryKeys } from "../../core/api/queryKeys";
+import { CREATION_LIMITS } from "../../testing/fixtures/creation";
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
     children,
@@ -98,16 +99,6 @@ function creationReceipt(value: Session, url: string, init?: RequestInit) {
   if (starting) startedSessionIDs.add(id);
   return response({ ...value, id });
 }
-const LIMITS = {
-  min_budget_credits: 130,
-  max_budget_credits: 6500,
-  max_steps: 20,
-  max_tool_calls: 10,
-  call_timeout_seconds: 120,
-  session_timeout_seconds: 3600,
-  retention_seconds: 604800,
-};
-
 const invalidCreationReplies: [string, () => unknown][] = [
   ["empty reply", () => null],
   ["another session", () => sample({ id: "s2" })],
@@ -287,7 +278,7 @@ test("a persisted message shows its timestamp without inventing one for a legacy
 });
 const START = "開始創作";
 function routeGet(url: string, list: unknown, single: unknown) {
-  if (url.endsWith("/creation-sessions/limits")) return response(LIMITS);
+  if (url.endsWith("/creation-sessions/limits")) return response(CREATION_LIMITS);
   if (url.endsWith("/me/credits")) return response({ error: "not found" }, 404);
   const id = url.match(/\/creation-sessions\/([^/?]+)$/)?.[1];
   const detail =

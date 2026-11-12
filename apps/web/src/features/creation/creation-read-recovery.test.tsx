@@ -2,6 +2,7 @@ import { expect, test } from "vitest";
 import { renderedApp, type App, type Request } from "../../testing/app";
 import { ME } from "../../testing/fixtures/platform";
 import type { CreationSession } from "./creation.service";
+import { CREATION_LIMITS } from "../../testing/fixtures/creation";
 
 const app = renderedApp();
 
@@ -34,15 +35,6 @@ const SESSION: CreationSession = {
   expires_at: "2099-09-30T08:00:00Z",
   deadline: "2099-09-29T09:00:00Z",
 };
-const LIMITS = {
-  min_budget_credits: 130,
-  max_budget_credits: 6500,
-  max_steps: 20,
-  max_tool_calls: 10,
-  call_timeout_seconds: 120,
-  session_timeout_seconds: 3600,
-  retention_seconds: 604800,
-};
 const CREDITS = {
   balance_credits: 1000,
   debt_floor_credits: -50,
@@ -70,7 +62,7 @@ function stubCreation(page: App, status = 200) {
       writes.push(path);
       return { json: SESSION };
     }
-    if (path.endsWith("/limits")) return { json: LIMITS };
+    if (path.endsWith("/limits")) return { json: CREATION_LIMITS };
     if (!path.endsWith(ID)) return { json: [SESSION] };
     reads++;
     if (held) await gate;
@@ -110,7 +102,7 @@ function stubWriteReceipt(page: App, mode: string, damage: string) {
     const path = request.url.pathname;
     paths.push(path);
     if (path.endsWith("/events")) return { status: 204 };
-    if (path.endsWith("/limits")) return { json: LIMITS };
+    if (path.endsWith("/limits")) return { json: CREATION_LIMITS };
     if (request.method === "POST") {
       const body = request.body as Record<string, unknown>;
       posts.push(body);
