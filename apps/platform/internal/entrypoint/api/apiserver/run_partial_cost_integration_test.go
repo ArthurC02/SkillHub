@@ -1,6 +1,7 @@
 package apiserver_test
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -24,15 +25,18 @@ func TestPartlyPricedRunWaitsForTheRemainingCostAndChargesOnlyOnce(t *testing.T)
 	for _, stage := range []struct {
 		name   string
 		rows   string
+		pages  int
 		priced bool
 	}{
-		{"known plus unknown", `[{"spend":0.03},{"spend":null}]`, false},
-		{"both known", `[{"spend":0.03},{"spend":0.0082}]`, true},
-		{"cleanup replay", `[{"spend":0.03},{"spend":0.0082}]`, true},
+		{"known plus unknown", `[{"spend":0.03},{"spend":null}]`, 1, false},
+		{"truncated log", `[{"spend":0.03},{"spend":0.0082}]`, 6, false},
+		{"invalid negative price", `[{"spend":0.03},{"spend":-0.0082}]`, 1, false},
+		{"both known", `[{"spend":0.03},{"spend":0.0082}]`, 1, true},
+		{"cleanup replay", `[{"spend":0.03},{"spend":0.0082}]`, 1, true},
 	} {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.URL.Path == "/spend/logs/v2" {
-				_, _ = w.Write([]byte(`{"data":` + stage.rows + `,"total_pages":1}`))
+				_, _ = fmt.Fprintf(w, `{"data":%s,"total_pages":%d}`, stage.rows, stage.pages)
 				return
 			}
 			_, _ = w.Write([]byte(`{}`))

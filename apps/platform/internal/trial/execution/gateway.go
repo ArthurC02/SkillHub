@@ -337,7 +337,7 @@ func (g *Gateway) Usage(ctx context.Context, runAttemptID string, since time.Tim
 		for _, row := range out.Data {
 			total.InputTokens += row.PromptTokens
 			total.OutputTokens += row.CompletionTokens
-			if row.Spend == nil {
+			if row.Spend == nil || *row.Spend < 0 {
 				total.CostIncomplete = true
 				continue
 			}
@@ -350,6 +350,8 @@ func (g *Gateway) Usage(ctx context.Context, runAttemptID string, since time.Tim
 		}
 		if page == maxUsagePages {
 			total.Incomplete = true
+			total.CostIncomplete = true
+			total.CostReported = false
 			return total, nil
 		}
 	}

@@ -102,8 +102,9 @@ func (s *Service) reportedSpend(ctx context.Context, run gen.Run, attempts []gen
 		}
 		if usage.Incomplete {
 			metrics.RunTokenUsageUnreadable.Inc()
-			slog.Warn("this attempt's spend log runs past what is read; it is charged only for the calls read",
+			slog.Warn("this attempt's spend log was not fully read; the run is settled once the full spend can be read",
 				"run_id", pgconv.UUIDString(run.ID), "run_attempt_id", pgconv.UUIDString(attempt.ID))
+			return nil
 		}
 		if usage.CostIncomplete {
 			return nil

@@ -26,6 +26,9 @@ func TestGatewayReportsCostOnlyWhenEveryCallIsPriced(t *testing.T) {
 		{"missing then known", []string{`[{"prompt_tokens":42,"completion_tokens":3},{"spend":0.005}]`}, .005, false},
 		{"null on earlier page", []string{`[{"prompt_tokens":42,"completion_tokens":3,"spend":null}]`, `[{"spend":0.005}]`}, .005, false},
 		{"missing on later page", []string{`[{"prompt_tokens":42,"completion_tokens":3,"spend":0.03}]`, `[{}]`}, .03, false},
+		{"negative only", []string{`[{"prompt_tokens":42,"completion_tokens":3,"spend":-0.005}]`}, 0, false},
+		{"known then negative", []string{`[{"prompt_tokens":42,"completion_tokens":3,"spend":0.03},{"spend":-0.005}]`}, .03, false},
+		{"negative then known", []string{`[{"prompt_tokens":42,"completion_tokens":3,"spend":-0.03},{"spend":0.005}]`}, .005, false},
 		{"explicit zero", []string{`[{"prompt_tokens":42,"completion_tokens":3,"spend":0}]`}, 0, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -43,8 +46,56 @@ func TestGatewayReportsCostOnlyWhenEveryCallIsPriced(t *testing.T) {
 			defer server.Close()
 			gateway := &Gateway{adminBaseURL: server.URL, client: server.Client()}
 			got, err := gateway.Usage(t.Context(), "attempt", time.Time{})
-			if err != nil || got.CostReported != tc.reported || math.Abs(got.ModelCostUSD-tc.want) > 1e-12 || got.InputTokens != 42 || got.OutputTokens != 3 || got.Incomplete {
+			wantIncomplete := !tc.reported
+			if err != nil || got.CostReported != tc.reported || got.CostIncomplete != wantIncomplete || math.Abs(got.ModelCostUSD-tc.want) > 1e-12 || got.InputTokens != 42 || got.OutputTokens != 3 || got.Incomplete {
 				t.Fatalf("usage misrepresented returned call costs or tokens: got=%+v err=%v", got, err)
+			}
+		})
+	}
+}
+
+func TestTruncatedSpendPagesCannotReportACompletePrice(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		calls    int
+		complete bool
+	}{
+		{"all five pages", 1000, true},
+		{"one more call than five pages", 1001, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			stub := &spendLogStub{calls: make([][2]int, tc.calls), spends: make([]float64, tc.calls)}
+			for i := range stub.calls {
+				stub.calls[i], stub.spends[i] = [2]int{10, 1}, .001
+			}
+			got, err := stub.start(t).Usage(t.Context(), "attempt", time.Time{})
+			if err != nil || stub.requests != 5 || got.InputTokens != 10000 || got.OutputTokens != 1000 || math.Abs(got.ModelCostUSD-1) > 1e-12 {
+				t.Fatalf("bounded usage read changed known observations: got=%+v requests=%d err=%v", got, stub.requests, err)
+			}
+			wantIncomplete := !tc.complete
+			if got.CostReported != tc.complete || got.CostIncomplete != wantIncomplete || got.Incomplete != wantIncomplete {
+				t.Fatalf("truncated cost was reported as complete: got=%+v want complete=%v", got, tc.complete)
+			}
+		})
+	}
+}
+
+func TestIncompleteAttemptSpendIsNotSettledEvenWhenTheBackendReportsAPrice(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		incomplete bool
+	}{
+		{"complete backend prices", false},
+		{"priced but incomplete backend", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			gateway := gatewaySpending(.1)
+			gateway.perAttempt.Incomplete = tc.incomplete
+			service := &Service{Gateway: gateway}
+			attempts := []gen.RunAttempt{{ID: pgtype.UUID{Bytes: [16]byte{1}, Valid: true}}, {ID: pgtype.UUID{Bytes: [16]byte{2}, Valid: true}}}
+			got := service.reportedSpend(t.Context(), gen.Run{}, attempts)
+			if tc.incomplete && got != nil || !tc.incomplete && (got == nil || math.Abs(*got-.2) > 1e-12) {
+				t.Fatalf("incomplete attempt produced a final cost: incomplete=%v got=%v", tc.incomplete, spendOrNone(got))
 			}
 		})
 	}
@@ -62,6 +113,7 @@ func TestUnknownCallCostPreventsSettlementAndBudgetReuseAcrossAttempts(t *testin
 		{"known attempt", `[{"spend":0.005}]`, usd(.035), .465},
 		{"unpriced attempt", `[{}]`, nil, 0},
 		{"partly priced attempt", `[{"spend":0.005},{"spend":null}]`, nil, 0},
+		{"negative priced attempt", `[{"spend":-0.005}]`, nil, 0},
 	} {
 		for _, unpricedFirst := range []bool{true, false} {
 			name := "last"
