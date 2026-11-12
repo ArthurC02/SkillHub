@@ -454,7 +454,7 @@ Go 全掃仍保留模組層級 advisory。有修補版仍是 `FAIL`；沒有修�
 
 **映像不在 `dep-audit` 裡，它讀的是 lockfile**（見[開發自動化與依賴治理](../adr/README.md#開發自動化與依賴治理)）。 映像由 [`tools/ci/scan-images.sh`](../../tools/ci/scan-images.sh) 掃，掛在 `image-scan.yml`（改到 Compose 或受掃描的服務映像時跑、每週排程、可手動觸發），`runtime-agent-sdk` 仍留在自己的 `runtime-image.yml`。**清單從 compose 讀出來，不另抄一份**——抄一份就會漂，而這個缺口本來就是漂出來的。
 
-**閘門分三層，照「誰能修」與「會不會被部署」畫**：會被部署的 `platform`／`web`／`llm` 出現**有修補版的** Critical／High 就紅（修法在我們手上：換基底、升依賴，或像 `runtime-agent-sdk` 與 `llm` 那樣對單一套件 `--only-upgrade`）；Compose 直接引用的上游映像只報，**只有排程那一跑設 `FAIL_ON_UPSTREAM=1` 才紅**，所以每週有人被通知而沒有人的 PR 被擋，處置是**升那個 pin 或換 tag**，不是把閘門關掉；從釘定穩定版原始碼重建的 `postgres-exporter` 與 `blackbox-exporter` 已由我們擁有建置與修補，與部署服務相同，在每次掃描阻擋可修 Critical／High，不能保留上游僅排程阻擋的待遇；開發容器 `devtools` **永不紅**——它不部署，而它兩萬多列的發現絕大多數住在第三方工具的編譯產物裡，擋了也沒有人做得出對應的修正。
+**閘門分三層，照「誰能修」與「會不會被部署」畫**：會被部署的 `platform`／`web`／`llm` 出現**有修補版的** Critical／High 就紅（修法在我們手上：換基底、升依賴，或像 `runtime-agent-sdk` 與 `llm` 那樣對單一套件 `--only-upgrade`）；Compose 直接引用的上游映像只報，**只有排程那一跑設 `FAIL_ON_UPSTREAM=1` 才紅**，所以每週有人被通知而沒有人的 PR 被擋，處置是**升那個 pin 或換 tag**，不是把閘門關掉；從釘定穩定版原始碼重建的 `postgres-exporter`、`blackbox-exporter` 與 `caddy` 已由我們擁有建置與修補，與部署服務相同，在每次掃描阻擋可修 Critical／High，不能保留上游僅排程阻擋的待遇；開發容器 `devtools` **永不紅**——它不部署，而它兩萬多列的發現絕大多數住在第三方工具的編譯產物裡，擋了也沒有人做得出對應的修正。
 
 **automation-check 的 `dependency-policy`** 擋的是：FROM、compose 與 workflow 的 `image:` 沒釘 digest；`uses:` 沒釘 SHA 或少了 `# vX` 註解；npm 專案少了 `.npmrc` 的 `ignore-scripts=true`；uv 專案少了 `exclude-newer`；新目錄沒列進 `.github/dependabot.yml`；compose 與 workflow、`tools/ci/*.sh` 裡同一個映像的 tag 或 digest 不一樣；上表同一個工具在各位置的版本不一致（名冊在 `tools/devctl/toolchain_versions.go`，syft 與 grype 的 pin 也在上面，所以兩支 workflow 的掃描器版本不會各走各的）。
 

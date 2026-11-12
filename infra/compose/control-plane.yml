@@ -6,7 +6,7 @@ x-platform-env: &platform-env
 
 services:
   caddy:
-    image: caddy:2.11.9@sha256:e40b94d0a43b5ff69cb20568d73f10c70703df7b0ffc2298eb3d723cdc9d0bd1
+    image: ${SKILLHUB_CADDY_IMAGE:?set SKILLHUB_CADDY_IMAGE in release.env}
     cpus: "0.5"
     mem_limit: 256m
     restart: unless-stopped

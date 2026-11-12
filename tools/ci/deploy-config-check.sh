@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CADDY=caddy:2.11.9@sha256:e40b94d0a43b5ff69cb20568d73f10c70703df7b0ffc2298eb3d723cdc9d0bd1
+CADDY="skillhub-ci/caddy:deploy-$RANDOM-$RANDOM-$RANDOM"
+CADDY_BUILT=0
 ALERTMANAGER=prom/alertmanager:v0.34.2@sha256:39d8bb3966c694a124428a3a88fbcffd40bd069129ecd47c059f8a3f17c55f3b
 PROMETHEUS=prom/prometheus:v3.16.0@sha256:e04987641b57704f408e31f6373ba4138ecf27cb4a165d24aabb6c38fddd0f06
 SHELLCHECK=koalaman/shellcheck:v0.11.0@sha256:61862eba1fcf09a484ebcc6feea46f1782532571a34ed51fedf90dd25f925a8d
@@ -12,7 +13,11 @@ GIT_DIRECTORY="$(git -C "$ROOT" rev-parse --absolute-git-dir)"
 GIT_COMMON_DIRECTORY="$(git -C "$ROOT" rev-parse --path-format=absolute --git-common-dir)"
 CP="$ROOT/infra/deploy/control-plane"
 WORK="$(mktemp -d)"
-trap 'rm -rf "$WORK"' EXIT
+cleanup() {
+  if [ "$CADDY_BUILT" = 1 ]; then docker image rm "$CADDY" >/dev/null; fi
+  rm -rf "$WORK"
+}
+trap cleanup EXIT
 WORK_HOST="$(cd "$WORK" && (pwd -W 2>/dev/null || pwd))"
 export MSYS_NO_PATHCONV=1
 OWNER="$(id -u):$(id -g)"
@@ -70,10 +75,10 @@ PY
     sh /repo/infra/deploy/control-plane/bin/skillhub-preflight
     digest=$(printf "%064d" 0)
     invalid=$(printf "%064d" 0 | tr 0 g)
-    for name in SKILLHUB_POSTGRES_EXPORTER_IMAGE SKILLHUB_BLACKBOX_EXPORTER_IMAGE; do
+    for name in SKILLHUB_CADDY_IMAGE SKILLHUB_POSTGRES_EXPORTER_IMAGE SKILLHUB_BLACKBOX_EXPORTER_IMAGE; do
       for ref in "" "ghcr.io/o/exporter:release" "ghcr.io/o/exporter@sha256:${digest%?}" "ghcr.io/o/exporter@sha256:$invalid"; do
         if env "$name=$ref" sh /repo/infra/deploy/control-plane/bin/skillhub-preflight >/work/preflight-error 2>&1; then
-          echo "unpinned exporter was accepted: $name=$ref"; exit 1
+          echo "unpinned deployment image was accepted: $name=$ref"; exit 1
         fi
         grep -Fq "$name=" /work/preflight-error
         grep -Fq "is not pinned by digest" /work/preflight-error
@@ -164,6 +169,9 @@ docker compose --env-file "$WORK_HOST/control-plane-release.env" -f "$ROOT/infra
 docker compose --env-file "$WORK_HOST/gateway-release.env" -f "$ROOT/infra/compose/gateway.yml" config --format json >"$WORK/gateway-compose.json"
 
 step "Caddyfile"
+if docker image inspect "$CADDY" >/dev/null 2>&1; then echo "test image tag already exists: $CADDY"; exit 1; fi
+docker build --progress=plain -t "$CADDY" "$ROOT/infra/images/caddy"
+CADDY_BUILT=1
 docker run --rm -e SKILLHUB_DOMAIN=skillhub.example -e SKILLHUB_ACME_EMAIL=owner@skillhub.example \
   -v "$CP/Caddyfile:/etc/caddy/Caddyfile:ro" "$CADDY" caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 

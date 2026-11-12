@@ -101,6 +101,7 @@ jobs:
               - 'infra/images/postgres/**'
               - 'infra/images/postgres-exporter/**'
               - 'infra/images/blackbox-exporter/**'
+              - 'infra/images/caddy/**'
               - 'apps/sandbox/**'
               - 'infra/images/sandboxd/**'
               - 'infra/compose/**'
@@ -110,6 +111,7 @@ jobs:
               - '.dockerignore'
               - '.github/workflows/ci.yml'
             deploy:
+              - 'infra/images/caddy/**'
               - 'infra/deploy/**'
               - 'infra/compose/control-plane.yml'
               - 'infra/compose/gateway.yml'
@@ -960,6 +962,20 @@ jobs:
           BLACKBOX_EXPORTER_IMAGE: ${{ env.REGISTRY }}/skillhub-blackbox-exporter:${{ github.sha }}
           PROBE_TARGET_IMAGE: python:3.15.2-slim-bookworm@sha256:96599df822d0e1c6bb700014a05c7f3c8cabc6e0f7ff3c4f9f69cee033b4b5d9
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Blackbox exporter smoke' bash tools/ci/blackbox-exporter-smoke.sh
+      - name: Build the caddy image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: infra/images/caddy
+          tags: ${{ env.REGISTRY }}/skillhub-caddy:${{ github.sha }}
+          load: true
+          provenance: false
+          cache-from: type=gha,scope=caddy
+          cache-to: type=gha,mode=max,scope=caddy
+      - name: Verify proxy compression, security headers and failure status
+        env:
+          CADDY_IMAGE: ${{ env.REGISTRY }}/skillhub-caddy:${{ github.sha }}
+          PROBE_TARGET_IMAGE: python:3.15.2-slim-bookworm@sha256:96599df822d0e1c6bb700014a05c7f3c8cabc6e0f7ff3c4f9f69cee033b4b5d9
+        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Caddy smoke' bash tools/ci/caddy-smoke.sh
       - name: Build the sandboxd image
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
@@ -1010,6 +1026,7 @@ jobs:
           - { image: postgres, context: infra/images/postgres, file: infra/images/postgres/Dockerfile }
           - { image: postgres-exporter, context: infra/images/postgres-exporter, file: infra/images/postgres-exporter/Dockerfile }
           - { image: blackbox-exporter, context: infra/images/blackbox-exporter, file: infra/images/blackbox-exporter/Dockerfile }
+          - { image: caddy, context: infra/images/caddy, file: infra/images/caddy/Dockerfile }
           - { image: sandboxd, context: ., file: infra/images/sandboxd/Dockerfile }
     runs-on: ubuntu-latest
     timeout-minutes: 15

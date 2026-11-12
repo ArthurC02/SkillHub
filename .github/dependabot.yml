@@ -113,6 +113,7 @@ updates:
       - /infra/images/postgres
       - /infra/images/postgres-exporter
       - /infra/images/blackbox-exporter
+      - /infra/images/caddy
       - /infra/images/sandboxd
       - /infra/images/web
       - /tools/codegen/go
