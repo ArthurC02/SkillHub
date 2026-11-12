@@ -20,6 +20,7 @@ import { FeedbackForm } from "../runs/evaluation/components/FeedbackForm";
 import type { Evaluation } from "../runs/evaluation.service";
 import { GraderManager } from "./components/GraderManager";
 import type { Grader } from "./evaluation.service";
+import { json } from "../../testing/http";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -64,12 +65,6 @@ const fields = [
   },
 ] as const;
 type Field = (typeof fields)[number];
-
-function json(body: unknown, status = 200) {
-  return Promise.resolve(
-    new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } }),
-  );
-}
 
 function stubPlatform(field: Field) {
   let saved: Grader | undefined;

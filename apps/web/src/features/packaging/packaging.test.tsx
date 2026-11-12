@@ -11,6 +11,7 @@ import { ME } from "../../testing/fixtures/platform";
 import type { DownloadArtifact, PackagingBlockedReason } from "./packaging.service";
 import type { SkillDetail } from "../../core/api/types";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
+import { json } from "../../testing/http";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -225,12 +226,6 @@ const artifact: DownloadArtifact = {
   includes_test_cases: false,
   packager_version: "1.0.0",
 };
-
-function json(body: unknown, status = 200) {
-  return Promise.resolve(
-    new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } }),
-  );
-}
 
 function stubPlatform(
   options: {

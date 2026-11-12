@@ -8,6 +8,7 @@ import { EvaluationPanel } from "./evaluation/EvaluationPanel";
 import { RunVerdict } from "./components/RunVerdict";
 import type { Evaluation, ImprovementSuggestion, SuggestionDiff } from "./evaluation.service";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
+import { json } from "../../testing/http";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -39,12 +40,6 @@ test("an apply receipt invalidates the requested version cache despite UUID case
     true,
   );
 });
-
-function json(body: unknown, status = 200) {
-  return Promise.resolve(
-    new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } }),
-  );
-}
 
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);

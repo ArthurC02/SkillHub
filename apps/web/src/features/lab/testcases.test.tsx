@@ -17,6 +17,7 @@ import {
 } from "../../testing/fixtures/platform";
 
 let container: HTMLDivElement;
+import { json } from "../../testing/http";
 let root: Root;
 
 beforeEach(() => {
@@ -134,15 +135,6 @@ type Overrides = {
   skills?: { skill_id: string; name: string; summary: string }[];
   versions?: typeof SKILL_VERSIONS;
 };
-
-function json(body: unknown, status = 200) {
-  return Promise.resolve(
-    new Response(JSON.stringify(body), {
-      status,
-      headers: { "Content-Type": "application/json" },
-    }),
-  );
-}
 
 type PlatformRequest = { url: string; path: string; method: string };
 

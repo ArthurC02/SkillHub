@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
 import { DataPolicy } from "./policy/DataPolicy.page";
 import { pollUntil } from "../../testing/poll";
+import { json } from "../../testing/http";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -26,12 +27,6 @@ vi.mock("@tanstack/react-router", () => ({
     <a href={to}>{children as never}</a>
   ),
 }));
-
-function json(body: unknown, status = 200) {
-  return Promise.resolve(
-    new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } }),
-  );
-}
 
 async function render(node: ReactNode, settled: () => boolean) {
   await act(async () => {

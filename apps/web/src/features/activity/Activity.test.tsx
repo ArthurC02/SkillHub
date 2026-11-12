@@ -6,6 +6,7 @@ import { queryClient } from "../../core/api/queryClient";
 import { FeatureAvailabilityProvider } from "../../shared/FeatureAvailabilityProvider";
 import { Activity } from "./Activity.page";
 import { pollUntil } from "../../testing/poll";
+import { json } from "../../testing/http";
 
 const flags = vi.hoisted(() => ({ creation: false, generate: false }));
 
@@ -54,12 +55,6 @@ afterEach(async () => {
   container.remove();
   vi.unstubAllGlobals();
 });
-
-function json(body: unknown, status = 200) {
-  return Promise.resolve(
-    new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } }),
-  );
-}
 
 async function render(node: ReactNode, settled: () => boolean) {
   await act(async () => {

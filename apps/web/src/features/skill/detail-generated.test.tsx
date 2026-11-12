@@ -7,6 +7,7 @@ import { SkillDetail } from "./detail/SkillDetail.page";
 import { skillDetail, VERSION } from "../../testing/fixtures/platform";
 import type { SkillDetail as SkillDetailModel, SkillSource } from "../../core/api/types";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
+import { json } from "../../testing/http";
 
 const SKILL = "11111111-1111-1111-1111-111111111111";
 
@@ -55,12 +56,6 @@ vi.mock("@tanstack/react-router", () => ({
   useSearch: () => ({}),
   useNavigate: () => () => Promise.resolve(),
 }));
-
-function json(body: unknown, status = 200) {
-  return Promise.resolve(
-    new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } }),
-  );
-}
 
 function stubVisitor(detail: SkillDetailModel) {
   vi.stubGlobal("fetch", (input: string) => {

@@ -13,6 +13,7 @@ import {
   skillDetail,
 } from "../../testing/fixtures/platform";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
+import { json } from "../../testing/http";
 
 const SKILL = "11111111-1111-1111-1111-111111111111";
 
@@ -65,12 +66,6 @@ vi.mock("@tanstack/react-router", () => ({
   useSearch: () => ({}),
   useNavigate: () => () => Promise.resolve(),
 }));
-
-function json(body: unknown, status = 200) {
-  return Promise.resolve(
-    new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } }),
-  );
-}
 
 function detailBody() {
   return skillDetail(SKILL, "PDF Summariser");

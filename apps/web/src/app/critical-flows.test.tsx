@@ -9,6 +9,7 @@ import { CancelRunControl } from "../features/runs/trace/components/CancelRunCon
 import { ME as SESSION, IMPORT_LIMITS, platformResponse } from "../testing/fixtures/platform";
 import { queryKeys } from "../core/api/queryKeys";
 import { DEFAULT_WAIT_MS, pollUntil } from "../testing/poll";
+import { json } from "../testing/http";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -46,12 +47,6 @@ afterEach(async () => {
   container.remove();
   vi.unstubAllGlobals();
 });
-
-function json(body: unknown, status = 200) {
-  return Promise.resolve(
-    new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } }),
-  );
-}
 
 async function render(node: ReactNode, settled: () => boolean) {
   await act(async () => {

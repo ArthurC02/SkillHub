@@ -13,6 +13,7 @@ import {
   VERSION,
 } from "../../testing/fixtures/platform";
 import { queryKeys } from "../../core/api/queryKeys";
+import { json } from "../../testing/http";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -56,12 +57,6 @@ vi.mock("@tanstack/react-router", () => ({
     </a>
   ),
 }));
-
-function json(body: unknown, status = 200) {
-  return Promise.resolve(
-    new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } }),
-  );
-}
 
 async function render(node: ReactNode, settled: () => boolean) {
   await act(async () => {

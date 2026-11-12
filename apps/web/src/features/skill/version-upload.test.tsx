@@ -7,6 +7,7 @@ import { VersionUpload } from "./version/components/VersionUpload";
 import { IMPORT_LIMITS, SKILL_VERSIONS, platformResponse } from "../../testing/fixtures/platform";
 import { queryKeys } from "../../core/api/queryKeys";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
+import { json } from "../../testing/http";
 
 const SKILL = "11111111-1111-1111-1111-111111111111";
 const VERSION = "22222222-2222-2222-2222-222222222222";
@@ -53,12 +54,6 @@ afterEach(async () => {
   if (scrollIntoView) HTMLElement.prototype.scrollIntoView = scrollIntoView;
   else delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView;
 });
-
-function json(body: unknown, status = 200) {
-  return Promise.resolve(
-    new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } }),
-  );
-}
 
 async function render() {
   await act(async () => {

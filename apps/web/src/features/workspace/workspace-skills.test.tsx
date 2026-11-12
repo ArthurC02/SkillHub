@@ -7,6 +7,7 @@ import { queryClient } from "../../core/api/queryClient";
 import { WorkspaceSkills } from "./skills/WorkspaceSkills.page";
 import type { OwnSkill } from "../../core/api/types";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
+import { json } from "../../testing/http";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -52,12 +53,6 @@ vi.mock("@tanstack/react-router", () => ({
     );
   },
 }));
-
-function json(body: unknown, status = 200) {
-  return Promise.resolve(
-    new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } }),
-  );
-}
 
 async function render(node: ReactNode, settled: () => boolean) {
   await act(async () => {

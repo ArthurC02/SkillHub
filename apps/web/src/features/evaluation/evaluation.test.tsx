@@ -15,6 +15,7 @@ import { GraderManager } from "./components/GraderManager";
 import type { CheckNode } from "./check.model";
 import { useCheckReady } from "./evaluation.service";
 import { queryKeys } from "../../core/api/queryKeys";
+import { json } from "../../testing/http";
 
 vi.mock("./components/CheckFlow", () => ({ CheckFlow: () => null }));
 vi.mock("@tanstack/react-router", () => ({
@@ -25,15 +26,6 @@ let container: HTMLDivElement;
 let root: Root;
 let calls: { url: string; method: string; body?: string }[];
 let refusal: { status: number; error: string } | undefined;
-
-function json(body: unknown, status = 200) {
-  return Promise.resolve(
-    new Response(JSON.stringify(body), {
-      status,
-      headers: { "Content-Type": "application/json" },
-    }),
-  );
-}
 
 beforeEach(() => {
   queryClient.clear();

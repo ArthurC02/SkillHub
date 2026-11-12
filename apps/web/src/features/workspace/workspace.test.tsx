@@ -27,6 +27,7 @@ import { AnalyticsEventsSection } from "./policy/components/AnalyticsEventsSecti
 import type { DataRetentionPolicy } from "../../core/api/types";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 import { queryKeys } from "../../core/api/queryKeys";
+import { json } from "../../testing/http";
 
 const SKILL = "11111111-1111-1111-1111-111111111111";
 const TEST_CASE = "55555555-5555-5555-5555-555555555555";
@@ -77,12 +78,6 @@ vi.mock("@tanstack/react-router", () => ({
   useSearch: () => ({}),
   useNavigate: () => () => Promise.resolve(),
 }));
-
-function json(body: unknown, status = 200) {
-  return Promise.resolve(
-    new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } }),
-  );
-}
 
 async function render(node: ReactNode, settled: () => boolean) {
   await act(async () => {
