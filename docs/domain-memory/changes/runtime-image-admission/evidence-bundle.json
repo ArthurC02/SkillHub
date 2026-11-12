@@ -1,0 +1,28 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "SBX-002",
+  "proposal_id": "runtime-image-admission",
+  "registry_revision": {
+    "observed_commit": "fb6e4bbc91783a0463075c78192f0198c48a259b",
+    "registry_digest": "sha256:6b00661653d4bf9afb0e009812d1fbc31e79f7906569be75780541e31c955d5c",
+    "committed_digest": "sha256:6b00661653d4bf9afb0e009812d1fbc31e79f7906569be75780541e31c955d5c"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": {
+    "status": "planned",
+    "description": "分別取消驗簽結果／subject 綁定、把到期比較改成可放行、移除建立前時效複查、把重送移到驗證之後、把拒絕改成 201、讓拒絕留下名額，以及讓一般 Run 繞過；每個保護的焦點測試須出現具體斷言失敗，還原後再通過。"
+  },
+  "sources": [],
+  "test_results": [],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": [
+    "本包只有方案與未執行的測試義務；沒有實作准入、執行反證或通過安全驗收的宣稱。",
+    "Registry 已審查 Run 的生命週期所有權，尚無獨立、已審查的映像准入事實或 Sandbox Context；本包不據此創造 Context。須由 developer 確認這個既有 Provider 協作上的准入決策與 503 相容行為。",
+    "須由 developer 確認驗證材料的取得與刷新方式（GHCR 連線或可信本機材料）、驗證器的節點供應及請求時間預算；任何本機材料仍須驗簽，不以可編輯的 JSON PASS 收據取代驗證。",
+    "不可修漏洞的核准豁免清單由產品負責人批准；實作須能核對已批准版本與首次豁免時間，未取得或未核准的材料保持拒絕，不由 Agent 補簽。",
+    "節點真機、通知送達、SDK 映像發佈、跨 Run 網路隔離及節點重建不由本包結案。"
+  ]
+}

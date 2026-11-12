@@ -1,0 +1,135 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "runtime-image-admission",
+  "proposer": "agent:codex",
+  "requirement_id": "SBX-002",
+  "status": "submitted",
+  "change_classification": "material",
+  "submitted_at": "2026-11-12T18:35:41.227390Z",
+  "verified_at": null,
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "fb6e4bbc91783a0463075c78192f0198c48a259b",
+    "registry_digest": "sha256:6b00661653d4bf9afb0e009812d1fbc31e79f7906569be75780541e31c955d5c",
+    "committed_digest": "sha256:6b00661653d4bf9afb0e009812d1fbc31e79f7906569be75780541e31c955d5c"
+  },
+  "affected_contexts": [
+    "run"
+  ],
+  "rule_ids": [
+    "each-dispatch-is-keyed-by-its-own-attempt-id",
+    "transient-provider-refusals-stop-at-the-attempt-ceiling"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "run",
+    "invariant": "Go 控制平面擁有 Run 狀態與重試政策；Provider 只決定這台節點能否安全接受新的 attempt，不取得核心資料庫或跨 Workspace 狀態的所有權。",
+    "evidence": [
+      {
+        "path": "apps/platform/internal/trial/execution/doc.go",
+        "lines": {
+          "start": 1,
+          "end": 2
+        }
+      }
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "沿用控制平面至 Sandbox Provider 的 POST /runs 同步協作；Provider 驗證供應鏈材料並在啟動邊界做准入判定，不新增 Context 間呼叫、事件、資料表或主動回呼。",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [
+      "Sandbox 不讀寫平台資料庫，不替控制平面決定重試或 Run 終態。",
+      "工作負載拿不到驗證器、registry token、bundle 路徑或 Docker socket。",
+      "既有 Run 的讀取、停止與清理不依賴新的准入證據。"
+    ],
+    "evidence": [
+      {
+        "path": "apps/sandbox/internal/sandbox/manager.go",
+        "lines": {
+          "start": 300,
+          "end": 372
+        }
+      },
+      {
+        "path": "apps/sandbox/internal/dockerdrv/docker.go",
+        "lines": {
+          "start": 115,
+          "end": 195
+        }
+      }
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "既有准入規範要求到期後停止新 Run，而已執行 Run 不中斷。",
+      "digest 及簽章通過不代表掃描仍有效；原文解碼與版本字串不能當信任依據。",
+      "相同請求重送必須先找到原 attempt，避免外部材料故障改變既有資源。",
+      "驗證、排隊及 Docker 建立之間時間仍前進；最後檢查拒絕也不能留下部分建立或名額。",
+      "外部材料與驗證器可能讀不到；未知必須拒絕，控制平面仍擁有有界重試。"
+    ],
+    "decision": "不新增戰術模式或服務。沿用 Provider 建立協作，在識別既有重送之後、產生新工作資源之前取得並驗證指定映像的供應鏈材料；以該材料判定准入，在容器建立前複查時效並固定使用同一映像 ID。驗證材料可來自 GHCR 或經批准的本機供應方式，但必須驗簽；不能只讀預先寫好的 PASS。證據失效回既有暫時拒絕，保留既有管理與清理路徑。",
+    "invariants_preserved": [
+      "Run 狀態、永久識別、重試上限及模型金鑰政策仍由 Go 控制平面擁有。",
+      "既有 attempt 重送冪等，同鍵異內容衝突，工作負載不得在 API 程序執行。",
+      "既定 30 天掃描有效期與不可修漏洞 90 天複審不延長；可修 Critical／High 沒有豁免。"
+    ],
+    "rejected_alternatives": [
+      "只在節點啟動或每日告警時驗證，不能阻止長期服務的節點接受已過期映像。",
+      "把掃描錯誤當能力不符 422 會改變平台重試分類；回 201 後才失敗會先留下已接受的 attempt。",
+      "讓 Platform 讀 registry 或新增安全狀態資料表會擴大邊界，且仍無法保證實際 Docker 啟動的映像。",
+      "接受 unsigned PASS 收據、只查 tag／label、驗證後再以可變 tag 啟動都不能保護信任綁定。",
+      "到期便停止現有 Run 違反既定不中斷規則。"
+    ],
+    "external_systems": [
+      {
+        "system": "OCI registry 與簽章驗證信任來源",
+        "needed_outcomes": [
+          "正確簽署且綁定指定映像的有效資料",
+          "已知過期或違反漏洞政策的資料",
+          "無法取得、無法驗證或內容不完整的未知資料"
+        ]
+      },
+      {
+        "system": "節點 Docker engine",
+        "needed_outcomes": [
+          "指定 digest 對應的不可變映像 ID",
+          "不能確認映像身分或建立失敗，必須拒絕或清理"
+        ]
+      }
+    ],
+    "proof_obligations": [
+      "verified-image",
+      "scan-expiry",
+      "vulnerability-policy",
+      "replay-and-live-runs",
+      "refusal-and-cleanup",
+      "bounded-verification",
+      "production-coverage"
+    ],
+    "counterfactual_check": "分別取消驗簽結果／subject 綁定、把到期比較改成可放行、移除建立前時效複查、把重送移到驗證之後、把拒絕改成 201、讓拒絕留下名額，以及讓一般 Run 繞過；每個保護的焦點測試須出現具體斷言失敗，還原後再通過。"
+  },
+  "event_change": null,
+  "contract_change": {
+    "producer": "Sandbox Provider",
+    "consumers": [
+      "Go 控制平面 Run 派送"
+    ],
+    "version": "0.1.0",
+    "compatibility_policy": "提案沿用 POST /runs 既有 503 RunError，不增加欄位或分類；在 OpenAPI 說明中明列映像准入的暫時拒絕。相同請求的 200 與異內容的 409 維持。具體行為須先經 developer 審查。",
+    "data_classification": "internal; masked refusal reason only; no credentials or bundle payload in responses",
+    "breaking_change": false,
+    "timeout_retry_behavior": "遵守請求取消與既有派送期限；Provider 回 provision/retryable true，控制平面沿用已審查的暫時拒絕次數與總等待上限，不新增無限重試。"
+  },
+  "registry_updates": [],
+  "risk_flags": [
+    "public_contract"
+  ],
+  "open_questions": [
+    "Registry 已審查 Run 的生命週期所有權，尚無獨立、已審查的映像准入事實或 Sandbox Context；本包不據此創造 Context。須由 developer 確認這個既有 Provider 協作上的准入決策與 503 相容行為。",
+    "須由 developer 確認驗證材料的取得與刷新方式（GHCR 連線或可信本機材料）、驗證器的節點供應及請求時間預算；任何本機材料仍須驗簽，不以可編輯的 JSON PASS 收據取代驗證。",
+    "不可修漏洞的核准豁免清單由產品負責人批准；實作須能核對已批准版本與首次豁免時間，未取得或未核准的材料保持拒絕，不由 Agent 補簽。"
+  ],
+  "approvals": []
+}

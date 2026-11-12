@@ -1,0 +1,82 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "SBX-002",
+  "proposal_id": "runtime-image-admission",
+  "obligations": [
+    {
+      "id": "verified-image",
+      "source_type": "acceptance-criterion",
+      "source_id": "verified-image",
+      "expected_outcome": "生產 Docker／runsc 的新 attempt 只使用已驗證的確切 OCI digest：SBOM 與漏洞 bundle 均須通過既定 repository、簽署 workflow、predicate 及 subject 綁定，Docker 建立使用同一映像的不可變 ID；缺失、錯誤或讀不到證據一律不啟動。",
+      "level": "security",
+      "status": "planned",
+      "check": "planned:runtime-image-admission/verified-image"
+    },
+    {
+      "id": "scan-expiry",
+      "source_type": "acceptance-criterion",
+      "source_id": "scan-expiry",
+      "expected_outcome": "以可信 UTC 時鐘判定 signed scan 的有效期限；到期瞬間及之後均拒絕新 attempt。缺少、畸形或未來的掃描時間不能放行；有效證據尚未到期可放行。驗證等待或名額保留期間跨過到期點時，在建立容器前再次拒絕。",
+      "level": "integration",
+      "status": "planned",
+      "check": "planned:runtime-image-admission/scan-expiry"
+    },
+    {
+      "id": "vulnerability-policy",
+      "source_type": "acceptance-criterion",
+      "source_id": "vulnerability-policy",
+      "expected_outcome": "可修 Critical／High 非零一律拒絕，沒有豁免；不可修者只有具名且仍在首次豁免加 90 天內的核准資料才有效，缺漏、來源讀不到或到期均拒絕。不從未簽章原文或未知數量推導安全。",
+      "level": "security",
+      "status": "planned",
+      "check": "planned:runtime-image-admission/vulnerability-policy"
+    },
+    {
+      "id": "replay-and-live-runs",
+      "source_type": "acceptance-criterion",
+      "source_id": "replay-and-live-runs",
+      "expected_outcome": "相同 (run_id, attempt) 與相同內容重送，無論證據後來是否失效，都回既有資源且不再開容器；同鍵異內容維持 409。新 attempt 重新檢查，已執行的 Run 不因掃描到期被中斷；取消、輪詢、清理與重啟收養仍可用。",
+      "level": "integration",
+      "status": "planned",
+      "check": "planned:runtime-image-admission/replay-and-live-runs",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "each-dispatch-is-keyed-by-its-own-attempt-id"
+        }
+      ]
+    },
+    {
+      "id": "refusal-and-cleanup",
+      "source_type": "acceptance-criterion",
+      "source_id": "refusal-and-cleanup",
+      "expected_outcome": "缺少有效准入證據時回既有 503 RunError（provision、retryable true），不回 201 或 422，不留下容器、物件搬運、Trace／Artifact 工作或占用名額。若最後檢查才拒絕，撤銷暫存紀錄；相同請求待證據恢復後可重新准入。平台仍依既有重試上限、總等待及清理政策決定後續。",
+      "level": "integration",
+      "status": "planned",
+      "check": "planned:runtime-image-admission/refusal-and-cleanup",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "transient-provider-refusals-stop-at-the-attempt-ceiling"
+        }
+      ]
+    },
+    {
+      "id": "bounded-verification",
+      "source_type": "acceptance-criterion",
+      "source_id": "bounded-verification",
+      "expected_outcome": "證據讀取與簽章驗證遵守請求取消及既有派送時間預算，限制 bundle／輸出大小，錯誤不洩漏 token、金鑰、URL 憑證或驗證器原始 stderr；逾時與驗證不可用仍拒絕啟動。",
+      "level": "integration",
+      "status": "planned",
+      "check": "planned:runtime-image-admission/bounded-verification"
+    },
+    {
+      "id": "production-coverage",
+      "source_type": "acceptance-criterion",
+      "source_id": "production-coverage",
+      "expected_outcome": "生產啟動設定不能關掉此檢查；一般 Run、搜尋 Run、沒有 model_gateway 的 Run 與建立前拉取的映像都不能繞過。local／mxc 的弱隔離開發路徑不被宣稱為生產准入證據，既有 API 認證與 Workspace 邊界不變。",
+      "level": "security",
+      "status": "planned",
+      "check": "planned:runtime-image-admission/production-coverage"
+    }
+  ]
+}
