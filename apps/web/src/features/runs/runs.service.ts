@@ -17,6 +17,7 @@ import {
 export { isWriteResultUnknown as isContinuationResultUnknown } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
 import { isUuid } from "../../core/api/wire";
+import { OFFSET_PAGE_REQUEST, offsetPage } from "../../core/api/offsetPage";
 
 export type ContinuationRoom = { answered: boolean; rounds_left: number };
 
@@ -224,7 +225,7 @@ export function useRuns({
     queryKey: queryKeys.runs.list(testCaseId, skillVersionId),
     initialPageParam: 0,
     queryFn: ({ pageParam }) => {
-      const params = new URLSearchParams({ limit: "51", offset: String(pageParam) });
+      const params = new URLSearchParams({ limit: OFFSET_PAGE_REQUEST, offset: String(pageParam) });
       if (testCaseId) params.set("test_case_id", testCaseId);
       if (skillVersionId) params.set("skill_version_id", skillVersionId);
       return apiFetch<unknown>(`/runs?${params}`).then((page) => {
@@ -237,10 +238,7 @@ export function useRuns({
           !page.runs.every(isRunListItem)
         )
           throw new Error("Invalid Run list response");
-        return {
-          runs: page.runs.slice(0, 50),
-          nextOffset: page.runs.length > 50 ? pageParam + 50 : undefined,
-        };
+        return offsetPage("runs", page.runs, pageParam);
       });
     },
     getNextPageParam: (last) => last.nextOffset,

@@ -4,6 +4,7 @@ import type { Dataset } from "./lab.service";
 import { queryKeys } from "../../core/api/queryKeys";
 import type { CheckNode } from "../evaluation";
 import { isDate, isUuid } from "../../core/api/wire";
+import { OFFSET_PAGE_REQUEST, OFFSET_PAGE_SIZE, offsetPage } from "../../core/api/offsetPage";
 
 export type AcceptanceCriterion = {
   id: string;
@@ -42,7 +43,7 @@ export type TestCaseListItem = Pick<TestCase, "test_case_id" | "name" | "updated
 };
 
 export async function getTestCases(skillId?: string, offset = 0) {
-  const params = new URLSearchParams({ limit: "51", offset: String(offset) });
+  const params = new URLSearchParams({ limit: OFFSET_PAGE_REQUEST, offset: String(offset) });
   if (skillId) params.set("skill_id", skillId);
   const result = await apiFetch<unknown>(`/test-cases?${params}`);
   if (!result || typeof result !== "object" || Array.isArray(result))
@@ -50,7 +51,7 @@ export async function getTestCases(skillId?: string, offset = 0) {
   const response = result as { test_cases?: unknown };
   if (
     !Array.isArray(response.test_cases) ||
-    response.test_cases.length > 51 ||
+    response.test_cases.length > OFFSET_PAGE_SIZE + 1 ||
     !response.test_cases.every(isListedTestCase)
   )
     throw new Error("Invalid test case list response");
@@ -79,10 +80,9 @@ export function useTestCases(skillId?: string) {
     queryKey: queryKeys.testCases.list(skillId),
     initialPageParam: 0,
     queryFn: ({ pageParam }) =>
-      getTestCases(skillId, pageParam).then((page) => ({
-        test_cases: page.test_cases.slice(0, 50),
-        nextOffset: page.test_cases.length > 50 ? pageParam + 50 : undefined,
-      })),
+      getTestCases(skillId, pageParam).then((page) =>
+        offsetPage("test_cases", page.test_cases, pageParam),
+      ),
     getNextPageParam: (last) => last.nextOffset,
   });
 }
