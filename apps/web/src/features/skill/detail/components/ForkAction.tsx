@@ -8,6 +8,7 @@ import { useUninvited } from "../../../../core/session/me.service";
 import type { OwnSkill } from "../../../../core/api/types";
 import { Loading } from "../../../../shared/ui/Loading";
 import { usePaginationFocus } from "../../../../shared/ui/usePaginationFocus";
+import { focusAndCenter } from "../../../../shared/ui/focusAndCenter";
 
 const FORK_UNINVITED_REASON_ID = "fork-uninvited-reason";
 
@@ -214,8 +215,7 @@ function ForkResult({
       result &&
       (document.activeElement === trigger.current || document.activeElement === document.body)
     ) {
-      result.focus();
-      result.scrollIntoView({ block: "center" });
+      focusAndCenter(result);
     }
   }, [fork.isSuccess, fork.isError, trigger]);
   return (

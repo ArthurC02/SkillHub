@@ -9,6 +9,7 @@ import {
 import type { TraceSummary } from "../../trace.service";
 import { ContinuationFailure } from "./ContinuationFailure";
 import { runeCount } from "../../../../shared/textLength.model";
+import { focusAndCenter } from "../../../../shared/ui/focusAndCenter";
 
 function ContinuationNote({ room }: { room?: ContinuationRoom }) {
   if (room?.answered)
@@ -134,9 +135,7 @@ export function AnswerQuestions({
               disabled={checking}
               onClick={() => {
                 onRetryRead();
-                const heading = document.getElementById(`answer-questions-${runId}`);
-                heading?.focus();
-                heading?.scrollIntoView({ block: "center" });
+                focusAndCenter(document.getElementById(`answer-questions-${runId}`));
               }}
             >
               重新確認問題

@@ -4,6 +4,7 @@ import { ApiError, userFacingReason, type SessionNotReadyError } from "../../../
 import { Findings } from "../../../../shared/ui/Findings";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { isVersionUploadResultUnknown, readVersionUploadFindings } from "../../versions.service";
+import { focusAndCenter } from "../../../../shared/ui/focusAndCenter";
 
 function uploadRefusalMessage(error: unknown) {
   if (error instanceof ApiError) {
@@ -37,8 +38,7 @@ export function VersionUploadFailure({
   const unknown = isVersionUploadResultUnknown(error);
   const findings = readVersionUploadFindings(error);
   useEffect(() => {
-    failure.current?.focus();
-    failure.current?.scrollIntoView({ block: "center" });
+    focusAndCenter(failure.current);
   }, [error]);
   return (
     <>

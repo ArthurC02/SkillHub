@@ -12,6 +12,7 @@ import { RecordReadFailure } from "../../components/RecordReadFailure";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
 import { ActionForm } from "../../components/ActionForm";
 import { FINDING_EVENT, FINDING_MOVES, FINDING_STATUS } from "./findingLabels";
+import { focusAndCenter } from "../../../../shared/ui/focusAndCenter";
 import "./FindingDetail.css";
 
 function latestReport(events: PlatformAgentFindingEvent[]): PlatformAgentFindingEvent | undefined {
@@ -92,8 +93,7 @@ export function FindingDetail({ id }: { id: string }) {
   const result = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
     if (move.isSuccess) {
-      result.current?.focus();
-      result.current?.scrollIntoView?.({ block: "center" });
+      focusAndCenter(result.current);
     }
   }, [move.isSuccess]);
   const unverified = move.isSuccess && detail.data?.finding.status !== move.variables.status;

@@ -13,6 +13,7 @@ import { importRefusal, useSkillImportLimits } from "../../../creation";
 import { useSkillVersions } from "../../skills.service";
 import { isVersionUploadResultUnknown, useSaveSkillVersion } from "../../versions.service";
 import { VersionUploadFailure } from "./VersionUploadFailure";
+import { focusAndCenter } from "../../../../shared/ui/focusAndCenter";
 import "./VersionUpload.css";
 
 type UploadFailure = { error: unknown; fileName?: string; blockedError?: SessionNotReadyError };
@@ -179,8 +180,7 @@ function readUploadFailure(
 function VersionUploadSuccess({ result, fileName }: { result: UploadResult; fileName?: string }) {
   const link = useRef<HTMLAnchorElement>(null);
   useEffect(() => {
-    link.current?.focus();
-    link.current?.scrollIntoView({ block: "center" });
+    focusAndCenter(link.current);
   }, [result]);
   return (
     <div role="status">

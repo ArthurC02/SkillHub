@@ -7,6 +7,7 @@ import { Timestamp } from "../../../shared/ui/Timestamp";
 import { AdminPage } from "../components/AdminPage";
 import { GovernanceRow } from "./components/GovernanceRow";
 import { GovernanceActions, LiftTakedownAction } from "./components/GovernanceActions";
+import { focusAndCenter } from "../../../shared/ui/focusAndCenter";
 
 function SearchForm({ q, onDraftChange }: { q: string; onDraftChange: (draft: string) => void }) {
   const navigate = useNavigate();
@@ -50,8 +51,7 @@ function GovernanceResult({
   const show = Boolean(completed && skills?.some((skill) => skill.skill_id === completed.id));
   useEffect(() => {
     if (show) {
-      result.current?.focus();
-      result.current?.scrollIntoView?.({ block: "center" });
+      focusAndCenter(result.current);
     }
   }, [completed, show]);
   if (!show || !completed) return null;

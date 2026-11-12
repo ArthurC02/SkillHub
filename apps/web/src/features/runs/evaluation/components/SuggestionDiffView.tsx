@@ -3,6 +3,7 @@ import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { useSuggestionDiff } from "../../evaluation.service";
 import { Reveal } from "../../../../shared/ui/Reveal";
 import { BLOCKED_REASON_LABEL } from "../evaluation.model";
+import { focusAndCenter } from "../../../../shared/ui/focusAndCenter";
 
 export function SuggestionDiffView({ suggestionId }: { suggestionId: string }) {
   const diff = useSuggestionDiff(suggestionId, true);
@@ -18,9 +19,7 @@ export function SuggestionDiffView({ suggestionId }: { suggestionId: string }) {
           what="差異"
           retry={() => {
             void diff.refetch();
-            const section = document.getElementById(id);
-            section?.focus();
-            section?.scrollIntoView({ block: "center" });
+            focusAndCenter(document.getElementById(id));
           }}
           retrying={diff.isFetching}
         />

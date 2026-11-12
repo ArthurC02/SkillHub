@@ -11,6 +11,7 @@ import { Timestamp } from "../../../../shared/ui/Timestamp";
 import { ActionForm } from "../../components/ActionForm";
 import { actionLabel } from "./proposalLabels";
 import { SpendCapControls, SpendCapResult } from "./SpendCapControls";
+import { focusAndCenter } from "../../../../shared/ui/focusAndCenter";
 import "./AgentControls.css";
 
 function switchResult(name: string, enabled: boolean, unverified: boolean) {
@@ -80,8 +81,7 @@ function AgentRow({
   const result = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
     if (toggle.isSuccess) {
-      result.current?.focus();
-      result.current?.scrollIntoView?.({ block: "center" });
+      focusAndCenter(result.current);
     }
   }, [toggle.isSuccess]);
   return (
@@ -167,8 +167,7 @@ export function BrakeControls({
   const result = useRef<HTMLParagraphElement>(null);
   useEffect(() => {
     if (engage.isSuccess || release.isSuccess) {
-      result.current?.focus();
-      result.current?.scrollIntoView?.({ block: "center" });
+      focusAndCenter(result.current);
     }
   }, [engage.isSuccess, release.isSuccess]);
   const sentence = engage.isSuccess
