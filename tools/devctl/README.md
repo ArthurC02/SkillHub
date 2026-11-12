@@ -33,6 +33,8 @@ fallback on a new machine where Task is not installed yet. Generator versions
 come from `tools/toolchain.yaml`; do not create a parallel shell or CI
 implementation.
 
+`go -C tools/devctl run . gateway-search-proof` 以 Compose 釘住的映像、獨立內部網路與 Go 搜尋／模型替身，驗證真正的簽發器、逐層搜尋授權、預算、撤銷、原生搜尋攔截與費用紀錄，不呼叫付費供應商。YAML 解析沿用閘道映像內建工具，不增加 Go 依賴或主機 Python 需求。暫存執行檔、容器與匿名磁碟由這次執行清理，log 與來源摘要留在 scratchpad；CI 保存 7 天。完整邊界與未完成範圍見[執行時搜尋](../../docs/development/runtime-web-search.md)。
+
 The SQL scope's sources and its committed output are listed once, in the
 generation-ownership table in `docs/development/automation.md` ("生成來源與所有權").
 A third copy of that table is a third thing to keep in step. Resolve conflicts in

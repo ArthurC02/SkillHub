@@ -48,6 +48,9 @@ jobs:
               - '.github/workflows/ci.yml'
             platform:
               - 'apps/platform/**'
+              - 'tools/devctl/gateway_search_proof*'
+              - 'tools/devctl/searchproof/**'
+              - 'tools/devctl/main.go'
               - 'db/**'
               - 'contracts/**'
               - 'apps/llm/**'
@@ -119,6 +122,28 @@ jobs:
               - 'tools/deploy/**'
               - 'tools/ci/deploy-config-check.sh'
               - '.github/workflows/ci.yml'
+
+  gateway-search:
+    needs: changes
+    if: needs.changes.outputs.platform == 'true' || needs.changes.outputs.images == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: apps/platform/go.mod
+          cache-dependency-path: apps/platform/go.sum
+      - name: Verify search permissions with the pinned gateway and local providers
+        run: go -C tools/devctl run . gateway-search-proof
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: gateway-search-proof
+          path: .devctl/scratchpad/gateway-search-proof-*/
+          retention-days: 7
 
   web:
     needs: changes

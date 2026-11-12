@@ -168,6 +168,7 @@ type ModelGatewayGrant struct {
 	VirtualKey   string    `json:"virtual_key,omitempty"`
 	MaxBudgetUSD float64   `json:"max_budget_usd,omitempty"`
 	TPMLimit     int       `json:"tpm_limit,omitempty"`
+	SearchTool   string    `json:"search_tool,omitempty"`
 	ExpiresAt    time.Time `json:"expires_at"`
 }
 
