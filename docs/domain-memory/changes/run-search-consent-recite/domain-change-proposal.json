@@ -1,0 +1,96 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "run-search-consent-recite",
+  "proposer": "agent:codex",
+  "requirement_id": "GEN-014",
+  "status": "verified",
+  "change_classification": "routine",
+  "submitted_at": "2026-11-12T09:50:49.956506Z",
+  "verified_at": "2026-11-12T09:50:50.786812Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "24f57c09fca12eca37bf5793c2ba1dc82d0d66e6",
+    "registry_digest": "sha256:de443dddc5caed4e6501e7f7e905995921b1f743364364a28ca72abd080be30f",
+    "committed_digest": "sha256:de443dddc5caed4e6501e7f7e905995921b1f743364364a28ca72abd080be30f"
+  },
+  "affected_contexts": [
+    "registry",
+    "run"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "registry",
+    "invariant": "Registry 持有不可變版本事實，Run 透過既有同步 reader 取得該版本的事實；本提案只更新引用。",
+    "evidence": [
+      {
+        "path": "apps/platform/internal/entrypoint/wiring/trial.go",
+        "lines": {
+          "start": 19,
+          "end": 55
+        },
+        "content_sha256": "sha256:9d94029c85d79949465e28039f5fd2994113af34cde90040bef64b8dcdb4921e",
+        "excerpt_sha256": "sha256:b319089322ea8b36aa54bbdb679239f22c0153cb9cc823dfa6a6f71ad92ed0a9",
+        "source_kind": "implementation"
+      }
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Registry 到 Run 的既有 internal-fact-reader v1；Compatibility 隨指定版本的其他事實傳遞，仍由 Run 決定政策與授權。",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      {
+        "path": "apps/platform/internal/entrypoint/wiring/trial.go",
+        "lines": {
+          "start": 19,
+          "end": 55
+        },
+        "content_sha256": "sha256:9d94029c85d79949465e28039f5fd2994113af34cde90040bef64b8dcdb4921e",
+        "excerpt_sha256": "sha256:b319089322ea8b36aa54bbdb679239f22c0153cb9cc823dfa6a6f71ad92ed0a9",
+        "source_kind": "implementation"
+      }
+    ]
+  },
+  "implementation_design": null,
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "contracts",
+      "record": {
+        "id": "registry-run-facts-v1",
+        "kind": "internal-fact-reader",
+        "version": "v1",
+        "compatibility_policy": "consumer-specific facts evolve deliberately",
+        "data_classification": "internal",
+        "producer_context": "registry",
+        "consumer_contexts": [
+          "run"
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/entrypoint/wiring/trial.go",
+            "lines": {
+              "start": 19,
+              "end": 55
+            },
+            "content_sha256": "sha256:9d94029c85d79949465e28039f5fd2994113af34cde90040bef64b8dcdb4921e",
+            "excerpt_sha256": "sha256:b319089322ea8b36aa54bbdb679239f22c0153cb9cc823dfa6a6f71ad92ed0a9",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [],
+  "supersedes": [
+    "mcp-tool-stand-ins-2026-11-01"
+  ]
+}

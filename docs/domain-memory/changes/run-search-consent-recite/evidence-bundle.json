@@ -1,0 +1,29 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "GEN-014",
+  "proposal_id": "run-search-consent-recite",
+  "registry_revision": {
+    "observed_commit": "24f57c09fca12eca37bf5793c2ba1dc82d0d66e6",
+    "registry_digest": "sha256:de443dddc5caed4e6501e7f7e905995921b1f743364364a28ca72abd080be30f",
+    "committed_digest": "sha256:de443dddc5caed4e6501e7f7e905995921b1f743364364a28ca72abd080be30f"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": ".domain-memory/domain-memory.exe verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/run-search-consent-recite --path apps/platform/internal/entrypoint/wiring/trial.go",
+      "command_profile": "architecture",
+      "exit_code": 0,
+      "output_sha256": "sha256:2174a57cfb5c0777188d00b335458312ec879f5830a818f9d54047d89d2b46e6",
+      "finished_at": "2026-11-12T09:50:50.222511Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

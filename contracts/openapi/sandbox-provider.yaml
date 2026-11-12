@@ -1005,6 +1005,16 @@ components:
             properties:
               runtime: { type: string }
               versions: { type: array, items: { type: string } }
+              web_search:
+                type: string
+                enum: [supported, unsupported, unavailable]
+                default: unsupported
+                description: |
+                  Supported only when the selected workload runtime supports
+                  the platform search tool through the granted model gateway.
+                  Must hold for every version in this entry. An absent value
+                  is unsupported, including for older runtime images. Unavailable
+                  means that runtime evidence could not be read; retry later.
               agent_integration:
                 type: array
                 items: { type: string, enum: [in_sandbox_sdk, provider_hosted_agent] }

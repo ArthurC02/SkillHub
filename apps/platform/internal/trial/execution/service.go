@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -47,6 +48,7 @@ type VersionFacts struct {
 	PackageObjectKey string
 	SourcePath       string
 	MCPTools         []MCPToolStandIn
+	Compatibility    string
 }
 
 func (v VersionFacts) withoutPackage() VersionFacts {
@@ -324,6 +326,7 @@ type policySnapshot struct {
 	CleanMode        bool              `json:"clean_mode"`
 	SkillWithheld    bool              `json:"skill_withheld,omitempty"`
 	ModelBudgetUSD   float64           `json:"model_budget_usd,omitempty"`
+	WebSearch        bool              `json:"web_search,omitempty"`
 }
 
 func (p policySnapshot) modelBudget(d Deployment) float64 {
@@ -339,6 +342,10 @@ func (p policySnapshot) reachesAModel() bool {
 	})
 }
 
+func (p policySnapshot) searchAllowedFor(version VersionFacts) bool {
+	return p.WebSearch && !p.SkillWithheld && version.requiresSearch() && p.reachesAModel()
+}
+
 func defaultPolicy(deployment Deployment) policySnapshot {
 	allow := []egressAllow{}
 	if url := deployment.GatewayURL; url != "" {
@@ -351,6 +358,21 @@ func defaultPolicy(deployment Deployment) policySnapshot {
 		MinimumIsolation: deployment.RequiredIsolation(),
 		CleanMode:        deployment.CleanMode,
 	}
+}
+
+func versionPolicy(deployment Deployment, version VersionFacts) policySnapshot {
+	policy := defaultPolicy(deployment)
+	policy.WebSearch = version.requiresSearch()
+	return policy
+}
+
+func (v VersionFacts) requiresSearch() bool {
+	for line := range strings.SplitSeq(v.Compatibility, "\n") {
+		if strings.TrimSpace(line) == RunSearchToolName {
+			return true
+		}
+	}
+	return false
 }
 
 type CreateParams struct {
@@ -490,7 +512,7 @@ func (s *Service) admitRun(ctx context.Context, p CreateParams) (admittedRun, er
 		return admittedRun{}, err
 	}
 
-	decoded := defaultPolicy(s.Deployment)
+	decoded := versionPolicy(s.Deployment, version)
 	decoded.SkillWithheld = p.WithholdSkill
 	budget, err := runBudgetIn(ctx, s.queries(), s.Deployment)
 	if err != nil {

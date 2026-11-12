@@ -269,6 +269,7 @@ type RuntimeCapability struct {
 	Runtime          string   `json:"runtime"`
 	Versions         []string `json:"versions"`
 	AgentIntegration []string `json:"agent_integration,omitempty"`
+	WebSearch        string   `json:"web_search,omitempty"`
 }
 
 type IsolationStrength string

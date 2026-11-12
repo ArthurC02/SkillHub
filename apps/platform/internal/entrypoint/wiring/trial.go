@@ -51,7 +51,7 @@ func runStandIns(tools []mcptools.Tool) []run.MCPToolStandIn {
 
 func runVersionFacts(version registry.Version) run.VersionFacts {
 	return run.VersionFacts{ID: version.ID, SkillID: version.SkillID, ContentHash: version.ContentHash,
-		PackageObjectKey: version.PackageObjectKey, SourcePath: version.SourcePath}
+		PackageObjectKey: version.PackageObjectKey, SourcePath: version.SourcePath, Compatibility: version.Compatibility}
 }
 
 func (r runRegistryReader) VersionSummaries(

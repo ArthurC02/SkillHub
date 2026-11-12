@@ -49,6 +49,7 @@ type Version struct {
 	CreatedAt         pgtype.Timestamptz
 	LicenseSource     *string
 	AllowedTools      []string
+	Compatibility     string
 	Description       string
 	HeldForEvaluation bool
 }
@@ -495,13 +496,14 @@ func skillDTO(row gen.Skill) Skill {
 }
 
 func versionDTO(row gen.SkillVersion) Version {
+	manifest := declaredManifest(row.Manifest)
 	return Version{
 		ID: row.ID, WorkspaceID: row.WorkspaceID, SkillID: row.SkillID, SourceID: row.SourceID,
 		VersionNumber: row.VersionNumber, ContentHash: row.ContentHash,
 		PackageObjectKey: row.PackageObjectKey, SourcePath: row.SourcePath,
 		LicenseExpression: pgconv.Clone(row.LicenseExpression),
 		CreatedAt:         row.CreatedAt, LicenseSource: pgconv.Clone(row.LicenseSource),
-		AllowedTools: declaredTools(row.Manifest), Description: declaredDescription(row.Manifest),
+		AllowedTools: manifest.AllowedTools, Compatibility: manifest.Compatibility, Description: manifest.Description,
 		HeldForEvaluation: row.HeldForEvaluation,
 	}
 }
@@ -517,20 +519,12 @@ func (v Version) licenseClaim() LicenseClaim {
 	return claim
 }
 
-func declaredDescription(manifest []byte) string {
+func declaredManifest(manifest []byte) skillpkg.Manifest {
 	var m skillpkg.Manifest
 	if json.Unmarshal(manifest, &m) != nil {
-		return ""
+		return skillpkg.Manifest{}
 	}
-	return m.Description
-}
-
-func declaredTools(manifest []byte) []string {
-	var m skillpkg.Manifest
-	if json.Unmarshal(manifest, &m) != nil {
-		return nil
-	}
-	return m.AllowedTools
+	return m
 }
 
 type Governance struct {

@@ -1,0 +1,21 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "GEN-014",
+  "status": "draft",
+  "intent": "Re-cite contracts/registry-run-facts-v1 after the code they cite moved or changed; the facts they state are unchanged.",
+  "actor": "agent:codex",
+  "observable_outcome": "verify-evidence reports every citation of the updated records current.",
+  "acceptance_criteria": [
+    {
+      "id": "citations-current",
+      "statement": "Every citation in the updated records matches the lines it cites."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/wiring/trial.go"
+  ]
+}
