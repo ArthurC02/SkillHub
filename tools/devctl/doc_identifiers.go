@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -131,12 +130,12 @@ func markdownFilesUnder(root, check string, listed, trees []string) ([]string, [
 }
 
 func trackedFiles(root string) map[string]bool {
-	out, err := exec.Command("git", "-C", root, "ls-files", "-z").Output()
+	out, err := gitOutput(root, "ls-files", "-z")
 	if err != nil {
 		return nil
 	}
 	tracked := map[string]bool{}
-	for _, name := range strings.Split(string(out), "\x00") {
+	for _, name := range strings.Split(out, "\x00") {
 		if name != "" {
 			tracked[name] = true
 		}

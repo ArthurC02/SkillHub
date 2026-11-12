@@ -16,11 +16,17 @@ type platformGoFile struct {
 	file *ast.File
 }
 
-func walkPlatformGo(internal string, visit func(platformGoFile) error) error {
-	return filepath.WalkDir(internal, func(path string, entry os.DirEntry, err error) error {
+func walkGoFiles(base string, visit func(path string) error) error {
+	return filepath.WalkDir(base, func(path string, entry os.DirEntry, err error) error {
 		if err != nil || entry.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
 			return err
 		}
+		return visit(path)
+	})
+}
+
+func walkPlatformGo(internal string, visit func(platformGoFile) error) error {
+	return walkGoFiles(internal, func(path string) error {
 		rel, err := filepath.Rel(internal, path)
 		if err != nil {
 			return err
