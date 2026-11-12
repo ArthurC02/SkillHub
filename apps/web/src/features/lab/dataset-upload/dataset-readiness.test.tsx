@@ -1,7 +1,8 @@
 import { expect, test } from "vitest";
-import { renderedApp, type Locator } from "../../../testing/app";
+import { renderedApp } from "../../../testing/app";
 import { TEST_CASE, VERSION } from "../../../testing/fixtures/platform";
 import type { Dataset } from "../lab.service";
+import { chooseCsv } from "../../../testing/files";
 
 const app = renderedApp();
 
@@ -13,17 +14,6 @@ const limits = {
   allowed_kinds: ["csv"],
   note: "",
 };
-
-function chooseFile(input: Locator, name: string, content: string) {
-  const element = input.element();
-  const file = new File([content], name, { type: "text/csv" });
-  Object.defineProperty(element, "files", { value: [file], configurable: true });
-  Object.defineProperty(element, "value", {
-    value: `C:\\fakepath\\${name}`,
-    writable: true,
-    configurable: true,
-  });
-}
 
 function datasetSnapshot(extra: boolean, uploaded: boolean) {
   const sizes = [9500, 9500, ...(extra ? [500] : []), ...(uploaded ? [400] : [])];
@@ -106,7 +96,7 @@ for (const owner of ["rules", "usage"]) {
           await expect(page.getByText("還可以再上傳", { exact: false })).toHaveCount(0);
         } else await expect(page.locator(".dataset-upload-guide")).toHaveCount(0);
         const file = page.getByLabel("選擇檔案", { exact: true });
-        chooseFile(file, "rows.csv", "n".repeat(1000));
+        chooseCsv(file, "rows.csv", "n".repeat(1000));
         expect(writes).toBe(0);
         expect(await page.axeViolations("body")).toEqual([]);
         if (phase === "offline") await page.setOffline(false);
@@ -122,7 +112,7 @@ for (const owner of ["rules", "usage"]) {
             : "這個測試題還剩 500 B 可用，rows.csv 是 1000 B，沒有送出。請先刪掉一些檔案再上傳。",
         );
         expect(writes).toBe(0);
-        chooseFile(file, "small.csv", "n".repeat(400));
+        chooseCsv(file, "small.csv", "n".repeat(400));
         await upload.click();
         await expect(page.getByRole("status", { name: "上傳完成", exact: true })).toContainText(
           "已上傳 small.csv（400 B）",

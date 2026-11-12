@@ -1,4 +1,4 @@
-import { ME as SESSION } from "../../testing/fixtures/platform";
+import { ME as SESSION, RUN } from "../../testing/fixtures/platform";
 import { StrictMode, act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -8,8 +8,6 @@ import { feedbackPagePath, feedbackRunID } from "./feedback.service";
 import { FeedbackEntry } from "./FeedbackEntry";
 import { FeedbackLauncher } from "./FeedbackLauncher";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
-
-const RUN = "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20";
 
 let container: HTMLDivElement;
 let root: Root;

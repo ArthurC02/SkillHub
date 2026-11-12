@@ -70,17 +70,17 @@ func TestTheDatasetRetentionSweepTakesTheExpiredFileAndOnlyThatOne(t *testing.T)
 		t.Error("a dataset still inside its retention window lost its file")
 	}
 
-	if n := countRows(t, pool,
+	if n := countRow(t, pool,
 		"SELECT count(*) FROM datasets WHERE id = $1 AND deleted_at IS NOT NULL",
 		mustUUID(t, oldID)); n != 1 {
 		t.Error("the expired row still claims a file that has been removed")
 	}
-	if n := countRows(t, pool,
+	if n := countRow(t, pool,
 		"SELECT count(*) FROM object_reconcile_sightings WHERE resource_kind = 'dataset' AND resource_id = $1",
 		mustUUID(t, oldID)); n != 0 {
 		t.Error("the expired dataset left a stale missing-object sighting")
 	}
-	if n := countRows(t, pool,
+	if n := countRow(t, pool,
 		"SELECT count(*) FROM datasets WHERE id = $1 AND deleted_at IS NULL",
 		mustUUID(t, freshID)); n != 1 {
 		t.Error("a dataset inside its window was marked deleted")

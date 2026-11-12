@@ -1,18 +1,14 @@
-import { StrictMode, act } from "react";
-import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { expect, test, vi } from "vitest";
 import { COMPARISON, comparisonSide } from "../../../../testing/fixtures/platform";
 import type { ComparisonSide, RunComparison } from "../../evaluation.service";
 import { CriterionMatrixTable } from "./CriterionMatrixTable";
 import { ComparisonTables } from "./ComparisonTables";
 import { RunStatusTable } from "./RunStatusTable";
+import { mountedComponent } from "../../../../testing/component";
 
 const COMPARISON_SIDES = COMPARISON.runs as unknown as ComparisonSide[];
 const CRITERION_MATRIX =
   COMPARISON.criterion_matrix as unknown as RunComparison["criterion_matrix"];
-
-let container: HTMLDivElement;
-let root: Root;
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
@@ -32,24 +28,7 @@ vi.mock("@tanstack/react-router", () => ({
   },
 }));
 
-beforeEach(() => {
-  container = document.createElement("div");
-  document.body.appendChild(container);
-});
-
-afterEach(async () => {
-  await act(async () => root?.unmount());
-  container.remove();
-});
-
-async function mount(node: React.ReactElement) {
-  root = createRoot(container);
-  await act(async () => {
-    root.render(<StrictMode>{node}</StrictMode>);
-  });
-}
-
-const text = () => container.textContent ?? "";
+const { container, mount, text } = mountedComponent();
 
 function sideWithoutRerunLink(runId: string, evaluated: boolean): ComparisonSide {
   return {
@@ -62,7 +41,7 @@ test("RunStatusTable prints one shared cost note when both sides cite the same s
   const sides = [sideWithoutRerunLink("run-a", true), sideWithoutRerunLink("run-b", false)];
   await mount(<RunStatusTable sides={sides} />);
 
-  const notes = [...container.querySelectorAll(".note")].filter((el) =>
+  const notes = [...container().querySelectorAll(".note")].filter((el) =>
     el.textContent?.includes("模型閘道對這次試跑的 per-key 實付"),
   );
   expect(notes).toHaveLength(1);
@@ -78,7 +57,7 @@ test("RunStatusTable prints a note per side when the sides cite different source
   ];
   await mount(<RunStatusTable sides={sides} />);
 
-  const notes = [...container.querySelectorAll(".note")].filter((el) =>
+  const notes = [...container().querySelectorAll(".note")].filter((el) =>
     el.textContent?.includes("權威來源"),
   );
   expect(notes).toHaveLength(2);
@@ -92,7 +71,7 @@ test("RunStatusTable keeps each side connected to its own 試跑紀錄 and immut
   await mount(<RunStatusTable sides={sides} />);
 
   expect(
-    Array.from(container.querySelectorAll("a")).map((link) => link.getAttribute("href")),
+    Array.from(container().querySelectorAll("a")).map((link) => link.getAttribute("href")),
   ).toEqual([
     "/runs/run-a",
     "/runs/run-b",
@@ -110,7 +89,7 @@ test("RunStatusTable tells a field the server did not report from a measured zer
 
   const cells = (header: string) =>
     Array.from(
-      Array.from(container.querySelectorAll("tbody tr"))
+      Array.from(container().querySelectorAll("tbody tr"))
         .find((row) => row.querySelector("th")?.textContent === header)
         ?.querySelectorAll("td") ?? [],
       (cell) => cell.textContent,
@@ -132,7 +111,7 @@ test("RunStatusTable keeps untrusted provider wording behind technical details",
   ];
   await mount(<RunStatusTable sides={sides} />);
 
-  const errorRow = Array.from(container.querySelectorAll("tbody tr")).find((row) =>
+  const errorRow = Array.from(container().querySelectorAll("tbody tr")).find((row) =>
     row.querySelector("th")?.textContent?.includes("錯誤"),
   );
   const disclosures = Array.from(errorRow?.querySelectorAll("details") ?? []);
@@ -166,11 +145,11 @@ test("comparison tables name each scroll region and expose a mobile scroll hint"
   );
 
   const regions = Array.from(
-    container.querySelectorAll<HTMLElement>('.table-scroll[role="region"]'),
+    container().querySelectorAll<HTMLElement>('.table-scroll[role="region"]'),
   );
   expect(regions).toHaveLength(2);
   expect(regions.every((region) => region.getAttribute("aria-label")?.includes("左右捲動"))).toBe(
     true,
   );
-  expect(container.querySelectorAll(".table-scroll-hint")).toHaveLength(1);
+  expect(container().querySelectorAll(".table-scroll-hint")).toHaveLength(1);
 });

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
-	"io"
 	"reflect"
 	"strings"
 	"testing"
@@ -145,24 +144,9 @@ func TestCreationBatchGenerationInputsShape(t *testing.T) {
 
 func creationStatus(t *testing.T, c *client, body any) int {
 	t.Helper()
-	code, _ := creationStatusBody(t, c, body)
+	code, _ := creationPostStatus(t, c, "/creation-sessions", body)
 	return code
 }
-func creationStatusBody(t *testing.T, c *client, body any) (int, string) {
-	t.Helper()
-	raw, err := json.Marshal(body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	res, err := c.Post(c.base+"/creation-sessions", "application/json", strings.NewReader(string(raw)))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer res.Body.Close()
-	b, _ := io.ReadAll(res.Body)
-	return res.StatusCode, string(b)
-}
-
 func TestCreationBatchForeignSessionIDIsNotAnOracle(t *testing.T) {
 	a, _, _ := creationFixture(t)
 	alice := a.login(t, "creation-batch-oracle-alice")
@@ -172,7 +156,7 @@ func TestCreationBatchForeignSessionIDIsNotAnOracle(t *testing.T) {
 	if bob.status(t, "GET", "/creation-sessions/"+creation.UUID(aliceID)) != 404 {
 		t.Fatal("bob could see alice's session before reusing its id")
 	}
-	reused, reusedBody := creationStatusBody(t, bob, map[string]any{"id": aliceID, "message": "", "budget_credits": 650})
+	reused, reusedBody := creationPostStatus(t, bob, "/creation-sessions", map[string]any{"id": aliceID, "message": "", "budget_credits": 650})
 	fresh := creationStatus(t, bob, map[string]any{"id": creationID(t), "message": "", "budget_credits": 650})
 	if reused != fresh {
 		t.Fatalf("reusing a foreign id gave a different status than a fresh one (GEN-011 oracle): reused=%d body=%s fresh=%d", reused, reusedBody, fresh)

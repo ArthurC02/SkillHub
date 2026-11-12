@@ -1,7 +1,7 @@
-import { act } from "react";
 import { expect, test } from "vitest";
 import { IMPORT_LIMITS, SKILL, VERSION } from "../../../testing/fixtures/platform";
 import { renderedApp, type App } from "../../../testing/app";
+import { chooseZipWithoutNativeValidation } from "../../../testing/files";
 
 const app = renderedApp();
 
@@ -16,18 +16,6 @@ const RULES = {
 
 const UPLOAD_HEADING = "上傳新版本";
 const SUBMIT = "上傳成新版本";
-
-async function chooseZip(page: App, name: string, content: string) {
-  const input = page.getByLabel("小工具 zip", { exact: true }).element() as HTMLInputElement;
-  Object.defineProperty(input, "files", {
-    configurable: true,
-    value: [new File([content], name, { type: "application/zip" })],
-  });
-  input.removeAttribute("required");
-  await act(async () => {
-    input.dispatchEvent(new Event("change", { bubbles: true }));
-  });
-}
 
 function chosenName(page: App) {
   return (page.getByLabel("小工具 zip", { exact: true }).element() as HTMLInputElement).files?.[0]
@@ -49,7 +37,7 @@ test("an offline version upload withholds cached limits and preserves the file",
     await page.setOffline(true);
     await page.goBack();
     await expect(page.getByText("等待連線以讀取上傳限制…", { exact: true })).toHaveCount(1);
-    await chooseZip(page, "offline.zip", "offline draft");
+    await chooseZipWithoutNativeValidation(page, "offline.zip", "offline draft");
     const submit = page.getByRole("button", { name: SUBMIT, exact: true });
     await page.eventually(() => {
       expect(page.getByText(/平台限制：zip 最大/).count()).toBe(0);
@@ -98,7 +86,7 @@ for (const fault of ["server", "unreadable limits"] as const) {
         await page.eventually(() => expect(reads).toBe(2));
       }
       await expect(section).toHaveCount(1);
-      await chooseZip(page, "draft.zip", "retained draft");
+      await chooseZipWithoutNativeValidation(page, "draft.zip", "retained draft");
       await page.eventually(() => {
         expect(section.getByRole("alert").text()).toContain("暫時無法讀取上傳限制");
         expect(submit.isDisabled()).toBe(true);

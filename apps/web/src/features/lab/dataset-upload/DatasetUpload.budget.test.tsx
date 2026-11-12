@@ -6,6 +6,7 @@ import { queryClient } from "../../../core/api/queryClient";
 import { DatasetUpload } from "./DatasetUpload.page";
 import { pollUntil } from "../../../testing/poll";
 import { ME } from "../../../testing/fixtures/platform";
+import { json } from "../../../testing/http";
 
 const TEST_CASE = "11111111-1111-4111-8111-111111111111";
 const SKILL = "22222222-2222-4222-8222-222222222222";
@@ -87,15 +88,6 @@ function platform(totalBytes: number, fileCount: number) {
     }
     return json({});
   });
-}
-
-function json(body: unknown) {
-  return Promise.resolve(
-    new Response(JSON.stringify(body), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    }),
-  );
 }
 
 async function renderPage() {

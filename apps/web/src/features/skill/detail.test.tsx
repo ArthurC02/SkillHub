@@ -6,15 +6,15 @@ import { queryClient } from "../../core/api/queryClient";
 import { queryKeys } from "../../core/api/queryKeys";
 import { SkillDetail } from "./detail/SkillDetail.page";
 import {
-  ME,
   CATEGORIES,
+  ME,
+  SKILL,
   SKILL_VERSIONS,
-  VERSION,
   skillDetail,
+  VERSION,
 } from "../../testing/fixtures/platform";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
-
-const SKILL = "11111111-1111-1111-1111-111111111111";
+import { json } from "../../testing/http";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -65,12 +65,6 @@ vi.mock("@tanstack/react-router", () => ({
   useSearch: () => ({}),
   useNavigate: () => () => Promise.resolve(),
 }));
-
-function json(body: unknown, status = 200) {
-  return Promise.resolve(
-    new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } }),
-  );
-}
 
 function detailBody() {
   return skillDetail(SKILL, "PDF Summariser");

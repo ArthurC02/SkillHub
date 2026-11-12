@@ -108,7 +108,7 @@ func TestMaskingStoppedHaltsDispatchWithoutAnOperator(t *testing.T) {
 		t.Fatalf("dispatch halted on one hour of traffic; the rule holds its expression for a second hour (source=%q)", source)
 	}
 
-	haltsBefore := haltAuditCount(t, pool, "dispatch.halted")
+	haltsBefore := auditActionCount(t, pool, "dispatch.halted")
 	seedTraceEvent(t, pool, f.workspaceID, run.RunID, 4, time.Now().Add(-90*time.Minute), `[]`)
 	sweep()
 	source, reason, byPlatform := poolHalt(t, pool)
@@ -121,14 +121,14 @@ func TestMaskingStoppedHaltsDispatchWithoutAnOperator(t *testing.T) {
 	if !byPlatform {
 		t.Error("declared_by is set; a halt the platform concluded on its own has no human actor")
 	}
-	if got := haltAuditCount(t, pool, "dispatch.halted") - haltsBefore; got != 1 {
+	if got := auditActionCount(t, pool, "dispatch.halted") - haltsBefore; got != 1 {
 		t.Fatalf("dispatch.halted events = %d, want exactly 1", got)
 	}
 
 	for i := 0; i < 3; i++ {
 		sweep()
 	}
-	if got := haltAuditCount(t, pool, "dispatch.halted") - haltsBefore; got != 1 {
+	if got := auditActionCount(t, pool, "dispatch.halted") - haltsBefore; got != 1 {
 		t.Errorf("dispatch.halted events after four sweeps = %d, want 1", got)
 	}
 
@@ -157,8 +157,8 @@ func TestReconcilerStallHaltsDispatchWithoutAnOperator(t *testing.T) {
 		t.Fatalf("dispatch halted six minutes after a scan, inside the 10 minute window (source=%q)", source)
 	}
 
-	haltsBefore := haltAuditCount(t, pool, "dispatch.halted")
-	resumesBefore := haltAuditCount(t, pool, "dispatch.resumed")
+	haltsBefore := auditActionCount(t, pool, "dispatch.halted")
+	resumesBefore := auditActionCount(t, pool, "dispatch.resumed")
 	seedOrphanScanJob(t, pool, time.Now().Add(-11*time.Minute))
 	if _, err := pool.Exec(ctx,
 		`DELETE FROM river_job WHERE finalized_at > now() - interval '10 minutes'`); err != nil {
@@ -175,14 +175,14 @@ func TestReconcilerStallHaltsDispatchWithoutAnOperator(t *testing.T) {
 	if !byPlatform {
 		t.Error("declared_by is set; a halt the platform concluded on its own has no human actor")
 	}
-	if got := haltAuditCount(t, pool, "dispatch.halted") - haltsBefore; got != 1 {
+	if got := auditActionCount(t, pool, "dispatch.halted") - haltsBefore; got != 1 {
 		t.Fatalf("dispatch.halted events = %d, want exactly 1", got)
 	}
 
 	for i := 0; i < 3; i++ {
 		svc.DetectReconcilerStall(ctx)
 	}
-	if got := haltAuditCount(t, pool, "dispatch.halted") - haltsBefore; got != 1 {
+	if got := auditActionCount(t, pool, "dispatch.halted") - haltsBefore; got != 1 {
 		t.Errorf("dispatch.halted events after four checks = %d, want 1", got)
 	}
 
@@ -191,7 +191,7 @@ func TestReconcilerStallHaltsDispatchWithoutAnOperator(t *testing.T) {
 	if source, _, _ := poolHalt(t, pool); source != "p1_incident" {
 		t.Fatalf("the halt lifted itself once the reconciler came back (source=%q)", source)
 	}
-	if got := haltAuditCount(t, pool, "dispatch.resumed") - resumesBefore; got != 0 {
+	if got := auditActionCount(t, pool, "dispatch.resumed") - resumesBefore; got != 0 {
 		t.Errorf("dispatch.resumed events = %d; no detector may lift a halt", got)
 	}
 }
@@ -215,7 +215,7 @@ func TestAFailingMaskerCanaryHaltsDispatchWithoutAnOperator(t *testing.T) {
 		t.Fatalf("dispatch halted with an intact masker (source=%q)", source)
 	}
 
-	haltsBefore := haltAuditCount(t, pool, "dispatch.halted")
+	haltsBefore := auditActionCount(t, pool, "dispatch.halted")
 	svc.MaskerCanary = func() []string { return []string{"openai style key"} }
 	sweep()
 	source, reason, byPlatform := poolHalt(t, pool)
@@ -228,14 +228,14 @@ func TestAFailingMaskerCanaryHaltsDispatchWithoutAnOperator(t *testing.T) {
 	if !byPlatform {
 		t.Error("declared_by is set; a halt the platform concluded on its own has no human actor")
 	}
-	if got := haltAuditCount(t, pool, "dispatch.halted") - haltsBefore; got != 1 {
+	if got := auditActionCount(t, pool, "dispatch.halted") - haltsBefore; got != 1 {
 		t.Fatalf("dispatch.halted events = %d, want exactly 1", got)
 	}
 
 	for i := 0; i < 3; i++ {
 		sweep()
 	}
-	if got := haltAuditCount(t, pool, "dispatch.halted") - haltsBefore; got != 1 {
+	if got := auditActionCount(t, pool, "dispatch.halted") - haltsBefore; got != 1 {
 		t.Errorf("dispatch.halted events after four sweeps = %d, want 1", got)
 	}
 
@@ -277,7 +277,7 @@ func TestANodeReportingAP02BreachHaltsTheFleetWithoutAnOperator(t *testing.T) {
 		t.Fatalf("an unknown P-02 reading halted the fleet (source=%q); a rebooting node would stop dispatch", source)
 	}
 
-	haltsBefore := haltAuditCount(t, pool, "dispatch.halted")
+	haltsBefore := auditActionCount(t, pool, "dispatch.halted")
 	breached := providertest.DefaultCapability(fake.Name)
 	breached.Security = newP02Capability("fail", "reachable from a sandbox: db.internal:5432")
 	fake.Capability = &breached
@@ -292,14 +292,14 @@ func TestANodeReportingAP02BreachHaltsTheFleetWithoutAnOperator(t *testing.T) {
 	if !byPlatform {
 		t.Error("declared_by is set; a halt the platform concluded on its own has no human actor")
 	}
-	if got := haltAuditCount(t, pool, "dispatch.halted") - haltsBefore; got != 1 {
+	if got := auditActionCount(t, pool, "dispatch.halted") - haltsBefore; got != 1 {
 		t.Fatalf("dispatch.halted events = %d, want exactly 1", got)
 	}
 
 	for i := 0; i < 3; i++ {
 		sweep()
 	}
-	if got := haltAuditCount(t, pool, "dispatch.halted") - haltsBefore; got != 1 {
+	if got := auditActionCount(t, pool, "dispatch.halted") - haltsBefore; got != 1 {
 		t.Errorf("dispatch.halted events after four sweeps = %d, want 1", got)
 	}
 

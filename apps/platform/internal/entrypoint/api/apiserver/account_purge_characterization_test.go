@@ -69,7 +69,7 @@ func accountEmail(t *testing.T, pool *pgxpool.Pool, userID string) string {
 	return email
 }
 
-func advisoryLocksHeldByTheProduct(t *testing.T, pool *pgxpool.Pool) int64 {
+func advisoryLocksHeldByTheProduct(t *testing.T, pool *pgxpool.Pool) int {
 	t.Helper()
 	ctx := context.Background()
 	for deadline := time.Now().Add(2 * time.Second); pool.Stat().AcquiredConns() > 0 && time.Now().Before(deadline); {
@@ -92,7 +92,7 @@ func advisoryLocksHeldByTheProduct(t *testing.T, pool *pgxpool.Pool) int64 {
 		}
 		pids = append(pids, pid)
 	}
-	return countRows(t, pool,
+	return countRow(t, pool,
 		`SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND granted AND pid = ANY($1)`, pids)
 }
 

@@ -72,11 +72,6 @@ func switchAgent(t *testing.T, operator *client, name string, enabled bool, note
 	return agent
 }
 
-func agentAuditCount(t *testing.T, pool *pgxpool.Pool, action string) int {
-	t.Helper()
-	return countRow(t, pool, "SELECT count(*) FROM audit_events WHERE action = $1", action)
-}
-
 func TestTheAuditLogTellsAnAgentFromAPersonAndRefusesBoth(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -229,7 +224,7 @@ func TestTheAgentBrakeStopsRunsAndHoldsUntilReleased(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	releasesBefore := agentAuditCount(t, pool, "platform_agent.brake_released")
+	releasesBefore := auditActionCount(t, pool, "platform_agent.brake_released")
 
 	code, brake := operatorCall(t, operator, http.MethodPut, "/admin/agents/brake", `{"note":"incident"}`)
 	if code != http.StatusOK || brake["reason"] != "incident" {
@@ -257,7 +252,7 @@ func TestTheAgentBrakeStopsRunsAndHoldsUntilReleased(t *testing.T) {
 	if code, _ := operatorCall(t, operator, http.MethodDelete, "/admin/agents/brake", `{"note":"again"}`); code != http.StatusNoContent {
 		t.Errorf("releasing a released brake: got %d, want 204", code)
 	}
-	if n := agentAuditCount(t, pool, "platform_agent.brake_released"); n != releasesBefore+1 {
+	if n := auditActionCount(t, pool, "platform_agent.brake_released"); n != releasesBefore+1 {
 		t.Errorf("brake releases audited: %d, want %d (a release of nothing is not audited)", n, releasesBefore+1)
 	}
 }

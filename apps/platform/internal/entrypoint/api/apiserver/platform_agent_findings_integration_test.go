@@ -128,7 +128,7 @@ func (w *findingWorld) eventKinds(finding pgtype.UUID) []string {
 func (w *findingWorld) move(finding pgtype.UUID, status, note string) (int, map[string]any) {
 	w.t.Helper()
 	body, _ := json.Marshal(map[string]string{"status": status, "note": note})
-	return operatorCall(w.t, w.operator, http.MethodPut, "/admin/agents/findings/"+uuidString(finding)+"/status", string(body))
+	return operatorCall(w.t, w.operator, http.MethodPut, "/admin/agents/findings/"+uuidText(finding)+"/status", string(body))
 }
 
 func TestAReportedProblemIsOneFindingAcrossDaysUntilItRecoversAndReopens(t *testing.T) {
@@ -321,14 +321,14 @@ func TestOperatorsListLiveFindingsWithCountsAndReadOneWithItsHistory(t *testing.
 		t.Fatalf("GET findings: %d %v", code, body)
 	}
 	live := idsOf(body["findings"])
-	if !slices.Contains(live, uuidString(got[0].id)) || slices.Contains(live, uuidString(got[1].id)) {
+	if !slices.Contains(live, uuidText(got[0].id)) || slices.Contains(live, uuidText(got[1].id)) {
 		t.Errorf("default list %v, want the open one and not the dismissed one", live)
 	}
 	if counts, _ := body["counts"].(map[string]any); counts["dismissed"].(float64) < 1 || counts["recovered"] == nil {
 		t.Errorf("counts %v, want every status counted", counts)
 	}
 	_, body = operatorCall(t, w.operator, http.MethodGet, "/admin/agents/findings?status=dismissed", "")
-	if dismissed := idsOf(body["findings"]); !slices.Contains(dismissed, uuidString(got[1].id)) {
+	if dismissed := idsOf(body["findings"]); !slices.Contains(dismissed, uuidText(got[1].id)) {
 		t.Errorf("dismissed list %v, want the dismissed one", dismissed)
 	}
 	if code, _ := operatorCall(t, w.operator, http.MethodGet, "/admin/agents/findings?status=closed", ""); code != http.StatusBadRequest {
@@ -383,7 +383,7 @@ func TestFindingInboxContinuesPastOnePageWithoutLosingTiedRows(t *testing.T) {
 
 func assertDismissedFindingDetail(t *testing.T, w *findingWorld, id pgtype.UUID) {
 	t.Helper()
-	code, body := operatorCall(t, w.operator, http.MethodGet, "/admin/agents/findings/"+uuidString(id), "")
+	code, body := operatorCall(t, w.operator, http.MethodGet, "/admin/agents/findings/"+uuidText(id), "")
 	events, _ := body["events"].([]any)
 	if code != http.StatusOK || len(events) != 2 {
 		t.Fatalf("GET finding: %d %v, want it with two events", code, body)

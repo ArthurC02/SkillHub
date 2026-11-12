@@ -23,6 +23,7 @@ import {
 } from "../testing/fixtures/platform";
 import { DEFAULT_WAIT_MS, pollUntil } from "../testing/poll";
 import { preloadEveryPage } from "../testing/pages";
+import { json } from "../testing/http";
 
 beforeAll(preloadEveryPage);
 
@@ -41,12 +42,6 @@ afterEach(async () => {
   container.remove();
   vi.unstubAllGlobals();
 });
-
-function json(body: unknown, status = 200) {
-  return Promise.resolve(
-    new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } }),
-  );
-}
 
 function stubPlatform() {
   vi.stubGlobal("fetch", (input: string) => {

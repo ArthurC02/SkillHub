@@ -9,14 +9,18 @@ import { TestCaseList } from "./test-cases/TestCaseList.page";
 import type { TestCase } from "./testcases.service";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 import {
-  ME,
-  RUNS,
   CHECK_KINDS,
+  ME,
   PLATFORM_GRADER,
+  RUNS,
+  SKILL,
+  TEST_CASE,
+  VERSION,
   WORKSPACE_GRADER,
 } from "../../testing/fixtures/platform";
 
 let container: HTMLDivElement;
+import { json } from "../../testing/http";
 let root: Root;
 
 beforeEach(() => {
@@ -33,9 +37,6 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 
-const TEST_CASE = "33333333-3333-3333-3333-333333333333";
-const SKILL = "11111111-1111-1111-1111-111111111111";
-const VERSION = "22222222-2222-2222-2222-222222222222";
 const OTHER_VERSION = "55555555-5555-5555-5555-555555555555";
 const OTHER_SKILL = "44444444-4444-4444-4444-444444444444";
 
@@ -134,15 +135,6 @@ type Overrides = {
   skills?: { skill_id: string; name: string; summary: string }[];
   versions?: typeof SKILL_VERSIONS;
 };
-
-function json(body: unknown, status = 200) {
-  return Promise.resolve(
-    new Response(JSON.stringify(body), {
-      status,
-      headers: { "Content-Type": "application/json" },
-    }),
-  );
-}
 
 type PlatformRequest = { url: string; path: string; method: string };
 

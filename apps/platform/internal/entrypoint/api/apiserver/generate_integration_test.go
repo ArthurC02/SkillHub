@@ -307,7 +307,7 @@ func TestAGeneratedSkillIsNotFoundBySearchIncludingItsOwnCreator(t *testing.T) {
 	if err != nil || res.Report.Blocked {
 		t.Fatalf("GenerateSkill: %v %+v", err, res.Report.Findings)
 	}
-	id := uuidString(res.Skill.ID)
+	id := uuidText(res.Skill.ID)
 
 	if ids := c.skillIDs(t, "/skills"); !slices.Contains(ids, id) {
 		t.Fatalf("the generated skill is missing from its own workspace list: %v", ids)
@@ -344,7 +344,7 @@ func TestAForkOfAGeneratedSkillStaysGenerated(t *testing.T) {
 		t.Fatalf("GenerateSkill: %v %+v", err, res.Report.Findings)
 	}
 
-	fork := postFork(t, c, uuidString(res.Skill.ID), http.StatusCreated)
+	fork := postFork(t, c, uuidText(res.Skill.ID), http.StatusCreated)
 
 	var redistribution string
 	if err := pool.QueryRow(context.Background(),
@@ -403,14 +403,6 @@ func workspaceOf(t *testing.T, pool *pgxpool.Pool, c *client) identity.Workspace
 		t.Fatal(err)
 	}
 	return publishedWorkspace(ws)
-}
-
-func uuidString(id pgtype.UUID) string {
-	s, err := id.Value()
-	if err != nil || s == nil {
-		return ""
-	}
-	return s.(string)
 }
 
 func TestTheGenerationEntryPointIsInvisibleUntilItIsExposed(t *testing.T) {

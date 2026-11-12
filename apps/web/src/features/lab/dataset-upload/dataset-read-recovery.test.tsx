@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
-import { renderedApp, type Locator } from "../../../testing/app";
+import { renderedApp } from "../../../testing/app";
 import { TEST_CASE, VERSION } from "../../../testing/fixtures/platform";
+import { chooseCsv } from "../../../testing/files";
 
 const app = renderedApp();
 
@@ -12,17 +13,6 @@ const LIMITS = {
   allowed_kinds: ["csv"],
   note: "",
 };
-
-function chooseFile(input: Locator, name: string, content: string) {
-  const element = input.element();
-  const file = new File([content], name, { type: "text/csv" });
-  Object.defineProperty(element, "files", { value: [file], configurable: true });
-  Object.defineProperty(element, "value", {
-    value: `C:\\fakepath\\${name}`,
-    writable: true,
-    configurable: true,
-  });
-}
 
 for (const owner of ["rules", "usage"]) {
   for (const cached of [false, true]) {
@@ -82,7 +72,7 @@ for (const owner of ["rules", "usage"]) {
         await expect(page.locator(".dataset-upload-guide")).toHaveCount(0);
       }
       const file = page.getByLabel("選擇檔案", { exact: true });
-      chooseFile(file, "rows.csv", "n".repeat(1000));
+      chooseCsv(file, "rows.csv", "n".repeat(1000));
       expect(writes).toBe(0);
       await page.getByRole("button", { name: "再試一次", exact: true }).focus();
       await page.press("Enter");

@@ -17,10 +17,6 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/wiring"
 )
 
-func creditTestLimits() creation.Limits {
-	return creation.Limits{MaxCostUSD: 1, MaxCallCostUSD: .1, MaxSteps: 8, MaxToolCalls: 3, CallTimeout: 2 * time.Second, SessionTimeout: time.Minute, Retention: time.Hour, MaxOutputTokens: 1000}
-}
-
 func seedCreationStep(t *testing.T, c *client, sessionID pgtype.UUID, usdMicros int64, source string, ago time.Duration) {
 	t.Helper()
 	if _, err := testPool.Exec(context.Background(), `
@@ -42,7 +38,7 @@ func sessionSummary(t *testing.T, sessionID pgtype.UUID) (rows int, usdMicros in
 }
 
 func TestAnEndedCreationSessionLeavesExactlyOneCostSummary(t *testing.T) {
-	a, _, _ := creationFixtureWithLimits(t, creditTestLimits())
+	a, _, _ := creationFixtureWithLimits(t, creationLimits())
 	c := a.login(t, "summary-cancel")
 	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "", "budget_credits": 650}, 200)
 	id := mustUUID(t, v.ID)
@@ -82,7 +78,7 @@ func TestTheDailyJobSummarizesASessionThatStoppedWithoutEnding(t *testing.T) {
 }
 
 func TestTheStartGateReadsWhatAWholeSessionCosts(t *testing.T) {
-	a, _, _ := creationFixtureWithLimits(t, creditTestLimits())
+	a, _, _ := creationFixtureWithLimits(t, creationLimits())
 	if _, err := testPool.Exec(context.Background(), `
 		INSERT INTO cost_statistics (kind, window_start, window_end, sample_count, p50_usd_micros, p90_usd_micros, p95_usd_micros, max_usd_micros)
 		VALUES ('creation_session', now() - interval '1 day', now() + interval '1 day', 20, 1000000, 1000000, 1000000, 1000000)`); err != nil {
@@ -106,7 +102,7 @@ func TestTheStartGateReadsWhatAWholeSessionCosts(t *testing.T) {
 }
 
 func TestAStartWhoseReplyWasLostReplaysAfterTheBalanceFellBelowTheGate(t *testing.T) {
-	a, _, _ := creationFixtureWithLimits(t, creditTestLimits())
+	a, _, _ := creationFixtureWithLimits(t, creationLimits())
 	a.startingCredits = 1000
 	c := a.login(t, "replay-gate")
 	start := map[string]any{"id": creationID(t), "message": "", "budget_credits": 650}
@@ -138,7 +134,7 @@ func creationDomain(t *testing.T, s *creation.Service, c *client, v creation.Vie
 }
 
 func TestTheCreationScreenIsQuotedInCredits(t *testing.T) {
-	a, _, _ := creationFixtureWithLimits(t, creditTestLimits())
+	a, _, _ := creationFixtureWithLimits(t, creationLimits())
 	c := a.login(t, "creation-in-credits")
 
 	var limits map[string]any

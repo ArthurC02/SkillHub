@@ -4,12 +4,16 @@ import { onlineManager, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
 import { VersionUpload } from "./version/components/VersionUpload";
-import { IMPORT_LIMITS, SKILL_VERSIONS, platformResponse } from "../../testing/fixtures/platform";
+import {
+  IMPORT_LIMITS,
+  platformResponse,
+  SKILL,
+  SKILL_VERSIONS,
+  VERSION,
+} from "../../testing/fixtures/platform";
 import { queryKeys } from "../../core/api/queryKeys";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
-
-const SKILL = "11111111-1111-1111-1111-111111111111";
-const VERSION = "22222222-2222-2222-2222-222222222222";
+import { json } from "../../testing/http";
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
@@ -53,12 +57,6 @@ afterEach(async () => {
   if (scrollIntoView) HTMLElement.prototype.scrollIntoView = scrollIntoView;
   else delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView;
 });
-
-function json(body: unknown, status = 200) {
-  return Promise.resolve(
-    new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } }),
-  );
-}
 
 async function render() {
   await act(async () => {

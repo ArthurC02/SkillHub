@@ -7,10 +7,11 @@ import { Downloads } from "./downloads/DownloadsSection";
 import { PackagingBlockedReason as PackagingBlockedReasonEnum } from "@skillhub/api-client-ts";
 import { PACKAGING_BLOCKED_LABEL, packagingGate } from "./packaging.model";
 import { Packaging } from "./build/Packaging.page";
-import { ME } from "../../testing/fixtures/platform";
+import { ME, SKILL, VERSION } from "../../testing/fixtures/platform";
 import type { DownloadArtifact, PackagingBlockedReason } from "./packaging.service";
 import type { SkillDetail } from "../../core/api/types";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
+import { json } from "../../testing/http";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -27,8 +28,6 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 
-const SKILL = "11111111-1111-1111-1111-111111111111";
-const VERSION = "22222222-2222-2222-2222-222222222222";
 const OLDER_VERSION = "44444444-4444-4444-4444-444444444444";
 const ARTIFACT = "33333333-3333-3333-3333-333333333333";
 
@@ -225,12 +224,6 @@ const artifact: DownloadArtifact = {
   includes_test_cases: false,
   packager_version: "1.0.0",
 };
-
-function json(body: unknown, status = 200) {
-  return Promise.resolve(
-    new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } }),
-  );
-}
 
 function stubPlatform(
   options: {

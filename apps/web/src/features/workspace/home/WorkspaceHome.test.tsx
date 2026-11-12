@@ -8,6 +8,7 @@ import { queryKeys } from "../../../core/api/queryKeys";
 import { WorkspaceHome } from "./WorkspaceHome.page";
 import { pollUntil } from "../../../testing/poll";
 import { creationSnapshot } from "../../../testing/fixtures/creation";
+import { json } from "../../../testing/http";
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
@@ -53,12 +54,6 @@ afterEach(async () => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
 });
-
-function json(body: unknown, status = 200) {
-  return Promise.resolve(
-    new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } }),
-  );
-}
 
 for (const identityConfirmed of [false, true]) {
   test(`workspace home explains paused initial ${identityConfirmed ? "summaries" : "identity"} without issuing reads`, async () => {

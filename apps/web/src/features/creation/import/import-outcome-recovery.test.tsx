@@ -3,6 +3,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import type { ImportResult } from "../../../core/api/types";
 import { platformResponse, SKILL, VERSION } from "../../../testing/fixtures/platform";
 import { renderedApp, type App } from "../../../testing/app";
+import { chooseZipWithoutNativeValidation } from "../../../testing/files";
 
 const app = renderedApp();
 
@@ -103,16 +104,6 @@ function holdIdentityRead(page: App) {
       release?.();
     },
   };
-}
-
-async function chooseZipWithoutNativeValidation(page: App, name: string, content: string) {
-  const input = page.getByLabel("小工具 zip", { exact: true }).element() as HTMLInputElement;
-  const file = new File([content], name, { type: "application/zip" });
-  Object.defineProperty(input, "files", { configurable: true, value: [file] });
-  input.removeAttribute("required");
-  await act(async () => {
-    input.dispatchEvent(new Event("change", { bubbles: true }));
-  });
 }
 
 async function chooseDraft(page: App, source: string, name: string) {

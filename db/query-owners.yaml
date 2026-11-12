@@ -96,7 +96,6 @@ queries:
   MarkArtifactPurged: packaging
   ListArtifactsClaimingObject: packaging
   ListDatasetsClaimingObject: testlab
-  MarkDatasetObjectLost: testlab
   ListDatasetsPastRetention: testlab
   MarkDatasetPurged: testlab
   ListDatasetCleanupIntents: testlab
@@ -442,7 +441,6 @@ scope:
   ReleaseOutboxEventLeases: user
   MarkAccountPurgeStarted: user
   MarkDatasetCleanupIntentPurged: user
-  MarkDatasetObjectLost: user
   MarkDownloadCleanupIntentPurged: user
   MarkOutboxEventsPublished: user
   MarkRunArtifactUploadIntentPurged: user

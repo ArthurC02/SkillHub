@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/fs"
 	"net/http"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -74,12 +75,6 @@ func namesOf(entries []map[string]any, key string) []string {
 	return names
 }
 
-func sorted(names []string) []string {
-	out := append([]string(nil), names...)
-	sort.Strings(out)
-	return out
-}
-
 func TestABundleExportsAsAPluginThatImportsBackAsTheSameSkills(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -107,7 +102,7 @@ func TestABundleExportsAsAPluginThatImportsBackAsTheSameSkills(t *testing.T) {
 		t.Fatalf("importing the exported plugin: %d shape %v (%v)", code, imported["shape"], imported)
 	}
 	var want []string
-	for _, name := range sorted(skillNames) {
+	for _, name := range slices.Sorted(slices.Values(skillNames)) {
 		want = append(want, "skills/"+name)
 	}
 	if got := namesOf(skillsOf(t, imported), "path"); strings.Join(got, ",") != strings.Join(want, ",") {
@@ -138,7 +133,7 @@ func assertOnePluginDownloadOfTheBundle(t *testing.T, c *client, bundle string, 
 	if plugin == nil || plugin["name"] != bundle || plugin["version"] != "1.0.0" || downloads[0]["skill_id"] != nil {
 		t.Errorf("the download row = %v, want a plugin %s 1.0.0 and no single skill", downloads[0], bundle)
 	}
-	if members := objects(t, plugin["members"]); strings.Join(namesOf(members, "name"), ",") != strings.Join(sorted(skillNames), ",") {
+	if members := objects(t, plugin["members"]); strings.Join(namesOf(members, "name"), ",") != strings.Join(slices.Sorted(slices.Values(skillNames)), ",") {
 		t.Errorf("plugin members = %v, want %v", members, skillNames)
 	}
 }

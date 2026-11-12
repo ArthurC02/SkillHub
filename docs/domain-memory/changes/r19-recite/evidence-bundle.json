@@ -1,0 +1,39 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "r19-recite",
+  "proposal_id": "r19-recite",
+  "registry_revision": {
+    "observed_commit": "1690ae33f4bc0448415e2c0191dec39afeb3a66e",
+    "registry_digest": "sha256:02ad52e39b673542689996121cd5719b189934742c805f0b9a26a27266d42552",
+    "committed_digest": "sha256:02ad52e39b673542689996121cd5719b189934742c805f0b9a26a27266d42552"
+  },
+  "approvals": [],
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "1a9f61e76adf6b6c1d416482a86531056b0007c0",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "1690ae33f4bc0448415e2c0191dec39afeb3a66e",
+      "registry_digest": "sha256:02ad52e39b673542689996121cd5719b189934742c805f0b9a26a27266d42552",
+      "committed_digest": "sha256:02ad52e39b673542689996121cd5719b189934742c805f0b9a26a27266d42552"
+    }
+  },
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": ".domain-memory/domain-memory.exe verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/r19-recite --path apps/platform/internal/entrypoint/api/apiserver/download_integration_test.go --path apps/platform/internal/entrypoint/api/apiserver/platform_agent_proposals_integration_test.go --path apps/platform/internal/entrypoint/api/apiserver/platform_agents_integration_test.go --path apps/platform/internal/product/operations/agents.go --path apps/platform/internal/product/operations/proposals.go --path apps/platform/internal/skill/delivery/download.go",
+      "command_profile": "verify-evidence",
+      "exit_code": 0,
+      "output_sha256": "sha256:330b190c295fc26d7adb2e2a54ba657e24b7fb8279935f387461cc9980153164",
+      "finished_at": "2026-11-12T09:34:15.400964Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

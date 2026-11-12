@@ -2,6 +2,7 @@ import { act } from "react";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { SKILL, VERSION, SKILL_VERSIONS } from "../../../testing/fixtures/platform";
 import { renderedApp, type App, type Reply } from "../../../testing/app";
+import { chooseZipWithoutNativeValidation } from "../../../testing/files";
 
 const app = renderedApp();
 
@@ -102,18 +103,6 @@ function holdSessionRead(page: App) {
   };
 }
 
-async function chooseZip(page: App, name: string, content: string) {
-  const input = page.getByLabel("小工具 zip", { exact: true }).element() as HTMLInputElement;
-  Object.defineProperty(input, "files", {
-    configurable: true,
-    value: [new File([content], name, { type: "application/zip" })],
-  });
-  input.removeAttribute("required");
-  await act(async () => {
-    input.dispatchEvent(new Event("change", { bubbles: true }));
-  });
-}
-
 function chosenName(page: App) {
   return (page.getByLabel("小工具 zip", { exact: true }).element() as HTMLInputElement).files?.[0]
     ?.name;
@@ -167,7 +156,7 @@ for (const outcome of OUTCOMES) {
     try {
       await page.goto(`/skills/${SKILL}/versions/${VERSION}`);
       await expect(page.locator(".auth-name")).toHaveText("tester");
-      await chooseZip(page, "first.zip", "first bytes");
+      await chooseZipWithoutNativeValidation(page, "first.zip", "first bytes");
       await page.getByRole("button", { name: SUBMIT, exact: true }).click();
       const failure = page.getByRole("alert", { name: "上傳新版本結果", exact: true });
       const resend = page.getByRole("button", { name: "重新送出上傳", exact: true });
@@ -176,7 +165,7 @@ for (const outcome of OUTCOMES) {
         expect(failure.isFocused()).toBe(true);
         expect(resend.isDisabled()).toBe(true);
       });
-      await chooseZip(page, "next.zip", "next bytes");
+      await chooseZipWithoutNativeValidation(page, "next.zip", "next bytes");
       const input = page.getByLabel("小工具 zip", { exact: true });
       await input.focus();
       release();
@@ -252,7 +241,7 @@ test("an identity check starting in the submit turn preserves the preceding unkn
   try {
     await page.goto(`/skills/${SKILL}/versions/${VERSION}`);
     await expect(page.locator(".auth-name")).toHaveText("tester");
-    await chooseZip(page, "first.zip", "first");
+    await chooseZipWithoutNativeValidation(page, "first.zip", "first");
     await page.getByRole("button", { name: SUBMIT, exact: true }).click();
     const failure = page.getByRole("alert", { name: "上傳新版本結果", exact: true });
     const resend = page.getByRole("button", { name: "重新送出上傳", exact: true });
@@ -260,7 +249,7 @@ test("an identity check starting in the submit turn preserves the preceding unkn
       expect(failure.text()).toContain("無法確認這份檔案是否已存成新版本");
       expect(resend.isDisabled()).toBe(false);
     });
-    await chooseZip(page, "next.zip", "next");
+    await chooseZipWithoutNativeValidation(page, "next.zip", "next");
     session.start();
     const form = page.locator("form.version-upload").element() as HTMLFormElement;
     await act(async () => {
@@ -335,7 +324,7 @@ for (const refusal of [
     );
     await page.goto(`/skills/${SKILL}/versions/${VERSION}`);
     await expect(page.locator(".auth-name")).toHaveText("tester");
-    await chooseZip(page, "rejected.zip", "rejected bytes");
+    await chooseZipWithoutNativeValidation(page, "rejected.zip", "rejected bytes");
     await page.getByRole("button", { name: SUBMIT, exact: true }).click();
     const failure = page.getByRole("alert", { name: "上傳新版本結果", exact: true });
     await page.eventually(() => {

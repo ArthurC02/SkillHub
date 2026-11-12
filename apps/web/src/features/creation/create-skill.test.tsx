@@ -9,6 +9,7 @@ import { queryKeys } from "../../core/api/queryKeys";
 import { createAppRouter } from "../../app/router";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 import { preloadEveryPage } from "../../testing/pages";
+import { CREATION_LIMITS } from "../../testing/fixtures/creation";
 
 beforeAll(preloadEveryPage);
 
@@ -51,16 +52,6 @@ const SECOND_SESSION = {
     brief: "整理另一個完全不同的任務",
   },
 };
-const LIMITS = {
-  min_budget_credits: 130,
-  max_budget_credits: 6500,
-  max_steps: 20,
-  max_tool_calls: 10,
-  call_timeout_seconds: 120,
-  session_timeout_seconds: 3600,
-  retention_seconds: 604800,
-};
-
 beforeEach(() => {
   queryClient.clear();
   router = createAppRouter();
@@ -109,7 +100,7 @@ function creationRoute(seen: string[], sessions = [SESSION], onCreate?: (id: str
   let created: typeof SESSION | undefined;
   return (path: string, init?: RequestInit) => {
     seen.push(path);
-    if (path === "/creation-sessions/limits") return json(LIMITS);
+    if (path === "/creation-sessions/limits") return json(CREATION_LIMITS);
     if (path === "/me/credits") return json({ error: "not found" }, 404);
     if (path === "/creation-sessions") {
       if (init?.method === "POST") {

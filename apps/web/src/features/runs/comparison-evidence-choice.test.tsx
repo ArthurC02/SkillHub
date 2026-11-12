@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { expect, test } from "vitest";
 import {
   COMPARISON,
   OTHER_RUN,
@@ -9,18 +9,10 @@ import {
   platformResponse,
 } from "../../testing/fixtures/platform";
 import { renderedApp, type App, type Locator } from "../../testing/app";
+import { stubScrollIntoView } from "../../testing/dom";
 
 const app = renderedApp();
-const scrollIntoView = HTMLElement.prototype.scrollIntoView;
-
-beforeEach(() => {
-  HTMLElement.prototype.scrollIntoView = vi.fn();
-});
-
-afterEach(() => {
-  if (scrollIntoView) HTMLElement.prototype.scrollIntoView = scrollIntoView;
-  else delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView;
-});
+stubScrollIntoView();
 
 const SECOND = "7e9b2a00-1111-4111-8111-000000000002";
 const IDS = [RUN, OTHER_RUN, SECOND];

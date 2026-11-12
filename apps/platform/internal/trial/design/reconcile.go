@@ -121,5 +121,5 @@ func (s *Service) MarkDatasetObjectLost(ctx context.Context, tx pgx.Tx, datasetI
 	if s == nil || tx == nil {
 		return errPersistenceNotConfigured
 	}
-	return gen.New(tx).MarkDatasetObjectLost(ctx, datasetID)
+	return gen.New(tx).MarkDatasetPurged(ctx, datasetID)
 }

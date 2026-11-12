@@ -18,6 +18,7 @@ import {
 } from "../../testing/fixtures/platform";
 import { SkillVersion } from "./version/SkillVersion.page";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
+import { json } from "../../testing/http";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -76,12 +77,6 @@ afterEach(async () => {
   if (scrollIntoView) HTMLElement.prototype.scrollIntoView = scrollIntoView;
   else delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView;
 });
-
-function json(body: unknown, status = 200) {
-  return Promise.resolve(
-    new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } }),
-  );
-}
 
 function runItem(overrides: Record<string, unknown> = {}) {
   return {

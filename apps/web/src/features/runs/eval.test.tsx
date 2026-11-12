@@ -8,6 +8,8 @@ import { EvaluationPanel } from "./evaluation/EvaluationPanel";
 import { RunVerdict } from "./components/RunVerdict";
 import type { Evaluation, ImprovementSuggestion, SuggestionDiff } from "./evaluation.service";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
+import { json } from "../../testing/http";
+import { SKILL, RUN } from "../../testing/fixtures/platform";
 
 let container: HTMLDivElement;
 let root: Root;
@@ -39,12 +41,6 @@ test("an apply receipt invalidates the requested version cache despite UUID case
     true,
   );
 });
-
-function json(body: unknown, status = 200) {
-  return Promise.resolve(
-    new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } }),
-  );
-}
 
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
@@ -282,8 +278,6 @@ vi.mock("@tanstack/react-router", () => ({
   },
 }));
 
-const RUN = "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20";
-const SKILL = "11111111-1111-1111-1111-111111111111";
 const TEST_CASE = "44444444-4444-4444-4444-444444444444";
 const NEW_VERSION = "55555555-5555-5555-5555-555555555555";
 

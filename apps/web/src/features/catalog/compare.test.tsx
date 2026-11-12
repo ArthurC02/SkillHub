@@ -21,6 +21,7 @@ import {
   skillDetail,
 } from "../../testing/fixtures/platform";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
+import { json } from "../../testing/http";
 
 const FOREIGN_RUN = {
   ...RUNS.runs[1],
@@ -61,12 +62,6 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 const pathOf = (url: string) => url.replace(/^https?:\/\/[^/]+/, "").split("?")[0];
-
-function json(body: unknown, status = 200) {
-  return Promise.resolve(
-    new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } }),
-  );
-}
 
 function stubPlatform(calls?: string[]) {
   vi.stubGlobal("fetch", (input: string) => {
