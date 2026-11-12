@@ -95,7 +95,9 @@ SKILLHUB_SANDBOX_IMAGE=<repo:tag@digest> python tools/sec009/t8-image-audit.py  
 
 在節點上跑時帶著 `release.env` 的 `SKILLHUB_SANDBOX_IMAGE`：它先確認節點的標籤等於 checkout 裡 Dockerfile 的 `IMAGE_VERSION`，再對那個 digest 查 attestation。`--json` 的 I-04 列多一個 `expires_in_days`，每日的 `runtime-scan-expiry.yml` 讀它，剩 7 天以內或任一項不是 PASS 就開 issue——這是掃描到期前 7 天告警的發送端。
 
-**它是 Suite 1 裡唯一一項從映像發佈那天起就跑得了的**：查的是 GHCR 上公開的東西，不需要節點、不需要 Linux、不需要任何憑證。而在今天之前沒有人跑過。
+這部分查的是 GHCR 上的映像，不需要節點、Linux 或模型憑證；執行環境須安裝 GitHub CLI，並具備該 GHCR 映像的唯讀權限。排程使用既有 `GH_TOKEN` 與 `packages: read`，不需要模型金鑰。
+
+探針把選定的 bundle 交給 `gh attestation verify`，固定驗證 `ArthurC02/SkillHub` 與 `.github/workflows/runtime-image.yml` 的簽署身分、predicate type 和映像 subject digest，只讀取驗證成功後的 statement。SBOM 與掃描各自驗證；CLI 缺席、逾時、拒絕、輸出格式錯誤或超過 16 MiB 都保留為 `UNKNOWN`。每次驗證最多 60 秒，臨時 bundle 與輸出檔會回收。
 
 ### 輸出與證據
 

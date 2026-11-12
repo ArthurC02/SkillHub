@@ -192,6 +192,8 @@ digest**、重掃、重新 attest `scanned_at`，並對可修的 Critical／High
 「registry 不是 GHCR」，而[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)選 GHCR 的理由正是 CI 本來就在這裡。哪天這兩件事變了，
 `cosign attach` 產出的 referrer 形狀相同，要搬的是驗證流程不是儲存格式。
 
+Suite 1 的映像稽核把實際 bundle 交給 `gh attestation verify`，固定來源 repository 與簽署 workflow，分別核對 SBOM 和漏洞 predicate，再使用驗證後的 statement 比對 subject digest 與掃描結果。未能驗證時不採信 bundle 內文；這個唯讀稽核不取代 Sandbox 新 Run 的准入接線。
+
 ### 為什麼是 syft ＋ grype，不是 trivy
 
 trivy 一個工具就能做 SBOM ＋ 掃描，少一個工具本來是優點。選 syft ＋ grype 的理由
