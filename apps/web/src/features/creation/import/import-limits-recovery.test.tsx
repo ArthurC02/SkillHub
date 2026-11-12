@@ -2,6 +2,7 @@ import { act } from "react";
 import { expect, test } from "vitest";
 import { IMPORT_LIMITS, SKILL, VERSION } from "../../../testing/fixtures/platform";
 import { renderedApp, type App } from "../../../testing/app";
+import { chooseZipWithoutNativeValidation } from "../../../testing/files";
 
 const app = renderedApp();
 
@@ -22,16 +23,6 @@ const imported = {
   refused: [],
   excluded_components: [],
 };
-
-async function chooseZipWithoutNativeValidation(page: App, name: string, content: string) {
-  const input = page.getByLabel("小工具 zip", { exact: true }).element() as HTMLInputElement;
-  const file = new File([content], name, { type: "application/zip" });
-  Object.defineProperty(input, "files", { configurable: true, value: [file] });
-  input.removeAttribute("required");
-  await act(async () => {
-    input.dispatchEvent(new Event("change", { bubbles: true }));
-  });
-}
 
 async function submitForm(page: App) {
   const form = page.locator(".import-source form").element();

@@ -1,25 +1,15 @@
 import { act } from "react";
 import { expect, test } from "vitest";
-import { renderedApp, type App, type Locator, type Reply } from "../../../testing/app";
+import { renderedApp, type App, type Reply } from "../../../testing/app";
 import { platformResponse, TEST_CASE, VERSION } from "../../../testing/fixtures/platform";
 import type { Dataset } from "../lab.service";
+import { chooseCsv } from "../../../testing/files";
 
 const app = renderedApp();
 
 const DATASETS_URL = `**/test-cases/${TEST_CASE}/datasets`;
 const DATASET_PATH = `/lab/test-cases/${TEST_CASE}/datasets?version=${VERSION}`;
 const SESSION_WHY = "登入狀態尚未確認；請先在頁首確認，再上傳測試資料。";
-
-function chooseFile(input: Locator, name: string, content: string) {
-  const element = input.element();
-  const file = new File([content], name, { type: "text/csv" });
-  Object.defineProperty(element, "files", { value: [file], configurable: true });
-  Object.defineProperty(element, "value", {
-    value: `C:\\fakepath\\${name}`,
-    writable: true,
-    configurable: true,
-  });
-}
 
 async function postedFileText(body: unknown): Promise<string> {
   return await ((body as FormData).get("file") as File).text();
@@ -130,7 +120,7 @@ for (const [transport, saved, failedRead] of [
       const upload = page.getByRole("button", { name: "上傳", exact: true });
       await expect(upload).toBeEnabled();
       const file = page.getByLabel("選擇檔案", { exact: true });
-      chooseFile(file, fileName, "n".repeat(1000));
+      chooseCsv(file, fileName, "n".repeat(1000));
       await upload.click();
       const result = page.getByRole("region", { name: "上傳結果", exact: true });
       const message = result.getByRole("alert");
@@ -188,7 +178,7 @@ test("an explicit upload refusal keeps its reason and does not reconcile an unkn
   await expect(page.locator(".auth-name")).toHaveText("tester");
   const upload = page.getByRole("button", { name: "上傳", exact: true });
   await expect(upload).toBeEnabled();
-  chooseFile(page.getByLabel("選擇檔案", { exact: true }), "rows.csv", "n".repeat(1000));
+  chooseCsv(page.getByLabel("選擇檔案", { exact: true }), "rows.csv", "n".repeat(1000));
   await upload.click();
   await expect(
     page.getByRole("region", { name: "上傳結果", exact: true }).getByRole("alert"),
@@ -218,7 +208,7 @@ test("an unconfirmed session disables dataset uploads without rereading capacity
   await expect(page.locator(".auth-name")).toHaveText("tester");
   const upload = page.getByRole("button", { name: "上傳", exact: true });
   await expect(upload).toBeEnabled();
-  chooseFile(page.getByLabel("選擇檔案", { exact: true }), "rows.csv", "n".repeat(1000));
+  chooseCsv(page.getByLabel("選擇檔案", { exact: true }), "rows.csv", "n".repeat(1000));
   checking = true;
   await act(async () => {
     document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
@@ -275,13 +265,13 @@ for (const previous of [false, true]) {
       const result = page.getByRole("region", { name: "上傳結果", exact: true });
       await expect(upload).toBeEnabled();
       if (previous) {
-        chooseFile(input, "first.csv", "first-data");
+        chooseCsv(input, "first.csv", "first-data");
         await upload.click();
         await expect(result).toContainText("無法確認上傳結果");
         await expect(result).toContainText("送出檔案：first.csv");
         await expect(upload).toBeEnabled();
       }
-      chooseFile(input, "next.csv", "next-data");
+      chooseCsv(input, "next.csv", "next-data");
       checking = true;
       await submitWhileIdentityStarts(page);
       await expect(page.getByText("正在確認登入狀態…", { exact: true })).toBeVisible();
@@ -314,7 +304,7 @@ for (const previous of [false, true]) {
       );
       await expect(result).toHaveCount(0);
       expect(writes).toEqual(previous ? ["first-data", "next-data"] : ["next-data"]);
-      chooseFile(input, "third.csv", "third-data");
+      chooseCsv(input, "third.csv", "third-data");
       gate = new Promise<void>((resolve) => {
         release = resolve;
       });

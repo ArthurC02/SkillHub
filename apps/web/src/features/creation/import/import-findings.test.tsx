@@ -1,8 +1,8 @@
-import { act } from "react";
 import { expect, test } from "vitest";
 import type { ImportResult } from "../../../core/api/types";
 import { SKILL, SKILL_B, SKILL_C, VERSION } from "../../../testing/fixtures/platform";
-import { renderedApp, type App } from "../../../testing/app";
+import { renderedApp } from "../../../testing/app";
+import { chooseZipWithoutNativeValidation } from "../../../testing/files";
 
 const app = renderedApp();
 
@@ -62,16 +62,6 @@ const RECEIPT: ImportResult = {
   refused: [],
   excluded_components: [],
 };
-
-async function chooseZipWithoutNativeValidation(page: App, name: string, content: string) {
-  const input = page.getByLabel("小工具 zip", { exact: true }).element() as HTMLInputElement;
-  const file = new File([content], name, { type: "application/zip" });
-  Object.defineProperty(input, "files", { configurable: true, value: [file] });
-  input.removeAttribute("required");
-  await act(async () => {
-    input.dispatchEvent(new Event("change", { bubbles: true }));
-  });
-}
 
 for (const source of ["url", "zip"] as const) {
   test(`${source} import keeps each skill's inspection summary visible before opening details`, async () => {

@@ -1,6 +1,7 @@
 import { expect, test } from "vitest";
-import { renderedApp, type Locator } from "../../../testing/app";
+import { renderedApp } from "../../../testing/app";
 import { TEST_CASE, VERSION } from "../../../testing/fixtures/platform";
+import { chooseCsv } from "../../../testing/files";
 
 const app = renderedApp();
 
@@ -17,17 +18,6 @@ const MALFORMED: [string, unknown][] = [
   ["missing file expiry", { datasets: [{ ...ROW, expires_at: undefined }], total_bytes: 1000 }],
   ["inconsistent total", { datasets: [ROW], total_bytes: 0 }],
 ];
-
-function chooseFile(input: Locator, name: string, content: string) {
-  const element = input.element();
-  const file = new File([content], name, { type: "text/csv" });
-  Object.defineProperty(element, "files", { value: [file], configurable: true });
-  Object.defineProperty(element, "value", {
-    value: `C:\\fakepath\\${name}`,
-    writable: true,
-    configurable: true,
-  });
-}
 
 for (const [owner, phase] of [
   ["detail", "initial"],
@@ -78,7 +68,7 @@ for (const [owner, phase] of [
           await expect(upload).toBeDisabled();
           await expect(page.locator("#upload-read-why")).toContainText("目前無法確認");
           await expect(page.getByText("還可以再上傳", { exact: false })).toHaveCount(0);
-          chooseFile(page.getByLabel("選擇檔案", { exact: true }), "chosen.csv", "n".repeat(1000));
+          chooseCsv(page.getByLabel("選擇檔案", { exact: true }), "chosen.csv", "n".repeat(1000));
         }
         expect(await page.axeViolations("main")).toEqual([]);
         current = { datasets: [], total_bytes: 0 };

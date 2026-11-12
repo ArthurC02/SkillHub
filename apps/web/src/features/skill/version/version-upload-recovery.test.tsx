@@ -2,6 +2,7 @@ import { act } from "react";
 import { afterAll, beforeAll, expect, test } from "vitest";
 import { SKILL, VERSION, SKILL_VERSIONS } from "../../../testing/fixtures/platform";
 import { renderedApp, type App } from "../../../testing/app";
+import { chooseZipWithoutNativeValidation } from "../../../testing/files";
 
 const app = renderedApp();
 
@@ -38,22 +39,10 @@ const CURRENT = {
   ],
 };
 
-async function chooseZip(page: App, name: string, content: string) {
-  const input = page.getByLabel("小工具 zip", { exact: true }).element() as HTMLInputElement;
-  Object.defineProperty(input, "files", {
-    configurable: true,
-    value: [new File([content], name, { type: "application/zip" })],
-  });
-  input.removeAttribute("required");
-  await act(async () => {
-    input.dispatchEvent(new Event("change", { bubbles: true }));
-  });
-}
-
 async function openUpload(page: App) {
   await page.goto(`/skills/${SKILL}/versions/${VERSION}`);
   await expect(page.locator(".auth-name")).toHaveText("tester");
-  await chooseZip(page, FIRST_FILE, "first bytes");
+  await chooseZipWithoutNativeValidation(page, FIRST_FILE, "first bytes");
   return page.getByLabel("小工具 zip", { exact: true });
 }
 
@@ -114,7 +103,7 @@ for (const source of ["skill", "versions"]) {
         expect(rereads).toBe(1);
         expect(page.locator("#version-facts-title").text()).toBe("v2，是否最新尚未確認");
       });
-      await chooseZip(page, "next.zip", "next bytes");
+      await chooseZipWithoutNativeValidation(page, "next.zip", "next bytes");
       await input.focus();
       const submit = page.getByRole("button", { name: SUBMIT, exact: true });
       await expect(submit).toBeDisabled();
