@@ -27,11 +27,11 @@ database=$(docker run --rm -d --label "$scope" --network "$network" --network-al
   --tmpfs /var/lib/postgresql -e POSTGRES_USER=skillhub -e POSTGRES_PASSWORD=smoke-only \
   -e POSTGRES_DB=skillhub "$POSTGRES_IMAGE" -c max_connections=40)
 for _ in {1..40}; do
-  if docker exec "$database" pg_isready -U skillhub -d skillhub >/dev/null 2>&1; then break; fi
+  if docker exec "$database" pg_isready -h 127.0.0.1 -U skillhub -d skillhub >/dev/null 2>&1; then break; fi
   sleep 0.25
 done
-docker exec "$database" pg_isready -U skillhub -d skillhub
-docker exec "$database" psql -U skillhub -d skillhub -v ON_ERROR_STOP=1 \
+docker exec "$database" pg_isready -h 127.0.0.1 -U skillhub -d skillhub
+docker exec -e PGPASSWORD=smoke-only "$database" psql -h 127.0.0.1 -U skillhub -d skillhub -v ON_ERROR_STOP=1 \
   -c "CREATE USER exporter WITH PASSWORD 'smoke-only'; GRANT pg_monitor TO exporter;"
 
 check_exporter() {
