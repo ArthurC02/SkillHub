@@ -56,3 +56,23 @@ func TestQueryValueRefusesARepeatedParameterInsteadOfPickingOne(t *testing.T) {
 		})
 	}
 }
+
+func TestQueryOffsetDefaultsToZeroAndRefusesANegative(t *testing.T) {
+	cases := []struct {
+		query string
+		want  int32
+		ok    bool
+	}{
+		{"", 0, true},
+		{"?offset=0", 0, true},
+		{"?offset=2147483647", 2147483647, true},
+		{"?offset=-1", 0, false},
+		{"?offset=2147483648", 0, false},
+	}
+	for _, c := range cases {
+		got, err := QueryOffset(httptest.NewRequest(http.MethodGet, "/x"+c.query, nil))
+		if (err == nil) != c.ok || got != c.want {
+			t.Fatalf("QueryOffset(%q) = %d, %v; want %d, ok=%v", c.query, got, err, c.want, c.ok)
+		}
+	}
+}
