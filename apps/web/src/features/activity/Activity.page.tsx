@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { canRetainLoadedPage } from "../../core/api/client";
 import { useFeatureAvailability } from "../../shared/featureAvailability";
-import { ListFreshness } from "../../shared/ui/ListFreshness";
+import { ListFreshness, refetchThenFocusOnFailure } from "../../shared/ui/ListFreshness";
 import { Loading } from "../../shared/ui/Loading";
 import { ReadFailure } from "../../shared/ui/LoginRequired";
 import { Timestamp } from "../../shared/ui/Timestamp";
@@ -192,10 +192,7 @@ function ActivityReadStatus({
           updatedAt={activity.dataUpdatedAt}
           fetching={activity.isFetching && !activity.isFetchingNextPage}
           paused={paused}
-          refetch={async () => {
-            const result = await activity.refetch();
-            if (result.error) document.getElementById("activity-heading")?.focus();
-          }}
+          refetch={refetchThenFocusOnFailure(activity.refetch, "activity-heading")}
           subject="工作"
         />
       )}

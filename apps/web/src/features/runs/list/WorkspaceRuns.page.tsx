@@ -13,7 +13,7 @@ import {
 import type { RunStatus } from "../trace.service";
 import { RunVerdict } from "../components/RunVerdict";
 import { RunSourceLinks } from "../components/RunSourceLinks";
-import { ListFreshness } from "../../../shared/ui/ListFreshness";
+import { ListFreshness, refetchThenFocusOnFailure } from "../../../shared/ui/ListFreshness";
 import { IN_FLIGHT_RUN_STATUSES } from "../trace.service";
 import { canRetainLoadedPage } from "../../../core/api/client";
 import { usePaginationFocus } from "../../../shared/ui/usePaginationFocus";
@@ -58,10 +58,7 @@ export function WorkspaceRuns() {
           updatedAt={runs.dataUpdatedAt}
           fetching={runs.isFetching && !runs.isFetchingNextPage}
           paused={paused}
-          refetch={async () => {
-            const result = await runs.refetch();
-            if (result.error) document.getElementById("workspace-runs-heading")?.focus();
-          }}
+          refetch={refetchThenFocusOnFailure(runs.refetch, "workspace-runs-heading")}
         />
       )}
 

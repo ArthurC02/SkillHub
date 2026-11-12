@@ -1,6 +1,6 @@
 import { Loading } from "../../../../shared/ui/Loading";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
-import { ListFreshness } from "../../../../shared/ui/ListFreshness";
+import { ListFreshness, refetchThenFocusOnFailure } from "../../../../shared/ui/ListFreshness";
 import type { usePackagingTargets, PackagingTargetId } from "../../packaging.service";
 import { TargetOption } from "./TargetOption";
 
@@ -34,10 +34,7 @@ export function PackagingTargetsSection({
           subject="打包目標"
           updatedAt={targets.dataUpdatedAt}
           fetching={targets.isFetching}
-          refetch={async () => {
-            const result = await targets.refetch();
-            if (result.error) document.getElementById("packaging-targets-heading")?.focus();
-          }}
+          refetch={refetchThenFocusOnFailure(targets.refetch, "packaging-targets-heading")}
         />
       )}
       <ReadFailure

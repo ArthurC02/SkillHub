@@ -2,7 +2,7 @@ import { Link, useSearch } from "@tanstack/react-router";
 import { useRef } from "react";
 import { Downloads } from "../packaging";
 import { Loading } from "../../shared/ui/Loading";
-import { ListFreshness } from "../../shared/ui/ListFreshness";
+import { ListFreshness, refetchThenFocusOnFailure } from "../../shared/ui/ListFreshness";
 import { ReadFailure } from "../../shared/ui/LoginRequired";
 import { Timestamp } from "../../shared/ui/Timestamp";
 import { useContinuationFocus } from "../../shared/ui/useContinuationFocus";
@@ -210,10 +210,7 @@ function PublicationReadStatus({
           updatedAt={overview.dataUpdatedAt}
           fetching={overview.isFetching}
           paused={paused}
-          refetch={async () => {
-            const result = await overview.refetch();
-            if (result.error) document.getElementById("publication-overview-title")?.focus();
-          }}
+          refetch={refetchThenFocusOnFailure(overview.refetch, "publication-overview-title")}
           subject="發佈"
         />
       )}
