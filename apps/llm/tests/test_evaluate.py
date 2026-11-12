@@ -1,10 +1,10 @@
 import json
+from functools import partial
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
 
 import pytest
+from chat_fakes import failing_chat_client, fake_chat_client
 from fastapi.testclient import TestClient
-from openai import APIConnectionError
 
 from skillhub_llm import evaluate
 from skillhub_llm.app import app
@@ -89,42 +89,11 @@ GOOD_PROPOSALS = {
 }
 
 
-def _fake_client(content: str, capture: list | None = None, usage=..., headers: dict | None = None):
-    """Stand-in for AsyncOpenAI whose completion returns `content`.
-
-    Both endpoints read the raw response - the cost of a call is in a LiteLLM
-    header and never in the body - so the stub answers `with_raw_response`.
-    """
-    if usage is ...:
-        usage = SimpleNamespace(prompt_tokens=1200, completion_tokens=340)
-    if headers is None:
-        headers = {"x-litellm-response-cost": "0.0123"}
-
-    async def create(**kwargs):
-        if capture is not None:
-            capture.append(kwargs)
-        completion = SimpleNamespace(
-            choices=[SimpleNamespace(message=SimpleNamespace(content=content))], usage=usage
-        )
-        return SimpleNamespace(parse=lambda: completion, headers=headers)
-
-    return SimpleNamespace(
-        chat=SimpleNamespace(
-            completions=SimpleNamespace(with_raw_response=SimpleNamespace(create=create))
-        )
-    )
-
-
-def _fake_gateway_failure(*_args):
-    return SimpleNamespace(
-        chat=SimpleNamespace(
-            completions=SimpleNamespace(
-                with_raw_response=SimpleNamespace(
-                    create=AsyncMock(side_effect=APIConnectionError(request=None))
-                )
-            )
-        )
-    )
+_fake_client = partial(
+    fake_chat_client,
+    usage=SimpleNamespace(prompt_tokens=1200, completion_tokens=340),
+    cost="0.0123",
+)
 
 
 @pytest.fixture
@@ -368,7 +337,7 @@ def test_the_judge_pins_its_sampling_and_reports_what_it_pinned(capture, path, b
 
 def test_a_gateway_exception_does_not_travel_back_in_the_detail(capture, monkeypatch):
     """Fixed detail string; the exception itself only reaches the log."""
-    monkeypatch.setattr(evaluate, "_client", _fake_gateway_failure)
+    monkeypatch.setattr(evaluate, "_client", failing_chat_client)
 
     response = client.post("/judge-run", json=JUDGE_REQUEST)
 
@@ -706,7 +675,7 @@ def test_malformed_suggestion_json_is_502(capture):
 
 
 def test_suggest_improvements_gateway_error_is_502(monkeypatch):
-    monkeypatch.setattr(evaluate, "_client", _fake_gateway_failure)
+    monkeypatch.setattr(evaluate, "_client", failing_chat_client)
 
     assert client.post("/suggest-improvements", json=IMPROVE_REQUEST).status_code == 502
 
