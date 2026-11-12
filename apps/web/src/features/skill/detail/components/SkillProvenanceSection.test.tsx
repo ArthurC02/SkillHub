@@ -1,8 +1,7 @@
-import { StrictMode, act } from "react";
-import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { expect, test, vi } from "vitest";
 import { skillDetail } from "../../../../testing/fixtures/platform";
 import { SkillProvenanceSection } from "./SkillProvenanceSection";
+import { mountedComponent } from "../../../../testing/component";
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
@@ -20,27 +19,7 @@ vi.mock("@tanstack/react-router", () => ({
   ),
 }));
 
-let container: HTMLDivElement;
-let root: Root;
-
-beforeEach(() => {
-  container = document.createElement("div");
-  document.body.appendChild(container);
-});
-
-afterEach(async () => {
-  await act(async () => root?.unmount());
-  container.remove();
-});
-
-async function mount(node: React.ReactElement) {
-  root = createRoot(container);
-  await act(async () => {
-    root.render(<StrictMode>{node}</StrictMode>);
-  });
-}
-
-const text = () => container.textContent ?? "";
+const { container, mount, text } = mountedComponent();
 
 test("says there is no source record when the skill has none", async () => {
   const skill = skillDetail("s-1", "無來源小工具");
@@ -62,7 +41,7 @@ test("links to the original skill when this one is a fork", async () => {
   await mount(<SkillProvenanceSection skill={skill} />);
 
   expect(text()).toContain("查看原始小工具");
-  const link = container.querySelector("a")!;
+  const link = container().querySelector("a")!;
   expect(link.getAttribute("href")).toBe("/skills/s-1");
 });
 
@@ -72,7 +51,7 @@ test("does not link to an original skill when this one is not a fork", async () 
   skill.derivation = { is_fork: false, label: "來源關係", note: "不是複製品。" };
   await mount(<SkillProvenanceSection skill={skill} />);
 
-  expect(container.querySelector("a")).toBeNull();
+  expect(container().querySelector("a")).toBeNull();
 });
 
 test("does not link when forked_from_skill_id is set but is_fork is false", async () => {
@@ -86,5 +65,5 @@ test("does not link when forked_from_skill_id is set but is_fork is false", asyn
   };
   await mount(<SkillProvenanceSection skill={skill} />);
 
-  expect(container.querySelector("a")).toBeNull();
+  expect(container().querySelector("a")).toBeNull();
 });

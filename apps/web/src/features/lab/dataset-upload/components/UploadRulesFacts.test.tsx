@@ -1,8 +1,7 @@
-import { StrictMode, act } from "react";
-import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { expect, test, vi } from "vitest";
 import type { DatasetLimits } from "../../lab.service";
 import { UploadRulesFacts } from "./UploadRulesFacts";
+import { mountedComponent } from "../../../../testing/component";
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({
@@ -20,27 +19,7 @@ vi.mock("@tanstack/react-router", () => ({
   ),
 }));
 
-let container: HTMLDivElement;
-let root: Root;
-
-beforeEach(() => {
-  container = document.createElement("div");
-  document.body.appendChild(container);
-});
-
-afterEach(async () => {
-  await act(async () => root?.unmount());
-  container.remove();
-});
-
-async function mount(node: React.ReactElement) {
-  root = createRoot(container);
-  await act(async () => {
-    root.render(<StrictMode>{node}</StrictMode>);
-  });
-}
-
-const text = () => container.textContent ?? "";
+const { container, mount, text } = mountedComponent();
 
 const LIMITS: DatasetLimits = {
   max_file_bytes: 1_000_000,
@@ -82,7 +61,7 @@ test("links to the test case's own materials section when a test case is chosen"
     <UploadRulesFacts limits={LIMITS} used={{ fileCount: 1, totalBytes: 1 }} testCase="tc-9" />,
   );
 
-  const link = container.querySelector("a");
+  const link = container().querySelector("a");
   expect(link?.getAttribute("href")).toBe("/lab/test-cases/tc-9");
 });
 
@@ -91,6 +70,6 @@ test("names no test case link when none is chosen yet", async () => {
     <UploadRulesFacts limits={LIMITS} used={{ fileCount: 1, totalBytes: 1 }} testCase="" />,
   );
 
-  expect(container.querySelector("a")).toBeNull();
+  expect(container().querySelector("a")).toBeNull();
   expect(text()).toContain("測試題頁的「測試資料」那一節");
 });

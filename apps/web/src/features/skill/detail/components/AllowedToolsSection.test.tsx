@@ -1,29 +1,8 @@
-import { StrictMode, act } from "react";
-import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeEach, expect, test } from "vitest";
+import { expect, test } from "vitest";
 import { AllowedToolsSection } from "./AllowedToolsSection";
+import { mountedComponent } from "../../../../testing/component";
 
-let container: HTMLDivElement;
-let root: Root;
-
-beforeEach(() => {
-  container = document.createElement("div");
-  document.body.appendChild(container);
-});
-
-afterEach(async () => {
-  await act(async () => root?.unmount());
-  container.remove();
-});
-
-async function mount(node: React.ReactElement) {
-  root = createRoot(container);
-  await act(async () => {
-    root.render(<StrictMode>{node}</StrictMode>);
-  });
-}
-
-const text = () => container.textContent ?? "";
+const { mount, text } = mountedComponent();
 
 test("lists each declared tool when the package declares allowed-tools", async () => {
   await mount(<AllowedToolsSection allowedTools={["Bash", "WebFetch"]} scanStatus="scanned" />);
