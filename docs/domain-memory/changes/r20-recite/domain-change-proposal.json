@@ -3,12 +3,12 @@
   "proposal_id": "r20-recite",
   "proposer": "agent:coding-agent",
   "requirement_id": "r20-recite",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-11-12T11:52:49.914633Z",
   "verified_at": "2026-11-12T11:53:01.298497Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-11-12T11:53:27.745998Z",
+  "applied_at": "2026-11-12T11:53:42.960786Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "c6e89f3cfd49b4b2b044e9d8c0d9c51ba987ed12",
@@ -126,5 +126,9 @@
   ],
   "supersedes": [
     "query-bounds-shared-parser-recited-2026-11-08"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "a4aaacdff0afbe8a78a27108b1f5299fe0a10490",
+    "registry_digest": "sha256:0ba9086b9363615064fc4e166395c2b672a34efe1f9b94a338874a03460f1a15"
+  }
 }
