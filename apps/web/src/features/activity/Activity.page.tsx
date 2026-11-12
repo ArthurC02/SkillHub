@@ -1,7 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import { canRetainLoadedPage } from "../../core/api/client";
 import { useFeatureAvailability } from "../../shared/featureAvailability";
-import { ListFreshness, refetchThenFocusOnFailure } from "../../shared/ui/ListFreshness";
+import { ListFreshness } from "../../shared/ui/ListFreshness";
+import { refetchThenFocusOnFailure } from "../../shared/ui/refetchThenFocusOnFailure";
 import { Loading } from "../../shared/ui/Loading";
 import { ReadFailure } from "../../shared/ui/LoginRequired";
 import { Timestamp } from "../../shared/ui/Timestamp";

@@ -5,7 +5,8 @@ import { unauthenticated } from "../../../shared/ui/LoginRequired.model";
 import { Loading } from "../../../shared/ui/Loading";
 import { PageReadFailure, ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../shared/ui/Timestamp";
-import { ListFreshness, refetchThenFocusOnFailure } from "../../../shared/ui/ListFreshness";
+import { ListFreshness } from "../../../shared/ui/ListFreshness";
+import { refetchThenFocusOnFailure } from "../../../shared/ui/refetchThenFocusOnFailure";
 import {
   PACKAGING_BLOCKED_LABEL,
   packagingGate,

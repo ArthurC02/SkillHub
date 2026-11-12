@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMe } from "../../../core/session/me.service";
 import { Loading } from "../../../shared/ui/Loading";
-import { ListFreshness, refetchThenFocusOnFailure } from "../../../shared/ui/ListFreshness";
+import { ListFreshness } from "../../../shared/ui/ListFreshness";
+import { refetchThenFocusOnFailure } from "../../../shared/ui/refetchThenFocusOnFailure";
 import { PageReadFailure, ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import {

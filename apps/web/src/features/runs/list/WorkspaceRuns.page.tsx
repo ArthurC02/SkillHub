@@ -13,7 +13,8 @@ import {
 import type { RunStatus } from "../trace.service";
 import { RunVerdict } from "../components/RunVerdict";
 import { RunSourceLinks } from "../components/RunSourceLinks";
-import { ListFreshness, refetchThenFocusOnFailure } from "../../../shared/ui/ListFreshness";
+import { ListFreshness } from "../../../shared/ui/ListFreshness";
+import { refetchThenFocusOnFailure } from "../../../shared/ui/refetchThenFocusOnFailure";
 import { IN_FLIGHT_RUN_STATUSES } from "../trace.service";
 import { canRetainLoadedPage } from "../../../core/api/client";
 import { usePaginationFocus } from "../../../shared/ui/usePaginationFocus";

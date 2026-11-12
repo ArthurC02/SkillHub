@@ -1,6 +1,7 @@
 import { Loading } from "../../../../shared/ui/Loading";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
-import { ListFreshness, refetchThenFocusOnFailure } from "../../../../shared/ui/ListFreshness";
+import { ListFreshness } from "../../../../shared/ui/ListFreshness";
+import { refetchThenFocusOnFailure } from "../../../../shared/ui/refetchThenFocusOnFailure";
 import type { usePackagingTargets, PackagingTargetId } from "../../packaging.service";
 import { TargetOption } from "./TargetOption";
 
