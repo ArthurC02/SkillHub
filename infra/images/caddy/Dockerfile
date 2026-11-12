@@ -25,7 +25,8 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     && cp /tmp/reverseproxy_test.go "$test_path" \
     && (cd /tmp/caddy-tests \
         && go get golang.org/x/net@v0.62.0 github.com/klauspost/compress@v1.20.2 \
-        && go test -mod=mod -v -count=1 -p 2 ./...) \
+        && go test -mod=mod -v -count=1 -p 2 -skip '^TestStripRewritePreservesPathAuthorization$' ./... \
+        && go test -mod=mod -v -count=1 -p 2 -run '^TestStripRewritePreservesPathAuthorization$' ./caddytest/integration) \
     && go mod verify \
     && cp "$source_dir/cmd/caddy/main.go" /build/main.go \
     && CGO_ENABLED=0 go build -mod=readonly -p 2 -trimpath -buildvcs=false -ldflags="-s -w" \

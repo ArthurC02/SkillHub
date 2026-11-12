@@ -557,7 +557,7 @@ Dockerfile 與 `infra/compose/docker-compose.yml` 新 `app` profile 的說明。
 
 [`caddy/`](caddy/) 核對穩定版的來源 commit 與模組 checksum，採用官方 `main.go` 的依賴式建置，保留正確版本與預設模組。修補既有 Go 相依套件與穩定系統套件庫的 zlib；編譯工具與測試憑證不進最終映像。
 
-完整上游測試在獨立副本執行；SNI 案例預先產生涵蓋兩個測試名稱的憑證，消除背景簽發的競態，保留原斷言。出貨碼仍來自通過 checksum 與 `go mod verify` 的原始模組。CI 驗證代理本文、identity／gzip／zstd、已路由回應的安全標頭、404 與上游不可用的 502；部署設定檢查也建置同一 Dockerfile。發佈與 digest 解析沿用同一 release 的服務映像流程，缺少釘定映像就拒絕啟動，每次掃描阻擋可修 Critical／High。這些不代替正式 TLS 與部署驗收。
+完整上游測試在獨立副本執行；SNI 案例預先產生涵蓋兩個測試名稱的憑證，消除背景簽發的競態，保留原斷言。路徑授權案例另用獨立程序執行，避免前例尚在關閉的共用伺服器接走請求；其餘案例維持原流程，全數仍各執行一次。出貨碼仍來自通過 checksum 與 `go mod verify` 的原始模組。CI 驗證代理本文、identity／gzip／zstd、已路由回應的安全標頭、404 與上游不可用的 502；部署設定檢查也建置同一 Dockerfile。發佈與 digest 解析沿用同一 release 的服務映像流程，缺少釘定映像就拒絕啟動，每次掃描阻擋可修 Critical／High。這些不代替正式 TLS 與部署驗收。
 
 ### `web` 的反向代理：為什麼不是 `location /api/`
 
