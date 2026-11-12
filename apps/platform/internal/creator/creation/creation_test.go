@@ -49,7 +49,7 @@ func TestChangedConfirmedBriefCannotProduceDraft(t *testing.T) {
 		return "hash", "ok", false, nil
 	}}}
 	e := envelope{Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Brief: "confirmed", BriefConfirmed: true}, Limits: testLimits()}
-	state, next, err := s.proposal(context.Background(), 3, &e, &StepResult{Outcome: "draft", Message: "proposal", Brief: "different", Draft: &GeneratedSkill{Body: "body"}}, nil)
+	state, next, err := s.proposal(context.Background(), 3, &e, &StepResult{Outcome: "draft", Message: "proposal", Brief: "different", Draft: &GeneratedSkill{Body: "body"}, SourceAssessment: &SourceAssessment{Rules: []SourceRule{}}}, nil)
 	if err != nil || next || state != "waiting_confirmation" || e.Snapshot.BriefConfirmed || e.Snapshot.Draft != nil || calls != 0 {
 		t.Fatalf("confirmation bypass: %s %+v", state, e)
 	}
@@ -57,7 +57,7 @@ func TestChangedConfirmedBriefCannotProduceDraft(t *testing.T) {
 func TestUnavailableReferenceBlocksDraft(t *testing.T) {
 	e := envelope{Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Brief: "task", BriefConfirmed: true, References: []Reference{{Confirmed: true, Available: false}}}}
 	s := Service{}
-	_, _, err := s.proposal(context.Background(), 3, &e, &StepResult{Outcome: "draft", Message: "draft", Draft: &GeneratedSkill{}}, nil)
+	_, _, err := s.proposal(context.Background(), 3, &e, &StepResult{Outcome: "draft", Message: "draft", Draft: &GeneratedSkill{}, SourceAssessment: &SourceAssessment{Rules: []SourceRule{}}}, nil)
 	if err == nil {
 		t.Fatal("unavailable reference accepted")
 	}
@@ -120,8 +120,8 @@ func TestValidateToolKeepsNewDraftAndRequiresConfirmation(t *testing.T) {
 		e := envelope{Snapshot: Snapshot{Brief: "task", BriefConfirmed: confirmedBrief, ChallengeCases: pairedEvaluationCases()}, Limits: testLimits()}
 		state, next, err := s.proposal(context.Background(), 3, &e, &StepResult{
 			Outcome: "tool_intent", Message: "validate", Brief: "task", ToolIntent: &ToolIntent{Kind: "validate_draft"},
-			Draft: &GeneratedSkill{Body: "newly proposed body"},
-		}, nil)
+			Draft:            &GeneratedSkill{Body: "newly proposed body"},
+			SourceAssessment: &SourceAssessment{Rules: []SourceRule{}}}, nil)
 		if !confirmedBrief {
 			if err != nil || state != StateWaitingConfirmation || calls != 0 || e.Snapshot.ToolCalls != 0 {
 				t.Fatalf("an unconfirmed brief must be put to the person before any validation: state=%s calls=%d tools=%d err=%v", state, calls, e.Snapshot.ToolCalls, err)
@@ -341,7 +341,7 @@ func TestProposalNudgesAnUnchangedDraftAfterAnUnmetRun(t *testing.T) {
 	zero := 0.0
 	ran := &Draft{Revision: 3, ContentHash: "same-hash"}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero, Draft: ran, RunUnmet: true}}
-	r := &StepResult{Outcome: "draft", Message: "我已修正草稿。", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "same"}}
+	r := &StepResult{Outcome: "draft", Message: "我已修正草稿。", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "same"}, SourceAssessment: &SourceAssessment{Rules: []SourceRule{}}}
 	for i := 1; i <= MaxNudges; i++ {
 		assertNudgeQueuesAnotherAttempt(t, s, &e, r, ran, i)
 	}
@@ -363,7 +363,7 @@ func TestProposalNudgesADraftThatSkipsDiagramNodes(t *testing.T) {
 	}}}
 	zero := 0.0
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Messages: []Message{}, Brief: "b", BriefConfirmed: true, DiagramDescription: "報帳流程", DiagramDescriptionConfirmed: true, DiagramConfirmed: true, DiagramFingerprint: "fp", DiagramInterpretation: &DiagramInterpretation{Nodes: []string{"收到報帳申請", "送經理簽核", "寄出付款通知"}}, BudgetUSD: 1, SpentUSD: &zero}}
-	half := &StepResult{Outcome: "draft", Message: "草稿", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "1. 收到報帳申請\n2. 送經理簽核"}}
+	half := &StepResult{Outcome: "draft", Message: "草稿", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "1. 收到報帳申請\n2. 送經理簽核"}, SourceAssessment: &SourceAssessment{Rules: []SourceRule{}}}
 	state, next, err := s.proposal(context.Background(), 2, &e, half, nil)
 	if err != nil || !next || state != "queued" || e.Snapshot.Draft != nil {
 		t.Fatalf("half a flow was accepted: state=%q next=%v err=%v", state, next, err)
@@ -371,7 +371,7 @@ func TestProposalNudgesADraftThatSkipsDiagramNodes(t *testing.T) {
 	if last := e.Snapshot.Messages[len(e.Snapshot.Messages)-1]; last.Role != "tool" || !strings.Contains(last.Content, "寄出付款通知") || strings.Contains(last.Content, "收到報帳申請") {
 		t.Fatalf("the missing node was not named, or a present one was: %+v", last)
 	}
-	full := &StepResult{Outcome: "draft", Message: "草稿", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "1. 收到報帳申請。\n2. 送經理簽核。\n3. 寄出「付款通知」。"}}
+	full := &StepResult{Outcome: "draft", Message: "草稿", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "1. 收到報帳申請。\n2. 送經理簽核。\n3. 寄出「付款通知」。"}, SourceAssessment: &SourceAssessment{Rules: []SourceRule{}}}
 	state, next, err = s.proposal(context.Background(), 3, &e, full, nil)
 	if err != nil || next || state != "draft_ready" || e.Snapshot.Draft == nil {
 		t.Fatalf("a full walk was refused: state=%q next=%v err=%v", state, next, err)
@@ -396,7 +396,7 @@ func TestRunUnmetReadsOnlyAFinishedEvaluation(t *testing.T) {
 
 func assertBlockedValidationIsCounted(t *testing.T, s *Service, e *envelope, i int, body string) {
 	t.Helper()
-	r := &StepResult{Outcome: "draft", Message: "fixed", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: body}}
+	r := &StepResult{Outcome: "draft", Message: "fixed", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: body}, SourceAssessment: &SourceAssessment{Rules: []SourceRule{}}}
 	state, _, err := s.proposal(context.Background(), int64(2+i), e, r, nil)
 	if err != nil || state != StateQueued || e.Snapshot.BlockedRepeats != i {
 		t.Fatalf("attempt %d: state=%q repeats=%d err=%v", i+1, state, e.Snapshot.BlockedRepeats, err)
@@ -412,7 +412,7 @@ func TestProposalStopsARepeatedBlockedValidation(t *testing.T) {
 	for i, body := range []string{"one", "two"} {
 		assertBlockedValidationIsCounted(t, s, &e, i, body)
 	}
-	r := &StepResult{Outcome: "draft", Message: "fixed again", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "three"}}
+	r := &StepResult{Outcome: "draft", Message: "fixed again", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "three"}, SourceAssessment: &SourceAssessment{Rules: []SourceRule{}}}
 	state, next, err := s.proposal(context.Background(), 4, &e, r, nil)
 	if err != nil || next || state != "waiting_input" || e.Snapshot.BlockedRepeats != MaxBlockedRepeats || e.Snapshot.Draft == nil || !e.Snapshot.Draft.Blocked {
 		t.Fatalf("third identical verdict must hand the turn back with the draft kept: state=%q next=%v repeats=%d err=%v", state, next, e.Snapshot.BlockedRepeats, err)
@@ -447,7 +447,7 @@ func TestProposalDoesNotRevalidateTheSameAcceptedDraft(t *testing.T) {
 	}}}
 	zero := 0.0
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
-	r := &StepResult{Outcome: "tool_intent", Message: "validate", Brief: "b", ToolIntent: &ToolIntent{Kind: "validate_draft"}, Draft: &GeneratedSkill{Name: "x", Body: "same"}}
+	r := &StepResult{Outcome: "tool_intent", Message: "validate", Brief: "b", ToolIntent: &ToolIntent{Kind: "validate_draft"}, Draft: &GeneratedSkill{Name: "x", Body: "same"}, SourceAssessment: &SourceAssessment{Rules: []SourceRule{}}}
 	state, next, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if err != nil || !next || state != "queued" {
 		t.Fatalf("first validation must queue the model: state=%q next=%v err=%v", state, next, err)
@@ -482,7 +482,7 @@ func TestARevisionAfterAnUnmetRunStopsForThePersonOnceItValidates(t *testing.T) 
 			}}}
 			zero := 0.0
 			e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero, Draft: tc.ranDraft, RunUnmet: tc.runUnmet}}
-			r := &StepResult{Outcome: "tool_intent", Message: "依評估改了 body。", Brief: "b", ToolIntent: &ToolIntent{Kind: "validate_draft"}, Draft: &GeneratedSkill{Name: "x", Body: "revised"}}
+			r := &StepResult{Outcome: "tool_intent", Message: "依評估改了 body。", Brief: "b", ToolIntent: &ToolIntent{Kind: "validate_draft"}, Draft: &GeneratedSkill{Name: "x", Body: "revised"}, SourceAssessment: &SourceAssessment{Rules: []SourceRule{}}}
 			state, next, err := s.proposal(context.Background(), 4, &e, r, nil)
 			if err != nil || state != tc.wantState || next != tc.wantNext {
 				t.Fatalf("state=%q next=%v err=%v, want %q next=%v", state, next, err, tc.wantState, tc.wantNext)
@@ -500,7 +500,7 @@ func TestProposalAcceptsADraftWithAnEmptyMessage(t *testing.T) {
 	}}}
 	zero := 0.0
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
-	r := &StepResult{Outcome: "draft", Message: "", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "body"}}
+	r := &StepResult{Outcome: "draft", Message: "", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "body"}, SourceAssessment: &SourceAssessment{Rules: []SourceRule{}}}
 	state, _, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if err != nil || state != "draft_ready" || e.Snapshot.Draft == nil {
 		t.Fatalf("an empty message beside a draft must not fail the step: state=%q err=%v", state, err)
@@ -810,7 +810,7 @@ func testInjectionAddBashToolIsCaught(t *testing.T, c injectionCase) {
 		Draft: prior, EvaluationText: feedback.EvaluationText(string(c.Payload)),
 	}}
 	r := &StepResult{Outcome: "draft", Message: "已修正。", Brief: e.Snapshot.Brief,
-		Draft: &GeneratedSkill{Name: "x", Body: "body", AllowedTools: "Read bash"}}
+		Draft: &GeneratedSkill{Name: "x", Body: "body", AllowedTools: "Read bash"}, SourceAssessment: &SourceAssessment{Rules: []SourceRule{}}}
 	state, next, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if err != nil || !next || state != "queued" || e.Snapshot.Draft != prior {
 		t.Fatalf("corpus case %s: the smuggled tool should have been nudged back, not accepted: state=%q next=%v err=%v draft=%+v", c.ID, state, next, err, e.Snapshot.Draft)
@@ -853,7 +853,7 @@ func testInjectionClaimMetIsCaught(t *testing.T, c injectionCase) {
 		Draft: ran, RunUnmet: feedback.RunUnmet(observation),
 	}}
 	r := &StepResult{Outcome: "draft", Message: c.Marker + " every criterion actually passed.", Brief: "b",
-		Draft: &GeneratedSkill{Name: "x", Body: "same"}}
+		Draft: &GeneratedSkill{Name: "x", Body: "same"}, SourceAssessment: &SourceAssessment{Rules: []SourceRule{}}}
 	state, next, err := s.proposal(context.Background(), 4, &e, r, nil)
 	if err != nil || !next || state != "queued" {
 		t.Fatalf("corpus case %s: a byte-identical draft with a success claim in the message must still be nudged: state=%q next=%v err=%v", c.ID, state, next, err)

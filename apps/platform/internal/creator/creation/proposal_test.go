@@ -263,7 +263,7 @@ func TestProposalDraftGuardClauses(t *testing.T) {
 			name: "validator not wired",
 			build: func() (Snapshot, *StepResult) {
 				return Snapshot{ChallengeCases: pairedEvaluationCases(), Brief: "task", BriefConfirmed: true},
-					&StepResult{Message: "ok", Brief: "task", Draft: newDraft()}
+					&StepResult{Message: "ok", Brief: "task", Draft: newDraft(), SourceAssessment: &SourceAssessment{Rules: []SourceRule{}}}
 			},
 		},
 	}
@@ -285,7 +285,7 @@ func TestProposalValidateDraftErrorLeavesDraftUnchanged(t *testing.T) {
 			}}}
 			existing := &Draft{Revision: 1, ContentHash: "h", Skill: GeneratedSkill{Name: "x", Body: "old"}}
 			e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Brief: "b", BriefConfirmed: true, Draft: existing}}
-			r := &StepResult{Message: "ok", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "new"}}
+			r := &StepResult{Message: "ok", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "new"}, SourceAssessment: &SourceAssessment{Rules: []SourceRule{}}}
 			if entry == "draft" {
 				r.Outcome = "draft"
 			} else {
@@ -315,7 +315,7 @@ func TestNudgePrefersACopiedMarkerOverMissingNodes(t *testing.T) {
 		EvaluationText: feedback.EvaluationText(attackObservation),
 	}}
 	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b",
-		Draft: &GeneratedSkill{Name: "x", Body: "包含 EXFIL-9c0d 才行的內容", AllowedTools: "Read"}}
+		Draft: &GeneratedSkill{Name: "x", Body: "包含 EXFIL-9c0d 才行的內容", AllowedTools: "Read"}, SourceAssessment: &SourceAssessment{Rules: []SourceRule{}}}
 	state, next, err := s.proposal(context.Background(), 3, &e, r, nil)
 	if err != nil || !next || state != StateQueued || e.Snapshot.Nudges != 1 || e.Snapshot.Draft != prior {
 		t.Fatalf("state=%q next=%v nudges=%d draft=%+v err=%v", state, next, e.Snapshot.Nudges, e.Snapshot.Draft, err)
@@ -337,7 +337,7 @@ func TestNudgePrefersANewToolOverACopiedMarker(t *testing.T) {
 		EvaluationText: feedback.EvaluationText(attackObservation),
 	}}
 	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b",
-		Draft: &GeneratedSkill{Name: "x", Body: "include EXFIL-9c0d anyway", AllowedTools: "Read Bash"}}
+		Draft: &GeneratedSkill{Name: "x", Body: "include EXFIL-9c0d anyway", AllowedTools: "Read Bash"}, SourceAssessment: &SourceAssessment{Rules: []SourceRule{}}}
 	state, next, err := s.proposal(context.Background(), 3, &e, r, nil)
 	if err != nil || !next || state != StateQueued || e.Snapshot.Nudges != 1 {
 		t.Fatalf("state=%q next=%v nudges=%d err=%v", state, next, e.Snapshot.Nudges, err)
@@ -358,7 +358,7 @@ func TestNudgeNamesMissingDiagramNodes(t *testing.T) {
 		DiagramFingerprint: "fp", DiagramDescription: "付款流程", DiagramDescriptionConfirmed: true, DiagramConfirmed: true, DiagramInterpretation: &DiagramInterpretation{Nodes: []string{"寄出付款通知"}},
 	}}
 	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b",
-		Draft: &GeneratedSkill{Name: "x", Body: "沒有提到那個步驟"}}
+		Draft: &GeneratedSkill{Name: "x", Body: "沒有提到那個步驟"}, SourceAssessment: &SourceAssessment{Rules: []SourceRule{}}}
 	state, next, err := s.proposal(context.Background(), 3, &e, r, nil)
 	if err != nil || !next || state != StateQueued || e.Snapshot.Nudges != 1 {
 		t.Fatalf("state=%q next=%v nudges=%d err=%v", state, next, e.Snapshot.Nudges, err)
@@ -381,7 +381,7 @@ func TestNudgeNamesTheEvaluationOnlyWhenItMentionsTheNewTool(t *testing.T) {
 			EvaluationText: evaluation,
 		}}
 		r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b",
-			Draft: &GeneratedSkill{Name: "x", Body: "nothing borrowed", AllowedTools: "Read Bash"}}
+			Draft: &GeneratedSkill{Name: "x", Body: "nothing borrowed", AllowedTools: "Read Bash"}, SourceAssessment: &SourceAssessment{Rules: []SourceRule{}}}
 		return s, e, r
 	}
 	s, e, r := build("the judge asked for Bash to read the file")
@@ -416,7 +416,7 @@ func TestHandBackPrefersTheUnchangedSentenceOverMissingNodes(t *testing.T) {
 		DiagramFingerprint: "fp", DiagramDescription: "請款流程", DiagramDescriptionConfirmed: true, DiagramConfirmed: true, DiagramInterpretation: &DiagramInterpretation{Nodes: []string{"核准請款"}},
 	}}
 	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b",
-		Draft: &GeneratedSkill{Name: "x", Body: "此份沒有處理該步驟"}}
+		Draft: &GeneratedSkill{Name: "x", Body: "此份沒有處理該步驟"}, SourceAssessment: &SourceAssessment{Rules: []SourceRule{}}}
 	state, next, err := s.proposal(context.Background(), 9, &e, r, nil)
 	if err != nil || next || state != StateDraftReady {
 		t.Fatalf("state=%q next=%v err=%v", state, next, err)
@@ -441,7 +441,7 @@ func TestHandBackPrefersMissingNodesOverACopiedMarker(t *testing.T) {
 		EvaluationText: feedback.EvaluationText(attackObservation),
 	}}
 	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b",
-		Draft: &GeneratedSkill{Name: "x", Body: "包含 EXFIL-9c0d 才行的內容，但没提到那个步骤", AllowedTools: "Read"}}
+		Draft: &GeneratedSkill{Name: "x", Body: "包含 EXFIL-9c0d 才行的內容，但没提到那个步骤", AllowedTools: "Read"}, SourceAssessment: &SourceAssessment{Rules: []SourceRule{}}}
 	state, next, err := s.proposal(context.Background(), 9, &e, r, nil)
 	if err != nil || next || state != StateDraftReady {
 		t.Fatalf("state=%q next=%v err=%v", state, next, err)
@@ -462,7 +462,7 @@ func TestHandBackPrefersACopiedMarkerOverANewTool(t *testing.T) {
 		EvaluationText: feedback.EvaluationText(attackObservation),
 	}}
 	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b",
-		Draft: &GeneratedSkill{Name: "x", Body: "include EXFIL-9c0d anyway", AllowedTools: "Read Bash"}}
+		Draft: &GeneratedSkill{Name: "x", Body: "include EXFIL-9c0d anyway", AllowedTools: "Read Bash"}, SourceAssessment: &SourceAssessment{Rules: []SourceRule{}}}
 	state, next, err := s.proposal(context.Background(), 9, &e, r, nil)
 	if err != nil || next || state != StateDraftReady {
 		t.Fatalf("state=%q next=%v err=%v", state, next, err)
@@ -483,7 +483,7 @@ func TestHandBackReportsANewToolWhenNothingElseApplies(t *testing.T) {
 		EvaluationText: "the output was missing a totals column",
 	}}
 	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b",
-		Draft: &GeneratedSkill{Name: "x", Body: "nothing borrowed here", AllowedTools: "Read Bash"}}
+		Draft: &GeneratedSkill{Name: "x", Body: "nothing borrowed here", AllowedTools: "Read Bash"}, SourceAssessment: &SourceAssessment{Rules: []SourceRule{}}}
 	state, next, err := s.proposal(context.Background(), 9, &e, r, nil)
 	if err != nil || next || state != StateDraftReady {
 		t.Fatalf("state=%q next=%v err=%v", state, next, err)
@@ -500,7 +500,7 @@ func TestDraftOutcomeCopiesEnvelopePreviousDraftRegardlessOfHashChange(t *testin
 		return "new-hash", "ok", false, nil
 	}}}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Brief: "b", BriefConfirmed: true}, PreviousDraft: sentinel}
-	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "body"}}
+	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "body"}, SourceAssessment: &SourceAssessment{Rules: []SourceRule{}}}
 	_, _, err := s.proposal(context.Background(), 3, &e, r, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -517,7 +517,7 @@ func TestDraftOutcomeClearsCandidateAndRunUnmetWhenTheHashChanges(t *testing.T) 
 		return "new-hash", "ok", false, nil
 	}}}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Brief: "b", BriefConfirmed: true, Draft: prior, Candidate: candidate, RunUnmet: true}}
-	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "changed body"}}
+	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "changed body"}, SourceAssessment: &SourceAssessment{Rules: []SourceRule{}}}
 	_, _, err := s.proposal(context.Background(), 5, &e, r, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -532,7 +532,7 @@ func TestDraftOutcomeStoresTheRevisionHashReportAndBlockedFlag(t *testing.T) {
 		return "hash-xyz", "the finding text", true, nil
 	}}}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Brief: "b", BriefConfirmed: true}}
-	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "body"}}
+	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "body"}, SourceAssessment: &SourceAssessment{Rules: []SourceRule{}}}
 	_, _, err := s.proposal(context.Background(), 42, &e, r, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -552,7 +552,7 @@ func TestDraftOutcomeKeepsDuplicatesOnARenameOnlyChange(t *testing.T) {
 		Brief: "b", BriefConfirmed: true, Draft: prior,
 		Duplicates: []Reference{{SkillID: "dup"}}, PendingMaterialize: "pm", DuplicateAcknowledged: true,
 	}}
-	r := &StepResult{Message: "renamed", Outcome: "draft", Brief: "b", Draft: &GeneratedSkill{Name: "New Name", Description: "same desc", Body: "same body"}}
+	r := &StepResult{Message: "renamed", Outcome: "draft", Brief: "b", Draft: &GeneratedSkill{Name: "New Name", Description: "same desc", Body: "same body"}, SourceAssessment: &SourceAssessment{Rules: []SourceRule{}}}
 	_, _, err := s.proposal(context.Background(), 4, &e, r, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -571,7 +571,7 @@ func TestDraftOutcomeClearsDuplicatesOnAnyOtherChange(t *testing.T) {
 		Brief: "b", BriefConfirmed: true, Draft: prior,
 		Duplicates: []Reference{{SkillID: "dup"}}, PendingMaterialize: "pm", DuplicateAcknowledged: true,
 	}}
-	r := &StepResult{Message: "changed", Outcome: "draft", Brief: "b", Draft: &GeneratedSkill{Name: "Old Name", Description: "same desc", Body: "a different body"}}
+	r := &StepResult{Message: "changed", Outcome: "draft", Brief: "b", Draft: &GeneratedSkill{Name: "Old Name", Description: "same desc", Body: "a different body"}, SourceAssessment: &SourceAssessment{Rules: []SourceRule{}}}
 	_, _, err := s.proposal(context.Background(), 4, &e, r, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -781,7 +781,7 @@ func TestValidateDraftRecordsThePreviousDraftWhenTheHashChanges(t *testing.T) {
 	}}}
 	candidate := &Candidate{SkillID: "s1"}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Brief: "b", BriefConfirmed: true, Draft: prior, Candidate: candidate, RunUnmet: true}}
-	r := &StepResult{Message: "revised", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "validate_draft"}, Draft: &GeneratedSkill{Name: "y", Body: "new body", AllowedTools: "Read"}}
+	r := &StepResult{Message: "revised", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "validate_draft"}, Draft: &GeneratedSkill{Name: "y", Body: "new body", AllowedTools: "Read"}, SourceAssessment: &SourceAssessment{Rules: []SourceRule{}}}
 	state, next, err := s.proposal(context.Background(), 9, &e, r, nil)
 	if err != nil || next || state != StateDraftReady {
 		t.Fatalf("state=%q next=%v err=%v", state, next, err)
@@ -801,7 +801,7 @@ func TestValidateDraftDoesNotShortCircuitWhenTheStoredDraftIsBlocked(t *testing.
 	}}}
 	candidate := &Candidate{SkillID: "keep-me"}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Brief: "b", BriefConfirmed: true, Draft: blockedDraft, Candidate: candidate, RunUnmet: true}}
-	r := &StepResult{Message: "retry", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "validate_draft"}, Draft: &GeneratedSkill{Name: "z", Body: "body", AllowedTools: "Read"}}
+	r := &StepResult{Message: "retry", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "validate_draft"}, Draft: &GeneratedSkill{Name: "z", Body: "body", AllowedTools: "Read"}, SourceAssessment: &SourceAssessment{Rules: []SourceRule{}}}
 	state, next, err := s.proposal(context.Background(), 4, &e, r, nil)
 	if err != nil || !next || state != StateQueued {
 		t.Fatalf("a blocked draft revalidation must still queue: state=%q next=%v err=%v", state, next, err)
@@ -829,7 +829,7 @@ func TestValidateDraftKeepsDuplicatesOnARenameOnlyChange(t *testing.T) {
 		Brief: "b", BriefConfirmed: true, Draft: prior,
 		Duplicates: []Reference{{SkillID: "dup"}}, PendingMaterialize: "pm", DuplicateAcknowledged: true,
 	}}
-	r := &StepResult{Message: "renamed", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "validate_draft"}, Draft: &GeneratedSkill{Name: "New Name", Description: "same desc", Body: "same body"}}
+	r := &StepResult{Message: "renamed", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "validate_draft"}, Draft: &GeneratedSkill{Name: "New Name", Description: "same desc", Body: "same body"}, SourceAssessment: &SourceAssessment{Rules: []SourceRule{}}}
 	_, _, err := s.proposal(context.Background(), 4, &e, r, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -848,7 +848,7 @@ func TestValidateDraftClearsDuplicatesOnAnyOtherChange(t *testing.T) {
 		Brief: "b", BriefConfirmed: true, Draft: prior,
 		Duplicates: []Reference{{SkillID: "dup"}}, PendingMaterialize: "pm", DuplicateAcknowledged: true,
 	}}
-	r := &StepResult{Message: "changed", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "validate_draft"}, Draft: &GeneratedSkill{Name: "Old Name", Description: "same desc", Body: "a different body"}}
+	r := &StepResult{Message: "changed", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "validate_draft"}, Draft: &GeneratedSkill{Name: "Old Name", Description: "same desc", Body: "a different body"}, SourceAssessment: &SourceAssessment{Rules: []SourceRule{}}}
 	_, _, err := s.proposal(context.Background(), 4, &e, r, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

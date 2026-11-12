@@ -362,7 +362,7 @@ func (s *Service) apply(ctx context.Context, tx pgx.Tx, ws identity.Workspace, r
 	case commandRaiseBudget:
 		return raiseBudget(p, e.Limits, State(row.State), c.BudgetUSD)
 	case commandMaterialize, commandFinalize, commandConfirmDuplicate:
-		return s.save(ctx, ws, p, c)
+		return s.save(ctx, ws, e, c)
 	}
 	return commandOutcome{}, ErrInvalidCommand
 }

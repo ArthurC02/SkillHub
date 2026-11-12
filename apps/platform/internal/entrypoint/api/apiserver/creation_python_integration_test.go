@@ -220,6 +220,7 @@ func creationDecision(outcome, message string, brief *string, draft map[string]a
 		"acceptance_criteria": nil, "sample_input": nil, "diagram_understanding": nil,
 		"diagram_description": nil, "diagram_interpretation": nil,
 		"tool_intent": nil, "draft": draft,
+		"source_assessment": map[string]any{"rules": []any{}},
 	}
 }
 
@@ -278,7 +279,7 @@ func startCreationPython(t *testing.T, python, gatewayURL string) string {
 	root := creationRepoRoot(t)
 	port := freeLoopbackPort(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	cmd := exec.CommandContext(ctx, python, "-m", "uvicorn", "skillhub_llm.app:app", "--host", "127.0.0.1", "--port", port, "--log-level", "error", "--no-access-log")
+	cmd := exec.CommandContext(ctx, python, "-m", "uvicorn", "skillhub_llm.app:app", "--host", "127.0.0.1", "--port", port, "--log-level", "info", "--no-access-log")
 	cmd.Dir = root
 	cmd.Stdout = io.Discard
 

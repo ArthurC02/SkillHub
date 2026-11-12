@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -69,23 +70,68 @@ func seedSaveReadySession(t *testing.T, pool *pgxpool.Pool, svc *creation.Servic
 		WHERE id = $1`, id, patch); err != nil {
 		t.Fatal(err)
 	}
+	checkMaterializeFixtureSources(t, svc, ws, id)
 	return id
+}
+
+type materializeSourceChecker struct{}
+
+func (materializeSourceChecker) CreationStep(_ context.Context, request creation.StepRequest) (*creation.StepResult, error) {
+	zero := 0.0
+	return &creation.StepResult{Outcome: "draft", Message: "Sources checked.", Draft: request.Draft,
+		SourceAssessment: &creation.SourceAssessment{Rules: []creation.SourceRule{}}, Usage: &creation.ModelUsage{CostUSD: &zero, CostReported: true}}, nil
+}
+
+func checkMaterializeFixtureSources(t *testing.T, service *creation.Service, ws identity.Workspace, id pgtype.UUID) {
+	t.Helper()
+	checker := *service
+	checker.LLM = materializeSourceChecker{}
+	jobs := &jobRecorder{}
+	checker.Insert = jobs.insert
+	checker.IssueKey = func(context.Context, string, string, float64, time.Duration) (string, error) {
+		return "fixture-key", nil
+	}
+	checker.RevokeKey = func(context.Context, string) error { return nil }
+	checker.Drafts.Validate = func(context.Context, creation.GeneratedSkill) (string, string, bool, error) {
+		return "draft-hash", "{}", false, nil
+	}
+	view, err := checker.Get(t.Context(), ws, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, err = checker.Act(t.Context(), ws, id, creation.Command{ID: creationID(t), ExpectedRevision: view.Revision, Kind: "confirm_brief"})
+	if err != nil || len(jobs.calls) != 1 {
+		t.Fatalf("source-check fixture did not queue: jobs=%v err=%v", jobs.calls, err)
+	}
+	if err := checker.Step(t.Context(), jobs.calls[0], nil); err != nil {
+		t.Fatal(err)
+	}
+	view, err = checker.Get(t.Context(), ws, id)
+	if err != nil || view.State != "draft_ready" {
+		t.Fatalf("fixture sources were not checked: view=%+v err=%v", view, err)
+	}
 }
 
 func saveReadySnapshot(sampleInput string) map[string]any {
 	return map[string]any{
 		"brief":               "把會議紀錄整理成摘要",
 		"brief_confirmed":     true,
+		"pending_action":      "confirm_brief",
 		"sample_input":        sampleInput,
 		"acceptance_criteria": []string{"摘要列出每個決議"},
 		"challenge_cases":     creationFixtureEvaluationCases(),
 		"spent_usd":           0.25,
-		"draft":               map[string]any{"content_hash": "draft-hash", "skill": map[string]any{"name": "meeting-summary", "description": "summarise"}, "blocked": false},
+		"draft":               map[string]any{"content_hash": "draft-hash", "skill": map[string]any{"name": "meeting-summary", "description": "summarise", "body": "Read the notes and summarize them. 開始"}, "blocked": false},
 	}
 }
 
-func materializeCommand(t *testing.T) creation.Command {
-	return creation.Command{ID: creationID(t), ExpectedRevision: 1, Kind: "materialize", ContentHash: "draft-hash"}
+func materializeCommand(t *testing.T, service *creation.Service, ws identity.Workspace, id pgtype.UUID) creation.Command {
+	t.Helper()
+	view, err := service.Get(t.Context(), ws, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return creation.Command{ID: creationID(t), ExpectedRevision: view.Revision, Kind: "materialize", ContentHash: view.Snapshot.Draft.ContentHash}
 }
 
 func TestAMaterializedCandidateCarriesTheSpendTheSaveCheckAddedAndTheNewSkill(t *testing.T) {
@@ -95,7 +141,7 @@ func TestAMaterializedCandidateCarriesTheSpendTheSaveCheckAddedAndTheNewSkill(t 
 	probe := &materializeProbe{createdSkill: "characterized-skill", duplicateCost: 0.05}
 	svc := probe.service(pool)
 	id := seedSaveReadySession(t, pool, svc, ws, saveReadySnapshot("   "))
-	command := materializeCommand(t)
+	command := materializeCommand(t, svc, ws, id)
 
 	v, _, err := svc.Act(context.Background(), ws, id, command)
 	if err != nil {
@@ -141,7 +187,7 @@ func TestAMaterializedDiagramSessionRecordsTheDiagramAsAnInput(t *testing.T) {
 	snapshot["diagram_interpretation"] = map[string]any{"nodes": []string{"開始"}, "conditions": []string{}, "branches": []string{}, "uncertainties": []any{}}
 	id := seedSaveReadySession(t, pool, svc, ws, snapshot)
 
-	if _, _, err := svc.Act(context.Background(), ws, id, materializeCommand(t)); err != nil {
+	if _, _, err := svc.Act(context.Background(), ws, id, materializeCommand(t, svc, ws, id)); err != nil {
 		t.Fatal(err)
 	}
 	var inputs struct {
@@ -175,14 +221,14 @@ func TestASessionThatMovedWhileTheSkillWasBeingStoredIsNotSaved(t *testing.T) {
 		}
 	}
 
-	if _, _, err := svc.Act(context.Background(), ws, id, materializeCommand(t)); !errors.Is(err, creation.ErrConflict) {
+	if _, _, err := svc.Act(context.Background(), ws, id, materializeCommand(t, svc, ws, id)); !errors.Is(err, creation.ErrConflict) {
 		t.Fatalf("err = %v, want ErrConflict", err)
 	}
 	var state string
 	if err := pool.QueryRow(context.Background(), `SELECT state FROM creation_sessions WHERE id = $1`, id).Scan(&state); err != nil {
 		t.Fatal(err)
 	}
-	if state != "waiting_input" {
+	if state != "draft_ready" {
 		t.Errorf("state = %s, want the session left as it was", state)
 	}
 }

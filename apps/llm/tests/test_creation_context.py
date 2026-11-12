@@ -128,3 +128,93 @@ def test_author_supplied_sources_assets_and_scripts_are_preserved_in_the_draft()
     assert response.status_code == 200
     assert response.json()["draft"] == draft
     assert len(calls) == 1
+
+
+def test_source_inventory_reaches_go_without_another_model_call():
+    assessment = {
+        "rules": [
+            {
+                "rule": "Course weights",
+                "source_message_index": 0,
+                "quote": "數學占 40%、自然占 60%。",
+                "path": "references/grading.md",
+                "question": None,
+            }
+        ]
+    }
+    req = request(
+        brief="Compute grades.",
+        brief_confirmed=True,
+        messages=[{"role": "user", "content": "數學占 40%、自然占 60%。"}],
+    )
+    response, calls = invoke(
+        req, decision(outcome="draft", draft=SKILL, source_assessment=assessment)
+    )
+    assert response.status_code == 200
+    assert response.json()["source_assessment"] == assessment
+    assert len(calls) == 1
+    assert response.json()["usage"]["cost_usd"] == 0.001
+    schema = calls[0]["response_format"]["json_schema"]["schema"]
+    assert "source_assessment" in schema["required"]
+    assert "source_message_index" in schema["$defs"]["SourceRuleDraft"]["required"]
+
+
+@pytest.mark.parametrize("count,status", [(0, 200), (64, 200), (65, 502)])
+def test_source_inventory_enforces_its_bound_before_sending_the_reply(count, status):
+    rule = {
+        "rule": "Course weights",
+        "source_message_index": None,
+        "quote": None,
+        "path": None,
+        "question": "各科各占多少比例？",
+    }
+    response, _ = invoke(
+        request(brief="Compute grades.", brief_confirmed=True),
+        decision(outcome="draft", draft=SKILL, source_assessment={"rules": [rule] * count}),
+    )
+    assert response.status_code == status
+    if status == 200:
+        assert len(response.json()["source_assessment"]["rules"]) == count
+    else:
+        assert response.json() == {"detail": "creation model returned unusable output"}
+
+
+def test_non_draft_reply_does_not_forward_a_model_source_inventory():
+    response, _ = invoke(request(), decision(source_assessment={"rules": []}))
+    assert response.status_code == 200
+    assert response.json()["source_assessment"] is None
+
+
+def test_review_rewrite_carries_source_inventory_and_the_author_messages():
+    from test_creation_reason_steps import BODY_EDIT, post, review_request
+
+    assessment = {
+        "rules": [
+            {
+                "rule": "Course weights",
+                "source_message_index": None,
+                "quote": None,
+                "path": None,
+                "question": "各科各占多少比例？",
+            }
+        ]
+    }
+    response, calls = post(
+        review_request(),
+        [
+            {"edits": [BODY_EDIT]},
+            {
+                "message": "改了",
+                "body": "Revised body.",
+                "files": [],
+                "source_assessment": assessment,
+            },
+        ],
+    )
+    assert response.status_code == 200
+    assert response.json()["source_assessment"] == assessment
+    assert len(calls) == 2
+    rewrite = calls[1]
+    assert "Help me check invoices" in rewrite["messages"][1]["content"]
+    assert "source_message_index" in rewrite["messages"][0]["content"]
+    assert response.json()["usage"]["cost_usd"] == 0.002

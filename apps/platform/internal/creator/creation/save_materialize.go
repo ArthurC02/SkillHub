@@ -13,7 +13,7 @@ import (
 )
 
 func (s *Service) saveCommand(ctx context.Context, ws identity.Workspace, old gen.CreationSession, admitted admittedCommand) (View, *JobArgs, error) {
-	outcome, err := s.save(ctx, ws, &admitted.envelope.Snapshot, admitted.command)
+	outcome, err := s.save(ctx, ws, &admitted.envelope, admitted.command)
 	if err != nil {
 		return View{}, nil, err
 	}
@@ -63,7 +63,8 @@ func (s *Service) commitPreparedCommand(ctx context.Context, ws identity.Workspa
 	return s.commitCommand(ctx, tx, row, admitted, outcome)
 }
 
-func (s *Service) save(ctx context.Context, ws identity.Workspace, p *Snapshot, c Command) (commandOutcome, error) {
+func (s *Service) save(ctx context.Context, ws identity.Workspace, e *envelope, c Command) (commandOutcome, error) {
+	p := &e.Snapshot
 	kind := c.Kind
 	if c.Kind == commandConfirmDuplicate {
 		if p.PendingAction != PendingDuplicateAcknowledgement || p.PendingMaterialize == "" {
@@ -92,6 +93,11 @@ func (s *Service) save(ctx context.Context, ws identity.Workspace, p *Snapshot, 
 	}
 	if !completeEvaluationCases(p.ChallengeCases) {
 		return requestEvaluationCases(p), nil
+	}
+	if !sourcesChecked(*e) {
+		p.PendingAction = NothingPending
+		p.appendMessage("assistant", "保存前會先核對草稿的規則來源；若資料不足，會請你補充。")
+		return stepQueued(), nil
 	}
 	if !p.DuplicateAcknowledged && s.DuplicateCheck != nil && s.holdForDuplicates(ctx, ws, p, kind) {
 		return settledIn(StateWaitingConfirmation), nil

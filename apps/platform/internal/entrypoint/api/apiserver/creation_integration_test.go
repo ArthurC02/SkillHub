@@ -97,6 +97,7 @@ func creationModelAnswer(in llmclient.CreationStepRequest) llmclient.CreationSte
 		out.Message = "草稿已準備好。"
 		out.Brief = in.Brief
 		out.Draft = creationFixtureDraft(in.Messages)
+		out.SourceAssessment = &llmclient.CreationSourceAssessment{Rules: []llmclient.CreationSourceRule{}}
 	}
 
 	out.AcceptanceCriteria = in.AcceptanceCriteria

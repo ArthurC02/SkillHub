@@ -9,6 +9,7 @@ import (
 )
 
 var reasonSentences = map[string]string{
+	"sources_missing":          "草稿還缺少可核對的規則來源；請補充規則或提供來源，確認後再起草。",
 	"tool_unavailable":         "目前無法使用這項工具，請補充需求或選擇可用的參考。",
 	"confirm_diagram_first":    "請先確認流程圖的理解；確認後再依它建立草稿。",
 	"confirm_brief_first":      "請先確認這份需求與驗收條件，再建立草稿。",
@@ -341,6 +342,7 @@ func (s *Service) acceptDraft(ctx context.Context, revision int64, e *envelope, 
 	forgetTrialOfReplacedDraft(p, hash)
 	repeated := blocked && p.Draft != nil && p.Draft.Blocked && p.Draft.Validation == report
 	storeDraft(p, &Draft{revision, hash, *r.Draft, report, blocked})
+	e.SourceCheckedHash = sourceDraftHash(*p, *r.Draft)
 	if repeated {
 		p.BlockedRepeats++
 	} else {

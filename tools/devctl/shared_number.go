@@ -43,6 +43,7 @@ var sharedNumberRoster = []string{
 	"creationMaxSampleInputRunes",
 	"creationMaxSearchRewriteChars",
 	"creationMaxSearchRewrites",
+	"creationMaxSourceRules",
 	"creationMaxTextRunes",
 	"creationMaxToolQueryChars",
 	"creationSessionList",

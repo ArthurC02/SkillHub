@@ -105,7 +105,7 @@ func TestADraftWithoutCompleteEvaluationCasesIsNotValidatedOrStored(t *testing.T
 		for entry, as := range map[string]func(*StepResult) *StepResult{"draft": asDraft, "validate_draft": asValidation} {
 			t.Run(name+"/"+entry, func(t *testing.T) {
 				p := Snapshot{Brief: "original", BriefConfirmed: true, ChallengeCases: cases}
-				r := as(&StepResult{Message: "ready", Draft: &GeneratedSkill{Body: "new body"}})
+				r := as(&StepResult{Message: "ready", Draft: &GeneratedSkill{Body: "new body"}, SourceAssessment: &SourceAssessment{Rules: []SourceRule{}}})
 				got, after := screened(t, p, r)
 				if got.state != StateWaitingInput || got.validated != 0 || after.Draft != nil || after.ToolCalls != 0 || !after.BriefConfirmed {
 					t.Fatalf("incomplete draft got=%+v snapshot=%+v, want no validation or stored draft", got, after)
@@ -144,7 +144,7 @@ func TestALegacyDraftCannotMaterializeBeforeItsEvaluationCasesAreConfirmed(t *te
 				p.PendingAction, p.PendingMaterialize = PendingDuplicateAcknowledgement, commandMaterialize
 			}
 			draft := p.Draft
-			outcome, err := (&Service{Materialize: materializer()}).save(context.Background(), identity.Workspace{}, &p, Command{Kind: kind, ContentHash: draft.ContentHash})
+			outcome, err := (&Service{Materialize: materializer()}).saveWithCheckedSources(context.Background(), identity.Workspace{}, &p, Command{Kind: kind, ContentHash: draft.ContentHash})
 			if err != nil || !outcome.queueStep || outcome.materialize != "" || p.BriefConfirmed || p.Candidate != nil || p.Draft != draft || !strings.Contains(lastMessage(p), "評估案例") {
 				t.Fatalf("legacy save outcome=%+v snapshot=%+v err=%v", outcome, p, err)
 			}
@@ -156,7 +156,7 @@ func TestAnExistingCandidateCanStillBeSelectedWithoutCreatingAnotherVersion(t *t
 	p := saveableSnapshot()
 	p.ChallengeCases = nil
 	p.Candidate = &Candidate{SkillID: "existing", VersionID: "immutable"}
-	outcome, err := (&Service{}).save(context.Background(), identity.Workspace{}, &p, Command{Kind: commandFinalize, ContentHash: p.Draft.ContentHash})
+	outcome, err := (&Service{}).saveWithCheckedSources(context.Background(), identity.Workspace{}, &p, Command{Kind: commandFinalize, ContentHash: p.Draft.ContentHash})
 	if err != nil || outcome.state != StateSaved || outcome.queueStep || outcome.materialize != "" || p.Candidate.VersionID != "immutable" {
 		t.Fatalf("existing candidate outcome=%+v snapshot=%+v err=%v", outcome, p, err)
 	}

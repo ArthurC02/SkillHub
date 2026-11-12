@@ -118,12 +118,25 @@ type StepResult struct {
 	DiagramDescription    string
 	DiagramInterpretation *DiagramDecomposition
 
-	Reason        string
-	ToolIntent    *ToolIntent
-	Draft         *GeneratedSkill
-	Model         string
-	PromptVersion string
-	Usage         *ModelUsage
+	Reason           string
+	ToolIntent       *ToolIntent
+	Draft            *GeneratedSkill
+	Model            string
+	PromptVersion    string
+	Usage            *ModelUsage
+	SourceAssessment *SourceAssessment
+}
+
+type SourceRule struct {
+	Rule               string
+	SourceMessageIndex *int
+	Quote              *string
+	Path               *string
+	Question           *string
+}
+
+type SourceAssessment struct {
+	Rules []SourceRule
 }
 
 type StepModel interface {

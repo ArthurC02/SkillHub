@@ -2485,6 +2485,43 @@ components:
           type: integer
           minimum: 1
           maximum: 16000
+    CreationSourceRule:
+      type: object
+      additionalProperties: false
+      required: [rule]
+      properties:
+        rule:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        source_message_index:
+          type: [integer, "null"]
+          minimum: 0
+          maximum: 99
+          description: Zero-based index in the request's messages. A source must be an author's message or a successful fetched-page observation; an assistant message or a search listing is not a source. Null may instead cite the human-confirmed diagram's description, nodes, conditions, branches or answered uncertainties.
+        quote:
+          type: [string, "null"]
+          maxLength: 2000
+          description: Exact supporting text from the author message or the fetched page text, never a model paraphrase.
+        path:
+          type: [string, "null"]
+          maxLength: 256
+          description: Existing references/ or assets/ file carrying this rule, linked by the submitted Skill body. Source-check metadata stays private and is not itself a generated file.
+        question:
+          type: [string, "null"]
+          maxLength: 2000
+          description: Question for the author when this rule has no source. In that case the source index, quote and path are absent. Go refuses the proposed draft and asks these questions.
+    CreationSourceAssessment:
+      type: object
+      additionalProperties: false
+      required: [rules]
+      properties:
+        rules:
+          type: array
+          maxItems: 64  # one-number: creationMaxSourceRules
+          items:
+            $ref: '#/components/schemas/CreationSourceRule'
+          description: Inventory of every task-defining rule, formula, rate, threshold, lookup table and decision criterion needed by the draft. Empty only when the task needs none. Go checks the inventory's evidence and files; semantic completeness still requires model-quality evaluation.
     CreationStepResponse:
       type: object
       additionalProperties: false
@@ -2534,6 +2571,9 @@ components:
           $ref: '#/components/schemas/CreationToolIntent'
         draft:
           $ref: '#/components/schemas/GeneratedSkill'
+        source_assessment:
+          $ref: '#/components/schemas/CreationSourceAssessment'
+          description: Provider assessment for a submitted or revalidated draft. Go refuses new drafts without a verifiable inventory; a missing field is supported for older providers but never means the sources were checked.
         model:
           type: string
         prompt_version:

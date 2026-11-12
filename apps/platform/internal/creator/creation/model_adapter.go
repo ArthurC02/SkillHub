@@ -66,7 +66,22 @@ func (a stepOverHTTP) CreationStep(ctx context.Context, req StepRequest) (*StepR
 		Model:                 resp.Model,
 		PromptVersion:         resp.PromptVersion,
 		Usage:                 usageFromWire(resp.Usage),
+		SourceAssessment:      sourceAssessmentFromWire(resp.SourceAssessment),
 	}, nil
+}
+
+func sourceAssessmentFromWire(value *llmclient.CreationSourceAssessment) *SourceAssessment {
+	if value == nil {
+		return nil
+	}
+	result := &SourceAssessment{}
+	if value.Rules != nil {
+		result.Rules = make([]SourceRule, len(value.Rules))
+		for i, rule := range value.Rules {
+			result.Rules[i] = SourceRule{rule.Rule, rule.SourceMessageIndex, rule.Quote, rule.Path, rule.Question}
+		}
+	}
+	return result
 }
 
 func wireDiagramInterpretation(value *DiagramInterpretation) *llmclient.DiagramInterpretation {

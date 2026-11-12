@@ -16,12 +16,14 @@ const (
 	reasonBriefMissing           = "brief_missing"
 	reasonDraftMissing           = "draft_missing"
 	reasonEvaluationCasesMissing = "evaluation_cases_missing"
+	reasonSourcesMissing         = "sources_missing"
 )
 
 var screenReasons = []string{
 	reasonToolUnavailable, reasonConfirmDiagramFirst, reasonConfirmBriefFirst,
 	reasonSearchQueryMissing, reasonFetchURLMissing, reasonBriefMissing, reasonDraftMissing,
 	reasonEvaluationCasesMissing,
+	reasonSourcesMissing,
 }
 
 func offeredTools(s *Service, e envelope) []string {
@@ -44,6 +46,7 @@ func (r DraftRules) offeredMCPTools(ctx context.Context) ([]MCPTool, error) {
 
 func screenReply(e envelope, r *StepResult, allowed []string) {
 	if r.Reason != "" {
+		*r = StepResult{Outcome: outcomeClarification, Reason: r.Reason, Model: r.Model, PromptVersion: r.PromptVersion, Usage: r.Usage}
 		return
 	}
 	p := e.Snapshot
@@ -56,7 +59,9 @@ func screenReply(e envelope, r *StepResult, allowed []string) {
 		if reason == reasonEvaluationCasesMissing {
 			r.Brief, r.AcceptanceCriteria, r.SampleInput, r.ChallengeCases = "", nil, "", nil
 		}
+		return
 	}
+	screenSources(e, r)
 }
 
 func asksToValidate(r *StepResult) bool {

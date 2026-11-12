@@ -74,6 +74,18 @@ type CreationMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
 }
+
+type CreationSourceRule struct {
+	Rule               string  `json:"rule"`
+	SourceMessageIndex *int    `json:"source_message_index,omitempty"`
+	Quote              *string `json:"quote,omitempty"`
+	Path               *string `json:"path,omitempty"`
+	Question           *string `json:"question,omitempty"`
+}
+
+type CreationSourceAssessment struct {
+	Rules []CreationSourceRule `json:"rules"`
+}
 type CreationToolIntent struct {
 	Kind  string `json:"kind"`
 	Query string `json:"query"`
@@ -91,12 +103,13 @@ type CreationStepResponse struct {
 	DiagramDescription    string                  `json:"diagram_description"`
 	DiagramInterpretation *DiagramDecomposition   `json:"diagram_interpretation,omitempty"`
 
-	Reason        string              `json:"reason,omitempty"`
-	ToolIntent    *CreationToolIntent `json:"tool_intent,omitempty"`
-	Draft         *GeneratedSkill     `json:"draft,omitempty"`
-	Model         string              `json:"model"`
-	PromptVersion string              `json:"prompt_version"`
-	Usage         *GatewayUsage       `json:"usage,omitempty"`
+	Reason           string                    `json:"reason,omitempty"`
+	ToolIntent       *CreationToolIntent       `json:"tool_intent,omitempty"`
+	Draft            *GeneratedSkill           `json:"draft,omitempty"`
+	SourceAssessment *CreationSourceAssessment `json:"source_assessment,omitempty"`
+	Model            string                    `json:"model"`
+	PromptVersion    string                    `json:"prompt_version"`
+	Usage            *GatewayUsage             `json:"usage,omitempty"`
 }
 
 func (c *Client) CreationStep(ctx context.Context, in CreationStepRequest) (*CreationStepResponse, error) {

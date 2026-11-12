@@ -43,7 +43,8 @@ logger = logging.getLogger("skillhub_llm.creation")
 
 router = APIRouter()
 MODEL = os.getenv("CREATION_MODEL") or "skillhub-creation"
-PROMPT_VERSION = "creation-step/v47"
+PROMPT_VERSION = "creation-step/v48"
+MAX_CREATION_MESSAGES = 100
 SHIPPED_FILES_RULE = (
     "- `files`: every reference, data asset and script the body uses, each with its full "
     "relative path under references/, assets/ or scripts/ and its complete content. "
@@ -204,7 +205,7 @@ class CreationStepRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     session_id: str = Field(..., min_length=1)
     revision: int = Field(..., ge=0)
-    messages: list[CreationMessage] = Field(..., max_length=100)
+    messages: list[CreationMessage] = Field(..., max_length=MAX_CREATION_MESSAGES)
     brief: str = Field(..., max_length=TEXT_MAX_CHARS)
     acceptance_criteria: list[Annotated[str, Field(max_length=CRITERION_MAX_CHARS)]] = Field(
         ..., max_length=MAX_ACCEPTANCE_CRITERIA
@@ -231,6 +232,58 @@ class CreationStepRequest(BaseModel):
     max_output_tokens: int = Field(..., ge=1, le=16000)  # one-number: creationMaxOutputTokens
 
 
+MAX_SOURCE_RULES = 64  # one-number: creationMaxSourceRules
+SOURCE_TEXT_MAX_CHARS = 2000
+SOURCE_PATH_MAX_CHARS = 256
+
+
+SOURCE_ASSESSMENT_INSTRUCTIONS = (
+    "Before drafting or rewriting, check whether the task's necessary rules have sources. "
+    "If a necessary rule has no source, ask the author instead of inventing it. "
+    "With every draft or validate_draft intent, return source_assessment.rules listing "
+    "every task-defining rule, formula, rate, threshold, lookup table and decision criterion. "
+    "For each, name the rule, its zero-based source_message_index in the session's messages, "
+    "an exact supporting quote from that author's message or the text of a successful "
+    "fetched-page observation, and the references/ or assets/ path that carries the rule "
+    "and is linked by the body. The brief, assistant messages, reference Skills shown as "
+    "shape examples and search listings are not evidence. When a rule has no source, "
+    "set its source index, quote and path to null and ask for it in question. Otherwise "
+    "question is null. For a diagram confirmed by the person, source_message_index may "
+    "be null with an exact quote from its confirmed description, nodes, conditions, "
+    "branches or answered uncertainties. Unconfirmed image interpretations are not sources. "
+    "An empty rules array means the task needs no task-defining rules; "
+    "it never means unchecked. Return null for non-draft decisions. "
+)
+
+
+class SourceRuleDraft(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    rule: str
+    source_message_index: int | None
+    quote: str | None
+    path: str | None
+    question: str | None
+
+
+class SourceAssessmentDraft(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    rules: list[SourceRuleDraft]
+
+
+class CreationSourceRule(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    rule: str = Field(..., min_length=1, max_length=SOURCE_TEXT_MAX_CHARS)
+    source_message_index: int | None = Field(default=None, ge=0, le=MAX_CREATION_MESSAGES - 1)
+    quote: str | None = Field(default=None, max_length=SOURCE_TEXT_MAX_CHARS)
+    path: str | None = Field(default=None, max_length=SOURCE_PATH_MAX_CHARS)
+    question: str | None = Field(default=None, max_length=SOURCE_TEXT_MAX_CHARS)
+
+
+class CreationSourceAssessment(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    rules: list[CreationSourceRule] = Field(..., max_length=MAX_SOURCE_RULES)
+
+
 class CreationDecision(BaseModel):
     """Strict model schema: nullable properties are required; bounds are checked afterwards."""
 
@@ -244,6 +297,7 @@ class CreationDecision(BaseModel):
     diagram_description: str | None
     diagram_interpretation: DiagramInterpretation | None
     tool_intent: CreationToolIntent | None
+    source_assessment: SourceAssessmentDraft | None
     draft: GeneratedSkill | None
 
 
@@ -261,6 +315,7 @@ class CreationStepResponse(BaseModel):
     diagram_interpretation: DiagramInterpretation | None = None
     tool_intent: CreationToolIntent | None = None
     draft: GeneratedSkill | None = None
+    source_assessment: CreationSourceAssessment | None = None
     model: str
     prompt_version: str
     usage: GatewayUsage | None = None
@@ -356,6 +411,7 @@ class ReviewRewrite(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     message: str
+    source_assessment: SourceAssessmentDraft | None
     body: str
     files: list[GeneratedFile]
 
@@ -711,7 +767,7 @@ def _system_prompt(phase: str) -> str:
     )
     if phase != "understand":
         system += "\n\n" + FIELD_RULES + "\n" + SHIPPED_FILES_RULE
-    return system
+    return system + "\n\n" + SOURCE_ASSESSMENT_INSTRUCTIONS
 
 
 def _user_content(req: CreationStepRequest, prompt: str) -> str | list[dict]:
@@ -827,6 +883,7 @@ async def _diagnose(
             diagram_interpretation=None,
             tool_intent=None,
             draft=None,
+            source_assessment=None,
         )
         return
     if any(e.target not in ("body", "files") for e in diagnosis.edits):
@@ -857,13 +914,21 @@ async def _rewrite(
         req,
         gateway_key,
         _ModelCallSpec(
-            system=REWRITE_INSTRUCTIONS,
+            system=REWRITE_INSTRUCTIONS + "\n\n" + SOURCE_ASSESSMENT_INSTRUCTIONS,
             user="Current body:\n\n"
             + (req.draft.body if req.draft else "")
             + "\n\nCurrent files:\n\n"
             + files_text
             + "\n\nEdits:\n"
-            + edits_text,
+            + edits_text
+            + "\n\nSession sources:\n"
+            + fence(
+                DATA_TAG,
+                scrub(
+                    DATA_TAG,
+                    _fenced_for_prompt(req).model_dump_json(exclude={"session_id", "diagram"}),
+                ),
+            ),
             max_tokens=req.max_output_tokens,
             schema=ReviewRewrite,
             schema_name="review_rewrite",
@@ -897,6 +962,7 @@ async def _rewrite(
         diagram_interpretation=None,
         tool_intent=None,
         draft=rewritten,
+        source_assessment=candidate.source_assessment,
     )
     _refuse_over_caps(decision)
     revision.decision = decision
@@ -985,6 +1051,23 @@ def _settle_diagram_fields(
 
 
 def _refuse_over_caps(decision: CreationDecision) -> None:
+    assessment = decision.source_assessment
+    if assessment is not None and (
+        len(assessment.rules) > MAX_SOURCE_RULES
+        or any(
+            not rule.rule.strip()
+            or len(rule.rule) > SOURCE_TEXT_MAX_CHARS
+            or len(rule.quote or "") > SOURCE_TEXT_MAX_CHARS
+            or len(rule.question or "") > SOURCE_TEXT_MAX_CHARS
+            or len(rule.path or "") > SOURCE_PATH_MAX_CHARS
+            or (
+                rule.source_message_index is not None
+                and not 0 <= rule.source_message_index < MAX_CREATION_MESSAGES
+            )
+            for rule in assessment.rules
+        )
+    ):
+        raise ValueError("over cap: source assessment")
     if any(
         len(v or "") > TEXT_MAX_CHARS
         for v in [
@@ -1288,6 +1371,11 @@ def _render(state: _State) -> dict:
             diagram_interpretation=d.diagram_interpretation,
             tool_intent=d.tool_intent,
             draft=d.draft,
+            source_assessment=CreationSourceAssessment.model_validate(
+                d.source_assessment.model_dump()
+            )
+            if _submits_draft(d) and d.source_assessment is not None
+            else None,
             model=state.get("served_model") or MODEL,
             prompt_version=PROMPT_VERSION,
             usage=state.get("usage"),

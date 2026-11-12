@@ -66,6 +66,7 @@ def decision(**changes):
         "diagram_interpretation": None,
         "tool_intent": None,
         "draft": None,
+        "source_assessment": {"rules": []},
     } | changes
 
 
@@ -802,7 +803,12 @@ def test_review_after_an_unmet_trial_returns_the_rewrite_without_a_third_call(
                     }
                 ]
             },
-            {"message": "改了", "body": revised["body"], "files": SKILL["files"]},
+            {
+                "message": "改了",
+                "body": revised["body"],
+                "files": SKILL["files"],
+                "source_assessment": {"rules": []},
+            },
         ],
         calls,
     )
@@ -847,7 +853,12 @@ def test_review_edit_targeting_files_rewrites_the_named_script():
                     }
                 ]
             },
-            {"message": "改了", "body": "\n" + draft["body"] + "  \n", "files": fixed_files},
+            {
+                "message": "改了",
+                "body": "\n" + draft["body"] + "  \n",
+                "files": fixed_files,
+                "source_assessment": {"rules": []},
+            },
         ],
         calls,
     )

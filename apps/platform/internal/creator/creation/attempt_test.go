@@ -360,7 +360,7 @@ func TestAUsableResponseIsJudgedAtTheNextRevision(t *testing.T) {
 		return "h", "{}", false, nil
 	}}}
 	e := &envelope{Deadline: time.Now().Add(time.Hour), Limits: testLimits(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1}}
-	response := &StepResult{Outcome: "draft", Message: "draft", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "body"}}
+	response := &StepResult{Outcome: "draft", Message: "draft", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "body"}, SourceAssessment: &SourceAssessment{Rules: []SourceRule{}}}
 	state, next, err := s.attemptOutcome(context.Background(), liveRow(6), e, stepCall{reply: response})
 	if err != nil || state != StateDraftReady || next || e.Snapshot.Draft == nil || e.Snapshot.Draft.Revision != 7 {
 		t.Fatalf("state = %s, next = %v, draft = %+v, err = %v", state, next, e.Snapshot.Draft, err)
