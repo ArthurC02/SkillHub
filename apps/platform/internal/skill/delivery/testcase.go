@@ -101,7 +101,7 @@ func (s *Service) selectTestCases(
 
 	sources := []caseSource{{workspaceID: ws.ID, skillID: skill.ID, curated: ws.IsCatalog}}
 	if skill.ForkedFromSkillID.Valid {
-		src, found, err := s.CuratedSource(ctx, skill.ForkedFromSkillID)
+		src, found, err := s.CuratedSource(ctx, ws.ID, skill.ID)
 		if err != nil {
 			return testCaseSelection{}, err
 		}

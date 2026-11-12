@@ -410,7 +410,7 @@ func newPublishingHandler(cfg Config, publishingSvc *publishing.Service, auth *i
 
 func wireCatalogRegistryReaders(service *catalog.Service, registryService *registry.Service) {
 	service.ReadCatalogSkill = func(ctx context.Context, skillID pgtype.UUID) (catalog.SkillFacts, bool, error) {
-		skill, found, err := registryService.CatalogSkill(ctx, skillID)
+		skill, found, err := registryService.CatalogReads().Skill(ctx, skillID)
 		return catalogSkillFacts(skill), found, err
 	}
 	service.ReadWorkspaceSkill = func(ctx context.Context, workspaceID, skillID pgtype.UUID) (catalog.SkillFacts, bool, error) {
@@ -518,9 +518,9 @@ func wirePackagingRegistryReaders(service *packaging.Service, registryService *r
 		}, found, err
 	}
 
-	service.CuratedSource = func(ctx context.Context, skillID pgtype.UUID) (packaging.CuratedSource, bool, error) {
-		skill, found, err := registryService.CatalogSkill(ctx, skillID)
-		return packaging.CuratedSource{SkillID: skill.ID, WorkspaceID: skill.WorkspaceID}, found, err
+	service.CuratedSource = func(ctx context.Context, workspaceID, skillID pgtype.UUID) (packaging.CuratedSource, bool, error) {
+		source, found, err := registryService.CatalogReads().Ancestor(ctx, workspaceID, skillID)
+		return packaging.CuratedSource{SkillID: source.SkillID, WorkspaceID: source.WorkspaceID}, found, err
 	}
 	service.ReadVersionSummaries = func(
 		ctx context.Context, versionIDs []pgtype.UUID,

@@ -27,6 +27,25 @@ FOR SHARE;
 SELECT * FROM skills
 WHERE id = @id AND workspace_id = ANY(@catalog_workspace_ids::uuid[]) AND deleted_at IS NULL;
 
+-- name: GetCuratedAncestor :one
+WITH RECURSIVE lineage AS (
+    SELECT s.forked_from_skill_id AS ancestor_id, ARRAY[s.id] AS visited
+    FROM skills s
+    WHERE s.id = @skill_id AND s.workspace_id = @workspace_id AND s.deleted_at IS NULL
+    UNION ALL
+    SELECT a.forked_from_skill_id, l.visited || a.id
+    FROM lineage l
+    JOIN skills a ON a.id = l.ancestor_id
+    WHERE NOT a.id = ANY(l.visited) AND a.forked_from_skill_id IS NOT NULL
+)
+SELECT a.id, a.workspace_id
+FROM lineage l
+JOIN skills a ON a.id = l.ancestor_id
+WHERE a.workspace_id = ANY(@catalog_workspace_ids::uuid[]) AND a.deleted_at IS NULL
+  AND NOT a.id = ANY(l.visited)
+ORDER BY cardinality(l.visited)
+LIMIT 1;
+
 -- name: SoftDeleteSkill :one
 UPDATE skills SET deleted_at = now(), updated_at = now()
 WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL

@@ -79,7 +79,7 @@ func (r runRegistryReader) ContentSource(
 	if err != nil || !found {
 		return run.ContentSource{}, found, err
 	}
-	_, inCatalogue, err := r.service.CatalogSkill(ctx, version.SkillID)
+	_, inCatalogue, err := r.service.CatalogReads().Skill(ctx, version.SkillID)
 	if err != nil {
 		return run.ContentSource{}, false, err
 	}

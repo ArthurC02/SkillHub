@@ -263,7 +263,7 @@
 - [x] PACK-002 打包前重新執行規格驗證。
 - [x] PACK-003 保留 License、作者、原始來源與衍生關係。
 - [x] PACK-004 排除 Secrets、測試憑證、內部路徑與受保護資料。
-- [x] PACK-005 支援選擇是否包含可散布 Test Case 與範例資料。
+- [x] PACK-005 支援選擇是否包含可散布 Test Case 與範例資料。沿目前 Workspace 擁有的 Skill 血緣讀取最近仍存在的策展來源，不複製 Test Case 或 Dataset；自己的私人資料與中間私人 Fork 的資料不入包，來源查詢失敗時回報錯誤。直接與多層 Fork 的預覽、Dataset 位元組、資料未複製及退出選擇均有 PostgreSQL 整合驗證。
 - [x] PACK-006 建立首批目標 Agent 安裝 Profile。
 - [x] PACK-007 產生安裝位置、依賴、環境變數與驗證步驟。
 - [x] PACK-008 對未驗證 Agent 顯示清楚限制。

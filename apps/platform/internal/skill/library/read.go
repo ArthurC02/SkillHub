@@ -114,7 +114,7 @@ const (
 func (s *Service) Listing(
 	ctx context.Context, workspaceID pgtype.UUID, page SkillListingPage,
 ) (SkillListing, error) {
-	catalogs, err := s.catalogWorkspaceIDs(ctx, s.Pool)
+	catalogs, err := s.CatalogReads().workspaceIDs(ctx, s.Pool)
 	if err != nil {
 		return SkillListing{}, err
 	}
@@ -219,18 +219,6 @@ func LatestVersionIn(ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype
 		return Version{}, false, err
 	}
 	return versionDTO(row), true, nil
-}
-
-func (s *Service) CatalogSkill(ctx context.Context, skillID pgtype.UUID) (Skill, bool, error) {
-	row, err := s.catalogSkillIn(ctx, s.Pool, skillID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Skill{}, false, nil
-	}
-	if err != nil {
-		return Skill{}, false, err
-	}
-	skill, err := withLineage(ctx, s.Pool, skillDTO(row))
-	return skill, err == nil, err
 }
 
 func (s *Service) WorkspaceSkill(ctx context.Context, workspaceID, skillID pgtype.UUID) (Skill, bool, error) {

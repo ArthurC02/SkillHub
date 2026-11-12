@@ -78,9 +78,11 @@ func exportedForkFor(t *testing.T, target string, entries map[string]sourceEntry
 		ReadPrevious: func(context.Context, pgtype.UUID, pgtype.UUID, int32) (PreviousVersion, bool, error) {
 			return PreviousVersion{}, false, nil
 		},
-		ReadLineage:   func(context.Context, pgtype.UUID) (LineageStep, bool, error) { return LineageStep{}, false, nil },
-		ReadOldest:    func(context.Context, pgtype.UUID) (OldestVersion, bool, error) { return OldestVersion{}, false, nil },
-		CuratedSource: func(context.Context, pgtype.UUID) (CuratedSource, bool, error) { return CuratedSource{}, false, nil },
+		ReadLineage: func(context.Context, pgtype.UUID) (LineageStep, bool, error) { return LineageStep{}, false, nil },
+		ReadOldest:  func(context.Context, pgtype.UUID) (OldestVersion, bool, error) { return OldestVersion{}, false, nil },
+		CuratedSource: func(context.Context, pgtype.UUID, pgtype.UUID) (CuratedSource, bool, error) {
+			return CuratedSource{}, false, nil
+		},
 		ReadVersionSummaries: func(context.Context, []pgtype.UUID) (map[pgtype.UUID]VersionSummary, error) {
 			return map[pgtype.UUID]VersionSummary{versionID: {LatestVersionNumber: 1}}, nil
 		},
