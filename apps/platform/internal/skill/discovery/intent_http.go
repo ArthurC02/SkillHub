@@ -2,7 +2,6 @@ package catalog
 
 import (
 	"encoding/json"
-	"io"
 	"net/http"
 	"strings"
 	"unicode/utf8"
@@ -34,10 +33,7 @@ type matchReasonsResponse struct {
 
 func (h *Handler) PublicMatchReasons(w http.ResponseWriter, r *http.Request) {
 	var body matchReasonsRequest
-	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxMatchReasonsBytes))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&body); err != nil || decoder.Decode(new(any)) != io.EOF {
-		httpx.WriteError(w, http.StatusBadRequest, "invalid match reasons request")
+	if !httpx.DecodeOneJSON(w, r, maxMatchReasonsBytes, &body, "invalid match reasons request") {
 		return
 	}
 	query := strings.TrimSpace(body.Query)
@@ -94,14 +90,7 @@ type correctedSearchRequest struct {
 
 func (h *Handler) CorrectedSearch(w http.ResponseWriter, r *http.Request) {
 	var body correctedSearchRequest
-	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxCorrectedSearchBytes))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&body); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "invalid corrected search request")
-		return
-	}
-	if err := decoder.Decode(new(any)); err != io.EOF {
-		httpx.WriteError(w, http.StatusBadRequest, "expected one corrected search request")
+	if !httpx.DecodeOneJSON(w, r, maxCorrectedSearchBytes, &body, "invalid corrected search request") {
 		return
 	}
 	query := strings.TrimSpace(body.Query)
