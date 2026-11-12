@@ -1,0 +1,130 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "r20-recite",
+  "proposer": "agent:coding-agent",
+  "requirement_id": "r20-recite",
+  "status": "verified",
+  "change_classification": "routine",
+  "submitted_at": "2026-11-12T11:52:49.914633Z",
+  "verified_at": "2026-11-12T11:53:01.298497Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "c6e89f3cfd49b4b2b044e9d8c0d9c51ba987ed12",
+    "registry_digest": "sha256:f8cb2d1f33e5d751370b4ab4bf0f61786a2cec26f7587fc53becf832077a5652",
+    "committed_digest": "sha256:f8cb2d1f33e5d751370b4ab4bf0f61786a2cec26f7587fc53becf832077a5652"
+  },
+  "affected_contexts": [
+    "registry",
+    "testlab"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "<context-id>",
+    "invariant": "<falsifiable-rule>",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "<existing-or-proposed-collaboration>",
+    "consistency": "<synchronous-or-eventual>",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": null,
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-skill-listing-page-stays-in-bounds",
+        "statement": "The Skill listing accepts a limit of 1 to 100 and a non-negative offset; any other value, including an empty or non-integer one, is refused.",
+        "contexts": [
+          "registry"
+        ],
+        "examples": [
+          "limit=101 is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/library/http.go",
+            "lines": {
+              "start": 339,
+              "end": 347
+            },
+            "content_sha256": "sha256:f438abd089196985bad2f92b7782598151f792ec4a52423b33658daaff0dc93a",
+            "excerpt_sha256": "sha256:6480b27b4034f5d16a204bc093051df18351de0f08e257c2cbc753a6c3b9ab55",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/skill/library/http_test.go",
+            "lines": {
+              "start": 13,
+              "end": 50
+            },
+            "excerpt_sha256": "sha256:4aa8e925c744c1e006dbff381f70c82e0bf4b1a0bfe973cd271faf03b8306da0"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-test-case-list-offset-is-0-to-the-int32-ceiling",
+        "statement": "The test case list takes an offset from 0 to 2147483647 as a plain decimal integer; a negative, fractional, hexadecimal, empty or larger value is refused rather than read as 0.",
+        "contexts": [
+          "testlab"
+        ],
+        "examples": [
+          "offset=2147483647 lists; offset=2147483648, offset=0x10 and offset=-1 answer 400."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/http.go",
+            "lines": {
+              "start": 235,
+              "end": 239
+            },
+            "content_sha256": "sha256:cad33703d1f0cb614f731e754c4521b08cf40b5a8a4c8e0392e22d5bd6171590",
+            "excerpt_sha256": "sha256:27a766bd7e4dc94ed8278f4019d3a7abed9a043f889f78963c2209f5d360ddab",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/testlab_integration_test.go",
+            "lines": {
+              "start": 1019,
+              "end": 1060
+            },
+            "excerpt_sha256": "sha256:126d784c66c5c29b9201874ee687687da98abc2ecd49e00f049bbd5b00f1ee2b"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-11-12T11:53:00.622260Z",
+      "scope": "Re-cite two reviewed offset rules after the offset bound moved into the shared query parser; the rules' statements are unchanged",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "c6e89f3cfd49b4b2b044e9d8c0d9c51ba987ed12",
+        "registry_digest": "sha256:f8cb2d1f33e5d751370b4ab4bf0f61786a2cec26f7587fc53becf832077a5652",
+        "committed_digest": "sha256:f8cb2d1f33e5d751370b4ab4bf0f61786a2cec26f7587fc53becf832077a5652"
+      }
+    }
+  ],
+  "supersedes": [
+    "query-bounds-shared-parser-recited-2026-11-08"
+  ]
+}

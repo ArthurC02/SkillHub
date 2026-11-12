@@ -1,0 +1,29 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "r20-recite",
+  "proposal_id": "r20-recite",
+  "registry_revision": {
+    "observed_commit": "c6e89f3cfd49b4b2b044e9d8c0d9c51ba987ed12",
+    "registry_digest": "sha256:f8cb2d1f33e5d751370b4ab4bf0f61786a2cec26f7587fc53becf832077a5652",
+    "committed_digest": "sha256:f8cb2d1f33e5d751370b4ab4bf0f61786a2cec26f7587fc53becf832077a5652"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": ".domain-memory/domain-memory.exe verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/r20-recite --path apps/platform/internal/entrypoint/api/apiserver/testlab_integration_test.go --path apps/platform/internal/skill/library/http.go --path apps/platform/internal/skill/library/http_test.go --path apps/platform/internal/trial/design/http.go",
+      "command_profile": "verify-evidence",
+      "exit_code": 0,
+      "output_sha256": "sha256:ced2ed6e36b7d4bc83a12b534d366bbc31f10a401adf7156333664a5a3919bc3",
+      "finished_at": "2026-11-12T11:53:00.517798Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}
