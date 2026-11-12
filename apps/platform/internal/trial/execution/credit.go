@@ -89,8 +89,7 @@ func (s *Service) reportedSpend(ctx context.Context, run gen.Run, attempts []gen
 	if s.Gateway == nil {
 		return nil
 	}
-	var spent float64
-	reported := false
+	var total AttemptUsage
 	for _, attempt := range attempts {
 		usage, err := s.Gateway.Usage(ctx, pgconv.UUIDString(attempt.ID), attemptUsageSince(attempt))
 		if err != nil {
@@ -110,14 +109,14 @@ func (s *Service) reportedSpend(ctx context.Context, run gen.Run, attempts []gen
 			return nil
 		}
 		if usage.CostReported {
-			spent += usage.ModelCostUSD
-			reported = true
+			total.addCost(usage.ModelCostUSD)
+			total.CostReported = true
 		}
 	}
-	if !reported {
+	if !total.CostReported || total.CostIncomplete {
 		return nil
 	}
-	return &spent
+	return &total.ModelCostUSD
 }
 
 const unrecordedAttemptLookback = time.Hour

@@ -30,6 +30,9 @@ func TestGatewayReportsCostOnlyWhenEveryCallIsPriced(t *testing.T) {
 		{"known then negative", []string{`[{"prompt_tokens":42,"completion_tokens":3,"spend":0.03},{"spend":-0.005}]`}, .03, false},
 		{"negative then known", []string{`[{"prompt_tokens":42,"completion_tokens":3,"spend":-0.03},{"spend":0.005}]`}, .005, false},
 		{"explicit zero", []string{`[{"prompt_tokens":42,"completion_tokens":3,"spend":0}]`}, 0, true},
+		{"largest finite sum", []string{`[{"prompt_tokens":42,"completion_tokens":3,"spend":8.988465674311579e307},{"spend":8.988465674311579e307}]`}, math.MaxFloat64, true},
+		{"overflow within a page", []string{`[{"prompt_tokens":42,"completion_tokens":3,"spend":1e308},{"spend":1e308}]`}, 1e308, false},
+		{"overflow across pages", []string{`[{"prompt_tokens":42,"completion_tokens":3,"spend":1e308}]`, `[{"spend":1e308}]`}, 1e308, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -47,8 +50,35 @@ func TestGatewayReportsCostOnlyWhenEveryCallIsPriced(t *testing.T) {
 			gateway := &Gateway{adminBaseURL: server.URL, client: server.Client()}
 			got, err := gateway.Usage(t.Context(), "attempt", time.Time{})
 			wantIncomplete := !tc.reported
-			if err != nil || got.CostReported != tc.reported || got.CostIncomplete != wantIncomplete || math.Abs(got.ModelCostUSD-tc.want) > 1e-12 || got.InputTokens != 42 || got.OutputTokens != 3 || got.Incomplete {
+			if err != nil || got.CostReported != tc.reported || got.CostIncomplete != wantIncomplete || math.IsNaN(got.ModelCostUSD) || math.IsInf(got.ModelCostUSD, 0) || math.Abs(got.ModelCostUSD-tc.want) > 1e-12 || got.InputTokens != 42 || got.OutputTokens != 3 || got.Incomplete {
 				t.Fatalf("usage misrepresented returned call costs or tokens: got=%+v err=%v", got, err)
+			}
+		})
+	}
+}
+
+func TestNonfiniteAttemptCostsCannotBeSettledOrReused(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		cost float64
+		want *float64
+		left float64
+	}{
+		{"largest finite sum", math.MaxFloat64 / 2, usd(math.MaxFloat64), -math.MaxFloat64},
+		{"overflow between attempts", 1e308, nil, 0},
+		{"infinite backend price", math.Inf(1), nil, 0},
+		{"not a number backend price", math.NaN(), nil, 0},
+		{"negative backend price", -1, nil, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			gateway := gatewaySpending(tc.cost)
+			gateway.perAttempt.CostReported = true
+			service := &Service{Gateway: gateway}
+			attempts := []gen.RunAttempt{{ID: pgtype.UUID{Bytes: [16]byte{1}, Valid: true}}, {ID: pgtype.UUID{Bytes: [16]byte{2}, Valid: true}}}
+			assertRunSpendCompleteness(t, service, attempts, tc.want, tc.left)
+			usage, err := service.usageOf(t.Context(), attempts)
+			if err != nil || math.IsNaN(usage.ModelCostUSD) || math.IsInf(usage.ModelCostUSD, 0) || usage.InputTokens != 20 || usage.OutputTokens != 10 {
+				t.Fatalf("invalid aggregate cost lost finite observations or tokens: usage=%+v err=%v", usage, err)
 			}
 		})
 	}
@@ -147,7 +177,7 @@ func assertRunSpendCompleteness(t *testing.T, service *Service, attempts []gen.R
 		t.Fatalf("run usage lost unknown cost across attempts: usage=%+v err=%v", usage, err)
 	}
 	got := service.reportedSpend(t.Context(), gen.Run{}, attempts)
-	if (got == nil) != (want == nil) || got != nil && math.Abs(*got-*want) > 1e-12 {
+	if (got == nil) != (want == nil) || got != nil && (math.IsNaN(*got) || math.IsInf(*got, 0) || math.Abs(*got-*want) > 1e-12) {
 		t.Fatalf("partial run spend was settled: got=%v want=%v", spendOrNone(got), spendOrNone(want))
 	}
 	left, err := service.budgetLeft(t.Context(), attempts, .5)

@@ -29,6 +29,7 @@ func TestPartlyPricedRunWaitsForTheRemainingCostAndChargesOnlyOnce(t *testing.T)
 		priced bool
 	}{
 		{"known plus unknown", `[{"spend":0.03},{"spend":null}]`, 1, false},
+		{"overflowed price sum", `[{"spend":1e308},{"spend":1e308}]`, 1, false},
 		{"truncated log", `[{"spend":0.03},{"spend":0.0082}]`, 6, false},
 		{"invalid negative price", `[{"spend":0.03},{"spend":-0.0082}]`, 1, false},
 		{"both known", `[{"spend":0.03},{"spend":0.0082}]`, 1, true},

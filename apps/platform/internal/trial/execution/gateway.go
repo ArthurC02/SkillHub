@@ -295,6 +295,15 @@ type AttemptUsage struct {
 	Incomplete     bool
 }
 
+func (u *AttemptUsage) addCost(usd float64) {
+	total := u.ModelCostUSD + usd
+	if usd < 0 || math.IsNaN(total) || math.IsInf(total, 0) {
+		u.CostIncomplete = true
+		return
+	}
+	u.ModelCostUSD = total
+}
+
 const (
 	usagePageSize = 200
 
@@ -337,11 +346,11 @@ func (g *Gateway) Usage(ctx context.Context, runAttemptID string, since time.Tim
 		for _, row := range out.Data {
 			total.InputTokens += row.PromptTokens
 			total.OutputTokens += row.CompletionTokens
-			if row.Spend == nil || *row.Spend < 0 {
+			if row.Spend == nil {
 				total.CostIncomplete = true
 				continue
 			}
-			total.ModelCostUSD += *row.Spend
+			total.addCost(*row.Spend)
 			total.CostReported = true
 		}
 		total.CostReported = total.CostReported && !total.CostIncomplete

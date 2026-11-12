@@ -135,7 +135,7 @@ func (s *Service) usageOf(ctx context.Context, attempts []gen.RunAttempt) (Attem
 		}
 		total.InputTokens += used.InputTokens
 		total.OutputTokens += used.OutputTokens
-		total.ModelCostUSD += used.ModelCostUSD
+		total.addCost(used.ModelCostUSD)
 		total.CostReported = total.CostReported || used.CostReported
 		total.CostIncomplete = total.CostIncomplete || used.CostIncomplete
 		total.Incomplete = total.Incomplete || used.Incomplete
