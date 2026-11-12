@@ -53,7 +53,23 @@ skillhub_continuation_chains 是這批鏈數，skillhub_continuation_rounds 是�
 
 skillhub_continuation_observation_success 表示讀取成功，skillhub_continuation_observed_at_seconds 是時間上界。讀取失敗時撤下鏈數、輪數與時間，成功值改為 0；恢復後重讀資料。各 Worker 副本獨立觀察，不可相加；先確認觀察成功，再選最近仍新鮮的副本。新鮮門檻依部署的 gauge 更新與 scrape 週期設定。這些指標沒有個人、Workspace、Run、問題或答案標籤，不另存對話歷史，也不作告警、派送或授權依據。帳號清除依現行規則保留去識別的永久 Run 與接續關係，因此結構統計不承諾隨帳號清除歸零；問答原文的保存由既有歷史輸入與清除規則負責，這些指標不讀取原文。
 
-初始 Run 的建立時間索引涵蓋所有狀態；正式資料量下的查詢與 migration 建索引耗時尚未量測。追問率的可信分母、費用涵蓋率與人工分歧率仍待補齊。
+初始 Run 的建立時間索引涵蓋所有狀態；正式資料量下的查詢與 migration 建索引耗時尚未量測。追問率的可信分母、Run 費用的完整觀察與人工分歧率仍待補齊。
+
+## 創作會話費用的品質觀察
+
+Creation owner 在既有 Worker gauge 更新流程中，讀取最近 24 小時建立、觀察時尚未到期且仍保留的會話。建立時間下界包含、上界不包含；到期時間必須嚴格晚於觀察時間。所有會話狀態都納入，包括仍在工作、已保存、取消與失敗的會話。這是一批會話的目前快照，不是當日帳單，也不是只含真人或已完成創作的統計。
+
+查詢只取 SpentUSD、ReservedUSD 與 UsageUnknown 的 JSON 數字及旗標，不讀訊息、草稿、參考全文或身分欄位。Go 將會話分為三組，透過 skillhub_creation_cost_sessions 的固定 coverage 標籤提供各組數量：
+
+- known：已知支出與預留額都有明確、非負且可表示的數值，UsageUnknown 明確為 false，而且預留額為零。新會話明確保存的零支出也屬此組；正在進行的會話之後仍可能增加支出。
+- unsettled：上述資料有效，但預留額大於零。預留額不當成已花費，也不將此組的局部已知支出混入 known 組。
+- unknown：用量曾標為未知，或必要欄位缺席、為 null、型別不符、為負數、超出數值範圍或小到會失真為零。即使仍有預留額，資料未知仍優先列入這一組，不補成已知的零。
+
+skillhub_creation_known_spend_usd 與 skillhub_creation_max_known_session_cost_usd 分別是 known 組的已知費用總和與最大值。沒有 known 會話時撤下兩個金額；有一場明確零支出的 known 會話才顯示金額零。平均只能在 known 數量大於零時以總和除以該組數量，不能推算未知或待結算會話的費用。三組數量之和是這批會話的分母；分母為零時不能算涵蓋比率。金額是浮點觀察，不是 Credit 帳本或扣款輸入。
+
+skillhub_creation_cost_observation_success 表示最近一次觀察是否有效，skillhub_creation_cost_observed_at_seconds 記錄會話批次的時間上界。一次查詢的快照一致，但費用取讀取當下的最新快照，不冒充該時間上界的歷史結算。資料庫讀取失敗或合計溢位時撤下三組數量、金額與時間，成功值為 0；成功讀到空集合才顯示三組數量都是零。重讀、重啟與多個 Worker 副本不累加；副本不可相加，先確認成功與新鮮度，再選最近的觀察。
+
+到期或帳號清除後，下一次觀察反映仍可用的會話，不另存費用歷史，不改變永久 Credit 紀錄、預算核准或扣款政策。除固定的三種 coverage 外，不新增個人、Workspace、會話、查詢或網址標籤。讀取沿用現有到期索引；大量保留會話下的查詢延遲與投影列記憶體用量尚未量測。這份局部費用證據不能勾選整項監控工作，其他 Run 費用、追問率、人工分歧與抽樣仍待完成。
 
 ## 可重現的免費證據
 
