@@ -1,0 +1,29 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "r18-recite",
+  "proposal_id": "r18-recite",
+  "registry_revision": {
+    "observed_commit": "9a9856746d56004700bd6905c694bd64218908b2",
+    "registry_digest": "sha256:8bec0246216831c707aa27442f4cb04d096c02c1b2a008f90ce8f441f4904b43",
+    "committed_digest": "sha256:619981773e2d658f730791a172e634b35602c39b882464071d6243b74f9b3b55"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": ".domain-memory/domain-memory.exe verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/r18-recite --path apps/platform/internal/entrypoint/api/apiserver/disc_integration_test.go --path apps/platform/internal/entrypoint/api/apiserver/suggest_test_cases_integration_test.go --path apps/platform/internal/skill/discovery/service.go --path apps/platform/internal/trial/design/suggest_test_cases.go",
+      "command_profile": "verify-evidence",
+      "exit_code": 0,
+      "output_sha256": "sha256:7b5fbf276e7183feb87885e13a50dfc745b3676da39a28d187b4740b1c8d07c4",
+      "finished_at": "2026-11-12T07:04:32.374935Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

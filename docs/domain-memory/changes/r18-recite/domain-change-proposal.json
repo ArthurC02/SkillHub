@@ -1,0 +1,172 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "r18-recite",
+  "proposer": "agent:coding-agent",
+  "requirement_id": "r18-recite",
+  "status": "verified",
+  "change_classification": "routine",
+  "submitted_at": "2026-11-12T07:04:20.353101Z",
+  "verified_at": "2026-11-12T07:04:32.993513Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "9a9856746d56004700bd6905c694bd64218908b2",
+    "registry_digest": "sha256:8bec0246216831c707aa27442f4cb04d096c02c1b2a008f90ce8f441f4904b43",
+    "committed_digest": "sha256:619981773e2d658f730791a172e634b35602c39b882464071d6243b74f9b3b55"
+  },
+  "affected_contexts": [
+    "catalog",
+    "testlab"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "<context-id>",
+    "invariant": "<falsifiable-rule>",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "<existing-or-proposed-collaboration>",
+    "consistency": "<synchronous-or-eventual>",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": null,
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-test-case-suggestion-is-paid-for-by-its-requester",
+        "statement": "Suggesting test cases for a skill is a model call the user starts, so it is open only to invited accounts, refused before the model is called when the owner's credit balance is below the start threshold for suggest_test_cases or model calls are halted, and debited by the usage the gateway reported once the model answers; it stores nothing, and a proposal whose name the skill already uses is dropped.",
+        "contexts": [
+          "testlab"
+        ],
+        "examples": [
+          "With no suggest_test_cases statistics the threshold is the 70-credit fallback: a balance of 69 is refused with no model call and nothing charged; a balance of 70 is allowed and a $0.01 answer debits 13 credits and records one suggest_test_cases cost event.",
+          "A proposal named like the skill's existing test case is dropped, and the skill still has only the test cases it had before the call."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/trial/design/suggest_test_cases.go",
+            "lines": {
+              "start": 73,
+              "end": 127
+            },
+            "content_sha256": "sha256:65abb68be722a03c9157d2fcd8462e5925f9b656bc30ecd01b1ffeece763df6b",
+            "excerpt_sha256": "sha256:6198a1eff2c7d5ee672253540c7c36caf3d5145665eb667dc73527a83ae79fc6",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/trial/design/suggest_test_cases.go",
+            "lines": {
+              "start": 137,
+              "end": 155
+            },
+            "excerpt_sha256": "sha256:8c7a821c2f3fb65025fcd242f1a8e64df4aab0eef974c4592726d1a701765593"
+          },
+          {
+            "path": "apps/platform/internal/trial/design/suggest_test_cases.go",
+            "lines": {
+              "start": 127,
+              "end": 135
+            },
+            "excerpt_sha256": "sha256:438b7ffc12b3f96469f240a598e4c0856ead6be35b153ef20677dd1d9f18d7d2"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/suggest_test_cases_integration_test.go",
+            "lines": {
+              "start": 71,
+              "end": 89
+            },
+            "excerpt_sha256": "sha256:2ce708d45e29c3e7330981dfc875532ee7b8bb2860d648259631ad59813c0d38"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/suggest_test_cases_integration_test.go",
+            "lines": {
+              "start": 91,
+              "end": 131
+            },
+            "excerpt_sha256": "sha256:d02140904bf91dac955dff6b425e36a8e57823173016f0bf328bda760c200f63"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/suggest_test_cases_integration_test.go",
+            "lines": {
+              "start": 169,
+              "end": 194
+            },
+            "excerpt_sha256": "sha256:b1753032bc6eecc4191eedc08f89c7b77e03e326dc80c283d9782ffbad399d14"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-embedding-failure-degrades-to-lexical-and-says-so",
+        "statement": "When embeddings are missing or fail, search returns the lexical results and says it is degraded, rather than failing the request.",
+        "contexts": [
+          "catalog"
+        ],
+        "examples": [
+          "With the embedding endpoint returning 502, a lexically matching skill is still returned with degraded set and a reason."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/discovery/service.go",
+            "lines": {
+              "start": 233,
+              "end": 243
+            },
+            "excerpt_sha256": "sha256:90dcd73cbcedbcd93410a52773c1fb7a625c1254156e6788323917a0700d1aa9"
+          },
+          {
+            "path": "apps/platform/internal/skill/discovery/service.go",
+            "lines": {
+              "start": 287,
+              "end": 308
+            },
+            "excerpt_sha256": "sha256:c6ea4d3aa51886fdf7242d8672bd7c51482707cca892a6e8252885b9de3e754a"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/disc_integration_test.go",
+            "lines": {
+              "start": 704,
+              "end": 738
+            },
+            "content_sha256": "sha256:687ec0c52b1841a4a7287eabb445f0ab390740aae09038eb69c85101add83c16",
+            "excerpt_sha256": "sha256:d33fe60fd0b2462807a1b13c8c1fac85e3341e88c89cfa2542822bf8a2808ab4",
+            "source_kind": "tests"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-11-12T07:04:32.471255Z",
+      "scope": "routine re-citation: three rules whose cited lines moved with round 18 refactors (strPtrTest->new, slices.Contains, textx.CutBytes)",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "9a9856746d56004700bd6905c694bd64218908b2",
+        "registry_digest": "sha256:8bec0246216831c707aa27442f4cb04d096c02c1b2a008f90ce8f441f4904b43",
+        "committed_digest": "sha256:619981773e2d658f730791a172e634b35602c39b882464071d6243b74f9b3b55"
+      }
+    }
+  ],
+  "supersedes": [
+    "findings-recite-2026-10-26",
+    "suggest-test-cases-2026-11-06"
+  ]
+}

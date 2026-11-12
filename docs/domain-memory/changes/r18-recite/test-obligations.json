@@ -1,0 +1,16 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "r18-recite",
+  "proposal_id": "r18-recite",
+  "obligations": [
+    {
+      "id": "evidence-current",
+      "source_type": "acceptance-criterion",
+      "source_id": "citations-current",
+      "expected_outcome": "verify-evidence reports current for every citation of the updated records.",
+      "level": "architecture",
+      "status": "planned",
+      "check": ".domain-memory/domain-memory.exe verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/r18-recite --path apps/platform/internal/entrypoint/api/apiserver/disc_integration_test.go --path apps/platform/internal/entrypoint/api/apiserver/suggest_test_cases_integration_test.go --path apps/platform/internal/skill/discovery/service.go --path apps/platform/internal/trial/design/suggest_test_cases.go"
+    }
+  ]
+}
