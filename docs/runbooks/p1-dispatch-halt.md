@@ -53,7 +53,7 @@ order by declared_at;
 | `P-02` | 節點常駐探針從 Sandbox 網路位置連上禁止位址 | 保留節點現場；節點已自行拒收新工作，調查 egress 規則與 pinned 位址 | 節點網路政策已修正、節點重新准入，且探針讀數為乾淨；`unknown` 不是 breach，但不得把它當作通過 |
 | `orphan reconciler` | 遺留資源掃描超過容許間隔未執行 | 恢復 Worker 與掃描；不要在掃描仍停擺時解除 | `run_orphan_scan` 的最近執行時間持續前進 |
 | 人工宣告的逃逸疑慮或隔離技術高風險 CVE | 外部安全訊號，平台無法自行判定 | 宣告整池 halt、保留現場，依節點換新與漏洞處置程序處理 | 受影響節點已 drain／重建，或風險已由負責人明確排除 |
-| `orphan_threshold` | 容量保護，不等於已證實安全事故 | 讓 Reconciler 清理；必要時先將該節點從 Provider 清單移除 | 遺留資源低於門檻並連續兩輪乾淨，或已完成有證據的人工清理 |
+| `orphan_threshold` | 容量保護，不等於已證實安全事故 | 保留 Provider 名稱、端點與 token，讓 Reconciler 完成清理；先移除設定會使既有 attempt 無法拆除，節點撤下見[節點 runbook](sandbox-node.md#6-七天換新) | 遺留資源低於門檻並連續兩輪乾淨，或已完成有證據的人工清理 |
 
 ### 3.1 Trace 遮罩的最小判讀
 
