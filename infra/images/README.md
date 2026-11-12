@@ -549,6 +549,10 @@ Dockerfile 與 `infra/compose/docker-compose.yml` 新 `app` profile 的說明。
 
 `images-postgres-sandboxd` 建置後以隔離的真實 Postgres 驗證指標與錯誤密碼；`images-push` 沿用 main 全部閘門通過才發佈、commit SHA 作 tag 的規則。控制平面的 renderer 取得同一 release 的 `SKILLHUB_POSTGRES_EXPORTER_IMAGE` 與 digest，缺少已發佈映像就拒絕，不退回上游舊映像。`Image Scan` 對重建後的實際映像套用部署層的可修 Critical／High 阻擋。
 
+### Blackbox Exporter
+
+[`blackbox-exporter/`](blackbox-exporter/) 重建目前釘定的穩定版，保留原本的系統層、預設設定與 9115 埠，只替換以現行 Go 及已修補相依套件編譯的執行檔。CI 以隔離的 HTTP 與 TCP 端點驗證成功及失敗探測，發佈與 digest 解析沿用 Postgres Exporter 的同一 release 流程。部署前缺少釘定映像就拒絕啟動；實際自建映像在每次 `Image Scan` 阻擋可修 Critical／High，不只在上游排程報告。
+
 ### `web` 的反向代理：為什麼不是 `location /api/`
 
 `core/api/client.ts` 的 `API_BASE_URL` 預設空字串（同源），這在 clean test mode（`cmd/api`

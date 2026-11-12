@@ -76,6 +76,7 @@ build_and_scan web . infra/images/web/Dockerfile deployed
 build_and_scan llm apps/llm infra/images/llm/Dockerfile deployed
 build_and_scan postgres infra/images/postgres infra/images/postgres/Dockerfile deployed
 build_and_scan postgres-exporter infra/images/postgres-exporter infra/images/postgres-exporter/Dockerfile deployed
+build_and_scan blackbox-exporter infra/images/blackbox-exporter infra/images/blackbox-exporter/Dockerfile deployed
 build_and_scan sandboxd . infra/images/sandboxd/Dockerfile deployed
 build_and_scan devtools infra/images/devtools infra/images/devtools/Dockerfile dev-only
 

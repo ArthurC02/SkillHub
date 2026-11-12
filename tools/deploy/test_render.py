@@ -43,6 +43,7 @@ def test_a_control_plane_release_pins_every_image_by_tag_and_digest():
         "SKILLHUB_LLM_IMAGE": "ghcr.io/arthurc02/skillhub-llm:%s@%s" % (RELEASE, DIGEST),
         "SKILLHUB_POSTGRES_IMAGE": "ghcr.io/arthurc02/skillhub-postgres:%s@%s" % (RELEASE, DIGEST),
         "SKILLHUB_POSTGRES_EXPORTER_IMAGE": "ghcr.io/arthurc02/skillhub-postgres-exporter:%s@%s" % (RELEASE, DIGEST),
+        "SKILLHUB_BLACKBOX_EXPORTER_IMAGE": "ghcr.io/arthurc02/skillhub-blackbox-exporter:%s@%s" % (RELEASE, DIGEST),
     }
     assert {key: env[key] for key in env if key.endswith("_IMAGE")} == pinned_images
     assert env["SKILLHUB_DOMAIN"] == "skillhub.example"
@@ -56,11 +57,12 @@ def test_an_image_the_release_never_published_refuses_the_render():
 
 
 def test_an_unpublished_or_invalid_exporter_image_refuses_the_render():
-    for unavailable in ("", "sha256:bad"):
-        def exporter_missing(repository, tag, value=unavailable):
-            return value if repository == "skillhub-postgres-exporter" else DIGEST
-        expect_error("skillhub-postgres-exporter:%s is not published" % RELEASE,
-                     "control-plane", RELEASE, SETTINGS, resolve=exporter_missing)
+    for exporter in ("skillhub-postgres-exporter", "skillhub-blackbox-exporter"):
+        for unavailable in ("", "sha256:bad"):
+            def exporter_missing(repository, tag, value=unavailable, missing=exporter):
+                return value if repository == missing else DIGEST
+            expect_error("%s:%s is not published" % (exporter, RELEASE),
+                         "control-plane", RELEASE, SETTINGS, resolve=exporter_missing)
 
 
 def test_a_short_or_symbolic_release_is_refused():

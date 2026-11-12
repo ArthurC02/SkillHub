@@ -70,14 +70,16 @@ PY
     sh /repo/infra/deploy/control-plane/bin/skillhub-preflight
     digest=$(printf "%064d" 0)
     invalid=$(printf "%064d" 0 | tr 0 g)
-    for ref in "" "ghcr.io/o/exporter:release" "ghcr.io/o/exporter@sha256:${digest%?}" "ghcr.io/o/exporter@sha256:$invalid"; do
-      if SKILLHUB_POSTGRES_EXPORTER_IMAGE="$ref" sh /repo/infra/deploy/control-plane/bin/skillhub-preflight >/work/preflight-error 2>&1; then
-        echo "unpinned exporter was accepted: $ref"; exit 1
-      fi
-      grep -Fq "SKILLHUB_POSTGRES_EXPORTER_IMAGE=" /work/preflight-error
-      grep -Fq "is not pinned by digest" /work/preflight-error
+    for name in SKILLHUB_POSTGRES_EXPORTER_IMAGE SKILLHUB_BLACKBOX_EXPORTER_IMAGE; do
+      for ref in "" "ghcr.io/o/exporter:release" "ghcr.io/o/exporter@sha256:${digest%?}" "ghcr.io/o/exporter@sha256:$invalid"; do
+        if env "$name=$ref" sh /repo/infra/deploy/control-plane/bin/skillhub-preflight >/work/preflight-error 2>&1; then
+          echo "unpinned exporter was accepted: $name=$ref"; exit 1
+        fi
+        grep -Fq "$name=" /work/preflight-error
+        grep -Fq "is not pinned by digest" /work/preflight-error
+      done
+      echo "control-plane preflight: pinned release passes; four unpinned values refused for $name"
     done
-    echo "control-plane preflight: pinned release passes; four unpinned exporter values refused"
   )
   for role in control-plane gateway sandbox; do
     cloud-init schema --config-file "/work/$role-user-data.yaml"

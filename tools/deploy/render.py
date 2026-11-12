@@ -33,6 +33,7 @@ ROLES = {
             "SKILLHUB_LLM_IMAGE": "skillhub-llm",
             "SKILLHUB_POSTGRES_IMAGE": "skillhub-postgres",
             "SKILLHUB_POSTGRES_EXPORTER_IMAGE": "skillhub-postgres-exporter",
+            "SKILLHUB_BLACKBOX_EXPORTER_IMAGE": "skillhub-blackbox-exporter",
         },
     },
     "gateway": {
