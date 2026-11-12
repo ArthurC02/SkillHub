@@ -652,29 +652,26 @@ const (
 )
 
 func generateExposedFromEnv() bool {
-	raw := os.Getenv("GENERATE_SKILL_EXPOSED")
-	switch {
-	case strings.EqualFold(raw, "on"):
-		slog.Warn("GENERATE_SKILL_EXPOSED=on; the M5 generation entry point is visible. " +
-			"01 §11.2's first funnel segment must have a reading first")
-		return true
-	case raw != "" && !strings.EqualFold(raw, "off"):
-
-		slog.Warn("GENERATE_SKILL_EXPOSED is neither `on` nor `off`; the M5 generation entry point stays hidden",
-			"value", raw)
-	}
-	return false
+	return onOffFlag("GENERATE_SKILL_EXPOSED",
+		"GENERATE_SKILL_EXPOSED=on; the M5 generation entry point is visible. "+
+			"01 §11.2's first funnel segment must have a reading first",
+		"GENERATE_SKILL_EXPOSED is neither `on` nor `off`; the M5 generation entry point stays hidden")
 }
 
 func publicationDownloadsOpenFromEnv() bool {
-	raw := os.Getenv("PUBLICATION_DOWNLOADS_UNINVITED")
+	return onOffFlag("PUBLICATION_DOWNLOADS_UNINVITED",
+		"PUBLICATION_DOWNLOADS_UNINVITED=on; accounts outside the beta roster can download publications",
+		"PUBLICATION_DOWNLOADS_UNINVITED is neither `on` nor `off`; publication downloads stay invite-only")
+}
+
+func onOffFlag(name, onWarning, badWarning string) bool {
+	raw := os.Getenv(name)
 	switch {
 	case strings.EqualFold(raw, "on"):
-		slog.Warn("PUBLICATION_DOWNLOADS_UNINVITED=on; accounts outside the beta roster can download publications")
+		slog.Warn(onWarning)
 		return true
 	case raw != "" && !strings.EqualFold(raw, "off"):
-		slog.Warn("PUBLICATION_DOWNLOADS_UNINVITED is neither `on` nor `off`; publication downloads stay invite-only",
-			"value", raw)
+		slog.Warn(badWarning, "value", raw)
 	}
 	return false
 }
