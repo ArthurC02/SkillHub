@@ -65,7 +65,7 @@ func (h *Handler) SetCurationTier(w http.ResponseWriter, r *http.Request) {
 
 	httpx.WriteJSON(w, http.StatusOK, curationChangeResponse{
 		SkillID: pgconv.UUIDString(skillID), Tier: string(change.After),
-		CuratedVersionID: optionalUUID(change.VersionID), PreviousTier: string(change.Before),
+		CuratedVersionID: pgconv.OptionalUUIDString(change.VersionID), PreviousTier: string(change.Before),
 	})
 }
 
@@ -105,8 +105,8 @@ func (s *Service) SetCurationTier(
 		ResourceType: audit.ResourceSkill,
 		ResourceID:   skillID,
 		Metadata: map[string]any{
-			auditBefore: string(change.Before), "before_version_id": optionalUUID(change.BeforeVersionID),
-			auditAfter: string(change.After), "version_id": optionalUUID(change.VersionID),
+			auditBefore: string(change.Before), "before_version_id": pgconv.OptionalUUIDString(change.BeforeVersionID),
+			auditAfter: string(change.After), "version_id": pgconv.OptionalUUIDString(change.VersionID),
 			auditNote: note,
 		},
 	}); err != nil {
@@ -131,12 +131,4 @@ func curationRefusal(refused registry.Refused) error {
 				"and it does not travel to forks or to skills users imported themselves")
 	}
 	return refused
-}
-
-func optionalUUID(id pgtype.UUID) *string {
-	if !id.Valid {
-		return nil
-	}
-	value := pgconv.UUIDString(id)
-	return &value
 }

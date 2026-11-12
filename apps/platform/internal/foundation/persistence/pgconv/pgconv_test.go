@@ -20,6 +20,17 @@ func TestUUIDString(t *testing.T) {
 	}
 }
 
+func TestOptionalUUIDStringIsNilForNullAndTheTextOtherwise(t *testing.T) {
+	valid := pgtype.UUID{Bytes: [16]byte{0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef}, Valid: true}
+	got := OptionalUUIDString(valid)
+	if got == nil || *got != "01234567-89ab-cdef-0123-456789abcdef" {
+		t.Errorf("valid UUID = %v, want the text", got)
+	}
+	if got := OptionalUUIDString(pgtype.UUID{}); got != nil {
+		t.Errorf("NULL UUID = %q, want nil", *got)
+	}
+}
+
 func TestRFC3339(t *testing.T) {
 	ts := pgtype.Timestamptz{Time: time.Date(2026, 8, 19, 12, 30, 0, 0, time.FixedZone("x", 3600)), Valid: true}
 	if got, want := RFC3339(ts), "2026-08-19T11:30:00Z"; got != want {
