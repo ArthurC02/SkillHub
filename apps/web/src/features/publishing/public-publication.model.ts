@@ -2,25 +2,13 @@ import type { BundleMemberChangeChangeEnum } from "@skillhub/api-client-ts";
 import { isCategorizedFindings } from "../../core/api/findings";
 import type { PublicPublication } from "./publishing.service";
 import { isDate, isRecord } from "../../core/api/wire";
+import { isAcquisition, isLabelled } from "./availability.model";
 
 const MEMBER_CHANGES: ReadonlySet<string> = new Set<BundleMemberChangeChangeEnum>([
   "added",
   "removed",
   "changed",
 ]);
-
-function isLabelled(value: unknown) {
-  return (
-    isRecord(value) &&
-    typeof value.value === "string" &&
-    typeof value.label === "string" &&
-    typeof value.note === "string"
-  );
-}
-
-function isPublicationNote(value: unknown) {
-  return isRecord(value) && typeof value.available === "boolean" && typeof value.note === "string";
-}
 
 function isOptionalInteger(value: unknown) {
   return value === undefined || (typeof value === "number" && Number.isInteger(value));
@@ -100,8 +88,8 @@ export function readPublicPublication(value: unknown): PublicPublication {
     !isLabelled(value.availability) ||
     !Array.isArray(value.releases) ||
     !value.releases.every(isRelease) ||
-    !isPublicationNote(value.exposure) ||
-    !isPublicationNote(value.acquisition) ||
+    !isAcquisition(value.exposure) ||
+    !isAcquisition(value.acquisition) ||
     (value.delisted_at !== undefined && !isDate(value.delisted_at))
   )
     throw new Error("無法確認公開發佈物的資料。");

@@ -1,5 +1,6 @@
 import type { BundleVersion, OwnerBundleSummary } from "./publishing.service";
 import { isDate, isRecord, isUuid } from "../../core/api/wire";
+import { isAcquisition, isLabelled } from "./availability.model";
 
 function isMember(value: unknown) {
   return (
@@ -48,15 +49,8 @@ function isOptionalPublication(value: unknown) {
     (value.status === "published" || value.status === "delisted") &&
     isDate(value.status_changed_at) &&
     isOptionalRelease(value.latest_release) &&
-    (availability === undefined ||
-      (isRecord(availability) &&
-        typeof availability.value === "string" &&
-        typeof availability.label === "string" &&
-        typeof availability.note === "string")) &&
-    (acquisition === undefined ||
-      (isRecord(acquisition) &&
-        typeof acquisition.available === "boolean" &&
-        typeof acquisition.note === "string"))
+    (availability === undefined || isLabelled(availability)) &&
+    (acquisition === undefined || isAcquisition(acquisition))
   );
 }
 

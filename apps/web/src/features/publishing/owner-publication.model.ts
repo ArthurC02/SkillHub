@@ -2,6 +2,7 @@ import { isCategorizedFindings } from "../../core/api/findings";
 import type { DeclarableLicense } from "@skillhub/api-client-ts";
 import type { Publication, Publisher } from "./publishing.service";
 import { isDate, isRecord, isUuid } from "../../core/api/wire";
+import { isAcquisition, isLabelled } from "./availability.model";
 
 export const DECLARABLE_LICENSES: readonly DeclarableLicense[] = [
   "Apache-2.0",
@@ -34,19 +35,6 @@ function isRelease(value: unknown) {
     (value.declared_license === undefined ||
       DECLARABLE_LICENSES.some((license) => license === value.declared_license))
   );
-}
-
-function isLabelled(value: unknown) {
-  return (
-    isRecord(value) &&
-    typeof value.value === "string" &&
-    typeof value.label === "string" &&
-    typeof value.note === "string"
-  );
-}
-
-function isAcquisition(value: unknown) {
-  return isRecord(value) && typeof value.available === "boolean" && typeof value.note === "string";
 }
 
 export function readOwnPublisher(value: unknown): Publisher {

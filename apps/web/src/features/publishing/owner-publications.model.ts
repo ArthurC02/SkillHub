@@ -1,6 +1,7 @@
 import type { OwnerCatalogExposureStateEnum } from "@skillhub/api-client-ts";
 import type { OwnerPublicationSummary } from "./publishing.service";
 import { isDate, isRecord, isUuid } from "../../core/api/wire";
+import { isAcquisition, isLabelled } from "./availability.model";
 
 const exposureStates: Record<OwnerCatalogExposureStateEnum, true> = {
   listed: true,
@@ -42,15 +43,8 @@ function isPublication(value: unknown) {
     isDate(value.status_changed_at) &&
     isExposure(value.catalog_exposure) &&
     isOptionalRelease(value.latest_release) &&
-    (availability === undefined ||
-      (isRecord(availability) &&
-        typeof availability.value === "string" &&
-        typeof availability.label === "string" &&
-        typeof availability.note === "string")) &&
-    (acquisition === undefined ||
-      (isRecord(acquisition) &&
-        typeof acquisition.available === "boolean" &&
-        typeof acquisition.note === "string"))
+    (availability === undefined || isLabelled(availability)) &&
+    (acquisition === undefined || isAcquisition(acquisition))
   );
 }
 
