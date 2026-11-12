@@ -7,6 +7,7 @@ import { apiFetch } from "../../core/api/client";
 import { useMe } from "../../core/session/me.service";
 import { queryKeys } from "../../core/api/queryKeys";
 import { problems, type Bounds, type CheckKind, type CheckNode } from "./check.model";
+import { isDate, isUuid } from "../../core/api/wire";
 
 export type GraderScope = "workspace" | "platform";
 
@@ -118,19 +119,14 @@ function isGrader(value: unknown): value is Grader {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const grader = value as Partial<Grader>;
   return (
-    [grader.id, grader.version_id].every(
-      (id) =>
-        typeof id === "string" &&
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id),
-    ) &&
+    [grader.id, grader.version_id].every((id) => isUuid(id)) &&
     typeof grader.name === "string" &&
     (grader.scope === "platform" || grader.scope === "workspace") &&
     typeof grader.version === "number" &&
     Number.isSafeInteger(grader.version) &&
     grader.version >= 1 &&
     typeof grader.instructions === "string" &&
-    typeof grader.revised_at === "string" &&
-    Number.isFinite(Date.parse(grader.revised_at))
+    isDate(grader.revised_at)
   );
 }
 

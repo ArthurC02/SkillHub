@@ -8,6 +8,7 @@ import type {
   GenerateSkillResult,
   GenerationFailure,
 } from "../../core/api/types";
+import { isDate } from "../../core/api/wire";
 
 export function generateSkill(request: GenerateSkillRequest) {
   const body: GenerateSkillRequest = {};
@@ -54,8 +55,7 @@ function isGenerateAllowance(value: unknown): value is GenerateAllowance {
   const allowance = value as GenerateAllowance;
   return (
     counts(value, ["remaining_today", "remaining_window"]) &&
-    typeof allowance.window_resets_at === "string" &&
-    Number.isFinite(Date.parse(allowance.window_resets_at)) &&
+    isDate(allowance.window_resets_at) &&
     counts(allowance.limits, ["daily", "window", "window_days"])
   );
 }

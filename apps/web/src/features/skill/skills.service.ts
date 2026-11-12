@@ -34,6 +34,7 @@ import type {
   ListedSkillVersion,
   SkillVersions,
 } from "../../core/api/types";
+import { isDate, isUuid } from "../../core/api/wire";
 
 export const MAX_COMPARE = 3;
 
@@ -261,15 +262,13 @@ function isVersionSummary(value: unknown): value is ListedSkillVersion {
   if (!value || typeof value !== "object") return false;
   const version = value as Partial<ListedSkillVersion>;
   return (
-    typeof version.version_id === "string" &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(version.version_id) &&
+    isUuid(version.version_id) &&
     typeof version.version_number === "number" &&
     Number.isSafeInteger(version.version_number) &&
     version.version_number > 0 &&
     typeof version.content_hash === "string" &&
     version.content_hash.trim().length > 0 &&
-    typeof version.created_at === "string" &&
-    Number.isFinite(Date.parse(version.created_at)) &&
+    isDate(version.created_at) &&
     typeof version.held_for_evaluation === "boolean" &&
     typeof version.promoted === "boolean"
   );
@@ -435,8 +434,7 @@ function isForkReceipt(value: unknown): value is ForkedSkill {
   if (!isSkillReceipt(value)) return false;
   const receipt = value as Partial<ForkedSkill>;
   return (
-    typeof receipt.version_id === "string" &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(receipt.version_id) &&
+    isUuid(receipt.version_id) &&
     typeof receipt.version_number === "number" &&
     Number.isSafeInteger(receipt.version_number) &&
     receipt.version_number > 0

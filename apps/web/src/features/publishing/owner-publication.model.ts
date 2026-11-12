@@ -1,7 +1,7 @@
 import { isCategorizedFindings } from "../../core/api/findings";
 import type { DeclarableLicense } from "@skillhub/api-client-ts";
 import type { Publication, Publisher } from "./publishing.service";
-import { isDate, isRecord, isUuid } from "../../shared/wire";
+import { isDate, isRecord, isUuid } from "../../core/api/wire";
 
 export const DECLARABLE_LICENSES: readonly DeclarableLicense[] = [
   "Apache-2.0",

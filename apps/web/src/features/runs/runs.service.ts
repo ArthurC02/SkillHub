@@ -15,6 +15,7 @@ import {
 } from "../../core/api/client";
 export { isWriteResultUnknown as isContinuationResultUnknown } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
+import { isUuid } from "../../core/api/wire";
 
 export type ContinuationRoom = { answered: boolean; rounds_left: number };
 
@@ -117,7 +118,7 @@ export async function continueRun(runId: string, answers: string[]) {
     typeof next !== "object" ||
     !("run_id" in next) ||
     typeof next.run_id !== "string" ||
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(next.run_id) ||
+    !isUuid(next.run_id) ||
     next.run_id.toLowerCase() === runId.toLowerCase()
   )
     throw new Error("Invalid continuation Run response");

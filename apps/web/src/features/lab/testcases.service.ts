@@ -3,6 +3,7 @@ import { apiFetch, isWriteResultUnknown } from "../../core/api/client";
 import type { Dataset } from "./lab.service";
 import { queryKeys } from "../../core/api/queryKeys";
 import type { CheckNode } from "../evaluation";
+import { isDate, isUuid } from "../../core/api/wire";
 
 export type AcceptanceCriterion = {
   id: string;
@@ -60,11 +61,9 @@ function isListedTestCase(value: unknown): value is TestCaseListItem {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const row = value as Partial<TestCaseListItem>;
   return (
-    typeof row.test_case_id === "string" &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(row.test_case_id) &&
+    isUuid(row.test_case_id) &&
     [row.name, row.skill_name].every((field) => typeof field === "string") &&
-    typeof row.updated_at === "string" &&
-    Number.isFinite(Date.parse(row.updated_at)) &&
+    isDate(row.updated_at) &&
     typeof row.criteria_confirmed === "number" &&
     Number.isSafeInteger(row.criteria_confirmed) &&
     row.criteria_confirmed >= 0 &&
@@ -304,13 +303,11 @@ function isListedDataset(value: unknown): value is Dataset {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const dataset = value as Partial<Dataset>;
   return (
-    typeof dataset.dataset_id === "string" &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(dataset.dataset_id) &&
+    isUuid(dataset.dataset_id) &&
     [dataset.file_name, dataset.content_type, dataset.content_hash].every(
       (field) => typeof field === "string",
     ) &&
-    typeof dataset.expires_at === "string" &&
-    Number.isFinite(Date.parse(dataset.expires_at)) &&
+    isDate(dataset.expires_at) &&
     typeof dataset.size_bytes === "number" &&
     Number.isSafeInteger(dataset.size_bytes) &&
     dataset.size_bytes >= 0

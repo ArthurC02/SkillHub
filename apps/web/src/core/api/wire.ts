@@ -16,7 +16,7 @@ export function isDate(value: unknown): boolean {
   return isText(value) && Number.isFinite(Date.parse(value));
 }
 
-export function isUuid(value: unknown): boolean {
+export function isUuid(value: unknown): value is string {
   return isText(value) && UUID.test(value);
 }
 

@@ -1,5 +1,5 @@
 import type { BundleVersion, OwnerBundleSummary } from "./publishing.service";
-import { isDate, isRecord, isUuid } from "../../shared/wire";
+import { isDate, isRecord, isUuid } from "../../core/api/wire";
 
 function isMember(value: unknown) {
   return (

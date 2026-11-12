@@ -1,6 +1,6 @@
 import type { OwnerCatalogExposureStateEnum } from "@skillhub/api-client-ts";
 import type { OwnerPublicationSummary } from "./publishing.service";
-import { isDate, isRecord, isUuid } from "../../shared/wire";
+import { isDate, isRecord, isUuid } from "../../core/api/wire";
 
 const exposureStates: Record<OwnerCatalogExposureStateEnum, true> = {
   listed: true,

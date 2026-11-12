@@ -16,6 +16,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tansta
 import { ApiError, apiFetch, isLastingReadFailure } from "../../core/api/client";
 import { useMe } from "../../core/session/me.service";
 import { queryKeys } from "../../core/api/queryKeys";
+import { isDate, isUuid } from "../../core/api/wire";
 
 const LEDGER_KINDS: ReadonlySet<string> = new Set<CreditLedgerEntryKindEnum>([
   "debit",
@@ -191,19 +192,12 @@ function isAccountLookup(value: unknown): value is AccountLookup {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const account = value as Partial<AccountLookup>;
   return (
-    [account.user_id, account.workspace_id].every(
-      (id) =>
-        typeof id === "string" &&
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id),
-    ) &&
+    [account.user_id, account.workspace_id].every((id) => isUuid(id)) &&
     typeof account.email === "string" &&
     typeof account.display_name === "string" &&
     typeof account.in_beta_allowlist === "boolean" &&
-    typeof account.created_at === "string" &&
-    Number.isFinite(Date.parse(account.created_at)) &&
-    (account.deletion_requested_at === null ||
-      (typeof account.deletion_requested_at === "string" &&
-        Number.isFinite(Date.parse(account.deletion_requested_at))))
+    isDate(account.created_at) &&
+    (account.deletion_requested_at === null || isDate(account.deletion_requested_at))
   );
 }
 
@@ -241,8 +235,7 @@ function isCreditLedgerEntry(value: unknown): value is CreditLedgerEntry {
     Number.isSafeInteger(entry.delta_credits) &&
     (entry.ref_type === null || typeof entry.ref_type === "string") &&
     typeof entry.estimated === "boolean" &&
-    typeof entry.created_at === "string" &&
-    Number.isFinite(Date.parse(entry.created_at))
+    isDate(entry.created_at)
   );
 }
 
@@ -313,19 +306,13 @@ function isSkillGovernance(value: unknown): value is SkillGovernance {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const skill = value as Partial<SkillGovernance>;
   return (
-    [skill.skill_id, skill.workspace_id].every(
-      (id) =>
-        typeof id === "string" &&
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id),
-    ) &&
+    [skill.skill_id, skill.workspace_id].every((id) => isUuid(id)) &&
     typeof skill.name === "string" &&
     typeof skill.redistribution === "string" &&
     [skill.access_restriction, skill.takedown_reason].every(
       (text) => text === null || typeof text === "string",
     ) &&
-    [skill.takedown_at, skill.deleted_at].every(
-      (at) => at === null || (typeof at === "string" && Number.isFinite(Date.parse(at))),
-    )
+    [skill.takedown_at, skill.deleted_at].every((at) => at === null || isDate(at))
   );
 }
 
@@ -376,8 +363,7 @@ function isDispatchHalt(value: unknown): value is DispatchHalt {
     typeof halt.target === "string" &&
     (halt.source === "p1_incident" || halt.source === "orphan_threshold") &&
     typeof halt.reason === "string" &&
-    typeof halt.declared_at === "string" &&
-    Number.isFinite(Date.parse(halt.declared_at)) &&
+    isDate(halt.declared_at) &&
     typeof halt.automatic_recovery === "boolean" &&
     (halt.clear_rounds === undefined || Number.isSafeInteger(halt.clear_rounds))
   );
@@ -431,11 +417,7 @@ function isRosters(value: unknown): value is Rosters {
   const result = value as Partial<Rosters>;
   return (
     Array.isArray(result.operator_user_ids) &&
-    result.operator_user_ids.every(
-      (id) =>
-        typeof id === "string" &&
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id),
-    ) &&
+    result.operator_user_ids.every((id) => isUuid(id)) &&
     Array.isArray(result.beta_allowlist) &&
     result.beta_allowlist.every((id) => typeof id === "string")
   );
@@ -520,9 +502,7 @@ function isCostStatisticsWindow(value: unknown): value is CostStatisticsWindow {
   const statistic = value as Partial<CostStatisticsWindow>;
   return (
     typeof statistic.kind === "string" &&
-    [statistic.window_start, statistic.window_end].every(
-      (date) => typeof date === "string" && Number.isFinite(Date.parse(date)),
-    ) &&
+    [statistic.window_start, statistic.window_end].every((date) => isDate(date)) &&
     Number.isSafeInteger(statistic.sample_count) &&
     [
       statistic.p50_usd_micros,
@@ -589,11 +569,7 @@ export type PlatformAgentStep = {
 };
 
 function isAgentActor(value: unknown) {
-  return (
-    value === undefined ||
-    (typeof value === "string" &&
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value))
-  );
+  return value === undefined || isUuid(value);
 }
 
 function isPlatformAgent(value: unknown): value is PlatformAgent {
@@ -617,8 +593,7 @@ function isPlatformAgentBrake(value: unknown): value is PlatformAgentBrake {
   const brake = value as Partial<PlatformAgentBrake>;
   return (
     typeof brake.reason === "string" &&
-    typeof brake.engaged_at === "string" &&
-    Number.isFinite(Date.parse(brake.engaged_at)) &&
+    isDate(brake.engaged_at) &&
     isAgentActor(brake.engaged_by_user_id)
   );
 }
@@ -705,13 +680,8 @@ function isSetting(value: unknown): value is Record<string, unknown> {
   const setting = value as Record<string, unknown>;
   return (
     (setting.reason === undefined || typeof setting.reason === "string") &&
-    (setting.set_at === undefined ||
-      (typeof setting.set_at === "string" && Number.isFinite(Date.parse(setting.set_at)))) &&
-    (setting.set_by_user_id === undefined ||
-      (typeof setting.set_by_user_id === "string" &&
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-          setting.set_by_user_id,
-        )))
+    (setting.set_at === undefined || isDate(setting.set_at)) &&
+    (setting.set_by_user_id === undefined || isUuid(setting.set_by_user_id))
   );
 }
 
@@ -808,12 +778,8 @@ function isMCPTool(value: unknown): value is MCPTool {
   const retired = tool.retired_at !== undefined || tool.retire_reason !== undefined;
   return (
     MCP_TOOL_TEXT_FIELDS.every((field) => typeof tool[field] === "string") &&
-    typeof tool.created_at === "string" &&
-    Number.isFinite(Date.parse(tool.created_at)) &&
-    (!retired ||
-      (typeof tool.retired_at === "string" &&
-        Number.isFinite(Date.parse(tool.retired_at)) &&
-        typeof tool.retire_reason === "string"))
+    isDate(tool.created_at) &&
+    (!retired || (isDate(tool.retired_at) && typeof tool.retire_reason === "string"))
   );
 }
 

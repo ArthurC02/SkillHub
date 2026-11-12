@@ -1,5 +1,5 @@
 import type { TraceAdvanced, TraceSummary } from "./trace.service";
-import { isOptionalText, isRecord, isText } from "../../shared/wire";
+import { isDate, isOptionalText, isRecord, isText } from "../../core/api/wire";
 
 export const RUN_POLL_MS = 3000;
 
@@ -94,8 +94,7 @@ export function isTraceSummary(value: unknown, runId: string): value is TraceSum
     (value.questions === undefined || isList(value.questions, isQuestion)) &&
     (value.usage === undefined || isUsage(value.usage)) &&
     isList(value.steps, isStep) &&
-    (value.last_event_at === undefined ||
-      (isText(value.last_event_at) && Number.isFinite(Date.parse(value.last_event_at))))
+    (value.last_event_at === undefined || isDate(value.last_event_at))
   );
 }
 
@@ -116,8 +115,7 @@ function isEvent(value: unknown): boolean {
     isText(value.event_id) &&
     Number.isSafeInteger(value.attempt) &&
     Number.isSafeInteger(value.seq) &&
-    isText(value.occurred_at) &&
-    Number.isFinite(Date.parse(value.occurred_at)) &&
+    isDate(value.occurred_at) &&
     isText(value.emitted_by) &&
     isText(value.type) &&
     isOptionalText(value.status) &&
