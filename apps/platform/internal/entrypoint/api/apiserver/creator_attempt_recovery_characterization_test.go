@@ -38,7 +38,7 @@ func creationState(t *testing.T, pool *pgxpool.Pool, job creation.JobArgs) strin
 }
 
 func TestTheRecoverySweepSparesAnAttemptStillWithinItsCallDeadline(t *testing.T) {
-	pool := requireDB(t)
+	pool := isolatedAPIPool(t)
 	ws := newCreationWorkspace(t, pool)
 	removeCreationWorkspace(t, pool, ws)
 	rec := &jobRecorder{}
@@ -74,7 +74,7 @@ func TestAnInterruptedTransientStepIsEndedEvenWithinItsCallDeadline(t *testing.T
 }
 
 func TestTheRecoverySweepLeavesAnAttemptStillWrappingUpItsFinishedCall(t *testing.T) {
-	pool := requireDB(t)
+	pool := isolatedAPIPool(t)
 	ws := newCreationWorkspace(t, pool)
 	removeCreationWorkspace(t, pool, ws)
 	rec := &jobRecorder{}
@@ -94,7 +94,7 @@ func TestTheRecoverySweepLeavesAnAttemptStillWrappingUpItsFinishedCall(t *testin
 }
 
 func TestTheRecoverySweepJudgesAnAttemptByTheLimitsItStartedUnder(t *testing.T) {
-	pool := requireDB(t)
+	pool := isolatedAPIPool(t)
 	ws := newCreationWorkspace(t, pool)
 	removeCreationWorkspace(t, pool, ws)
 	rec := &jobRecorder{}

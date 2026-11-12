@@ -10,6 +10,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/worker"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/llmclient"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -29,7 +30,10 @@ func creationFixture(t *testing.T) (*api, *creation.Service, *atomic.Int32) {
 }
 func creationFixtureWithLimits(t *testing.T, limits creation.Limits) (*api, *creation.Service, *atomic.Int32) {
 	t.Helper()
-	pool := requireDB(t)
+	return creationFixtureOnPool(t, requireDB(t), limits)
+}
+func creationFixtureOnPool(t *testing.T, pool *pgxpool.Pool, limits creation.Limits) (*api, *creation.Service, *atomic.Int32) {
+	t.Helper()
 	count := &atomic.Int32{}
 	model := httptest.NewServer(creationModelStub(t, count))
 	t.Cleanup(model.Close)
@@ -465,8 +469,12 @@ func (f creationStepFunc) CreationStep(ctx context.Context, r creation.StepReque
 }
 func creationJob(t *testing.T, id string) creation.JobArgs {
 	t.Helper()
+	return creationJobFromPool(t, testPool, id)
+}
+func creationJobFromPool(t *testing.T, pool *pgxpool.Pool, id string) creation.JobArgs {
+	t.Helper()
 	var raw []byte
-	if err := testPool.QueryRow(context.Background(), "SELECT args FROM river_job WHERE kind='creation_step' AND args->>'session_id'=$1 ORDER BY id DESC LIMIT 1", id).Scan(&raw); err != nil {
+	if err := pool.QueryRow(context.Background(), "SELECT args FROM river_job WHERE kind='creation_step' AND args->>'session_id'=$1 ORDER BY id DESC LIMIT 1", id).Scan(&raw); err != nil {
 		t.Fatal(err)
 	}
 	var a creation.JobArgs
@@ -590,17 +598,18 @@ func TestCreationBudgetExhaustionDoesNotEnqueueAnotherCall(t *testing.T) {
 }
 
 func TestCreationRestartRecoversUnknownAttemptWithoutReplay(t *testing.T) {
-	a, s, calls := creationFixture(t)
+	pool := isolatedAPIPool(t)
+	a, s, calls := creationFixtureOnPool(t, pool, creationLimits())
 	c := a.login(t, "creation-restart")
 	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "開始創作", "budget_credits": 650}, 200)
-	job := creationJob(t, v.ID)
+	job := creationJobFromPool(t, pool, v.ID)
 	ctx := context.Background()
 
-	if _, err := testPool.Exec(ctx, `UPDATE creation_sessions SET state='working', updated_at=now()-interval '5 minutes',
+	if _, err := pool.Exec(ctx, `UPDATE creation_sessions SET state='working', updated_at=now()-interval '5 minutes',
 	 snapshot=jsonb_set(jsonb_set(snapshot, '{snapshot,reserved_usd}', '0.1'), '{active_deadline}', to_jsonb(now()-interval '5 minutes')) WHERE id=$1`, job.SessionID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := testPool.Exec(ctx, "UPDATE creation_receipts SET status='running' WHERE id=$1", job.ReceiptID); err != nil {
+	if _, err := pool.Exec(ctx, "UPDATE creation_receipts SET status='running' WHERE id=$1", job.ReceiptID); err != nil {
 		t.Fatal(err)
 	}
 	for range 2 {
@@ -616,7 +625,7 @@ func TestCreationRestartRecoversUnknownAttemptWithoutReplay(t *testing.T) {
 		t.Fatal(err)
 	}
 	var status string
-	if err := testPool.QueryRow(ctx, "SELECT status FROM creation_receipts WHERE id=$1", job.ReceiptID).Scan(&status); err != nil {
+	if err := pool.QueryRow(ctx, "SELECT status FROM creation_receipts WHERE id=$1", job.ReceiptID).Scan(&status); err != nil {
 		t.Fatal(err)
 	}
 	if final.State != "failed" || !final.Snapshot.UsageUnknown || final.Snapshot.ReservedUSD != .1 || status != "unknown" || calls.Load() != 0 {
@@ -625,13 +634,14 @@ func TestCreationRestartRecoversUnknownAttemptWithoutReplay(t *testing.T) {
 }
 
 func TestAnInterruptedAttemptWithAnUnreadDiagramAsksForItAgain(t *testing.T) {
-	a, s, _ := creationFixture(t)
+	pool := isolatedAPIPool(t)
+	a, s, _ := creationFixtureOnPool(t, pool, creationLimits())
 	c := a.login(t, "creation-interrupted-diagram")
 	v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "開始創作", "budget_credits": 650}, 200)
-	job := creationJob(t, v.ID)
+	job := creationJobFromPool(t, pool, v.ID)
 	ctx := context.Background()
 
-	if _, err := testPool.Exec(ctx, `UPDATE creation_sessions SET state='working', updated_at=now()-interval '5 minutes',
+	if _, err := pool.Exec(ctx, `UPDATE creation_sessions SET state='working', updated_at=now()-interval '5 minutes',
 	 snapshot=jsonb_set(jsonb_set(snapshot, '{snapshot,diagram_fingerprint}', '"fp"'), '{active_deadline}', to_jsonb(now()-interval '5 minutes')) WHERE id=$1`, job.SessionID); err != nil {
 		t.Fatal(err)
 	}
@@ -741,13 +751,14 @@ func TestCreationDeadlineIsNotTheBudgetSentence(t *testing.T) {
 }
 
 func TestAStalledSessionThatCannotBeReadDoesNotStrandTheOnesBehindIt(t *testing.T) {
-	a, s, _ := creationFixture(t)
+	pool := isolatedAPIPool(t)
+	a, s, _ := creationFixtureOnPool(t, pool, creationLimits())
 	c := a.login(t, "creation-recover-past-a-bad-row")
 	ctx := context.Background()
 	stall := func(age, snapshot string) creation.JobArgs {
 		v := creationPost(t, c, "/creation-sessions", map[string]any{"id": creationID(t), "message": "開始創作", "budget_credits": 650}, 200)
-		job := creationJob(t, v.ID)
-		if _, err := testPool.Exec(ctx, `UPDATE creation_sessions SET state='working', updated_at=now()-$2::interval,
+		job := creationJobFromPool(t, pool, v.ID)
+		if _, err := pool.Exec(ctx, `UPDATE creation_sessions SET state='working', updated_at=now()-$2::interval,
 		 snapshot=`+snapshot+` WHERE id=$1`, job.SessionID, age); err != nil {
 			t.Fatal(err)
 		}
@@ -755,7 +766,7 @@ func TestAStalledSessionThatCannotBeReadDoesNotStrandTheOnesBehindIt(t *testing.
 	}
 	unreadable := stall("1 hour", `'"unreadable"'::jsonb`)
 	t.Cleanup(func() {
-		_, _ = testPool.Exec(context.Background(), "DELETE FROM creation_sessions WHERE id = $1", unreadable.SessionID)
+		_, _ = pool.Exec(context.Background(), "DELETE FROM creation_sessions WHERE id = $1", unreadable.SessionID)
 	})
 	healthy := stall("5 minutes", `jsonb_set(jsonb_set(snapshot, '{snapshot,diagram_fingerprint}', '"fp"'), '{active_deadline}', to_jsonb(now()-interval '5 minutes'))`)
 
