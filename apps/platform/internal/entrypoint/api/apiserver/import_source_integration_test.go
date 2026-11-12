@@ -5,9 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/http/httptest"
-	"sort"
+	"slices"
 	"strings"
 	"testing"
 
@@ -109,7 +110,7 @@ func TestImportingAPluginAnswersWithEverySkillItHeldAndOneStoredPackage(t *testi
 
 	excluded := pathsOf(t, body, "excluded_components")
 	for _, want := range []string{"mcp.json", "com.example.client/"} {
-		if !contains(excluded, want) {
+		if !slices.Contains(excluded, want) {
 			t.Errorf("excluded_components = %v, want it to disclose %q", excluded, want)
 		}
 	}
@@ -169,7 +170,7 @@ func TestASourceWhoseEverySkillFailedIsRefusedWithEachOneNamed(t *testing.T) {
 	}
 	refused := pathsOf(t, body, "refused")
 	for _, want := range []string{"skills/one", "skills/two"} {
-		if !contains(refused, want) {
+		if !slices.Contains(refused, want) {
 			t.Errorf("refused = %v, want %q named; a plugin whose every skill failed must still say which", refused, want)
 		}
 	}
@@ -247,7 +248,7 @@ func TestEachSkillOfAnImportedPluginCanBePackagedOnItsOwn(t *testing.T) {
 			entries := zipEntries(t, a, hash)
 
 			if _, ok := entries["SKILL.md"]; !ok {
-				t.Errorf("the package for %s has no SKILL.md at its root; entries = %v", name, sortedKeys(entries))
+				t.Errorf("the package for %s has no SKILL.md at its root; entries = %v", name, slices.Sorted(maps.Keys(entries)))
 			}
 			for entry := range entries {
 				if strings.HasPrefix(entry, "skills/") || entry == "plugin.json" || entry == "mcp.json" {
@@ -256,15 +257,6 @@ func TestEachSkillOfAnImportedPluginCanBePackagedOnItsOwn(t *testing.T) {
 			}
 		})
 	}
-}
-
-func sortedKeys(entries map[string][]byte) []string {
-	out := make([]string, 0, len(entries))
-	for name := range entries {
-		out = append(out, name)
-	}
-	sort.Strings(out)
-	return out
 }
 
 func TestEverySkillOfAPluginKeepsThePluginsOwnFacts(t *testing.T) {

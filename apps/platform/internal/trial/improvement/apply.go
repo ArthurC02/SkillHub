@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"maps"
 	"path"
+	"slices"
 	"sort"
 	"strings"
 
@@ -316,11 +318,7 @@ func validatePatched(sc suggestionCtx, patches map[string]string, ids []string) 
 			codes[f.Code] = struct{}{}
 		}
 	}
-	list := make([]string, 0, len(codes))
-	for c := range codes {
-		list = append(list, c)
-	}
-	sort.Strings(list)
+	list := slices.Sorted(maps.Keys(codes))
 
 	return &Blocked{SuggestionID: first(ids), Reason: BlockedValidation,
 		Message: "with this change applied the package no longer passes the validation an " +

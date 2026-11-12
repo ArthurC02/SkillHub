@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/jackc/pgx/v5"
@@ -56,7 +57,7 @@ func removeFindings(t *testing.T, agent string) {
 
 func (w *findingWorld) report(items ...string) {
 	w.t.Helper()
-	result := `{"items":[` + joinComma(items) + `]}`
+	result := `{"items":[` + strings.Join(items, ",") + `]}`
 	facts := agentloop.Tool{
 		Name: "maintenance_report", Description: "facts", Parameters: map[string]any{"type": "object"},
 		Run: func(context.Context, json.RawMessage) (any, error) { return json.RawMessage(findingFacts), nil },
@@ -66,17 +67,6 @@ func (w *findingWorld) report(items ...string) {
 	if err != nil || report.Status != agentloop.Completed {
 		w.t.Fatalf("report run %+v, err %v", report, err)
 	}
-}
-
-func joinComma(items []string) string {
-	out := ""
-	for i, item := range items {
-		if i > 0 {
-			out += ","
-		}
-		out += item
-	}
-	return out
 }
 
 func attention(text string, cites ...string) string {

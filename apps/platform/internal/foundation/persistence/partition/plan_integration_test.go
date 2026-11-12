@@ -2,6 +2,7 @@ package partition
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 )
@@ -21,7 +22,7 @@ func TestAPlanNamesExactlyThePartitionsTheRotationThenCreatesAndDrops(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !contains(plan.Dropped, "analytics_events_2026_09") || !contains(plan.Created, "analytics_events_2030_01") {
+	if !slices.Contains(plan.Dropped, "analytics_events_2026_09") || !slices.Contains(plan.Created, "analytics_events_2030_01") {
 		t.Errorf("plan drops %v and creates %v, want September 2026 dropped and January 2030 created", plan.Dropped, plan.Created)
 	}
 	assertNames(t, "partitions after planning", childPartitionNames(t, pool, analyticsTable), before...)

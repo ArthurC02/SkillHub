@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -294,7 +295,7 @@ func TestAGeneratedSkillsManifestNamesASourceTypeTheContractAllows(t *testing.T)
 		t.Fatalf("source.origin.source_type = %q, want generated: %s", manifest.Source.Origin.SourceType, raw)
 	}
 	allowed := manifestSourceTypeEnum(t)
-	if !contains(allowed, manifest.Source.Origin.SourceType) {
+	if !slices.Contains(allowed, manifest.Source.Origin.SourceType) {
 		t.Errorf("the manifest writes source_type %q, which the contract's enum %v does not permit",
 			manifest.Source.Origin.SourceType, allowed)
 	}

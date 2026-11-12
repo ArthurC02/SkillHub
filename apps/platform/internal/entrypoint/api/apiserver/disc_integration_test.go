@@ -483,14 +483,14 @@ func TestForkCatalogSkillIntoCallerWorkspace(t *testing.T) {
 		t.Fatalf("forked_from_version_id = %v, want %s", fork.ForkedFromVersionID, publishedVer)
 	}
 
-	if ids := alice.skillIDs(t, "/skills"); !contains(ids, fork.SkillID) {
+	if ids := alice.skillIDs(t, "/skills"); !slices.Contains(ids, fork.SkillID) {
 		t.Fatalf("fork missing from the forker's own skills: %v", ids)
 	}
-	if ids := curator.skillIDs(t, "/skills"); contains(ids, fork.SkillID) {
+	if ids := curator.skillIDs(t, "/skills"); slices.Contains(ids, fork.SkillID) {
 		t.Fatal("fork landed in the catalog workspace instead of the caller's")
 	}
 
-	if ids := curator.skillIDs(t, "/skills"); !contains(ids, published) {
+	if ids := curator.skillIDs(t, "/skills"); !slices.Contains(ids, published) {
 		t.Fatal("forking removed or altered the catalog original")
 	}
 }
@@ -561,7 +561,7 @@ func TestZeroHitLegDoesNotParticipateInFusion(t *testing.T) {
 	if ids[0] != near {
 		t.Fatalf("vector ranking not preserved: got %v, want %s first", ids, near)
 	}
-	if !contains(ids, far) {
+	if !slices.Contains(ids, far) {
 		t.Fatalf("vector leg dropped a candidate: %v", ids)
 	}
 }
@@ -579,7 +579,7 @@ func TestADocumentOnlyTheFullTextLegFindsStillReachesTheResults(t *testing.T) {
 	if body.Degraded {
 		t.Fatalf("meant to exercise the hybrid path, got the degraded one: %q", body.DegradedReason)
 	}
-	if !contains(body.ids(), wordOnly) {
+	if !slices.Contains(body.ids(), wordOnly) {
 		t.Fatalf("a document without an embedding that matches the words was left out: %v", body.ids())
 	}
 }
@@ -606,10 +606,10 @@ func TestPublicHybridSearchDoesNotLeakPrivateWorkspaces(t *testing.T) {
 	}
 
 	ids := body.ids()
-	if !contains(ids, published) {
+	if !slices.Contains(ids, published) {
 		t.Fatalf("the catalog document did not come back at all, so nothing was proved: %v", ids)
 	}
-	if contains(ids, private) {
+	if slices.Contains(ids, private) {
 		t.Fatalf("public search answered an anonymous request with a private workspace's skill: %v", ids)
 	}
 }
@@ -693,7 +693,7 @@ func TestRelevantQueryIsNotRefusedByTheCutOff(t *testing.T) {
 	anon := &client{Client: http.DefaultClient, base: a.URL}
 
 	body := anon.search(t, "/api/skills/search?q=%E5%B8%B3%E5%8B%99%E5%B0%8D%E5%B8%B3")
-	if !contains(body.ids(), published) {
+	if !slices.Contains(body.ids(), published) {
 		t.Fatalf("the cut-off refused a genuine match: %v", body.ids())
 	}
 	if body.NoResults {
@@ -719,7 +719,7 @@ func TestSearchDegradesToFTSWhenEmbeddingFails(t *testing.T) {
 	if body.DegradedReason == "" {
 		t.Fatal("degraded answer carries no reason")
 	}
-	if !contains(body.ids(), published) {
+	if !slices.Contains(body.ids(), published) {
 		t.Fatalf("degradation lost the lexical answer too: %v", body.ids())
 	}
 
@@ -826,7 +826,7 @@ func TestSearchWithoutLLMServiceIsDegradedButAnswers(t *testing.T) {
 	if !body.Degraded {
 		t.Fatal("a search with no embedding service was not marked degraded")
 	}
-	if !contains(body.ids(), published) {
+	if !slices.Contains(body.ids(), published) {
 		t.Fatalf("degraded search returned nothing: %v", body.ids())
 	}
 }
@@ -852,7 +852,7 @@ func TestPartialIndexIsReportedSeparatelyFromDegradation(t *testing.T) {
 		t.Fatalf("index coverage was reported as an outage: %q", body.DegradedReason)
 	}
 
-	if contains(body.ids(), pending) {
+	if slices.Contains(body.ids(), pending) {
 		t.Fatalf("a document with no metadata reached the public page: %v", body.ids())
 	}
 	if body.PartialIndex {
@@ -861,7 +861,7 @@ func TestPartialIndexIsReportedSeparatelyFromDegradation(t *testing.T) {
 
 	seedEmbedding(t, pool, pending, 55)
 	body = anon.search(t, "/api/skills/search?q=mimsy")
-	if !contains(body.ids(), pending) || body.PartialIndex {
+	if !slices.Contains(body.ids(), pending) || body.PartialIndex {
 		t.Fatalf("an embedded document must be on the page and ranked: %v partial=%v", body.ids(), body.PartialIndex)
 	}
 }
@@ -1054,7 +1054,7 @@ func TestFiltersNarrowOnRealEvidenceIncludingTheDegradedPath(t *testing.T) {
 		t.Fatal("no LLM service configured but the answer was not marked degraded")
 	}
 	for _, want := range []string{scripted, plain, unscanned} {
-		if !contains(all.ids(), want) {
+		if !slices.Contains(all.ids(), want) {
 			t.Fatalf("unfiltered search missed %s: %v", want, all.ids())
 		}
 	}
@@ -1084,12 +1084,12 @@ func TestFiltersNarrowOnRealEvidenceIncludingTheDegradedPath(t *testing.T) {
 func assertFilteredPageKeepsAndDrops(t *testing.T, body searchBody, want, notIn []string) {
 	t.Helper()
 	for _, w := range want {
-		if !contains(body.ids(), w) {
+		if !slices.Contains(body.ids(), w) {
 			t.Errorf("filter dropped a matching skill %s: %v", w, body.ids())
 		}
 	}
 	for _, unwanted := range notIn {
-		if contains(body.ids(), unwanted) {
+		if slices.Contains(body.ids(), unwanted) {
 			t.Errorf("filter kept a non-matching skill %s: %v", unwanted, body.ids())
 		}
 	}

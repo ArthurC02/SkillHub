@@ -203,13 +203,7 @@ func joinTaskExamples(examples []TaskExample) string {
 }
 
 func joinLines(items []string) string {
-	out := make([]string, 0, len(items))
-	for _, s := range items {
-		if s = strings.TrimSpace(s); s != "" {
-			out = append(out, s)
-		}
-	}
-	return strings.Join(out, "\n")
+	return strings.Join(trimAll(items), "\n")
 }
 
 func marshalTags(t SkillTags) []byte {

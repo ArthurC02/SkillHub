@@ -1132,7 +1132,7 @@ func TestTakedownRemovesSkillFromPublicSurface(t *testing.T) {
 	skillID := seedSkill(t, pool, operator.workspaceID, "quarantined-parser")
 	seedVersion(t, pool, operator.workspaceID, skillID, "hash-takedown")
 
-	if ids := other.skillIDs(t, "/api/skills/search?q=quarantined-parser"); !contains(ids, skillID) {
+	if ids := other.skillIDs(t, "/api/skills/search?q=quarantined-parser"); !slices.Contains(ids, skillID) {
 		t.Fatal("precondition failed: the skill is not in public search before the takedown")
 	}
 
@@ -1145,7 +1145,7 @@ func TestTakedownRemovesSkillFromPublicSurface(t *testing.T) {
 		t.Fatalf("takedown: got %d (%v)", status, body)
 	}
 
-	if ids := other.skillIDs(t, "/api/skills/search?q=quarantined-parser"); contains(ids, skillID) {
+	if ids := other.skillIDs(t, "/api/skills/search?q=quarantined-parser"); slices.Contains(ids, skillID) {
 		t.Fatal("taken-down skill is still in public search")
 	}
 
@@ -1168,7 +1168,7 @@ func TestTakedownRemovesSkillFromPublicSurface(t *testing.T) {
 	if _, _, err := wiring.NewCatalogService(pool).RebuildIndex(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if ids := other.skillIDs(t, "/api/skills/search?q=quarantined-parser"); contains(ids, skillID) {
+	if ids := other.skillIDs(t, "/api/skills/search?q=quarantined-parser"); slices.Contains(ids, skillID) {
 		t.Fatal("reindex put the taken-down skill back into public search")
 	}
 

@@ -2,6 +2,7 @@ package catalog
 
 import (
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"unicode"
@@ -143,7 +144,7 @@ func TestTokenize(t *testing.T) {
 	if len(got) == 0 || got[0] != "匯出" {
 		t.Fatalf("mixed: got %v, want a leading 匯出 token", got)
 	}
-	if !contains(got, "csv") {
+	if !slices.Contains(got, "csv") {
 		t.Fatalf("mixed: got %v, want the latin run kept as csv", got)
 	}
 }
@@ -216,15 +217,6 @@ func TestUserFacingSearchCopySpeaksTheInterfaceLanguage(t *testing.T) {
 			t.Errorf("DISC-001 asks the user for 任務/輸入/輸出; the suggestion never says %q: %q", want, noResultsSuggestion)
 		}
 	}
-}
-
-func contains(ss []string, want string) bool {
-	for _, s := range ss {
-		if s == want {
-			return true
-		}
-	}
-	return false
 }
 
 func TestIsComprehensibleRefusesBytesThatAreNotText(t *testing.T) {

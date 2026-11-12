@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -219,7 +220,7 @@ func (h *Handler) ApplySuggestions(w http.ResponseWriter, r *http.Request) {
 
 	if errors.Is(err, ErrNotAccepted) {
 		httpx.WriteError(w, http.StatusBadRequest, err.Error()+
-			"; not accepted: "+join(res.NotAccepted))
+			"; not accepted: "+strings.Join(res.NotAccepted, ", "))
 		return
 	}
 
@@ -265,15 +266,4 @@ func suggestionParentOf(w http.ResponseWriter, evaluationID, reflectionID string
 		return parent, false
 	}
 	return parent, true
-}
-
-func join(ids []string) string {
-	out := ""
-	for i, id := range ids {
-		if i > 0 {
-			out += ", "
-		}
-		out += id
-	}
-	return out
 }

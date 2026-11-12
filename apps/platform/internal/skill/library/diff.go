@@ -6,7 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"sort"
+	"maps"
+	"slices"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -90,11 +91,7 @@ func diffFS(from, to fs.FS) ([]FileDiff, error) {
 	for p := range toFiles {
 		paths[p] = true
 	}
-	sorted := make([]string, 0, len(paths))
-	for p := range paths {
-		sorted = append(sorted, p)
-	}
-	sort.Strings(sorted)
+	sorted := slices.Sorted(maps.Keys(paths))
 
 	diffs := make([]FileDiff, 0)
 	for _, p := range sorted {

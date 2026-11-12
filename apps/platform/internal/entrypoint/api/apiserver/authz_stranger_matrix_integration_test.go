@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -467,7 +468,7 @@ func assertTheOwnersResourcesAreUntouched(
 			t.Errorf("after the stranger's sweep the owner's %s changed: before %s, after %s", name, was, after[name])
 		}
 	}
-	if ids := alice.skillIDs(t, "/skills"); !contains(ids, world.skillID) {
+	if ids := alice.skillIDs(t, "/skills"); !slices.Contains(ids, world.skillID) {
 		t.Errorf("after the stranger's sweep the owner's skill list no longer holds their skill: %v", ids)
 	}
 }

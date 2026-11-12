@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -223,7 +224,7 @@ func assertOperatorSeesNoPrivateContent(t *testing.T, a *api, pool *pgxpool.Pool
 	if code := getJSON(t, operator.Client, a.URL+"/api/skills/"+private, nil); code != http.StatusNotFound {
 		t.Errorf("operator read of a private skill: got %d, want 404", code)
 	}
-	if ids := operator.skillIDs(t, "/skills"); contains(ids, private) || contains(ids, held) {
+	if ids := operator.skillIDs(t, "/skills"); slices.Contains(ids, private) || slices.Contains(ids, held) {
 		t.Error("operator's own skill list carries somebody else's content")
 	}
 }
@@ -317,6 +318,27 @@ func TestOperatorRosterIsAudited(t *testing.T) {
 	}
 	if count != 1 || len(ids) != 1 || ids[0] != operator.userID {
 		t.Fatalf("roster event = %v (count %d), want exactly the configured operator", ids, count)
+	}
+}
+
+func TestAnEmptyOperatorRosterIsAuditedAsAnEmptyList(t *testing.T) {
+	pool := requireDB(t)
+	a := newAPI(t, pool)
+	a.auth.Operators = map[string]bool{}
+
+	if err := a.auth.LogOperatorRoster(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	var kind string
+	var count int
+	if err := pool.QueryRow(context.Background(), `
+		SELECT jsonb_typeof(metadata->'user_ids'), (metadata->>'count')::int
+		FROM audit_events WHERE action = 'operator.roster'
+		ORDER BY id DESC LIMIT 1`).Scan(&kind, &count); err != nil {
+		t.Fatal(err)
+	}
+	if kind != "array" || count != 0 {
+		t.Fatalf("roster event user_ids is %s (count %d), want an empty array", kind, count)
 	}
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -200,7 +201,7 @@ func TestCreationReferenceSearchResolvesAtMostThree(t *testing.T) {
 		t.Fatalf("got %d references %v, want %d", len(refs), referenceIDs(refs), creation.MaxReferences)
 	}
 	for _, r := range refs {
-		if !r.Available || !contains(shelf.skills, r.SkillID) {
+		if !r.Available || !slices.Contains(shelf.skills, r.SkillID) {
 			t.Errorf("reference %+v is not one of the shelf's readable skills", r)
 		}
 	}
@@ -217,7 +218,7 @@ func TestCreationReferenceSearchLeavesOutWhatCannotBeRead(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := referenceIDs(refs)
-	if len(got) != 2 || !contains(got, shelf.skills[0]) || !contains(got, shelf.skills[1]) {
+	if len(got) != 2 || !slices.Contains(got, shelf.skills[0]) || !slices.Contains(got, shelf.skills[1]) {
 		t.Errorf("got %v, want exactly the two readable skills %v", got, shelf.skills[:2])
 	}
 }
@@ -247,7 +248,7 @@ func TestCreationCatalogChecksWithoutAnEmbeddingModelOfferNothingAndSaySo(t *tes
 		t.Fatal(err)
 	}
 	lexical := &catalog.Service{Pool: pool, CatalogWorkspaces: (&identity.Service{Pool: pool}).CatalogWorkspaceIDs}
-	if knowledge, err := lexical.CreationKnowledgeIDs(ctx, word, catalog.CreationMaxDistance); err != nil || !knowledge.Degraded || !contains(knowledge.IDs, shelf.skills[0]) {
+	if knowledge, err := lexical.CreationKnowledgeIDs(ctx, word, catalog.CreationMaxDistance); err != nil || !knowledge.Degraded || !slices.Contains(knowledge.IDs, shelf.skills[0]) {
 		t.Fatalf("the lexical answer must find the skill for this test to mean anything: ids=%v degraded=%v err=%v", knowledge.IDs, knowledge.Degraded, err)
 	}
 
@@ -280,7 +281,7 @@ func TestCreationCatalogChecksOfferTheNearestThreeReadableSkills(t *testing.T) {
 			t.Fatalf("%s: got %d references %v, want %d", name, len(refs), referenceIDs(refs), creation.MaxReferences)
 		}
 		for _, r := range refs {
-			if !r.Available || !contains(shelf.skills[:4], r.SkillID) {
+			if !r.Available || !slices.Contains(shelf.skills[:4], r.SkillID) {
 				t.Errorf("%s: reference %+v is not one of the shelf's readable skills", name, r)
 			}
 		}

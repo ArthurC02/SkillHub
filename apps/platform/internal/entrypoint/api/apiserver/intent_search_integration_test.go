@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -56,8 +57,8 @@ func TestModelKeywordsExpandCandidatesBeyondTheVectorWindow(t *testing.T) {
 	anon := &client{Client: http.DefaultClient, base: a.URL}
 	path := "/api/skills/search?q=" + url.QueryEscape(query) + "&limit=100"
 	baseline := anon.search(t, path)
-	if ids := baseline.ids(); baseline.Degraded || len(ids) != 50 || contains(ids, target) {
-		t.Fatalf("vector window must exclude the weaker candidate: count=%d target=%v degraded=%v", len(ids), contains(ids, target), baseline.Degraded)
+	if ids := baseline.ids(); baseline.Degraded || len(ids) != 50 || slices.Contains(ids, target) {
+		t.Fatalf("vector window must exclude the weaker candidate: count=%d target=%v degraded=%v", len(ids), slices.Contains(ids, target), baseline.Degraded)
 	}
 	available.Store(true)
 	expanded := anon.search(t, path)
