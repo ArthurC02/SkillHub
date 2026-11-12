@@ -142,10 +142,6 @@ FROM object_reconcile_sightings
 WHERE rounds >= $1
 GROUP BY resource_kind;
 
--- name: MarkDatasetObjectLost :exec
-UPDATE datasets SET deleted_at = coalesce(deleted_at, now()), purged_at = now()
-WHERE id = $1 AND purged_at IS NULL;
-
 -- name: CountRunOutputsPastRetention :one
 SELECT count(*)::bigint FROM artifacts
 WHERE kind = 'run_output'

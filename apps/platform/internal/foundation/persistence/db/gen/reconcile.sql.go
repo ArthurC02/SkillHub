@@ -476,16 +476,6 @@ func (q *Queries) MarkDatasetCleanupIntentPurged(ctx context.Context, id pgtype.
 	return err
 }
 
-const markDatasetObjectLost = `-- name: MarkDatasetObjectLost :exec
-UPDATE datasets SET deleted_at = coalesce(deleted_at, now()), purged_at = now()
-WHERE id = $1 AND purged_at IS NULL
-`
-
-func (q *Queries) MarkDatasetObjectLost(ctx context.Context, id pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, markDatasetObjectLost, id)
-	return err
-}
-
 const markDatasetPurged = `-- name: MarkDatasetPurged :exec
 UPDATE datasets SET deleted_at = coalesce(deleted_at, now()), purged_at = now()
 WHERE id = $1 AND purged_at IS NULL
