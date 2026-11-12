@@ -39,7 +39,7 @@ func dispatchStatus(t *testing.T, c *client) (dispatching bool, halts []map[stri
 	return body.Dispatching, body.Halts
 }
 
-func haltAuditCount(t *testing.T, pool *pgxpool.Pool, action string) int {
+func auditActionCount(t *testing.T, pool *pgxpool.Pool, action string) int {
 	t.Helper()
 	return countRow(t, pool, "SELECT count(*) FROM audit_events WHERE action = $1", action)
 }
@@ -109,7 +109,7 @@ func TestP1HaltStopsBothEntryPointsAndPreservesTheScene(t *testing.T) {
 		t.Fatalf("precondition: creating the queued run got %d (%s)", code, queued.Error)
 	}
 
-	haltsBefore := haltAuditCount(t, pool, "dispatch.halted")
+	haltsBefore := auditActionCount(t, pool, "dispatch.halted")
 
 	const note = "escape suspicion on the fake fleet; investigating"
 	declareP1Halt(t, operator, note)
@@ -237,7 +237,7 @@ func (sc haltScene) assertP1HaltPreservesTheScene(t *testing.T, finishedRunID st
 func (sc haltScene) assertP1HaltAuditedAndNotSelfReleasing(t *testing.T, haltsBefore int, note string) {
 	t.Helper()
 	ctx := context.Background()
-	if got := haltAuditCount(t, sc.pool, "dispatch.halted") - haltsBefore; got != 1 {
+	if got := auditActionCount(t, sc.pool, "dispatch.halted") - haltsBefore; got != 1 {
 		t.Errorf("dispatch.halted events = %d, want exactly 1", got)
 	}
 	var actor, target, reason string
@@ -266,12 +266,12 @@ func (sc haltScene) assertP1HaltAuditedAndNotSelfReleasing(t *testing.T, haltsBe
 func (sc haltScene) resumeAndFinishTheHeldWork(t *testing.T, queuedRunID, finishedRunID string) {
 	t.Helper()
 	ctx := context.Background()
-	resumesBefore := haltAuditCount(t, sc.pool, "dispatch.resumed")
+	resumesBefore := auditActionCount(t, sc.pool, "dispatch.resumed")
 	if code, body := operatorCall(t, sc.operator, http.MethodDelete, "/admin/dispatch/halt",
 		`{"note":"investigation closed, nothing escaped"}`); code != http.StatusNoContent {
 		t.Fatalf("operator DELETE /admin/dispatch/halt: got %d (%v)", code, body)
 	}
-	if got := haltAuditCount(t, sc.pool, "dispatch.resumed") - resumesBefore; got != 1 {
+	if got := auditActionCount(t, sc.pool, "dispatch.resumed") - resumesBefore; got != 1 {
 		t.Errorf("dispatch.resumed events = %d, want exactly 1", got)
 	}
 	if dispatching, halts := dispatchStatus(t, sc.operator); !dispatching || len(halts) != 0 {
@@ -328,7 +328,7 @@ func TestOrphanThresholdMovesTheSameSwitchAndClearsItself(t *testing.T) {
 		t.Fatal("the X-04 threshold was crossed and dispatch was not halted")
 	}
 	assertSelfClearingThresholdHaltsIncludeThePool(t, halts)
-	if haltAuditCount(t, pool, "dispatch.halted") == 0 {
+	if auditActionCount(t, pool, "dispatch.halted") == 0 {
 		t.Error("the reconciler halted the fleet without an audit event")
 	}
 
@@ -355,7 +355,7 @@ func TestOrphanThresholdMovesTheSameSwitchAndClearsItself(t *testing.T) {
 	if dispatching, halts := dispatchStatus(t, operator); !dispatching || len(halts) != 0 {
 		t.Fatalf("after two clear rounds: dispatching=%v, halts=%v", dispatching, halts)
 	}
-	if haltAuditCount(t, pool, "dispatch.resumed") == 0 {
+	if auditActionCount(t, pool, "dispatch.resumed") == 0 {
 		t.Error("the automatic recovery left no audit event")
 	}
 	if err := driveThroughPolls(ctx, svc.Drive, ws, mustUUID(t, created.RunID)); err != nil {
