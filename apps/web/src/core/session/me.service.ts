@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
-import { ApiError, apiFetch } from "../api/client";
+import { ApiError, apiFetch, jsonInit } from "../api/client";
 import { queryKeys } from "../api/queryKeys";
 import type { AccountDeletion, Me } from "../api/types";
 import { isDate, isUuid } from "../api/wire";
@@ -93,11 +93,7 @@ export function useDevLogin(): boolean {
 }
 
 export function devLogin(user: string) {
-  return apiFetch<void>("/auth/dev/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ user }),
-  });
+  return apiFetch<void>("/auth/dev/login", jsonInit("POST", { user }));
 }
 
 export function useDevSignIn() {

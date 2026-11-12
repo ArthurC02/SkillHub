@@ -12,6 +12,7 @@ import {
 import {
   apiFetch,
   isWriteResultUnknown as isContinuationResultUnknown,
+  jsonInit,
 } from "../../core/api/client";
 export { isWriteResultUnknown as isContinuationResultUnknown } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
@@ -108,11 +109,10 @@ export function useCancelRun(runId: string) {
 }
 
 export async function continueRun(runId: string, answers: string[]) {
-  const next = await apiFetch<unknown>(`/runs/${runId}/continuations`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ answers }),
-  });
+  const next = await apiFetch<unknown>(
+    `/runs/${runId}/continuations`,
+    jsonInit("POST", { answers }),
+  );
   if (
     !next ||
     typeof next !== "object" ||
@@ -286,11 +286,7 @@ export function useSaveRunAsTestCase(runId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async (name: string) => {
-      const body = await apiFetch<unknown>(`/runs/${runId}/test-case`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
-      });
+      const body = await apiFetch<unknown>(`/runs/${runId}/test-case`, jsonInit("POST", { name }));
       const id = (body as { test_case_id?: unknown } | null)?.test_case_id;
       if (typeof id !== "string" || id === "") throw new Error("Invalid saved test case response");
       return id;

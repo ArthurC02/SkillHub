@@ -21,6 +21,7 @@ import {
   apiFetch,
   internalAPIPath,
   isLastingReadFailure,
+  jsonInit,
 } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
 import {
@@ -299,11 +300,10 @@ export function useEvaluationRevisions(runId: string, evaluated: boolean) {
 }
 
 export async function setEvaluationFeedback(runId: string, helpful: boolean, comment: string) {
-  const result = await apiFetch<unknown>(`/runs/${runId}/evaluation/feedback`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ helpful, comment }),
-  });
+  const result = await apiFetch<unknown>(
+    `/runs/${runId}/evaluation/feedback`,
+    jsonInit("PUT", { helpful, comment }),
+  );
   if (
     !isEvaluationResponse(result, runId) ||
     result.feedback?.helpful !== helpful ||
@@ -353,11 +353,10 @@ export function useSuggestionDiff(suggestionId: string, enabled: boolean) {
 }
 
 export async function decideSuggestion(suggestionId: string, decision: "accepted" | "rejected") {
-  const result = await apiFetch<unknown>(`/suggestions/${suggestionId}/decision`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ decision }),
-  });
+  const result = await apiFetch<unknown>(
+    `/suggestions/${suggestionId}/decision`,
+    jsonInit("PUT", { decision }),
+  );
   if (
     typeof result !== "object" ||
     result === null ||
@@ -402,11 +401,10 @@ export async function createVersionFromSuggestions(
   owner: SuggestionOwner,
   suggestionIds: string[],
 ) {
-  const result = await apiFetch<unknown>(`/skills/${skillId}/versions/from-suggestions`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...owner, suggestion_ids: suggestionIds }),
-  });
+  const result = await apiFetch<unknown>(
+    `/skills/${skillId}/versions/from-suggestions`,
+    jsonInit("POST", { ...owner, suggestion_ids: suggestionIds }),
+  );
   if (!isAppliedVersion(result) || !matchesAppliedRequest(result, skillId, suggestionIds))
     throw new Error("Invalid applied version response");
   return result;

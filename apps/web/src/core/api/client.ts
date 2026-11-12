@@ -101,6 +101,10 @@ function errorMessageFromBody(body: unknown, fallback: string): string {
   return typeof error === "string" ? error : fallback;
 }
 
+export function jsonInit(method: string, body: unknown): RequestInit {
+  return { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
+}
+
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const method = (init?.method ?? "GET").toUpperCase();
   if (

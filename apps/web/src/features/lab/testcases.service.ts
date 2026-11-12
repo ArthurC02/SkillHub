@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiFetch, isWriteResultUnknown } from "../../core/api/client";
+import { apiFetch, isWriteResultUnknown, jsonInit } from "../../core/api/client";
 import type { Dataset } from "./lab.service";
 import { queryKeys } from "../../core/api/queryKeys";
 import type { CheckNode } from "../evaluation";
@@ -96,11 +96,10 @@ export function useTestCase(testCaseId: string) {
 }
 
 export function createTestCase(skillId: string, name: string, userPrompt: string) {
-  return apiFetch<TestCase>("/test-cases", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ skill_id: skillId, name, user_prompt: userPrompt }),
-  });
+  return apiFetch<TestCase>(
+    "/test-cases",
+    jsonInit("POST", { skill_id: skillId, name, user_prompt: userPrompt }),
+  );
 }
 
 export function useCreateTestCase() {
@@ -124,11 +123,7 @@ export type TestCasePatch = {
 };
 
 export function updateTestCase(testCaseId: string, patch: TestCasePatch) {
-  return apiFetch<TestCase>(`/test-cases/${testCaseId}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(patch),
-  });
+  return apiFetch<TestCase>(`/test-cases/${testCaseId}`, jsonInit("PATCH", patch));
 }
 
 export function useUpdateTestCase(testCaseId: string) {
@@ -146,11 +141,10 @@ export function useUpdateTestCase(testCaseId: string) {
 export type NewCriterion = { text: string; source?: "user" | "suggested"; check?: CheckNode };
 
 export function addCriterion(testCaseId: string, criterion: NewCriterion) {
-  return apiFetch<TestCase>(`/test-cases/${testCaseId}/criteria`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ source: "user", ...criterion }),
-  });
+  return apiFetch<TestCase>(
+    `/test-cases/${testCaseId}/criteria`,
+    jsonInit("POST", { source: "user", ...criterion }),
+  );
 }
 
 export function useAddCriterion(testCaseId: string) {
@@ -170,11 +164,10 @@ export function updateCriterion(
   criterionId: string,
   patch: { text?: string; confirmed?: boolean },
 ) {
-  return apiFetch<TestCase>(`/test-cases/${testCaseId}/criteria/${criterionId}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(patch),
-  });
+  return apiFetch<TestCase>(
+    `/test-cases/${testCaseId}/criteria/${criterionId}`,
+    jsonInit("PATCH", patch),
+  );
 }
 
 export function deleteCriterion(testCaseId: string, criterionId: string) {
@@ -229,11 +222,10 @@ function isTestCaseSuggestion(value: unknown): value is TestCaseSuggestion {
 }
 
 export async function suggestTestCases(skillId: string, focus: string) {
-  const result = await apiFetch<unknown>("/test-cases/suggest", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ skill_id: skillId, focus }),
-  });
+  const result = await apiFetch<unknown>(
+    "/test-cases/suggest",
+    jsonInit("POST", { skill_id: skillId, focus }),
+  );
   const suggestions = (result as { suggestions?: unknown } | null)?.suggestions;
   if (!Array.isArray(suggestions) || !suggestions.every(isTestCaseSuggestion))
     throw new Error("Invalid test case proposals response");

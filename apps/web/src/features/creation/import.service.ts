@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiFetch, isWriteResultUnknown } from "../../core/api/client";
+import { apiFetch, isWriteResultUnknown, jsonInit } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
 import { isCategorizedFindings, isImportFinding } from "../../core/api/findings";
 export { isCategorizedFindings } from "../../core/api/findings";
@@ -7,11 +7,7 @@ import type { ImportResult, ImportedSkill, RefusedSkill, UploadResult } from "..
 import { isUuid } from "../../core/api/wire";
 
 export function importSkillFromURL(url: string) {
-  return apiFetch<unknown>("/skills/import/url", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url }),
-  }).then(readImportResult);
+  return apiFetch<unknown>("/skills/import/url", jsonInit("POST", { url })).then(readImportResult);
 }
 
 export function uploadSkillPackage(file: File) {

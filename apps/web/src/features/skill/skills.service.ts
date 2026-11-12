@@ -16,6 +16,7 @@ import {
   apiFetch,
   isNotFound,
   isWriteResultUnknown,
+  jsonInit,
 } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
 import { readSearchCorrection } from "../../core/api/searchIntent";
@@ -69,16 +70,15 @@ export function useSkillSearch(
 
 async function fetchCorrectedSearch(query: string, filters: SearchFilters, correction: string) {
   return readSearchResponse(
-    await apiFetch<unknown>("/api/skills/search", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    await apiFetch<unknown>(
+      "/api/skills/search",
+      jsonInit("POST", {
         query,
         ...readSearchCorrection(correction),
         filters,
         limit: 20,
       } satisfies CorrectedSearchRequest),
-    }),
+    ),
   );
 }
 
@@ -125,11 +125,10 @@ function isMatchReasons(value: unknown, skillIds: string[]): value is SearchMatc
 }
 
 async function fetchMatchReasons(query: string, skillIds: string[]) {
-  const result = await apiFetch<unknown>("/api/skills/search/reasons", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query, skill_ids: skillIds }),
-  });
+  const result = await apiFetch<unknown>(
+    "/api/skills/search/reasons",
+    jsonInit("POST", { query, skill_ids: skillIds }),
+  );
   if (!isMatchReasons(result, skillIds)) throw new Error("Invalid search reasons response");
   return result;
 }
@@ -416,11 +415,7 @@ function useOwnSkillWrite<T>(write: (input: T) => Promise<unknown>) {
 
 export function useTakedownSkill() {
   return useOwnSkillWrite(({ skillId, reason }: { skillId: string; reason: string }) =>
-    apiFetch(`/skills/${skillId}/takedown`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reason }),
-    }),
+    apiFetch(`/skills/${skillId}/takedown`, jsonInit("POST", { reason })),
   );
 }
 
@@ -466,11 +461,10 @@ export function useForkSkill() {
 export type SkillCategoryChoice = SetSkillCategoryRequest["category"];
 
 export async function setSkillCategory(skillId: string, category: SkillCategoryChoice) {
-  const result = await apiFetch<unknown>(`/skills/${skillId}/category`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ category }),
-  });
+  const result = await apiFetch<unknown>(
+    `/skills/${skillId}/category`,
+    jsonInit("PUT", { category }),
+  );
   if (!isSkillReceipt(result) || result.skill_id.toLowerCase() !== skillId.toLowerCase())
     throw new Error("Invalid category response");
   return result;

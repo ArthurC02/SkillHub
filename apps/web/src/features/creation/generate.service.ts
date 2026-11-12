@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiFetch } from "../../core/api/client";
+import { apiFetch, jsonInit } from "../../core/api/client";
 import { useMe } from "../../core/session/me.service";
 import { queryKeys } from "../../core/api/queryKeys";
 import type {
@@ -15,11 +15,7 @@ export function generateSkill(request: GenerateSkillRequest) {
   if (request.task_description) body.task_description = request.task_description;
   if (request.diagram) body.diagram = request.diagram;
   if (request.reference_skill_ids?.length) body.reference_skill_ids = request.reference_skill_ids;
-  return apiFetch<GenerateSkillResult>("/skills/generate", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  return apiFetch<GenerateSkillResult>("/skills/generate", jsonInit("POST", body));
 }
 
 export function useGenerateSkill() {

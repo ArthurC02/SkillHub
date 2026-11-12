@@ -13,7 +13,7 @@ import {
   SetReflectionCandidatesBodyCountMaximum as MAX_REFLECTION_CANDIDATES,
 } from "@skillhub/api-client-ts/limits";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiError, apiFetch, isLastingReadFailure } from "../../core/api/client";
+import { ApiError, apiFetch, isLastingReadFailure, jsonInit } from "../../core/api/client";
 import { useMe } from "../../core/session/me.service";
 import { queryKeys } from "../../core/api/queryKeys";
 import { isDate, isUuid } from "../../core/api/wire";
@@ -178,10 +178,6 @@ function useOperator(): boolean {
   return useMe().data?.operator === true;
 }
 
-function send(method: string, body: unknown): RequestInit {
-  return { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
-}
-
 export async function lookupAccount(email: string): Promise<AccountLookup> {
   const result = await apiFetch<unknown>(`/admin/accounts?email=${encodeURIComponent(email)}`);
   if (!isAccountLookup(result)) throw new Error("Invalid account lookup response");
@@ -259,7 +255,7 @@ export async function grantCredits(
 ): Promise<CreditGrantResult> {
   const result = await apiFetch<unknown>(
     `/admin/credits/${encodeURIComponent(workspaceId)}/grants`,
-    send("POST", body),
+    jsonInit("POST", body),
   );
   if (!isCreditGrantResult(result, workspaceId, body.amount_credits))
     throw new Error("Invalid credit grant response");
@@ -332,7 +328,7 @@ export function useGovernanceAction(
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ method, body }: { method: "PUT" | "DELETE"; body: Record<string, unknown> }) =>
-      apiFetch<unknown>(`/admin/skills/${skillId}/${action}`, send(method, body)),
+      apiFetch<unknown>(`/admin/skills/${skillId}/${action}`, jsonInit(method, body)),
     onSuccess: (_result, submitted) => {
       onComplete?.(submitted);
       return queryClient.invalidateQueries({ queryKey: queryKeys.admin.skills });
@@ -381,7 +377,7 @@ export function useDispatchHalt(method: "PUT" | "DELETE") {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: { note: string; provider?: string }) =>
-      apiFetch<{ note?: string } | undefined>("/admin/dispatch/halt", send(method, body)),
+      apiFetch<{ note?: string } | undefined>("/admin/dispatch/halt", jsonInit(method, body)),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.dispatch }),
   });
 }
@@ -400,7 +396,7 @@ export function useModelBudgetChange(method: "PUT" | "DELETE") {
     mutationFn: ({ kind, ...body }: { kind: string; reason: string; seconds?: number }) =>
       apiFetch<ModelCallBudget | undefined>(
         `/admin/model-budgets/${encodeURIComponent(kind)}`,
-        send(method, body),
+        jsonInit(method, body),
       ),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.modelBudgets }),
   });
@@ -471,7 +467,8 @@ export function useReviewExposure(publication: string) {
       expected_snapshot_digest: string;
       decision: ExposureDecision;
       reason: string;
-    }) => apiFetch<ExposureCase>(`/admin/publications/${publication}/exposure`, send("POST", body)),
+    }) =>
+      apiFetch<ExposureCase>(`/admin/publications/${publication}/exposure`, jsonInit("POST", body)),
     onSuccess: (currentCase) => {
       queryClient.setQueryData(queryKeys.admin.exposureCase(publication), currentCase);
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.exposureQueue });
@@ -626,7 +623,7 @@ export function usePlatformAgentSwitch() {
     mutationFn: ({ name, ...body }: { name: string; enabled: boolean; note: string }) =>
       apiFetch<PlatformAgent>(
         `/admin/agents/${encodeURIComponent(name)}/enabled`,
-        send("PUT", body),
+        jsonInit("PUT", body),
       ),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.agents }),
   });
@@ -647,7 +644,7 @@ export function usePlatformAgentSpendCap() {
     }) =>
       apiFetch<unknown>(
         `/admin/agents/${encodeURIComponent(name)}/spend-cap`,
-        send("PUT", body),
+        jsonInit("PUT", body),
       ).then((agent) => (isPlatformAgent(agent) && agent.name === name ? agent : undefined)),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.agents }),
   });
@@ -713,7 +710,7 @@ export function useReflectionCandidatesSetting() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: { count: number; round_credit_cap?: number; note: string }) =>
-      apiFetch<unknown>("/admin/settings/reflection-candidates", send("PUT", body)),
+      apiFetch<unknown>("/admin/settings/reflection-candidates", jsonInit("PUT", body)),
     onSuccess: (settings) => {
       if (isPlatformSettings(settings)) {
         queryClient.setQueryData(queryKeys.admin.settings, settings);
@@ -736,7 +733,7 @@ export function useInjectionCheckSwitch() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: { enabled: boolean; credits_per_million_tokens: number; note: string }) =>
-      apiFetch<unknown>("/admin/settings/injection-check", send("PUT", body)),
+      apiFetch<unknown>("/admin/settings/injection-check", jsonInit("PUT", body)),
     onSuccess: (settings) => {
       if (isPlatformSettings(settings)) {
         queryClient.setQueryData(queryKeys.admin.settings, settings);
@@ -810,7 +807,8 @@ export type MCPToolDraft = Pick<
 export function useAddMCPTool() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body: MCPToolDraft) => apiFetch<unknown>("/admin/mcp-tools", send("POST", body)),
+    mutationFn: (body: MCPToolDraft) =>
+      apiFetch<unknown>("/admin/mcp-tools", jsonInit("POST", body)),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.mcpTools }),
   });
 }
@@ -821,7 +819,7 @@ export function useRetireMCPTool() {
     mutationFn: ({ id, note }: { id: string; note: string }) =>
       apiFetch<unknown>(
         `/admin/mcp-tools/${encodeURIComponent(id)}/retire`,
-        send("POST", { note }),
+        jsonInit("POST", { note }),
       ),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.mcpTools }),
   });
@@ -831,7 +829,7 @@ export function useJudgePanelSwitch() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: { enabled: boolean; note: string }) =>
-      apiFetch<unknown>("/admin/settings/judge-panel", send("PUT", body)),
+      apiFetch<unknown>("/admin/settings/judge-panel", jsonInit("PUT", body)),
     onSuccess: (settings) => {
       if (isPlatformSettings(settings)) {
         queryClient.setQueryData(queryKeys.admin.settings, settings);
@@ -916,7 +914,7 @@ export function useContinuationRounds() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: { rounds: number; note: string }) =>
-      apiFetch<unknown>("/admin/settings/runs/continuation-rounds", send("PUT", body)),
+      apiFetch<unknown>("/admin/settings/runs/continuation-rounds", jsonInit("PUT", body)),
     onSuccess: (settings) => reconcileRunSettings(queryClient, settings),
   });
 }
@@ -927,7 +925,7 @@ export function useRunModelBudget() {
     mutationFn: (body: { credits?: number; note: string }) =>
       apiFetch<unknown>(
         "/admin/settings/runs/model-budget",
-        send(body.credits === undefined ? "DELETE" : "PUT", body),
+        jsonInit(body.credits === undefined ? "DELETE" : "PUT", body),
       ),
     onSuccess: (settings) => reconcileRunSettings(queryClient, settings),
   });
@@ -939,7 +937,7 @@ export function useRunTokensPerMinute() {
     mutationFn: (body: { limit?: number; note: string }) =>
       apiFetch<unknown>(
         "/admin/settings/runs/tokens-per-minute",
-        send(body.limit === undefined ? "DELETE" : "PUT", body),
+        jsonInit(body.limit === undefined ? "DELETE" : "PUT", body),
       ),
     onSuccess: (settings) => reconcileRunSettings(queryClient, settings),
   });
@@ -949,7 +947,7 @@ export function usePlatformAgentBrake(method: "PUT" | "DELETE") {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: { note: string }) =>
-      apiFetch<PlatformAgentBrake | undefined>("/admin/agents/brake", send(method, body)),
+      apiFetch<PlatformAgentBrake | undefined>("/admin/agents/brake", jsonInit(method, body)),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.agents }),
   });
 }
@@ -1049,7 +1047,7 @@ export function useMoveFinding() {
     mutationFn: ({ id, ...body }: { id: string; status: FindingStatus; note: string }) =>
       apiFetch<undefined>(
         `/admin/agents/findings/${encodeURIComponent(id)}/status`,
-        send("PUT", body),
+        jsonInit("PUT", body),
       ),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.agentFindings }),
     onError: () => {
@@ -1124,7 +1122,7 @@ export function useDecideProposal() {
     mutationFn: ({ id, ...body }: { id: string; decision: "approve" | "reject"; note: string }) =>
       apiFetch<undefined>(
         `/admin/agents/proposals/${encodeURIComponent(id)}/decision`,
-        send("PUT", body),
+        jsonInit("PUT", body),
       ),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.agentProposals }),
     onError: () => {

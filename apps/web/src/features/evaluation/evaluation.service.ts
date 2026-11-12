@@ -3,7 +3,7 @@ import {
   CriterionCheckChildrenMaxItems,
   CriterionCheckValuesMaxItems,
 } from "@skillhub/api-client-ts/limits";
-import { apiFetch } from "../../core/api/client";
+import { apiFetch, jsonInit } from "../../core/api/client";
 import { useMe } from "../../core/session/me.service";
 import { queryKeys } from "../../core/api/queryKeys";
 import { problems, type Bounds, type CheckKind, type CheckNode } from "./check.model";
@@ -29,14 +29,6 @@ const GRADER_PATHS: Record<GraderScope, string> = {
   workspace: "/evaluation/graders",
   platform: "/admin/evaluation/graders",
 };
-
-function send(body: unknown): RequestInit {
-  return {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  };
-}
 
 export function useCheckKinds() {
   return useQuery({
@@ -139,7 +131,7 @@ export function useCreateGrader(scope: GraderScope) {
 }
 
 export async function createGrader(scope: GraderScope, draft: GraderDraft) {
-  const grader = await apiFetch<unknown>(GRADER_PATHS[scope], send(draft));
+  const grader = await apiFetch<unknown>(GRADER_PATHS[scope], jsonInit("POST", draft));
   if (!isGrader(grader) || grader.scope !== scope || grader.version !== 1)
     throw new Error("Invalid grader write response");
   return grader;
@@ -152,7 +144,7 @@ export async function reviseGrader(
 ) {
   const grader = await apiFetch<unknown>(
     `${GRADER_PATHS[scope]}/${graderId}/versions`,
-    send(revision),
+    jsonInit("POST", revision),
   );
   if (
     !isGrader(grader) ||

@@ -1,5 +1,5 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiFetch } from "../../../core/api/client";
+import { apiFetch, jsonInit } from "../../../core/api/client";
 import { queryKeys } from "../../../core/api/queryKeys";
 import { confirmPreflight, getPreflight } from "../lab.service";
 import { createVersionFromSuggestions } from "../../runs";
@@ -73,11 +73,7 @@ export function useCreateEvaluationBatch(skillId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async (batch: NewBatch) => {
-      const body = await apiFetch<unknown>(base(skillId), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(batch),
-      });
+      const body = await apiFetch<unknown>(base(skillId), jsonInit("POST", batch));
       if (!isEvaluationBatch(body, skillId)) throw new Error("Invalid evaluation batch");
       return body;
     },
@@ -121,11 +117,10 @@ export function useReflectOnBatch(skillId: string, batchId: string) {
   const key = queryKeys.evaluationBatches.reflections(skillId, batchId);
   return useMutation({
     mutationFn: async (devTestCaseIds: string[]) => {
-      const body = await apiFetch<unknown>(`${base(skillId)}/${batchId}/reflections`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dev_test_case_ids: devTestCaseIds }),
-      });
+      const body = await apiFetch<unknown>(
+        `${base(skillId)}/${batchId}/reflections`,
+        jsonInit("POST", { dev_test_case_ids: devTestCaseIds }),
+      );
       if (!isBatchReflection(body, batchId)) throw new Error("Invalid batch reflection");
       return body;
     },
@@ -174,11 +169,7 @@ function useRoundAction<T>(
     mutationFn: async ({ reflectionId, input }: { reflectionId: string; input: T }) => {
       const round = await apiFetch<unknown>(
         `${base(skillId)}/${batchId}/reflections/${reflectionId}/${action}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body(input)),
-        },
+        jsonInit("POST", body(input)),
       );
       if (!isBatchReflection(round, batchId)) throw new Error("Invalid batch reflection");
       return round;

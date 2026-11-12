@@ -3,7 +3,7 @@ import type {
   RunPermissionSummaryContentScriptsStatusEnum,
 } from "@skillhub/api-client-ts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiError, apiFetch, isWriteResultUnknown } from "../../core/api/client";
+import { ApiError, apiFetch, isWriteResultUnknown, jsonInit } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
 
 export interface PreflightDataset {
@@ -201,15 +201,11 @@ export function confirmPreflight(
 ) {
   return apiFetch<{ confirmed: boolean; summary_hash: string }>(
     `/skills/${skillId}/runs/preflight/confirm`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        version_id: versionId,
-        test_case_id: testCaseId,
-        summary_hash: summaryHash,
-      }),
-    },
+    jsonInit("POST", {
+      version_id: versionId,
+      test_case_id: testCaseId,
+      summary_hash: summaryHash,
+    }),
   );
 }
 
@@ -219,15 +215,14 @@ export async function startRun(
   testCaseId: string,
   confirmedSummaryHash: string,
 ) {
-  const result = await apiFetch<unknown>(`/skills/${skillId}/runs`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
+  const result = await apiFetch<unknown>(
+    `/skills/${skillId}/runs`,
+    jsonInit("POST", {
       version_id: versionId,
       test_case_id: testCaseId,
       confirmed_summary_hash: confirmedSummaryHash,
     }),
-  });
+  );
   if (!isRunCreated(result)) throw new Error("Invalid run response");
   return result;
 }
