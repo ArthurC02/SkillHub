@@ -1,15 +1,9 @@
 import { expect, test } from "vitest";
 import { VERSION, platformResponse } from "../../testing/fixtures/platform";
 import { renderedApp } from "../../testing/app";
+import { describedText } from "../../testing/dom";
 
 const app = renderedApp();
-
-function describedText(element: Element | null): string {
-  return (element?.getAttribute("aria-describedby") ?? "")
-    .split(/\s+/)
-    .map((id) => document.getElementById(id)?.textContent ?? "")
-    .join(" ");
-}
 
 for (const state of ["paused", "fetching"]) {
   for (const focus of ["new member", "edited field"]) {

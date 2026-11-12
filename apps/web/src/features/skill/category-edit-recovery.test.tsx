@@ -1,19 +1,11 @@
 import { act } from "react";
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { expect, test } from "vitest";
 import { SKILL, SKILL_VERSIONS, skillDetail } from "../../testing/fixtures/platform";
 import { renderedApp, type Locator, type Reply } from "../../testing/app";
+import { stubScrollIntoView } from "../../testing/dom";
 
 const app = renderedApp();
-const scrollIntoView = HTMLElement.prototype.scrollIntoView;
-
-beforeEach(() => {
-  HTMLElement.prototype.scrollIntoView = vi.fn();
-});
-
-afterEach(() => {
-  if (scrollIntoView) HTMLElement.prototype.scrollIntoView = scrollIntoView;
-  else delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView;
-});
+stubScrollIntoView();
 
 const RECEIPT = { skill_id: SKILL, name: "PDF Summariser", summary: "", redistribution: "allowed" };
 const WRITING = { value: "writing", label: "寫作", note: "由擁有者設定。" };

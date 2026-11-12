@@ -1,18 +1,10 @@
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { expect, test } from "vitest";
 import { ACTIVITY, RUN, TRACE_GENERAL } from "../../testing/fixtures/platform";
 import { renderedApp, type App } from "../../testing/app";
+import { stubScrollIntoView } from "../../testing/dom";
 
 const app = renderedApp();
-const scrollIntoView = HTMLElement.prototype.scrollIntoView;
-
-beforeEach(() => {
-  HTMLElement.prototype.scrollIntoView = vi.fn();
-});
-
-afterEach(() => {
-  if (scrollIntoView) HTMLElement.prototype.scrollIntoView = scrollIntoView;
-  else delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView;
-});
+stubScrollIntoView();
 
 const NEXT = "99999999-1111-4111-8111-111111111111";
 const ASKING = {

@@ -1,15 +1,9 @@
 import { expect, test } from "vitest";
 import { OWN_BUNDLE, platformResponse } from "../../testing/fixtures/platform";
 import { renderedApp } from "../../testing/app";
+import { describedText } from "../../testing/dom";
 
 const app = renderedApp();
-
-function describedText(element: Element | null): string {
-  return (element?.getAttribute("aria-describedby") ?? "")
-    .split(/\s+/)
-    .map((id) => document.getElementById(id)?.textContent ?? "")
-    .join(" ");
-}
 
 for (const missing of ["one member", "all members"]) {
   test(`Bundle redistribution stays unconfirmed with ${missing} absent and recovers through refresh`, async () => {

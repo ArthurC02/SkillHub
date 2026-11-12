@@ -1,18 +1,10 @@
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { expect, test } from "vitest";
 import { COMPARISON, OTHER_RUN, RUN } from "../../testing/fixtures/platform";
 import { renderedApp } from "../../testing/app";
+import { stubScrollIntoView } from "../../testing/dom";
 
 const app = renderedApp();
-const scrollIntoView = HTMLElement.prototype.scrollIntoView;
-
-beforeEach(() => {
-  HTMLElement.prototype.scrollIntoView = vi.fn();
-});
-
-afterEach(() => {
-  if (scrollIntoView) HTMLElement.prototype.scrollIntoView = scrollIntoView;
-  else delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView;
-});
+stubScrollIntoView();
 
 for (const intent of ["refresh", "retry", "candidate", "manual"] as const) {
   for (const moved of [false, true]) {

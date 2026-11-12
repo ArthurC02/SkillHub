@@ -1,18 +1,10 @@
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { expect, test } from "vitest";
 import { SKILL, SKILL_B, SKILL_C, skillDetail } from "../../testing/fixtures/platform";
 import { renderedApp, type App } from "../../testing/app";
+import { stubScrollIntoView } from "../../testing/dom";
 
 const app = renderedApp();
-const scrollIntoView = HTMLElement.prototype.scrollIntoView;
-
-beforeEach(() => {
-  HTMLElement.prototype.scrollIntoView = vi.fn();
-});
-
-afterEach(() => {
-  if (scrollIntoView) HTMLElement.prototype.scrollIntoView = scrollIntoView;
-  else delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView;
-});
+stubScrollIntoView();
 
 const IDS = [SKILL, SKILL_B, SKILL_C];
 const headers = (names: string[]) => ["比較項目", ...names].join(" ");
