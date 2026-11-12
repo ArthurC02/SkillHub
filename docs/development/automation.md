@@ -420,7 +420,7 @@ docker run --rm --network container:skillhub-postgres-1 \
 
 | 版本 | 同時要改的地方 |
 | --- | --- |
-| uv | `tools/toolchain.yaml` 的 `uv`、`tools/codegen/python/Dockerfile` 的 uv 映像、llm 與 devtools 映像的 `UV_VERSION` 與安裝腳本雜湊；`uv_build` 的上限跟著 uv 的 minor |
+| uv | `tools/toolchain.yaml` 的 `uv`、llm 與 Python codegen 的釘選 uv 映像、devtools 的 `UV_VERSION` 與兩種架構的 archive 雜湊；`uv_build` 的上限跟著 uv 的 minor |
 | Node | `.node-version`（CI 讀它）、web 映像的 node、devtools 映像的 `NODE_VERSION` |
 | Go | 每個 `go.mod` 的 `go` 行（CI 的 setup-go 讀它）、各 Dockerfile 的 golang 映像 |
 | Python | `apps/llm/.python-version`（CI 讀它）、三份 `pyproject.toml` 的 `requires-python`、llm 與 codegen 映像、devtools 映像的 `uv python install` |
@@ -434,6 +434,8 @@ docker run --rm --network container:skillhub-postgres-1 \
 | pglite | `tools/pglite/package.json`、toolchain.yaml 的三個 `pglite*` |
 | Agent SDK | [Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全)的四項重驗，`UPGRADES.md` 一節 |
 | 稽核工具 | toolchain.yaml 的 `govulncheck`、`pip_audit`、`go_licenses`、`zizmor` |
+
+原生環境以 `uv python list --only-downloads` 確認目標 Python 修補版列在下載表。下載表隨 uv 發版更新，Python 修補版與 uv 必須一起驗證可取得性，再執行 `task bootstrap`。
 
 **Dependabot 的 PR**：每週一（npm、Go、Python）與每月（Actions、映像、compose）各開一個群組 PR，major 另開。新版本要先存在 7 天才會被提（npm 的 major 14 天）。CI 綠了就能合；major 先讀 changelog。PR 只改到上表其中一處時，`dependency-policy` 會紅並列出其餘位置：在同一個 PR 補齊，不要關掉。
 

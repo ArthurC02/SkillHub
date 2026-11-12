@@ -1,19 +1,11 @@
 # syntax=docker/dockerfile:1.7
 
+FROM ghcr.io/astral-sh/uv:0.13.7@sha256:96f40d3904aad8d0bd010539001d36c8e2188b981e1334471a90c4a1d93bb490 AS uv
 FROM python:3.14.10-slim-bookworm@sha256:516b51cb9db2ef061e465c803e50f64361b82cefd91e525b889b967b83e83527 AS build
 
-ARG UV_VERSION=0.13.5
-ARG UV_INSTALLER_SHA256=1c6e7f025499664633ac2dce43a210800510e9ef0625c52e034a8afdf8bf177a
-ENV UV_INSTALL_DIR=/usr/local/bin \
-    UV_LINK_MODE=copy \
+ENV UV_LINK_MODE=copy \
     UV_PROJECT_ENVIRONMENT=/opt/venv
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl \
-    && rm -rf /var/lib/apt/lists/* \
-    && curl -LsSf "https://astral.sh/uv/${UV_VERSION}/install.sh" -o /tmp/uv-install.sh \
-    && echo "${UV_INSTALLER_SHA256}  /tmp/uv-install.sh" | sha256sum -c - \
-    && sh /tmp/uv-install.sh \
-    && rm /tmp/uv-install.sh
+COPY --from=uv /uv /usr/local/bin/uv
 
 WORKDIR /src
 # Lockfile-only layer first so an application-code-only change does not redo
