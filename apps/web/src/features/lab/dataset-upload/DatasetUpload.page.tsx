@@ -2,7 +2,7 @@ import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Link, useParams, useSearch } from "@tanstack/react-router";
 import { useRef, useState, type ReactNode } from "react";
-import { ApiError, SessionNotReadyError, isWriteResultUnknown } from "../../../core/api/client";
+import { isNotFound, isWriteResultUnknown, SessionNotReadyError } from "../../../core/api/client";
 import {
   identityUnconfirmedSentence,
   isIdentityConfirmed,
@@ -21,20 +21,16 @@ import { UploadRulesFacts } from "./components/UploadRulesFacts";
 import { UploadFailure } from "./components/UploadFailure";
 import { SkillWorkspaceNav } from "../../skill";
 import "./DatasetUpload.page.css";
+import { readUploadFailure, type FailedUpload } from "../../../shared/uploadFailure.model";
 
 type UploadSearch = { version?: string };
-type DatasetUploadFailure = {
-  error: unknown;
-  fileName?: string;
-  blockedError?: SessionNotReadyError;
-};
 
 export function DatasetUpload() {
   const { testCaseId } = useParams({ from: "/lab/test-cases/$testCaseId/datasets" });
   const { version } = useSearch({ strict: false }) as UploadSearch;
   const testCase = useTestCase(testCaseId);
   const data = testCase.error ? undefined : testCase.data;
-  const testCaseGone = testCase.error instanceof ApiError && testCase.error.status === 404;
+  const testCaseGone = isNotFound(testCase.error);
 
   return (
     <section className="dataset-upload-page">
@@ -163,7 +159,7 @@ function DatasetIntake({
   const fileInput = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState("");
   const [uploaded, setUploaded] = useState<Dataset[]>([]);
-  const [unknownUpload, setUnknownUpload] = useState<DatasetUploadFailure>();
+  const [unknownUpload, setUnknownUpload] = useState<FailedUpload>();
   const me = useMe();
   const upload = useUploadDataset(testCaseId);
   const identityConfirmed = isIdentityConfirmed(me);
@@ -261,13 +257,4 @@ function DatasetIntake({
       )}
     </>
   );
-}
-
-function readUploadFailure(
-  upload: ReturnType<typeof useUploadDataset>,
-  previous?: DatasetUploadFailure,
-): DatasetUploadFailure {
-  return upload.error instanceof SessionNotReadyError && previous
-    ? { ...previous, blockedError: upload.error }
-    : { error: upload.error, fileName: upload.variables?.name };
 }

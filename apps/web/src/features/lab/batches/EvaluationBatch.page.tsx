@@ -1,7 +1,6 @@
 import { Link, useParams, useSearch } from "@tanstack/react-router";
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
-import { ApiError } from "../../../core/api/client";
 import { SkillWorkspaceNav, inLine, useSkillVersions } from "../../skill";
 import type { ListedSkillVersion } from "../../../core/api/types";
 import { useTestCases } from "../testcases.service";
@@ -12,6 +11,7 @@ import { PairedSummary } from "./components/PairedSummary";
 import { BatchState } from "./components/BatchState";
 import { BatchComparison } from "./components/BatchComparison";
 import { BatchImprovement } from "./components/BatchImprovement";
+import { isNotFound } from "../../../core/api/client";
 
 const HEADING = "evaluation-batch-heading";
 
@@ -32,7 +32,7 @@ export function EvaluationBatch() {
         (v) => v.version_id.toLowerCase() === data.batch.skill_version_id.toLowerCase(),
       )?.version_number
     : undefined;
-  const gone = report.error instanceof ApiError && report.error.status === 404;
+  const gone = isNotFound(report.error);
 
   return (
     <section>

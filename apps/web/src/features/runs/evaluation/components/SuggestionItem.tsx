@@ -1,7 +1,7 @@
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { focusFeedback } from "../../../../shared/ui/focusFeedback";
 import { useEffect, useRef, useState } from "react";
-import { ApiError, isWriteResultUnknown } from "../../../../core/api/client";
+import { ApiError, isNotFound, isWriteResultUnknown } from "../../../../core/api/client";
 import { useDecideSuggestion } from "../../evaluation.service";
 import type { ImprovementSuggestion } from "../../evaluation.service";
 import { SUGGESTION_CATEGORY_LABEL } from "../evaluation.model";
@@ -11,8 +11,7 @@ import { SuggestionDiffView } from "./SuggestionDiffView";
 const DECISION_LABEL = { accepted: "已接受", rejected: "已拒絕", pending: "尚未決定" };
 
 function decisionRefusalSentence(err: unknown): string {
-  if (err instanceof ApiError && err.status === 404)
-    return "這個建議已經不在了，請重新讀取這份評估。";
+  if (isNotFound(err)) return "這個建議已經不在了，請重新讀取這份評估。";
   if (err instanceof ApiError && err.status === 409)
     return "這個建議的狀態已經變了，可能已在別處做了決定或建成新版本；請重新讀取目前判定後再試。";
   return "請重新讀取目前判定後再試。";

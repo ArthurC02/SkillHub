@@ -30,14 +30,10 @@ import type {
   SuggestionDiff,
 } from "./evaluation.service";
 import { SUGGESTION_OUTCOMES } from "./evaluation.service";
-import { isDate, isOptionalText, isRecord, isText } from "../../core/api/wire";
+import { isDate, isMember, isOptionalText, isRecord, isText } from "../../core/api/wire";
 
 function isNullableDate(value: unknown): boolean {
   return value === null || isDate(value);
-}
-
-function isMember(value: unknown, values: readonly string[]): boolean {
-  return isText(value) && values.includes(value);
 }
 
 const EVIDENCE_KINDS = contractEnum<EvidenceRefKindEnum>({

@@ -1,6 +1,6 @@
 import { unauthenticated } from "../../../shared/ui/LoginRequired.model";
 import { bytes } from "../../../shared/format";
-import { ApiError, SessionNotReadyError } from "../../../core/api/client";
+import { ApiError, isNotFound, SessionNotReadyError } from "../../../core/api/client";
 import {
   RunNotStartedError,
   isRunStartUnknown,
@@ -90,7 +90,7 @@ export function startFailureSentence(err: unknown): string {
   if (err instanceof ApiError && err.status === 403) {
     return "這個帳號還沒有封測邀請，所以試跑沒有開始。想試的話，用頁尾的「回報問題」選「我想要的東西，這裡沒有」告訴我們你想做什麼。";
   }
-  if (err instanceof ApiError && err.status === 404) {
+  if (isNotFound(err)) {
     return "找不到這個小工具版本或測試題，可能已被刪除。";
   }
   if (unauthenticated(err)) return "";

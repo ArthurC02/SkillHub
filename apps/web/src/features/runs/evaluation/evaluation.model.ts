@@ -1,4 +1,3 @@
-import { ApiError } from "../../../core/api/client";
 import type { IconState } from "../../../shared/ui/StateIcon";
 import type { RunStatus } from "../trace.service";
 import {
@@ -14,6 +13,7 @@ import {
 } from "../evaluation.service";
 
 const EVALUATED_AFTER: ReadonlySet<string> = new Set<RunStatus>(["succeeded", "failed"]);
+import { isNotFound } from "../../../core/api/client";
 
 export function awaitsEvaluation(runStatus: string | undefined): boolean {
   return EVALUATED_AFTER.has(runStatus ?? "");
@@ -50,8 +50,7 @@ export function evaluationPanelState(query: {
   pending: boolean;
 }): EvaluationPanelState {
   const awaiting = awaitsEvaluation(query.runStatus);
-  const notEvaluated =
-    query.dataStatus === undefined && query.error instanceof ApiError && query.error.status === 404;
+  const notEvaluated = query.dataStatus === undefined && isNotFound(query.error);
   const stoppedAsking = notEvaluated && query.errorUpdateCount >= EVALUATION_POLL_MAX_404;
   const evaluating = !query.revision && !query.error && query.dataStatus === "pending";
   const asksHistory = !query.pending && !(notEvaluated && !query.revision);

@@ -14,16 +14,16 @@
 /**
  * 
  * @export
- * @interface CompareEvaluationBatches200ResponseDifference95
+ * @interface OperatorSwitchChange
  */
-export interface CompareEvaluationBatches200ResponseDifference95 {
+export interface OperatorSwitchChange {
     /**
      * 
      */
-    low: number;
+    enabled: boolean;
     /**
-     * 
+     * Why, in the operator's own words. Whitespace does not satisfy it.
      */
-    high: number;
+    note: string;
 }
 

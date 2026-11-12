@@ -2,7 +2,7 @@ import { Loading } from "../../../shared/ui/Loading";
 import { PageReadFailure, ReadFailure } from "../../../shared/ui/LoginRequired";
 import { useState } from "react";
 import { Link, useParams, useSearch } from "@tanstack/react-router";
-import { ApiError, canRetainLoadedPage, isTransientReadFailure } from "../../../core/api/client";
+import { canRetainLoadedPage, isNotFound, isTransientReadFailure } from "../../../core/api/client";
 import type { SkillVersionSummary } from "../../../core/api/types";
 import { useTestCase } from "../testcases.service";
 import { useRuns } from "../../runs";
@@ -266,7 +266,7 @@ function TestCaseReadFailure({
   query: ReturnType<typeof useTestCase>;
   preserved?: boolean;
 }) {
-  const missing = query.error instanceof ApiError && query.error.status === 404;
+  const missing = isNotFound(query.error);
   return (
     <PageReadFailure
       heading="測試題"

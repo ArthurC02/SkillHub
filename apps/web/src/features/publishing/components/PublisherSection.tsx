@@ -3,7 +3,7 @@ import { useId, useState } from "react";
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../shared/ui/Timestamp";
-import { ApiError, isWriteResultUnknown } from "../../../core/api/client";
+import { isNotFound, isWriteResultUnknown } from "../../../core/api/client";
 import { useOwnPublisher, useRegisterPublisher } from "../publishing.service";
 import {
   PUBLISHER_NAME_PERMANENT,
@@ -15,7 +15,7 @@ export function PublisherSection() {
   const publisher = useOwnPublisher();
   const headingId = useId();
 
-  const notRegistered = publisher.error instanceof ApiError && publisher.error.status === 404;
+  const notRegistered = isNotFound(publisher.error);
 
   return (
     <section aria-labelledby={headingId}>

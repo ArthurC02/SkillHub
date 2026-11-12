@@ -23,3 +23,7 @@ export function isUuid(value: unknown): value is string {
 export function isCount(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
 }
+
+export function isMember(value: unknown, values: readonly string[]): boolean {
+  return isText(value) && values.includes(value);
+}

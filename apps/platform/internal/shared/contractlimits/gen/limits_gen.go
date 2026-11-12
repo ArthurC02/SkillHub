@@ -72,6 +72,7 @@ const (
 	MCPToolDraftToolMaxLength                                 = 64
 	MCPToolRetirementNoteMaxLength                            = 500
 	MovePlatformAgentFindingBodyNoteMaxLength                 = 1000
+	OperatorSwitchChangeNoteMaxLength                         = 1000
 	PublicSearchResultRankMaximum                             = 1
 	PublicSearchSkillsLimitMaximum                            = 100
 	PublicSearchSkillsQMaxLength                              = 2000
@@ -103,9 +104,7 @@ const (
 	SetEvaluationFeedbackBodyCommentMaxLength                 = 2000
 	SetInjectionCheckBodyCreditsPerMillionTokensMaximum       = 1000000
 	SetInjectionCheckBodyNoteMaxLength                        = 1000
-	SetJudgePanelBodyNoteMaxLength                            = 1000
 	SetModelCallBudgetBodyReasonMaxLength                     = 1000
-	SetPlatformAgentEnabledBodyNoteMaxLength                  = 1000
 	SetPlatformAgentSpendCapBodyDailySpendCapUsdMicrosMaximum = 5000000
 	SetPlatformAgentSpendCapBodyNoteMaxLength                 = 1000
 	SetReflectionCandidatesBodyCountMaximum                   = 4

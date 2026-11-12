@@ -18,7 +18,7 @@ import (
 	limits "github.com/ArthurC02/skillhub/apps/platform/internal/shared/contractlimits/gen"
 )
 
-const maxSettingsReasonChars = limits.SetJudgePanelBodyNoteMaxLength
+const maxSettingsReasonChars = limits.OperatorSwitchChangeNoteMaxLength
 
 type Service struct {
 	Pool *pgxpool.Pool

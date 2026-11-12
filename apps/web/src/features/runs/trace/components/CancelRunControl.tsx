@@ -1,5 +1,5 @@
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
-import { ApiError } from "../../../../core/api/client";
+import { ApiError, isNotFound } from "../../../../core/api/client";
 import { useState } from "react";
 import { useCancelRun } from "../../runs.service";
 import { IN_FLIGHT_RUN_STATUSES } from "../../trace.service";
@@ -9,7 +9,7 @@ export const CANCELLABLE = IN_FLIGHT_RUN_STATUSES;
 function cancelFailureSentence(error: unknown): string {
   if (error instanceof ApiError && error.status === 409)
     return "這次試跑已經結束，沒有東西可以取消。";
-  if (error instanceof ApiError && error.status === 404) return "找不到這次試跑。";
+  if (isNotFound(error)) return "找不到這次試跑。";
   return "取消要求沒有送出，可以再按一次。";
 }
 

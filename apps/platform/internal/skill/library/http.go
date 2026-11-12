@@ -3,7 +3,6 @@ package registry
 import (
 	"encoding/json"
 	"errors"
-	"math"
 	"net/http"
 	"slices"
 	"strings"
@@ -341,7 +340,7 @@ func parseSkillListingPage(r *http.Request) (SkillListingPage, error) {
 	if err != nil {
 		return SkillListingPage{}, err
 	}
-	offset, err := httpx.QueryInt32(r, "offset", 0, 0, math.MaxInt32)
+	offset, err := httpx.QueryOffset(r)
 	if err != nil {
 		return SkillListingPage{}, err
 	}

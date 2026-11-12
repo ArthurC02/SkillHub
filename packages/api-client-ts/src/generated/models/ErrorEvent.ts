@@ -14,16 +14,20 @@
 /**
  * 
  * @export
- * @interface SetPlatformAgentEnabledRequest
+ * @interface ErrorEvent
  */
-export interface SetPlatformAgentEnabledRequest {
+export interface ErrorEvent {
     /**
      * 
      */
-    enabled: boolean;
+    category?: string;
     /**
-     * Why, in the operator's own words. Whitespace does not satisfy it.
+     * 
      */
-    note: string;
+    code?: string;
+    /**
+     * 
+     */
+    message?: string;
 }
 

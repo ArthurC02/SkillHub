@@ -5,7 +5,6 @@ import (
 	"errors"
 	"io"
 	"log/slog"
-	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -223,10 +222,6 @@ func parseListLimit(r *http.Request) (int32, error) {
 	return httpx.QueryInt32(r, "limit", defaultListLimit, 1, maxListLimit)
 }
 
-func parseListOffset(r *http.Request) (int32, error) {
-	return httpx.QueryInt32(r, "offset", 0, 0, math.MaxInt32)
-}
-
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.workspace(w, r)
 	if !ok {
@@ -237,7 +232,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	offset, err := parseListOffset(r)
+	offset, err := httpx.QueryOffset(r)
 	if err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, err.Error())
 		return

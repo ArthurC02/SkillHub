@@ -14,20 +14,16 @@
 /**
  * 
  * @export
- * @interface TraceSummaryErrorsInner
+ * @interface ConfidenceInterval
  */
-export interface TraceSummaryErrorsInner {
+export interface ConfidenceInterval {
     /**
      * 
      */
-    category?: string;
+    low: number;
     /**
      * 
      */
-    code?: string;
-    /**
-     * 
-     */
-    message?: string;
+    high: number;
 }
 

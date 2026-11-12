@@ -1,7 +1,7 @@
 import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { useParams } from "@tanstack/react-router";
-import { ApiError } from "../../../core/api/client";
+import { ApiError, isNotFound } from "../../../core/api/client";
 import { useSkillFiles } from "../skills.service";
 import type { SkillFileEntry } from "../../../core/api/types";
 import { Reveal } from "../../../shared/ui/Reveal";
@@ -42,7 +42,7 @@ export function SkillFiles() {
         >
           {error instanceof ApiError && error.status === 403 ? (
             <p role="status">這份套件的檔案目前尚未開放查看，可以先回到小工具總覽。</p>
-          ) : error instanceof ApiError && error.status === 404 ? (
+          ) : isNotFound(error) ? (
             <p role="alert">找不到這個小工具的檔案清單，它可能還沒有保存的版本。</p>
           ) : error instanceof ApiError && error.status === 503 ? (
             <p role="alert">儲存的套件目前讀不到，稍後再試一次。</p>

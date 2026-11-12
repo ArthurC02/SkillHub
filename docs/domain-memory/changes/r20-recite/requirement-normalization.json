@@ -1,0 +1,24 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "r20-recite",
+  "status": "draft",
+  "intent": "Re-cite rules/a-skill-listing-page-stays-in-bounds, rules/a-test-case-list-offset-is-0-to-the-int32-ceiling after the code they cite moved or changed; the facts they state are unchanged.",
+  "actor": "agent:coding-agent",
+  "observable_outcome": "verify-evidence reports every citation of the updated records current.",
+  "acceptance_criteria": [
+    {
+      "id": "citations-current",
+      "statement": "Every citation in the updated records matches the lines it cites."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [],
+  "sources": [
+    "apps/platform/internal/entrypoint/api/apiserver/testlab_integration_test.go",
+    "apps/platform/internal/skill/library/http.go",
+    "apps/platform/internal/skill/library/http_test.go",
+    "apps/platform/internal/trial/design/http.go"
+  ]
+}

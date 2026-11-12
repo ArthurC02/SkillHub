@@ -2193,12 +2193,12 @@ type CompareEvaluationBatchesOK struct {
 	Paired    int             `json:"paired"`
 	Unpaired  int             `json:"unpaired"`
 	// Mean of candidate minus reference pass rate per test case.
-	Difference      OptFloat64                                `json:"difference"`
-	Difference95    OptCompareEvaluationBatchesOKDifference95 `json:"difference_95"`
-	Verdict         EvaluationDifferenceVerdict               `json:"verdict"`
-	CandidateBetter int                                       `json:"candidate_better"`
-	ReferenceBetter int                                       `json:"reference_better"`
-	Tied            int                                       `json:"tied"`
+	Difference      OptFloat64                  `json:"difference"`
+	Difference95    OptConfidenceInterval       `json:"difference_95"`
+	Verdict         EvaluationDifferenceVerdict `json:"verdict"`
+	CandidateBetter int                         `json:"candidate_better"`
+	ReferenceBetter int                         `json:"reference_better"`
+	Tied            int                         `json:"tied"`
 }
 
 // GetReference returns the value of Reference.
@@ -2227,7 +2227,7 @@ func (s *CompareEvaluationBatchesOK) GetDifference() OptFloat64 {
 }
 
 // GetDifference95 returns the value of Difference95.
-func (s *CompareEvaluationBatchesOK) GetDifference95() OptCompareEvaluationBatchesOKDifference95 {
+func (s *CompareEvaluationBatchesOK) GetDifference95() OptConfidenceInterval {
 	return s.Difference95
 }
 
@@ -2277,7 +2277,7 @@ func (s *CompareEvaluationBatchesOK) SetDifference(val OptFloat64) {
 }
 
 // SetDifference95 sets the value of Difference95.
-func (s *CompareEvaluationBatchesOK) SetDifference95(val OptCompareEvaluationBatchesOKDifference95) {
+func (s *CompareEvaluationBatchesOK) SetDifference95(val OptConfidenceInterval) {
 	s.Difference95 = val
 }
 
@@ -2303,31 +2303,6 @@ func (s *CompareEvaluationBatchesOK) SetTied(val int) {
 
 func (*CompareEvaluationBatchesOK) compareEvaluationBatchesRes() {}
 
-type CompareEvaluationBatchesOKDifference95 struct {
-	Low  float64 `json:"low"`
-	High float64 `json:"high"`
-}
-
-// GetLow returns the value of Low.
-func (s *CompareEvaluationBatchesOKDifference95) GetLow() float64 {
-	return s.Low
-}
-
-// GetHigh returns the value of High.
-func (s *CompareEvaluationBatchesOKDifference95) GetHigh() float64 {
-	return s.High
-}
-
-// SetLow sets the value of Low.
-func (s *CompareEvaluationBatchesOKDifference95) SetLow(val float64) {
-	s.Low = val
-}
-
-// SetHigh sets the value of High.
-func (s *CompareEvaluationBatchesOKDifference95) SetHigh(val float64) {
-	s.High = val
-}
-
 type CompareEvaluationBatchesUnauthorized Error
 
 func (*CompareEvaluationBatchesUnauthorized) compareEvaluationBatchesRes() {}
@@ -2343,6 +2318,32 @@ func (*CompareRunsNotFound) compareRunsRes() {}
 type CompareRunsUnauthorized Error
 
 func (*CompareRunsUnauthorized) compareRunsRes() {}
+
+// Ref: #/components/schemas/ConfidenceInterval
+type ConfidenceInterval struct {
+	Low  float64 `json:"low"`
+	High float64 `json:"high"`
+}
+
+// GetLow returns the value of Low.
+func (s *ConfidenceInterval) GetLow() float64 {
+	return s.Low
+}
+
+// GetHigh returns the value of High.
+func (s *ConfidenceInterval) GetHigh() float64 {
+	return s.High
+}
+
+// SetLow sets the value of Low.
+func (s *ConfidenceInterval) SetLow(val float64) {
+	s.Low = val
+}
+
+// SetHigh sets the value of High.
+func (s *ConfidenceInterval) SetHigh(val float64) {
+	s.High = val
+}
 
 type ConfirmRunPreflightBadRequest Error
 
@@ -8506,6 +8507,43 @@ func (*Error) publicSearchSkillsRes()              {}
 func (*Error) searchSkillsWithCorrectedIntentRes() {}
 func (*Error) writeSearchMatchReasonsRes()         {}
 
+// Ref: #/components/schemas/ErrorEvent
+type ErrorEvent struct {
+	Category OptString `json:"category"`
+	Code     OptString `json:"code"`
+	Message  OptString `json:"message"`
+}
+
+// GetCategory returns the value of Category.
+func (s *ErrorEvent) GetCategory() OptString {
+	return s.Category
+}
+
+// GetCode returns the value of Code.
+func (s *ErrorEvent) GetCode() OptString {
+	return s.Code
+}
+
+// GetMessage returns the value of Message.
+func (s *ErrorEvent) GetMessage() OptString {
+	return s.Message
+}
+
+// SetCategory sets the value of Category.
+func (s *ErrorEvent) SetCategory(val OptString) {
+	s.Category = val
+}
+
+// SetCode sets the value of Code.
+func (s *ErrorEvent) SetCode(val OptString) {
+	s.Code = val
+}
+
+// SetMessage sets the value of Message.
+func (s *ErrorEvent) SetMessage(val OptString) {
+	s.Message = val
+}
+
 type EvaluateReflectionCandidatesConflict Error
 
 func (*EvaluateReflectionCandidatesConflict) evaluateReflectionCandidatesRes() {}
@@ -8913,7 +8951,7 @@ type EvaluationBatchArm struct {
 	// Passed / judged; absent while nothing is judged.
 	PassRate OptFloat64 `json:"pass_rate"`
 	// Wilson score interval at 95% around pass_rate.
-	PassRate95 OptEvaluationBatchArmPassRate95 `json:"pass_rate_95"`
+	PassRate95 OptConfidenceInterval `json:"pass_rate_95"`
 	// Test cases that passed every trial.
 	TestCasesAllPassed int `json:"test_cases_all_passed"`
 	// Test cases whose every-trial result is known.
@@ -8941,7 +8979,7 @@ func (s *EvaluationBatchArm) GetPassRate() OptFloat64 {
 }
 
 // GetPassRate95 returns the value of PassRate95.
-func (s *EvaluationBatchArm) GetPassRate95() OptEvaluationBatchArmPassRate95 {
+func (s *EvaluationBatchArm) GetPassRate95() OptConfidenceInterval {
 	return s.PassRate95
 }
 
@@ -8976,7 +9014,7 @@ func (s *EvaluationBatchArm) SetPassRate(val OptFloat64) {
 }
 
 // SetPassRate95 sets the value of PassRate95.
-func (s *EvaluationBatchArm) SetPassRate95(val OptEvaluationBatchArmPassRate95) {
+func (s *EvaluationBatchArm) SetPassRate95(val OptConfidenceInterval) {
 	s.PassRate95 = val
 }
 
@@ -8990,32 +9028,6 @@ func (s *EvaluationBatchArm) SetTestCasesDecided(val int) {
 	s.TestCasesDecided = val
 }
 
-// Wilson score interval at 95% around pass_rate.
-type EvaluationBatchArmPassRate95 struct {
-	Low  float64 `json:"low"`
-	High float64 `json:"high"`
-}
-
-// GetLow returns the value of Low.
-func (s *EvaluationBatchArmPassRate95) GetLow() float64 {
-	return s.Low
-}
-
-// GetHigh returns the value of High.
-func (s *EvaluationBatchArmPassRate95) GetHigh() float64 {
-	return s.High
-}
-
-// SetLow sets the value of Low.
-func (s *EvaluationBatchArmPassRate95) SetLow(val float64) {
-	s.Low = val
-}
-
-// SetHigh sets the value of High.
-func (s *EvaluationBatchArmPassRate95) SetHigh(val float64) {
-	s.High = val
-}
-
 // Merged schema.
 // Ref: #/components/schemas/EvaluationBatchReport
 type EvaluationBatchReport struct {
@@ -9025,7 +9037,7 @@ type EvaluationBatchReport struct {
 	// Passed / judged; absent while nothing is judged.
 	PassRate OptFloat64 `json:"pass_rate"`
 	// Wilson score interval at 95% around pass_rate.
-	PassRate95 OptEvaluationBatchReportPassRate95 `json:"pass_rate_95"`
+	PassRate95 OptConfidenceInterval `json:"pass_rate_95"`
 	// Test cases that passed every trial.
 	TestCasesAllPassed int `json:"test_cases_all_passed"`
 	// Test cases whose every-trial result is known.
@@ -9060,7 +9072,7 @@ func (s *EvaluationBatchReport) GetPassRate() OptFloat64 {
 }
 
 // GetPassRate95 returns the value of PassRate95.
-func (s *EvaluationBatchReport) GetPassRate95() OptEvaluationBatchReportPassRate95 {
+func (s *EvaluationBatchReport) GetPassRate95() OptConfidenceInterval {
 	return s.PassRate95
 }
 
@@ -9110,7 +9122,7 @@ func (s *EvaluationBatchReport) SetPassRate(val OptFloat64) {
 }
 
 // SetPassRate95 sets the value of PassRate95.
-func (s *EvaluationBatchReport) SetPassRate95(val OptEvaluationBatchReportPassRate95) {
+func (s *EvaluationBatchReport) SetPassRate95(val OptConfidenceInterval) {
 	s.PassRate95 = val
 }
 
@@ -9140,32 +9152,6 @@ func (s *EvaluationBatchReport) SetSkillEffect(val OptEvaluationPairedDifference
 }
 
 func (*EvaluationBatchReport) getEvaluationBatchReportRes() {}
-
-// Wilson score interval at 95% around pass_rate.
-type EvaluationBatchReportPassRate95 struct {
-	Low  float64 `json:"low"`
-	High float64 `json:"high"`
-}
-
-// GetLow returns the value of Low.
-func (s *EvaluationBatchReportPassRate95) GetLow() float64 {
-	return s.Low
-}
-
-// GetHigh returns the value of High.
-func (s *EvaluationBatchReportPassRate95) GetHigh() float64 {
-	return s.High
-}
-
-// SetLow sets the value of Low.
-func (s *EvaluationBatchReportPassRate95) SetLow(val float64) {
-	s.Low = val
-}
-
-// SetHigh sets the value of High.
-func (s *EvaluationBatchReportPassRate95) SetHigh(val float64) {
-	s.High = val
-}
 
 // `launching` while some trials have not started, `launched` once every trial has its run, `paused`
 // when the owner's credit or run quota ran out, either starting a trial or answering a simulated
@@ -10014,8 +10000,8 @@ type EvaluationPairedDifference struct {
 	// Absent while nothing is paired.
 	Difference OptFloat64 `json:"difference"`
 	// Absent with fewer than two pairs.
-	Difference95 OptEvaluationPairedDifferenceDifference95 `json:"difference_95"`
-	Verdict      EvaluationDifferenceVerdict               `json:"verdict"`
+	Difference95 OptConfidenceInterval       `json:"difference_95"`
+	Verdict      EvaluationDifferenceVerdict `json:"verdict"`
 	// Test cases where the first arm passed more often.
 	Better int `json:"better"`
 	Worse  int `json:"worse"`
@@ -10038,7 +10024,7 @@ func (s *EvaluationPairedDifference) GetDifference() OptFloat64 {
 }
 
 // GetDifference95 returns the value of Difference95.
-func (s *EvaluationPairedDifference) GetDifference95() OptEvaluationPairedDifferenceDifference95 {
+func (s *EvaluationPairedDifference) GetDifference95() OptConfidenceInterval {
 	return s.Difference95
 }
 
@@ -10078,7 +10064,7 @@ func (s *EvaluationPairedDifference) SetDifference(val OptFloat64) {
 }
 
 // SetDifference95 sets the value of Difference95.
-func (s *EvaluationPairedDifference) SetDifference95(val OptEvaluationPairedDifferenceDifference95) {
+func (s *EvaluationPairedDifference) SetDifference95(val OptConfidenceInterval) {
 	s.Difference95 = val
 }
 
@@ -10100,32 +10086,6 @@ func (s *EvaluationPairedDifference) SetWorse(val int) {
 // SetTied sets the value of Tied.
 func (s *EvaluationPairedDifference) SetTied(val int) {
 	s.Tied = val
-}
-
-// Absent with fewer than two pairs.
-type EvaluationPairedDifferenceDifference95 struct {
-	Low  float64 `json:"low"`
-	High float64 `json:"high"`
-}
-
-// GetLow returns the value of Low.
-func (s *EvaluationPairedDifferenceDifference95) GetLow() float64 {
-	return s.Low
-}
-
-// GetHigh returns the value of High.
-func (s *EvaluationPairedDifferenceDifference95) GetHigh() float64 {
-	return s.High
-}
-
-// SetLow sets the value of Low.
-func (s *EvaluationPairedDifferenceDifference95) SetLow(val float64) {
-	s.Low = val
-}
-
-// SetHigh sets the value of High.
-func (s *EvaluationPairedDifferenceDifference95) SetHigh(val float64) {
-	s.High = val
 }
 
 // One entry in a run's judgement history. It carries just enough to tell which rubric and judge prompt
@@ -17094,6 +17054,33 @@ func (s *OperatorAuditEventMetadata) init() OperatorAuditEventMetadata {
 	return m
 }
 
+// Ref: #/components/schemas/OperatorSwitchChange
+type OperatorSwitchChange struct {
+	Enabled bool `json:"enabled"`
+	// Why, in the operator's own words. Whitespace does not satisfy it.
+	Note string `json:"note"`
+}
+
+// GetEnabled returns the value of Enabled.
+func (s *OperatorSwitchChange) GetEnabled() bool {
+	return s.Enabled
+}
+
+// GetNote returns the value of Note.
+func (s *OperatorSwitchChange) GetNote() string {
+	return s.Note
+}
+
+// SetEnabled sets the value of Enabled.
+func (s *OperatorSwitchChange) SetEnabled(val bool) {
+	s.Enabled = val
+}
+
+// SetNote sets the value of Note.
+func (s *OperatorSwitchChange) SetNote(val string) {
+	s.Note = val
+}
+
 // NewOptAddAcceptanceCriterionReqSource returns new OptAddAcceptanceCriterionReqSource with value set to v.
 func NewOptAddAcceptanceCriterionReqSource(v AddAcceptanceCriterionReqSource) OptAddAcceptanceCriterionReqSource {
 	return OptAddAcceptanceCriterionReqSource{
@@ -17232,38 +17219,38 @@ func (o OptCancelRunAcceptedContinuation) Or(d CancelRunAcceptedContinuation) Ca
 	return d
 }
 
-// NewOptCompareEvaluationBatchesOKDifference95 returns new OptCompareEvaluationBatchesOKDifference95 with value set to v.
-func NewOptCompareEvaluationBatchesOKDifference95(v CompareEvaluationBatchesOKDifference95) OptCompareEvaluationBatchesOKDifference95 {
-	return OptCompareEvaluationBatchesOKDifference95{
+// NewOptConfidenceInterval returns new OptConfidenceInterval with value set to v.
+func NewOptConfidenceInterval(v ConfidenceInterval) OptConfidenceInterval {
+	return OptConfidenceInterval{
 		Value: v,
 		Set:   true,
 	}
 }
 
-// OptCompareEvaluationBatchesOKDifference95 is optional CompareEvaluationBatchesOKDifference95.
-type OptCompareEvaluationBatchesOKDifference95 struct {
-	Value CompareEvaluationBatchesOKDifference95
+// OptConfidenceInterval is optional ConfidenceInterval.
+type OptConfidenceInterval struct {
+	Value ConfidenceInterval
 	Set   bool
 }
 
-// IsSet returns true if OptCompareEvaluationBatchesOKDifference95 was set.
-func (o OptCompareEvaluationBatchesOKDifference95) IsSet() bool { return o.Set }
+// IsSet returns true if OptConfidenceInterval was set.
+func (o OptConfidenceInterval) IsSet() bool { return o.Set }
 
 // Reset unsets value.
-func (o *OptCompareEvaluationBatchesOKDifference95) Reset() {
-	var v CompareEvaluationBatchesOKDifference95
+func (o *OptConfidenceInterval) Reset() {
+	var v ConfidenceInterval
 	o.Value = v
 	o.Set = false
 }
 
 // SetTo sets value to v.
-func (o *OptCompareEvaluationBatchesOKDifference95) SetTo(v CompareEvaluationBatchesOKDifference95) {
+func (o *OptConfidenceInterval) SetTo(v ConfidenceInterval) {
 	o.Set = true
 	o.Value = v
 }
 
 // Get returns value and boolean that denotes whether value was set.
-func (o OptCompareEvaluationBatchesOKDifference95) Get() (v CompareEvaluationBatchesOKDifference95, ok bool) {
+func (o OptConfidenceInterval) Get() (v ConfidenceInterval, ok bool) {
 	if !o.Set {
 		return v, false
 	}
@@ -17271,7 +17258,7 @@ func (o OptCompareEvaluationBatchesOKDifference95) Get() (v CompareEvaluationBat
 }
 
 // Or returns value if set, or given parameter if does not.
-func (o OptCompareEvaluationBatchesOKDifference95) Or(d CompareEvaluationBatchesOKDifference95) CompareEvaluationBatchesOKDifference95 {
+func (o OptConfidenceInterval) Or(d ConfidenceInterval) ConfidenceInterval {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -17784,98 +17771,6 @@ func (o OptEvaluationBatchArm) Or(d EvaluationBatchArm) EvaluationBatchArm {
 	return d
 }
 
-// NewOptEvaluationBatchArmPassRate95 returns new OptEvaluationBatchArmPassRate95 with value set to v.
-func NewOptEvaluationBatchArmPassRate95(v EvaluationBatchArmPassRate95) OptEvaluationBatchArmPassRate95 {
-	return OptEvaluationBatchArmPassRate95{
-		Value: v,
-		Set:   true,
-	}
-}
-
-// OptEvaluationBatchArmPassRate95 is optional EvaluationBatchArmPassRate95.
-type OptEvaluationBatchArmPassRate95 struct {
-	Value EvaluationBatchArmPassRate95
-	Set   bool
-}
-
-// IsSet returns true if OptEvaluationBatchArmPassRate95 was set.
-func (o OptEvaluationBatchArmPassRate95) IsSet() bool { return o.Set }
-
-// Reset unsets value.
-func (o *OptEvaluationBatchArmPassRate95) Reset() {
-	var v EvaluationBatchArmPassRate95
-	o.Value = v
-	o.Set = false
-}
-
-// SetTo sets value to v.
-func (o *OptEvaluationBatchArmPassRate95) SetTo(v EvaluationBatchArmPassRate95) {
-	o.Set = true
-	o.Value = v
-}
-
-// Get returns value and boolean that denotes whether value was set.
-func (o OptEvaluationBatchArmPassRate95) Get() (v EvaluationBatchArmPassRate95, ok bool) {
-	if !o.Set {
-		return v, false
-	}
-	return o.Value, true
-}
-
-// Or returns value if set, or given parameter if does not.
-func (o OptEvaluationBatchArmPassRate95) Or(d EvaluationBatchArmPassRate95) EvaluationBatchArmPassRate95 {
-	if v, ok := o.Get(); ok {
-		return v
-	}
-	return d
-}
-
-// NewOptEvaluationBatchReportPassRate95 returns new OptEvaluationBatchReportPassRate95 with value set to v.
-func NewOptEvaluationBatchReportPassRate95(v EvaluationBatchReportPassRate95) OptEvaluationBatchReportPassRate95 {
-	return OptEvaluationBatchReportPassRate95{
-		Value: v,
-		Set:   true,
-	}
-}
-
-// OptEvaluationBatchReportPassRate95 is optional EvaluationBatchReportPassRate95.
-type OptEvaluationBatchReportPassRate95 struct {
-	Value EvaluationBatchReportPassRate95
-	Set   bool
-}
-
-// IsSet returns true if OptEvaluationBatchReportPassRate95 was set.
-func (o OptEvaluationBatchReportPassRate95) IsSet() bool { return o.Set }
-
-// Reset unsets value.
-func (o *OptEvaluationBatchReportPassRate95) Reset() {
-	var v EvaluationBatchReportPassRate95
-	o.Value = v
-	o.Set = false
-}
-
-// SetTo sets value to v.
-func (o *OptEvaluationBatchReportPassRate95) SetTo(v EvaluationBatchReportPassRate95) {
-	o.Set = true
-	o.Value = v
-}
-
-// Get returns value and boolean that denotes whether value was set.
-func (o OptEvaluationBatchReportPassRate95) Get() (v EvaluationBatchReportPassRate95, ok bool) {
-	if !o.Set {
-		return v, false
-	}
-	return o.Value, true
-}
-
-// Or returns value if set, or given parameter if does not.
-func (o OptEvaluationBatchReportPassRate95) Or(d EvaluationBatchReportPassRate95) EvaluationBatchReportPassRate95 {
-	if v, ok := o.Get(); ok {
-		return v
-	}
-	return d
-}
-
 // NewOptEvaluationFeedback returns new OptEvaluationFeedback with value set to v.
 func NewOptEvaluationFeedback(v EvaluationFeedback) OptEvaluationFeedback {
 	return OptEvaluationFeedback{
@@ -18008,52 +17903,6 @@ func (o OptEvaluationPairedDifference) Get() (v EvaluationPairedDifference, ok b
 
 // Or returns value if set, or given parameter if does not.
 func (o OptEvaluationPairedDifference) Or(d EvaluationPairedDifference) EvaluationPairedDifference {
-	if v, ok := o.Get(); ok {
-		return v
-	}
-	return d
-}
-
-// NewOptEvaluationPairedDifferenceDifference95 returns new OptEvaluationPairedDifferenceDifference95 with value set to v.
-func NewOptEvaluationPairedDifferenceDifference95(v EvaluationPairedDifferenceDifference95) OptEvaluationPairedDifferenceDifference95 {
-	return OptEvaluationPairedDifferenceDifference95{
-		Value: v,
-		Set:   true,
-	}
-}
-
-// OptEvaluationPairedDifferenceDifference95 is optional EvaluationPairedDifferenceDifference95.
-type OptEvaluationPairedDifferenceDifference95 struct {
-	Value EvaluationPairedDifferenceDifference95
-	Set   bool
-}
-
-// IsSet returns true if OptEvaluationPairedDifferenceDifference95 was set.
-func (o OptEvaluationPairedDifferenceDifference95) IsSet() bool { return o.Set }
-
-// Reset unsets value.
-func (o *OptEvaluationPairedDifferenceDifference95) Reset() {
-	var v EvaluationPairedDifferenceDifference95
-	o.Value = v
-	o.Set = false
-}
-
-// SetTo sets value to v.
-func (o *OptEvaluationPairedDifferenceDifference95) SetTo(v EvaluationPairedDifferenceDifference95) {
-	o.Set = true
-	o.Value = v
-}
-
-// Get returns value and boolean that denotes whether value was set.
-func (o OptEvaluationPairedDifferenceDifference95) Get() (v EvaluationPairedDifferenceDifference95, ok bool) {
-	if !o.Set {
-		return v, false
-	}
-	return o.Value, true
-}
-
-// Or returns value if set, or given parameter if does not.
-func (o OptEvaluationPairedDifferenceDifference95) Or(d EvaluationPairedDifferenceDifference95) EvaluationPairedDifferenceDifference95 {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -28711,8 +28560,8 @@ type RunComparisonRunsItem struct {
 	// a pass. An evaluation that broke is present with `status: failed`.
 	Evaluation OptRunComparisonRunsItemEvaluation `json:"evaluation"`
 	// The run's final answer, masked. Untrusted content — render as inert text.
-	FinalOutput OptString                         `json:"final_output"`
-	Errors      []RunComparisonRunsItemErrorsItem `json:"errors"`
+	FinalOutput OptString    `json:"final_output"`
+	Errors      []ErrorEvent `json:"errors"`
 	// Wall clock from start to terminal state. Absent for a run that never started.
 	DurationMs OptInt `json:"duration_ms"`
 	// What the run spent, kept in its own field beside the evaluation's own cost. Two columns, never one
@@ -28767,7 +28616,7 @@ func (s *RunComparisonRunsItem) GetFinalOutput() OptString {
 }
 
 // GetErrors returns the value of Errors.
-func (s *RunComparisonRunsItem) GetErrors() []RunComparisonRunsItemErrorsItem {
+func (s *RunComparisonRunsItem) GetErrors() []ErrorEvent {
 	return s.Errors
 }
 
@@ -28822,7 +28671,7 @@ func (s *RunComparisonRunsItem) SetFinalOutput(val OptString) {
 }
 
 // SetErrors sets the value of Errors.
-func (s *RunComparisonRunsItem) SetErrors(val []RunComparisonRunsItemErrorsItem) {
+func (s *RunComparisonRunsItem) SetErrors(val []ErrorEvent) {
 	s.Errors = val
 }
 
@@ -28885,42 +28734,6 @@ func (s *RunComparisonRunsItemCost) SetIsLowerBound(val bool) {
 // SetAuthoritativeSource sets the value of AuthoritativeSource.
 func (s *RunComparisonRunsItemCost) SetAuthoritativeSource(val string) {
 	s.AuthoritativeSource = val
-}
-
-type RunComparisonRunsItemErrorsItem struct {
-	Category OptString `json:"category"`
-	Code     OptString `json:"code"`
-	Message  OptString `json:"message"`
-}
-
-// GetCategory returns the value of Category.
-func (s *RunComparisonRunsItemErrorsItem) GetCategory() OptString {
-	return s.Category
-}
-
-// GetCode returns the value of Code.
-func (s *RunComparisonRunsItemErrorsItem) GetCode() OptString {
-	return s.Code
-}
-
-// GetMessage returns the value of Message.
-func (s *RunComparisonRunsItemErrorsItem) GetMessage() OptString {
-	return s.Message
-}
-
-// SetCategory sets the value of Category.
-func (s *RunComparisonRunsItemErrorsItem) SetCategory(val OptString) {
-	s.Category = val
-}
-
-// SetCode sets the value of Code.
-func (s *RunComparisonRunsItemErrorsItem) SetCode(val OptString) {
-	s.Code = val
-}
-
-// SetMessage sets the value of Message.
-func (s *RunComparisonRunsItemErrorsItem) SetMessage(val OptString) {
-	s.Message = val
 }
 
 // The task judgement for this run. Absent means the run was never evaluated — show 未評估, never
@@ -32105,32 +31918,6 @@ type SetJudgePanelNotFound Error
 
 func (*SetJudgePanelNotFound) setJudgePanelRes() {}
 
-type SetJudgePanelReq struct {
-	Enabled bool `json:"enabled"`
-	// Why, in the operator's own words. Whitespace does not satisfy it.
-	Note string `json:"note"`
-}
-
-// GetEnabled returns the value of Enabled.
-func (s *SetJudgePanelReq) GetEnabled() bool {
-	return s.Enabled
-}
-
-// GetNote returns the value of Note.
-func (s *SetJudgePanelReq) GetNote() string {
-	return s.Note
-}
-
-// SetEnabled sets the value of Enabled.
-func (s *SetJudgePanelReq) SetEnabled(val bool) {
-	s.Enabled = val
-}
-
-// SetNote sets the value of Note.
-func (s *SetJudgePanelReq) SetNote(val string) {
-	s.Note = val
-}
-
 type SetModelCallBudgetBadRequest Error
 
 func (*SetModelCallBudgetBadRequest) setModelCallBudgetRes() {}
@@ -32177,32 +31964,6 @@ func (*SetPlatformAgentEnabledConflict) setPlatformAgentEnabledRes() {}
 type SetPlatformAgentEnabledNotFound Error
 
 func (*SetPlatformAgentEnabledNotFound) setPlatformAgentEnabledRes() {}
-
-type SetPlatformAgentEnabledReq struct {
-	Enabled bool `json:"enabled"`
-	// Why, in the operator's own words. Whitespace does not satisfy it.
-	Note string `json:"note"`
-}
-
-// GetEnabled returns the value of Enabled.
-func (s *SetPlatformAgentEnabledReq) GetEnabled() bool {
-	return s.Enabled
-}
-
-// GetNote returns the value of Note.
-func (s *SetPlatformAgentEnabledReq) GetNote() string {
-	return s.Note
-}
-
-// SetEnabled sets the value of Enabled.
-func (s *SetPlatformAgentEnabledReq) SetEnabled(val bool) {
-	s.Enabled = val
-}
-
-// SetNote sets the value of Note.
-func (s *SetPlatformAgentEnabledReq) SetNote(val string) {
-	s.Note = val
-}
 
 type SetPlatformAgentEnabledServiceUnavailable Error
 
@@ -36973,10 +36734,10 @@ type TraceSummary struct {
 	Complete bool                     `json:"complete"`
 	Skills   []TraceSummarySkillsItem `json:"skills"`
 	// Exact number of skill activation events; skills contains at most the first 100.
-	SkillsTotal   int                      `json:"skills_total"`
-	ResourcesRead int                      `json:"resources_read"`
-	ToolCalls     TraceSummaryToolCalls    `json:"tool_calls"`
-	Errors        []TraceSummaryErrorsItem `json:"errors"`
+	SkillsTotal   int                   `json:"skills_total"`
+	ResourcesRead int                   `json:"resources_read"`
+	ToolCalls     TraceSummaryToolCalls `json:"tool_calls"`
+	Errors        []ErrorEvent          `json:"errors"`
 	// Exact number of error events; errors contains at most the first 100.
 	ErrorsTotal int `json:"errors_total"`
 	// True when a repeated summary list was bounded; exact totals remain available.
@@ -37053,7 +36814,7 @@ func (s *TraceSummary) GetToolCalls() TraceSummaryToolCalls {
 }
 
 // GetErrors returns the value of Errors.
-func (s *TraceSummary) GetErrors() []TraceSummaryErrorsItem {
+func (s *TraceSummary) GetErrors() []ErrorEvent {
 	return s.Errors
 }
 
@@ -37143,7 +36904,7 @@ func (s *TraceSummary) SetToolCalls(val TraceSummaryToolCalls) {
 }
 
 // SetErrors sets the value of Errors.
-func (s *TraceSummary) SetErrors(val []TraceSummaryErrorsItem) {
+func (s *TraceSummary) SetErrors(val []ErrorEvent) {
 	s.Errors = val
 }
 
@@ -37190,42 +36951,6 @@ func (s *TraceSummary) SetUsage(val OptTraceSummaryUsage) {
 // SetSteps sets the value of Steps.
 func (s *TraceSummary) SetSteps(val []TraceSummaryStepsItem) {
 	s.Steps = val
-}
-
-type TraceSummaryErrorsItem struct {
-	Category OptString `json:"category"`
-	Code     OptString `json:"code"`
-	Message  OptString `json:"message"`
-}
-
-// GetCategory returns the value of Category.
-func (s *TraceSummaryErrorsItem) GetCategory() OptString {
-	return s.Category
-}
-
-// GetCode returns the value of Code.
-func (s *TraceSummaryErrorsItem) GetCode() OptString {
-	return s.Code
-}
-
-// GetMessage returns the value of Message.
-func (s *TraceSummaryErrorsItem) GetMessage() OptString {
-	return s.Message
-}
-
-// SetCategory sets the value of Category.
-func (s *TraceSummaryErrorsItem) SetCategory(val OptString) {
-	s.Category = val
-}
-
-// SetCode sets the value of Code.
-func (s *TraceSummaryErrorsItem) SetCode(val OptString) {
-	s.Code = val
-}
-
-// SetMessage sets the value of Message.
-func (s *TraceSummaryErrorsItem) SetMessage(val OptString) {
-	s.Message = val
 }
 
 type TraceSummaryQuestionsItem struct {

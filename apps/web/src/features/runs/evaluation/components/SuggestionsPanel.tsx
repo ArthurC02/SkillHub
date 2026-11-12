@@ -2,7 +2,7 @@ import { Loading } from "../../../../shared/ui/Loading";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { focusFeedback } from "../../../../shared/ui/focusFeedback";
 import { useContinuationFocus } from "../../../../shared/ui/useContinuationFocus";
-import { ApiError, isNotFound } from "../../../../core/api/client";
+import { isNotFound } from "../../../../core/api/client";
 import { queryKeys } from "../../../../core/api/queryKeys";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -68,13 +68,7 @@ export function SuggestionsPanel({
       );
   }, [error, unknown, readable]);
   if (!readable) return null;
-  if (
-    suggestions.error instanceof ApiError &&
-    suggestions.error.status === 404 &&
-    !error &&
-    !applied
-  )
-    return null;
+  if (isNotFound(suggestions.error) && !error && !applied) return null;
 
   return (
     <section aria-labelledby="suggestions-heading">

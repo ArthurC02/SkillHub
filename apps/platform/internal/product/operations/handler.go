@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	maxNoteChars        = limits.SetPlatformAgentEnabledBodyNoteMaxLength
+	maxNoteChars        = limits.OperatorSwitchChangeNoteMaxLength
 	maxRequestBodyBytes = 16 << 10
 )
 

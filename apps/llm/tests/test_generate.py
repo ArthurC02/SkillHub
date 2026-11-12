@@ -2,12 +2,12 @@
 
 import base64
 import json
+from functools import partial
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
 
 import pytest
+from chat_fakes import failing_chat_client, fake_chat_client
 from fastapi.testclient import TestClient
-from openai import APIConnectionError
 
 from skillhub_llm import generate
 from skillhub_llm.app import app
@@ -32,36 +32,11 @@ GOOD_SKILL = {
 }
 
 
-def _fake_client(
-    content: str, capture: list | None = None, finish_reason=None, served=None, served_header=None
-):
-    """Stand-in for AsyncOpenAI, shaped like the one in test_evaluate.
-
-    `finish_reason` defaults to None, meaning "not truncated".
-    """
-
-    async def create(**kwargs):
-        if capture is not None:
-            capture.append(kwargs)
-        choice = SimpleNamespace(
-            message=SimpleNamespace(content=content), finish_reason=finish_reason
-        )
-        completion = SimpleNamespace(
-            choices=[choice],
-            usage=SimpleNamespace(prompt_tokens=300, completion_tokens=1100),
-        )
-        if served is not None:
-            completion.model = served
-        headers = {"x-litellm-response-cost": "0.0055"}
-        if served_header is not None:
-            headers["x-litellm-model-name"] = served_header
-        return SimpleNamespace(parse=lambda: completion, headers=headers)
-
-    return SimpleNamespace(
-        chat=SimpleNamespace(
-            completions=SimpleNamespace(with_raw_response=SimpleNamespace(create=create))
-        )
-    )
+_fake_client = partial(
+    fake_chat_client,
+    usage=SimpleNamespace(prompt_tokens=300, completion_tokens=1100),
+    cost="0.0055",
+)
 
 
 @pytest.fixture
@@ -154,19 +129,7 @@ def test_a_licence_field_in_the_model_output_is_refused(capture):
 
 
 def test_gateway_failure_is_502(monkeypatch):
-    monkeypatch.setattr(
-        generate,
-        "_client",
-        lambda *_: SimpleNamespace(
-            chat=SimpleNamespace(
-                completions=SimpleNamespace(
-                    with_raw_response=SimpleNamespace(
-                        create=AsyncMock(side_effect=APIConnectionError(request=None))
-                    )
-                )
-            )
-        ),
-    )
+    monkeypatch.setattr(generate, "_client", failing_chat_client)
     r = client.post("/v1/generate-skill", json={"task_description": TASK})
     assert r.status_code == 502
 

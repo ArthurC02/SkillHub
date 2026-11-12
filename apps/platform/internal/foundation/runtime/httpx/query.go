@@ -2,6 +2,7 @@ package httpx
 
 import (
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 )
@@ -30,4 +31,8 @@ func QueryInt32(r *http.Request, name string, fallback, low, high int64) (int32,
 		return 0, fmt.Errorf("query parameter %s must be a whole number between %d and %d", name, low, high)
 	}
 	return int32(n), nil
+}
+
+func QueryOffset(r *http.Request) (int32, error) {
+	return QueryInt32(r, "offset", 0, 0, math.MaxInt32)
 }

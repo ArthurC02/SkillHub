@@ -1,11 +1,11 @@
-import { ApiError, userFacingReason } from "../../../../core/api/client";
+import { ApiError, isNotFound, userFacingReason } from "../../../../core/api/client";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import type { usePackagingPreview } from "../../packaging.service";
 import { PreviewReport } from "./PreviewReport";
 import { RetentionNotice } from "./RetentionNotice";
 
 function PreviewErrorReason({ error }: { error: unknown }) {
-  if (error instanceof ApiError && error.status === 404) {
+  if (isNotFound(error)) {
     return <p role="alert">這個版本讀不到，可能已經不屬於這個小工具。回上一步重新挑一次版本。</p>;
   }
   if (error instanceof ApiError && error.status === 503) {
@@ -27,7 +27,7 @@ export function PackagingPreviewSection({
   preview: ReturnType<typeof usePackagingPreview>;
   target: string;
 }) {
-  const versionGone = preview.error instanceof ApiError && preview.error.status === 404;
+  const versionGone = isNotFound(preview.error);
   return (
     <>
       <h2 id="packaging-preview-heading" tabIndex={-1}>

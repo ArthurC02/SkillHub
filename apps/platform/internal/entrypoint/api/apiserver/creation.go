@@ -1,7 +1,6 @@
 package apiserver
 
 import (
-	"encoding/json"
 	"errors"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation/revisionwatch"
@@ -12,7 +11,6 @@ import (
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	registry "github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 	"github.com/jackc/pgx/v5/pgtype"
-	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -191,18 +189,7 @@ func (h *creationHandler) creationError(w http.ResponseWriter, err error) {
 	httpx.WriteError(w, code, text)
 }
 func creationDecode(w http.ResponseWriter, r *http.Request, v any) bool {
-	d := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxCreationRequestBytes))
-	d.DisallowUnknownFields()
-	if err := d.Decode(v); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "輸入格式不正確或檔案太大。")
-		return false
-	}
-	var extra any
-	if d.Decode(&extra) != io.EOF {
-		httpx.WriteError(w, http.StatusBadRequest, "輸入格式不正確。")
-		return false
-	}
-	return true
+	return httpx.DecodeOneJSON(w, r, maxCreationRequestBytes, v, "輸入格式不正確或檔案太大。")
 }
 func (h *creationHandler) List(w http.ResponseWriter, r *http.Request) {
 	ws, ok := h.scope(w, r)

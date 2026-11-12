@@ -1,10 +1,10 @@
 import json
+from functools import partial
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
 
 import pytest
+from chat_fakes import failing_chat_client, fake_chat_client
 from fastapi.testclient import TestClient
-from openai import APIConnectionError
 
 from skillhub_llm import enrich
 from skillhub_llm.app import app
@@ -35,28 +35,11 @@ REQUEST = {
 }
 
 
-def _fake_client(content: str, capture: list | None = None):
-    """Stand-in for AsyncOpenAI whose completion returns `content`.
-
-    Answers `with_raw_response`: the gateway reports cost in a header, not the body.
-    """
-
-    async def create(**kwargs):
-        if capture is not None:
-            capture.append(kwargs)
-        completion = SimpleNamespace(
-            choices=[SimpleNamespace(message=SimpleNamespace(content=content))],
-            usage=SimpleNamespace(prompt_tokens=4000, completion_tokens=600),
-        )
-        return SimpleNamespace(
-            parse=lambda: completion, headers={"x-litellm-response-cost": "0.0210"}
-        )
-
-    return SimpleNamespace(
-        chat=SimpleNamespace(
-            completions=SimpleNamespace(with_raw_response=SimpleNamespace(create=create))
-        )
-    )
+_fake_client = partial(
+    fake_chat_client,
+    usage=SimpleNamespace(prompt_tokens=4000, completion_tokens=600),
+    cost="0.0210",
+)
 
 
 @pytest.fixture
@@ -185,16 +168,7 @@ def test_gateway_error_is_502_without_quoting_the_exception(gateway_env, monkeyp
     """The detail is a fixed string; the SDK exception can carry the request
     payload and must not reach the caller. `logger.exception` still has it.
     """
-    failing = SimpleNamespace(
-        chat=SimpleNamespace(
-            completions=SimpleNamespace(
-                with_raw_response=SimpleNamespace(
-                    create=AsyncMock(side_effect=APIConnectionError(request=None))
-                )
-            )
-        )
-    )
-    monkeypatch.setattr(enrich, "_client", lambda *_: failing)
+    monkeypatch.setattr(enrich, "_client", failing_chat_client)
 
     response = client.post("/v1/enrich-skill", json=REQUEST)
     assert response.status_code == 502

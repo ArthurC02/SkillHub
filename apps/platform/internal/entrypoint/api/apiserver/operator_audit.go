@@ -2,7 +2,6 @@ package apiserver
 
 import (
 	"fmt"
-	"math"
 	"net/http"
 	"strconv"
 	"time"
@@ -87,7 +86,7 @@ func (h *operatorAuditHandler) List(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	offset, err := httpx.QueryInt32(r, "offset", 0, 0, math.MaxInt32)
+	offset, err := httpx.QueryOffset(r)
 	if err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, err.Error())
 		return

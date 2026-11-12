@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"math"
 	"net/http"
 	"time"
 	"unicode/utf8"
@@ -431,7 +430,7 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	offset, err := parseOffset(r)
+	offset, err := httpx.QueryOffset(r)
 	if err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, err.Error())
 		return
@@ -567,10 +566,6 @@ func (h *Handler) DeleteArtifact(w http.ResponseWriter, r *http.Request) {
 
 func parseLimit(r *http.Request) (int32, error) {
 	return httpx.QueryInt32(r, "limit", defaultRunPageSize, 1, maxRunPageSize)
-}
-
-func parseOffset(r *http.Request) (int32, error) {
-	return httpx.QueryInt32(r, "offset", 0, 0, math.MaxInt32)
 }
 
 func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {

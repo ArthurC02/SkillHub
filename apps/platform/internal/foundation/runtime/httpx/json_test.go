@@ -62,3 +62,46 @@ func TestDecodeJSONMalformedBodyIsRejectedWithCallerMessage(t *testing.T) {
 		t.Fatalf("body=%q, want %q", rec.Body.String(), want)
 	}
 }
+
+func TestDecodeOneJSONAcceptsExactlyOneKnownObject(t *testing.T) {
+	cases := []struct {
+		name string
+		body string
+		ok   bool
+	}{
+		{"one known object", `{"name":"abc"}`, true},
+		{"an unknown field", `{"name":"abc","extra":1}`, false},
+		{"a second object after the first", `{"name":"abc"}{"name":"def"}`, false},
+		{"trailing garbage", `{"name":"abc"} x`, false},
+		{"malformed", `{"name":`, false},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(c.body))
+			var got decodeTarget
+			ok := DecodeOneJSON(rec, req, 1024, &got, "custom bad body")
+			if ok != c.ok {
+				t.Fatalf("ok=%v, want %v", ok, c.ok)
+			}
+			if c.ok && got.Name != "abc" {
+				t.Fatalf("name=%q, want abc", got.Name)
+			}
+			if !c.ok && rec.Body.String() != "{\"error\":\"custom bad body\"}\n" {
+				t.Fatalf("code=%d body=%q", rec.Code, rec.Body.String())
+			}
+		})
+	}
+}
+
+func TestDecodeOneJSONRefusesABodyOneByteOverItsLimit(t *testing.T) {
+	body := `{"name":"abc"}`
+	for limit, want := range map[int64]bool{int64(len(body)): true, int64(len(body)) - 1: false} {
+		rec := httptest.NewRecorder()
+		var got decodeTarget
+		ok := DecodeOneJSON(rec, httptest.NewRequest(http.MethodPost, "/", strings.NewReader(body)), limit, &got, "custom bad body")
+		if ok != want {
+			t.Fatalf("limit %d: ok=%v, want %v", limit, ok, want)
+		}
+	}
+}
