@@ -42,7 +42,11 @@ func screenSources(e envelope, r *StepResult) {
 	if r.SourceAssessment == nil && sourcesChecked(e) && digest(r.Draft) == digest(e.Snapshot.Draft.Skill) {
 		return
 	}
-	questions, valid := sourceQuestions(e.Snapshot, r)
+	sources := e.Snapshot
+	if e.sourceMessages != nil {
+		sources.Messages = e.sourceMessages
+	}
+	questions, valid := sourceQuestions(sources, r)
 	if valid && len(questions) == 0 {
 		return
 	}
@@ -143,7 +147,7 @@ func sourceText(p Snapshot, message Message) string {
 	if message.Role == authorMessageRole {
 		return message.Content
 	}
-	if message.Role != "tool" {
+	if message.Role != toolMessageRole {
 		return ""
 	}
 	var observation struct {

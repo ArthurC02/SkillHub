@@ -140,6 +140,7 @@ func replay(ctx context.Context, tx pgx.Tx, ws, id pgtype.UUID, c Command) (View
 	}
 	var v View
 	err = json.Unmarshal(r.Result, &v)
+	v.Snapshot.Messages = withoutFetchedText(v.Snapshot.Messages)
 	return v, true, err
 }
 func record(ctx context.Context, tx pgx.Tx, session gen.CreationSession, c Command, v View) error {

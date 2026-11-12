@@ -265,7 +265,7 @@ func TestAModelCallThatBringsBackNothingSettlesAsUnknownCost(t *testing.T) {
 	}
 }
 
-func TestAFetchedPageIsAttachedAndReportedMasked(t *testing.T) {
+func TestAFetchedPageAttachesOnlyItsMetadataToTheSession(t *testing.T) {
 	s := &Service{
 		Fetch: func(context.Context, string) (Fetch, string) { return Fetch{}, "" },
 		Mask:  func(v string) string { return strings.ReplaceAll(v, "secret", "***") },
@@ -275,7 +275,7 @@ func TestAFetchedPageIsAttachedAndReportedMasked(t *testing.T) {
 	if p.PendingFetchURL != "" || len(p.Fetches) != 1 {
 		t.Fatalf("snapshot = %+v", p)
 	}
-	if want := webfetch.Observation(p.Fetches[0], "*** page"); len(p.Messages) != 1 || p.Messages[0].Role != "tool" || p.Messages[0].Content != want {
+	if want := webfetch.Observation(p.Fetches[0], ""); len(p.Messages) != 1 || p.Messages[0].Role != "tool" || p.Messages[0].Content != want {
 		t.Fatalf("messages = %+v", p.Messages)
 	}
 }
