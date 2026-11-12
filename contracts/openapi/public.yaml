@@ -3391,15 +3391,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [enabled, note]
-              properties:
-                enabled: { type: boolean }
-                note:
-                  type: string
-                  maxLength: 1000
-                  description: Why, in the operator's own words. Whitespace does not satisfy it.
+            schema: { $ref: "#/components/schemas/OperatorSwitchChange" }
       responses:
         "200":
           description: The agent as it now stands.
@@ -3729,15 +3721,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [enabled, note]
-              properties:
-                enabled: { type: boolean }
-                note:
-                  type: string
-                  maxLength: 1000
-                  description: Why, in the operator's own words. Whitespace does not satisfy it.
+            schema: { $ref: "#/components/schemas/OperatorSwitchChange" }
       responses:
         "200":
           description: The settings as they now stand.
@@ -5984,12 +5968,7 @@ paths:
                   paired: { type: integer }
                   unpaired: { type: integer }
                   difference: { type: number, description: Mean of candidate minus reference pass rate per test case. }
-                  difference_95:
-                    type: object
-                    required: [low, high]
-                    properties:
-                      low: { type: number }
-                      high: { type: number }
+                  difference_95: { $ref: "#/components/schemas/ConfidenceInterval" }
                   verdict: { $ref: "#/components/schemas/EvaluationDifferenceVerdict" }
                   candidate_better: { type: integer }
                   reference_better: { type: integer }
@@ -8625,16 +8604,18 @@ components:
         unpaired: { type: integer, description: Test cases judged in only one arm. }
         difference: { type: number, description: Absent while nothing is paired. }
         difference_95:
-          type: object
+          $ref: "#/components/schemas/ConfidenceInterval"
           description: Absent with fewer than two pairs.
-          required: [low, high]
-          properties:
-            low: { type: number }
-            high: { type: number }
         verdict: { $ref: "#/components/schemas/EvaluationDifferenceVerdict" }
         better: { type: integer, description: Test cases where the first arm passed more often. }
         worse: { type: integer }
         tied: { type: integer }
+    ConfidenceInterval:
+      type: object
+      required: [low, high]
+      properties:
+        low: { type: number }
+        high: { type: number }
     EvaluationDifferenceVerdict:
       type: string
       enum: [improved, likely_improved, no_clear_difference, likely_worse, worse, too_few_pairs]
@@ -8656,12 +8637,8 @@ components:
         judged: { type: integer }
         pass_rate: { type: number, description: passed / judged; absent while nothing is judged. }
         pass_rate_95:
-          type: object
+          $ref: "#/components/schemas/ConfidenceInterval"
           description: Wilson score interval at 95% around pass_rate.
-          required: [low, high]
-          properties:
-            low: { type: number }
-            high: { type: number }
         test_cases_all_passed: { type: integer, description: Test cases that passed every trial. }
         test_cases_decided: { type: integer, description: Test cases whose every-trial result is known. }
     PlatformAgentBrake:
@@ -8976,6 +8953,12 @@ components:
         has_more:
           type: boolean
           description: True when another page is already available.
+    ErrorEvent:
+      type: object
+      properties:
+        category: { type: string }
+        code: { type: string }
+        message: { type: string }
     TraceSummary:
       type: object
       description: |
@@ -9024,12 +9007,7 @@ components:
         errors:
           type: array
           maxItems: 100
-          items:
-            type: object
-            properties:
-              category: { type: string }
-              code: { type: string }
-              message: { type: string }
+          items: { $ref: "#/components/schemas/ErrorEvent" }
         errors_total:
           type: integer
           minimum: 0
@@ -13182,12 +13160,7 @@ components:
                   inert text.
               errors:
                 type: array
-                items:
-                  type: object
-                  properties:
-                    category: { type: string }
-                    code: { type: string }
-                    message: { type: string }
+                items: { $ref: "#/components/schemas/ErrorEvent" }
               duration_ms:
                 type: integer
                 description: Wall clock from start to terminal state. Absent for a run that never started.
@@ -14096,6 +14069,15 @@ components:
               content:
                 type: "string"
 
+    OperatorSwitchChange:
+      type: object
+      required: [enabled, note]
+      properties:
+        enabled: { type: boolean }
+        note:
+          type: string
+          maxLength: 1000
+          description: Why, in the operator's own words. Whitespace does not satisfy it.
     CreationModelChange:
       type: "object"
       description: >-

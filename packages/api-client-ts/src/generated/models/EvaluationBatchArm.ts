@@ -11,7 +11,7 @@
  * Do not edit it manually.
  */
 
-import type { EvaluationBatchArmPassRate95 } from './EvaluationBatchArmPassRate95';
+import type { ConfidenceInterval } from './ConfidenceInterval';
 import type { EvaluationBatchTestCase } from './EvaluationBatchTestCase';
 
 /**
@@ -37,9 +37,9 @@ export interface EvaluationBatchArm {
      */
     passRate?: number;
     /**
-     * 
+     * Wilson score interval at 95% around pass_rate.
      */
-    passRate95?: EvaluationBatchArmPassRate95;
+    passRate95?: ConfidenceInterval;
     /**
      * Test cases that passed every trial.
      */

@@ -11,8 +11,8 @@
  * Do not edit it manually.
  */
 
+import type { ConfidenceInterval } from './ConfidenceInterval';
 import type { EvaluationDifferenceVerdict } from './EvaluationDifferenceVerdict';
-import type { EvaluationPairedDifferenceDifference95 } from './EvaluationPairedDifferenceDifference95';
 
 /**
  * Per test case, one arm's pass rate minus the other's, over the test
@@ -37,9 +37,9 @@ export interface EvaluationPairedDifference {
      */
     difference?: number;
     /**
-     * 
+     * Absent with fewer than two pairs.
      */
-    difference95?: EvaluationPairedDifferenceDifference95;
+    difference95?: ConfidenceInterval;
     /**
      * 
      */

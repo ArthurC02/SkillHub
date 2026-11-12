@@ -11,10 +11,10 @@
  * Do not edit it manually.
  */
 
+import type { ErrorEvent } from './ErrorEvent';
 import type { RunComparisonRunsInnerCost } from './RunComparisonRunsInnerCost';
 import type { RunComparisonRunsInnerEvaluation } from './RunComparisonRunsInnerEvaluation';
 import type { RunStatus } from './RunStatus';
-import type { TraceSummaryErrorsInner } from './TraceSummaryErrorsInner';
 
 /**
  * 
@@ -70,7 +70,7 @@ export interface RunComparisonRunsInner {
     /**
      * 
      */
-    errors?: Array<TraceSummaryErrorsInner>;
+    errors?: Array<ErrorEvent>;
     /**
      * Wall clock from start to terminal state. Absent for a run that never started.
      */

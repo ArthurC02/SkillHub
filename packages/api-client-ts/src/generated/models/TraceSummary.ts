@@ -11,8 +11,8 @@
  * Do not edit it manually.
  */
 
+import type { ErrorEvent } from './ErrorEvent';
 import type { RunStatus } from './RunStatus';
-import type { TraceSummaryErrorsInner } from './TraceSummaryErrorsInner';
 import type { TraceSummaryQuestionsInner } from './TraceSummaryQuestionsInner';
 import type { TraceSummarySkillsInner } from './TraceSummarySkillsInner';
 import type { TraceSummaryStepsInner } from './TraceSummaryStepsInner';
@@ -69,7 +69,7 @@ export interface TraceSummary {
     /**
      * 
      */
-    errors: Array<TraceSummaryErrorsInner>;
+    errors: Array<ErrorEvent>;
     /**
      * Exact number of error events; errors contains at most the first 100.
      */

@@ -11,7 +11,7 @@
  * Do not edit it manually.
  */
 
-import type { CompareEvaluationBatches200ResponseDifference95 } from './CompareEvaluationBatches200ResponseDifference95';
+import type { ConfidenceInterval } from './ConfidenceInterval';
 import type { EvaluationBatch } from './EvaluationBatch';
 import type { EvaluationDifferenceVerdict } from './EvaluationDifferenceVerdict';
 
@@ -44,7 +44,7 @@ export interface CompareEvaluationBatches200Response {
     /**
      * 
      */
-    difference95?: CompareEvaluationBatches200ResponseDifference95;
+    difference95?: ConfidenceInterval;
     /**
      * 
      */
