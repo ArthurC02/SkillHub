@@ -1,5 +1,6 @@
 import type { OwnerCatalogExposureStateEnum } from "@skillhub/api-client-ts";
 import type { OwnerPublicationSummary } from "./publishing.service";
+import { isDate, isRecord, isUuid } from "../../shared/wire";
 
 const exposureStates: Record<OwnerCatalogExposureStateEnum, true> = {
   listed: true,
@@ -10,21 +11,6 @@ const exposureStates: Record<OwnerCatalogExposureStateEnum, true> = {
   search_not_ready: true,
   unreleased: true,
 };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
-function isUuid(value: unknown) {
-  return (
-    typeof value === "string" &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
-  );
-}
-
-function isDate(value: unknown) {
-  return typeof value === "string" && Number.isFinite(Date.parse(value));
-}
 
 function isOptionalRelease(value: unknown) {
   return (

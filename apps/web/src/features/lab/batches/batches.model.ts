@@ -7,6 +7,7 @@ import {
   CreateEvaluationBatchBodyTestCaseIdsMaxItems as MAX_TEST_CASES,
   CreateEvaluationBatchBodyTrialsMaximum as MAX_TRIALS,
 } from "@skillhub/api-client-ts/limits";
+import { isCount, isOptionalText, isRecord } from "../../../shared/wire";
 
 export type BatchStatus = EvaluationBatchStatusEnum;
 
@@ -172,14 +173,6 @@ export function reportStillMoving(report: BatchReport): boolean {
   );
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function isCount(value: unknown): value is number {
-  return typeof value === "number" && Number.isInteger(value) && value >= 0;
-}
-
 function isOptionalRate(value: unknown): boolean {
   return value === undefined || (typeof value === "number" && Number.isFinite(value));
 }
@@ -189,10 +182,6 @@ function isOptionalInterval(value: unknown): boolean {
     value === undefined ||
     (isRecord(value) && typeof value.low === "number" && typeof value.high === "number")
   );
-}
-
-function isOptionalText(value: unknown): boolean {
-  return value === undefined || typeof value === "string";
 }
 
 function isOptionalFlag(value: unknown): boolean {

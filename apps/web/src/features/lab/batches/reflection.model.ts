@@ -11,6 +11,7 @@ import {
   type BatchTestCase,
   type DifferenceVerdict,
 } from "./batches.model";
+import { isCount, isRecord } from "../../../shared/wire";
 
 export type ReflectionOutcome = BatchReflectionOutcomeEnum;
 
@@ -109,13 +110,6 @@ export const REFLECTION_OUTCOME_SENTENCE: Record<ReflectionOutcome, string> = {
   none_kept: NONE_KEPT_SENTENCE,
   kept: "",
 };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
-const isCount = (value: unknown) =>
-  typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
 
 export function isBatchReflection(value: unknown, batchId: string): value is BatchReflection {
   return (

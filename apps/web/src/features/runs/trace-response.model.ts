@@ -1,4 +1,5 @@
 import type { TraceAdvanced, TraceSummary } from "./trace.service";
+import { isOptionalText, isRecord, isText } from "../../shared/wire";
 
 export const RUN_POLL_MS = 3000;
 
@@ -13,18 +14,6 @@ export const RUN_STATUSES = [
   "cancelled",
   "timed_out",
 ] as const;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
-function isText(value: unknown): value is string {
-  return typeof value === "string";
-}
-
-function isOptionalText(value: unknown): boolean {
-  return value === undefined || isText(value);
-}
 
 function isList(value: unknown, item: (value: unknown) => boolean): boolean {
   return Array.isArray(value) && value.every(item);

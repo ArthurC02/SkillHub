@@ -10,14 +10,7 @@ import type {
   ReasonedSearchResult,
 } from "../../core/api/types";
 import { runeCount } from "../../shared/textLength.model";
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
-function isText(value: unknown): value is string {
-  return typeof value === "string";
-}
+import { isCount, isDate, isRecord, isText } from "../../shared/wire";
 
 function isMember(value: unknown, values: readonly string[]): boolean {
   return isText(value) && values.includes(value);
@@ -25,14 +18,6 @@ function isMember(value: unknown, values: readonly string[]): boolean {
 
 function optionalText(value: Record<string, unknown>, ...keys: string[]): boolean {
   return keys.every((key) => value[key] === undefined || isText(value[key]));
-}
-
-function isDate(value: unknown): boolean {
-  return isText(value) && Number.isFinite(Date.parse(value));
-}
-
-function isCount(value: unknown): value is number {
-  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
 }
 
 function isLabelled(value: unknown, values?: readonly string[]): boolean {
