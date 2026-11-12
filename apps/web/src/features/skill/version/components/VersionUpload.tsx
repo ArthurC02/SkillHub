@@ -15,8 +15,7 @@ import { isVersionUploadResultUnknown, useSaveSkillVersion } from "../../version
 import { VersionUploadFailure } from "./VersionUploadFailure";
 import { focusAndCenter } from "../../../../shared/ui/focusAndCenter";
 import "./VersionUpload.css";
-
-type UploadFailure = { error: unknown; fileName?: string; blockedError?: SessionNotReadyError };
+import { readUploadFailure, type FailedUpload } from "../../../../shared/uploadFailure.model";
 
 export function VersionUpload({
   skillId,
@@ -32,7 +31,7 @@ export function VersionUpload({
   const save = useSaveSkillVersion(skillId);
   const limits = useSkillImportLimits();
   const [file, setFile] = useState<File>();
-  const [unknownUpload, setUnknownUpload] = useState<UploadFailure>();
+  const [unknownUpload, setUnknownUpload] = useState<FailedUpload>();
   const identityConfirmed = isIdentityConfirmed(me);
   const confirmed =
     contextConfirmed &&
@@ -166,15 +165,6 @@ function VersionUploadRules({
       </ul>
     </>
   );
-}
-
-function readUploadFailure(
-  save: ReturnType<typeof useSaveSkillVersion>,
-  previous?: UploadFailure,
-): UploadFailure {
-  return save.error instanceof SessionNotReadyError && previous
-    ? { ...previous, blockedError: save.error }
-    : { error: save.error, fileName: save.variables?.name };
 }
 
 function VersionUploadSuccess({ result, fileName }: { result: UploadResult; fileName?: string }) {
