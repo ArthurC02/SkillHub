@@ -223,7 +223,7 @@ func (s *Service) attachAcceptanceTestCase(ctx context.Context, tx pgx.Tx, ws id
 	}
 	candidate.TestCaseID = id
 	for _, c := range p.ChallengeCases {
-		id, err := s.CreateAcceptanceTestCase(ctx, tx, ws, candidate.SkillID, challengeTestCaseName(c), c.Prompt, c.Criteria)
+		id, err := s.CreateAcceptanceTestCase(ctx, tx, ws, candidate.SkillID, evaluationTestCaseName(c), c.Prompt, c.Criteria)
 		if err != nil {
 			return err
 		}
@@ -232,8 +232,8 @@ func (s *Service) attachAcceptanceTestCase(ctx context.Context, tx pgx.Tx, ws id
 	return nil
 }
 
-func challengeTestCaseName(c ChallengeCase) string {
-	return "刁難試跑：" + c.Name
+func evaluationTestCaseName(c ChallengeCase) string {
+	return "評估案例：" + c.Name
 }
 
 func adoptCandidate(current *envelope, p Snapshot, candidate Candidate) {

@@ -44,7 +44,7 @@ def test_a_brief_to_confirm_comes_back_with_challenge_cases_written_from_it_alon
     assert body["challenge_cases"] == [case()]
     assert len(calls) == 2
     challenge = calls[1]
-    assert challenge["messages"][0]["content"] == creation.CHALLENGE_INSTRUCTIONS
+    assert challenge["messages"][0]["content"] == creation.EVALUATION_CASE_INSTRUCTIONS
     shown = challenge["messages"][1]["content"]
     assert BRIEF in shown and CRITERIA[0] in shown and SAMPLE in shown
     assert "Help me check invoices" not in shown
@@ -52,6 +52,33 @@ def test_a_brief_to_confirm_comes_back_with_challenge_cases_written_from_it_alon
     assert body["usage"]["prompt_tokens"] == 20
     assert body["usage"]["completion_tokens"] == 10
     assert body["usage"]["cost_usd"] == 0.002
+
+
+def test_paired_evaluation_cases_keep_question_and_direct_answer_expectations():
+    cases = [
+        {
+            "name": "Missing arrival date",
+            "prompt": "Price my two-night stay.",
+            "criteria": [
+                "Asks for the arrival date because the weekend surcharge depends on it.",
+                "Does not invent an arrival date or a final price.",
+            ],
+        },
+        {
+            "name": "Complete weekday stay",
+            "prompt": "Price my stay: arrive Monday 2026-10-12, two nights.",
+            "criteria": ["Returns a total of 200 without asking for another fact."],
+        },
+    ]
+    response, calls = invoke_in_turn(request(), json.dumps(PROPOSAL), json.dumps({"cases": cases}))
+
+    assert response.status_code == 200
+    assert response.json()["challenge_cases"] == cases
+    assert len(calls) == 2
+    instructions = calls[1]["messages"][0]["content"]
+    assert "You try to break" not in instructions
+    assert "never a question back" not in instructions
+    assert "ordinary reading gives" not in instructions
 
 
 def test_challenge_cases_past_a_bound_are_dropped_and_at_most_three_are_kept():

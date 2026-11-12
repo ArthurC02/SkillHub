@@ -888,7 +888,7 @@ def test_review_edits_targeting_files_and_criteria_together_still_reproposes_the
     assert response.status_code == 200
     assert len(calls) == 3
     assert "outcome confirm_brief" in calls[1]["messages"][0]["content"]
-    assert calls[2]["messages"][0]["content"] == creation.CHALLENGE_INSTRUCTIONS
+    assert calls[2]["messages"][0]["content"] == creation.EVALUATION_CASE_INSTRUCTIONS
     body = response.json()
     assert body["outcome"] == "confirm_brief"
     assert body["acceptance_criteria"] == ["decidable criterion"]

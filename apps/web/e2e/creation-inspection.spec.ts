@@ -222,3 +222,100 @@ for (const colorScheme of ["light", "dark"] as const) {
     }
   });
 }
+
+for (const width of [375, 1280]) {
+  test(`brief confirmation reveals the evaluation cases at ${width}px`, async ({ page }) => {
+    await stubPlatform(page);
+    await page.setViewportSize({ width, height: 900 });
+    await page.addInitScript(() =>
+      Object.defineProperty(window, "EventSource", { value: undefined, configurable: true }),
+    );
+    await page.route("**/me", (route) =>
+      route.fulfill({ json: { ...ME, features: { generate_skill: true, creation_skill: true } } }),
+    );
+    await page.route("**/me/credits", (route) =>
+      route.fulfill({ json: { balance_credits: 2000 } }),
+    );
+    const current = session("{}", false);
+    current.state = "waiting_confirmation";
+    current.snapshot.brief = "依入住日期計算住宿費用，缺少日期就詢問。";
+    current.snapshot.acceptance_criteria = ["依作者提供的日期與每晚費率計算總價。"];
+    current.snapshot.brief_confirmed = false;
+    current.snapshot.pending_action = "confirm_brief";
+    delete current.snapshot.draft;
+    current.snapshot.challenge_cases = [
+      {
+        name: "缺少入住日期",
+        prompt: "請算住宿兩晚的房價。",
+        criteria: ["詢問入住日期。", "不自行假設日期或總價。"],
+      },
+      {
+        name: "平日資料完整",
+        prompt: "週一入住兩晚，每晚 100 元，請算總價。",
+        criteria: ["直接回答總價 200 元，不再追問。"],
+      },
+    ];
+    const writes: Record<string, unknown>[] = [];
+    await page.route("**/creation-sessions**", async (route) => {
+      const request = route.request();
+      if (new URL(request.url()).pathname.endsWith("/limits"))
+        return route.fulfill({
+          json: {
+            min_budget_credits: 130,
+            max_budget_credits: 6500,
+            max_steps: 20,
+            max_tool_calls: 10,
+            call_timeout_seconds: 120,
+            session_timeout_seconds: 3600,
+            retention_seconds: 604800,
+          },
+        });
+      if (request.method() === "POST") {
+        writes.push(request.postDataJSON());
+        current.revision = 8;
+        current.state = "queued";
+        current.snapshot.pending_action = "";
+        current.snapshot.brief_confirmed = true;
+        return route.fulfill({ json: current });
+      }
+      return route.fulfill({
+        json: new URL(request.url()).pathname.endsWith(SESSION) ? current : [current],
+      });
+    });
+    await page.goto(`/workspace/creations?session=${SESSION}`);
+    const cases = page.getByRole("region", { name: "評估案例", exact: true });
+    await expect(cases.getByText("缺少入住日期", { exact: true })).toBeVisible();
+    await expect(cases.getByText("請算住宿兩晚的房價。", { exact: true })).toBeVisible();
+    await expect(cases.getByText("詢問入住日期。", { exact: true })).toBeVisible();
+    await expect(cases.getByText("不自行假設日期或總價。", { exact: true })).toBeVisible();
+    await expect(cases.getByText("平日資料完整", { exact: true })).toBeVisible();
+    await expect(
+      cases.getByText("週一入住兩晚，每晚 100 元，請算總價。", { exact: true }),
+    ).toBeVisible();
+    await expect(cases.getByText("直接回答總價 200 元，不再追問。", { exact: true })).toBeVisible();
+    const missingInput = cases.getByText("請算住宿兩晚的房價。", { exact: true });
+    await missingInput.scrollIntoViewIfNeeded();
+    await expect(missingInput).toBeInViewport();
+    await page.screenshot({ path: test.info().outputPath(`missing-input-case-${width}.png`) });
+    const confirm = page.getByRole("button", { name: "確認需求摘要與驗收條件", exact: true });
+    await expect(confirm).toHaveAccessibleDescription("確認也包含以下案例的輸入與驗收條件。");
+    expect(writes).toEqual([]);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
+    const report = await new AxeBuilder({ page }).include("#creation-brief-decision").analyze();
+    await writeFile(test.info().outputPath("brief-confirmation-a11y.json"), JSON.stringify(report));
+    expect(report.violations).toEqual([]);
+    expect(report.incomplete).toEqual([]);
+    await confirm.scrollIntoViewIfNeeded();
+    await expect(confirm).toBeInViewport();
+    await page.screenshot({
+      path: test.info().outputPath(`evaluation-cases-${width}.png`),
+      fullPage: true,
+    });
+    await confirm.click();
+    await expect.poll(() => writes.length).toBe(1);
+    expect(writes[0]).toMatchObject({ kind: "confirm_brief", expected_revision: 7 });
+    expect(writes[0]).not.toHaveProperty("challenge_cases");
+  });
+}

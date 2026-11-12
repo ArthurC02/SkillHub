@@ -73,6 +73,7 @@ skillhub_creation_cost_observation_success 表示最近一次觀察是否有效�
 
 ## 可重現的免費證據
 
+- Python `test_creation_context.py` 與 Go `creation_python_context_integration_test.go`：必要規則不足優先回問、混合修法不進入重寫、問題順序與單次診斷用量；Go 測試走真正 FastAPI／LangGraph 與本機模型替身，只證明傳輸及能力回應，不證明會話持久化或真模型品質。
 - Python `apps/llm/tests/test_creation.py`：多輪與工具 observation、需求更正、圖像只傳一次、strict schema、截斷、未知費用、關閉 LangSmith tracing、取消傳至模型 await。
 - Go `creation_integration_test.go`：真實 PostgreSQL、正式 API／Worker composition root、HTTP 模型替身；驗證需求確認 → 草稿驗證 → 私人候選 → 保存同一版本，以及圖像不落地、命令重播、過期 revision、跨 Workspace、參考重新授權、取消與刪除競態、預算耗盡不再排程、重啟保留未知費用且不重播。
 - Web `creation.test.tsx`：三種素材的實際 API payload、會話恢復、確認動作、未知費用、409 保留輸入、網路重試沿用識別碼、曝光關閉不掛載。
@@ -97,7 +98,11 @@ Go 資料庫測試只可指定 localhost 且名稱結尾為 `_test` 的可拋棄
 - `raise_budget`：額度被拒的會話可提高預算後從 `waiting_input` 繼續，區間由 `/creation-sessions/limits` 公布，超出回 422 並寫出區間。
 - 拒絕與退回的判定在 Go；Python 只回輸出形狀的 `reason` 碼（`diagram_incomplete`），句子一律由 Go 出；`creation.py` 裡沒有中文。
 
-**review 相最多三次呼叫**：有未達成評估時，`ReviewDiagnosis` 先判 `target`（body／criteria／sample_input）；body 的修法另做純文字重寫，再產生結構化決策，重寫結果覆蓋 `draft` 或 `validate_draft` 工具意圖中的本文。非 body 的修法不重寫本文，回 `confirm_brief` 讓人重新確認。判斷採最近一次評估，略過其後的靜態驗證等工具訊息；更新的達成結果不會被更早的失敗覆蓋。
+**review 相最多三次呼叫**：有未達成評估時，`ReviewDiagnosis` 先判 `target`（context／body／files／criteria／sample_input）。缺少作者或指定來源才能提供的必要規則時，context 優先回 `clarification`，保留問題順序，只回報這一次診斷的用量，不進入重寫或另一個決策呼叫；Go 仍擁有會話狀態與排程。body／files 的修法另做重寫，再產生結構化決策；criteria／sample_input 的修法回 `confirm_brief` 讓人重新確認。判斷採最近一次評估，略過其後的靜態驗證等工具訊息；更新的達成結果不會被更早的失敗覆蓋。
+
+**必要資料不足可以再問**：提示不限制只能澄清一次，也不以通用費率或自行假設補上作者尚未給的規則。作者已提供的規則與資料保留在 `references/`／`assets/`，可重現計算放進 `scripts/`。評估案例同時要求「缺必要資訊時詢問」與「資訊完整或可推導時直接完成」；這仍是模型提示，尚無機器保證每份草稿都有成對案例或已完成來源盤點。
+
+**確認前看得到評估案例**：需求摘要卡列出每個案例名稱、完整輸入與全部驗收條件，確認按鈕說明範圍包含這些案例。舊會話缺少案例時明示未提供；確認仍只送 revision 命令，由 Go 使用已保存的快照。新建 Test Case 使用「評估案例：」名稱，既有 Test Case 不改名。
 
 **回合時間線保留決策因果**：試跑判定、系統追問、使用者回答與模型建議依訊息順序串接。追問保留具體條件與原因；中間的工具訊息不切斷回答與修訂建議，新試跑則結束上一輪的待答關係。時間線不代表已保存；保存仍是使用者的明確動作。
 
