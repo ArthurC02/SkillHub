@@ -1141,7 +1141,7 @@ func TestARunInterruptedAfterItsAttemptSucceededResumesWithoutASecondDispatch(t 
 			wantStatus: gen.RunStatusSucceeded, wantFailure: ""},
 		{name: "alice-resume-evaluating", leftAt: run.StatusEvaluating, errorClass: nil,
 			wantStatus: gen.RunStatusSucceeded, wantFailure: ""},
-		{name: "alice-resume-refused", leftAt: run.StatusEvaluating, errorClass: strptr("execution_error"),
+		{name: "alice-resume-refused", leftAt: run.StatusEvaluating, errorClass: new("execution_error"),
 			wantStatus: gen.RunStatusFailed, wantFailure: "platform_error"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1200,8 +1200,6 @@ func leaveRunAt(t *testing.T, svc *run.Service, ws, runID pgtype.UUID, leftAt ru
 		}
 	}
 }
-
-func strptr(s string) *string { return &s }
 
 func insertUnissuedAttempt(t *testing.T, q *gen.Queries, ws, runID pgtype.UUID, number int32) gen.RunAttempt {
 	t.Helper()

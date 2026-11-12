@@ -23,8 +23,6 @@ func mustDecodeJSON[T any](t *testing.T, raw string) T {
 	return out
 }
 
-func strp(s string) *string { return &s }
-
 func boolp(b bool) *bool { return &b }
 
 func floatp(f float64) *float64 { return &f }
@@ -93,22 +91,22 @@ func anchorCostCases() []anchorCostCase {
 }
 
 func ledgerIntent() map[string]*string {
-	return map[string]*string{"input": strp("收支資料"), "output": strp("報告"), "tools": nil, "data": nil, "environment": nil}
+	return map[string]*string{"input": new("收支資料"), "output": new("報告"), "tools": nil, "data": nil, "environment": nil}
 }
 
 func anchorLedgerCases() map[string]catalog.SearchInterpretation {
 	withTools := ledgerIntent()
-	withTools["tools"] = strp("excel")
+	withTools["tools"] = new("excel")
 	fourFields := ledgerIntent()
 	delete(fourFields, "environment")
 	wrongInput := ledgerIntent()
-	wrongInput["input"] = strp("收支")
+	wrongInput["input"] = new("收支")
 	noOutput := ledgerIntent()
 	noOutput["output"] = nil
 	withData := ledgerIntent()
-	withData["data"] = strp("x")
+	withData["data"] = new("x")
 	withEnvironment := ledgerIntent()
-	withEnvironment["environment"] = strp("x")
+	withEnvironment["environment"] = new("x")
 	return map[string]catalog.SearchInterpretation{
 		"the ledger answer":        {Intent: ledgerIntent(), PromptVersion: "search-intent/v2"},
 		"an invented tool":         {Intent: withTools, PromptVersion: "search-intent/v2"},
@@ -153,15 +151,15 @@ func anchorIntents() map[string]map[string]*string {
 		return map[string]*string{"input": nil, "output": nil, "tools": nil, "data": nil, "environment": nil}
 	}
 	quoted := all()
-	quoted["input"], quoted["output"] = strp("收支資料"), strp("報告")
+	quoted["input"], quoted["output"] = new("收支資料"), new("報告")
 	invented := all()
-	invented["input"], invented["output"] = strp("收支資料"), strp("報表")
+	invented["input"], invented["output"] = new("收支資料"), new("報表")
 	missing := all()
 	delete(missing, "data")
 	blank := all()
-	blank["tools"] = strp("  ")
+	blank["tools"] = new("  ")
 	twoBad := all()
-	twoBad["input"], twoBad["environment"] = strp("雲端"), strp("  ")
+	twoBad["input"], twoBad["environment"] = new("雲端"), new("  ")
 	return map[string]map[string]*string{
 		"all null": all(), "quoted": quoted, "invented output": invented,
 		"missing data": missing, "blank tools": blank, "two bad fields": twoBad,
@@ -528,7 +526,7 @@ func TestTheDeliveryLagPercentileTruncatesItsIndex(t *testing.T) {
 func TestTheScriptedCreationGatewayAnswersEachTurnAndFlagsTheWrongPhase(t *testing.T) {
 	bad, good := map[string]any{"k": "bad"}, map[string]any{"k": "good"}
 	script := creationTurnScript{bad: bad, good: good}
-	confirm := mustJSON(t, creationDecision("confirm_brief", "請確認任務與成功條件。", ptr("整理輸入資料並依指定格式輸出摘要。"), nil))
+	confirm := mustJSON(t, creationDecision("confirm_brief", "請確認任務與成功條件。", new("整理輸入資料並依指定格式輸出摘要。"), nil))
 	want := []struct{ decision, problem string }{
 		{"confirm", ""},
 		{"confirm", "first prompt did not use understand phase"},

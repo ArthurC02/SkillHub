@@ -169,18 +169,11 @@ func resultFacets(r *searchResult, f facetColumns) {
 
 func measuredCompat(capability, runtime, image *string, measuredAt pgtype.Timestamptz) compatibility {
 	return compatibility{
-		Capability:   axis(capabilityWords, stringOrEmpty(capability)),
-		Runtime:      axis(runtimeWords, stringOrEmpty(runtime)),
-		RuntimeImage: stringOrEmpty(image),
+		Capability:   axis(capabilityWords, derefString(capability)),
+		Runtime:      axis(runtimeWords, derefString(runtime)),
+		RuntimeImage: derefString(image),
 		MeasuredAt:   pgconv.RFC3339(measuredAt),
 	}
-}
-
-func stringOrEmpty(s *string) string {
-	if s == nil {
-		return ""
-	}
-	return *s
 }
 
 func dependencyTags(tagsJSON []byte) []string {

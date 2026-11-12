@@ -68,7 +68,7 @@ func TestOnlyCriteriaWithoutAChecksReachTheJudge(t *testing.T) {
 				CriterionResults: []llmclient.CriterionVerdict{
 					{CriterionID: "c2", Result: "passed", Reason: "output.xlsx is in the manifest",
 						EvidenceRefs: []llmclient.JudgeEvidenceRef{
-							{Kind: "artifact", ArtifactPath: strPtrTest("output.xlsx")},
+							{Kind: "artifact", ArtifactPath: new("output.xlsx")},
 						}},
 				},
 				Overall: "met", Summary: "the file was produced",
@@ -247,7 +247,7 @@ func TestAJudgeBehindAPassingGateDecidesTheCriterion(t *testing.T) {
 	runID, _ := seedEvaluatableRunWithCriteria(t, pool, c.workspaceID, skillID, fmt.Sprintf(gatedByAValue, "17", "17"), nil)
 	seedFinalOutput(t, pool, c.workspaceID, runID, "Removed 17 duplicate rows and saved the result to output.xlsx.")
 	judge, sent := countingJudge(t, llmclient.CriterionVerdict{CriterionID: "c1", Result: "failed", Reason: "the tone is curt",
-		EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: "artifact", ArtifactPath: strPtrTest("output.xlsx")}}})
+		EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: "artifact", ArtifactPath: new("output.xlsx")}}})
 	a.evaluations.Judge = judge
 
 	if err := a.evaluations.Evaluate(context.Background(), mustUUID(t, c.workspaceID), mustUUID(t, runID)); err != nil {

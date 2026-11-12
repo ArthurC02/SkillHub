@@ -298,7 +298,7 @@ func TestEvaluationIsRecordedWithVerifiedEvidenceAndNeverTouchesTheRun(t *testin
 				}},
 			{CriterionID: "c2", Result: "passed", Reason: "output.xlsx is in the manifest",
 				EvidenceRefs: []llmclient.JudgeEvidenceRef{
-					{Kind: "artifact", ArtifactPath: strPtrTest("output.xlsx")},
+					{Kind: "artifact", ArtifactPath: new("output.xlsx")},
 				}},
 		},
 		Overall: "met", Summary: "both conditions were met",
@@ -386,7 +386,7 @@ func TestEvaluationTraversesGoPythonAndGateway(t *testing.T) {
 				{CriterionID: "c1", Result: "passed", Reason: "the final output states the duplicates were removed",
 					EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: "agent_output", Quote: "Removed 17 duplicate rows"}}},
 				{CriterionID: "c2", Result: "passed", Reason: "the artifact manifest contains the spreadsheet",
-					EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: "artifact", ArtifactPath: strPtrTest("output.xlsx")}}},
+					EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: "artifact", ArtifactPath: new("output.xlsx")}}},
 			},
 			Overall: "met", Summary: "both acceptance criteria have evidence",
 		})
@@ -561,7 +561,7 @@ func TestTheFrozenRubricReachesTheJudgeAndItsVersionIsRecorded(t *testing.T) {
 				}},
 			{CriterionID: "c2", Result: "passed", Reason: "output.xlsx is in the manifest",
 				EvidenceRefs: []llmclient.JudgeEvidenceRef{
-					{Kind: "artifact", ArtifactPath: strPtrTest("output.xlsx")},
+					{Kind: "artifact", ArtifactPath: new("output.xlsx")},
 				}},
 		},
 		Overall: "met", Summary: "both conditions were met",
@@ -643,7 +643,7 @@ func TestCitedTraceEvidenceStopsClaimingToResolveOnceItsEventIsGone(t *testing.T
 	eventID := seedToolCallEvent(t, pool, c.workspaceID, runID, 7, "deduplicate")
 
 	cite := []llmclient.JudgeEvidenceRef{
-		{Kind: "trace_event", TraceEventID: strPtrTest(uuidText(eventID)), Quote: `"tool_name": "deduplicate"`},
+		{Kind: "trace_event", TraceEventID: new(uuidText(eventID)), Quote: `"tool_name": "deduplicate"`},
 	}
 	a.evaluations.Judge = judgeServer(t, llmclient.JudgeVerdict{
 		CriterionResults: []llmclient.CriterionVerdict{
@@ -735,7 +735,7 @@ func TestAVerdictOnEvidenceThePlatformCannotFindIsDowngraded(t *testing.T) {
 		CriterionResults: []llmclient.CriterionVerdict{
 			{CriterionID: "c1", Result: "passed", Reason: "it says so",
 				EvidenceRefs: []llmclient.JudgeEvidenceRef{
-					{Kind: "trace_event", TraceEventID: strPtrTest("11111111-1111-4111-8111-111111111111"),
+					{Kind: "trace_event", TraceEventID: new("11111111-1111-4111-8111-111111111111"),
 						Quote: "everything worked"},
 				}},
 		},
@@ -836,7 +836,7 @@ func TestAJudgementRefusedForASpentPlatformBudgetIsJudgedAgainOnceTheBudgetRecov
 			{CriterionID: "c1", Result: "passed", Reason: "deduplicated",
 				EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: "agent_output", Quote: "Removed 17 duplicate rows"}}},
 			{CriterionID: "c2", Result: "passed", Reason: "file produced",
-				EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: "artifact", ArtifactPath: strPtrTest("output.xlsx")}}},
+				EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: "artifact", ArtifactPath: new("output.xlsx")}}},
 		},
 		Overall: "met", Summary: "met once the budget recovered",
 	}, "judge-run@v1")
@@ -870,7 +870,7 @@ func TestReEvaluationSupersedesWithoutOverwriting(t *testing.T) {
 				}},
 			{CriterionID: "c2", Result: "passed", Reason: "first rubric",
 				EvidenceRefs: []llmclient.JudgeEvidenceRef{
-					{Kind: "artifact", ArtifactPath: strPtrTest("output.xlsx")},
+					{Kind: "artifact", ArtifactPath: new("output.xlsx")},
 				}},
 		},
 		Overall: "met", Summary: "met under the first rubric",
@@ -885,7 +885,7 @@ func TestReEvaluationSupersedesWithoutOverwriting(t *testing.T) {
 	a.evaluations.Judge = judgeServer(t, llmclient.JudgeVerdict{
 		CriterionResults: []llmclient.CriterionVerdict{
 			{CriterionID: "c1", Result: "failed", Reason: "second rubric is stricter", EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: "agent_output", Quote: "Removed 17 duplicate rows"}}},
-			{CriterionID: "c2", Result: "failed", Reason: "second rubric is stricter", EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: "artifact", ArtifactPath: strPtrTest("output.xlsx")}}},
+			{CriterionID: "c2", Result: "failed", Reason: "second rubric is stricter", EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: "artifact", ArtifactPath: new("output.xlsx")}}},
 		},
 		Overall: "not_met", Summary: "not met under the second rubric",
 	}, "judge-run@v2")
@@ -1164,8 +1164,6 @@ func derefTest(s *string) string {
 	}
 	return *s
 }
-
-func strPtrTest(s string) *string { return &s }
 
 var _ = eval.Service{}
 
