@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -64,12 +65,10 @@ func TestEveryToolThatMovesTogetherHasMoreThanOneSite(t *testing.T) {
 
 func TestUVVersionSitesReadImageStagesAndArguments(t *testing.T) {
 	t.Parallel()
-	var groups []versionGroup
-	for _, group := range versionsThatMoveTogether {
-		if group.tool == "uv" {
-			groups = append(groups, group)
-		}
-	}
+	groups := slices.Clone(versionsThatMoveTogether)
+	groups = slices.DeleteFunc(groups, func(group versionGroup) bool {
+		return group.tool != "uv"
+	})
 	if len(groups) != 1 {
 		t.Fatalf("got %d uv groups, want one", len(groups))
 	}
