@@ -23,6 +23,8 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 )
 
+const skillReadFailed = "Skill 讀取失敗，稍後再試一次"
+
 type ObjectStore interface {
 	Get(ctx context.Context, key string) ([]byte, error)
 }
@@ -572,7 +574,7 @@ func (h *Handler) resolveSkill(w http.ResponseWriter, r *http.Request) (SkillFac
 		return skill, "catalog", true
 	}
 	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "Skill 讀取失敗，稍後再試一次")
+		httpx.WriteError(w, http.StatusInternalServerError, skillReadFailed)
 		return SkillFacts{}, "", false
 	}
 
@@ -592,7 +594,7 @@ func (h *Handler) resolveSkill(w http.ResponseWriter, r *http.Request) (SkillFac
 		return SkillFacts{}, "", false
 	}
 	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "Skill 讀取失敗，稍後再試一次")
+		httpx.WriteError(w, http.StatusInternalServerError, skillReadFailed)
 		return SkillFacts{}, "", false
 	}
 	return skill, "private", true

@@ -30,22 +30,7 @@ import type {
   SuggestionDiff,
 } from "./evaluation.service";
 import { SUGGESTION_OUTCOMES } from "./evaluation.service";
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
-function isText(value: unknown): value is string {
-  return typeof value === "string";
-}
-
-function isOptionalText(value: unknown): boolean {
-  return value === undefined || isText(value);
-}
-
-function isDate(value: unknown): boolean {
-  return isText(value) && Number.isFinite(Date.parse(value));
-}
+import { isDate, isOptionalText, isRecord, isText } from "../../shared/wire";
 
 function isNullableDate(value: unknown): boolean {
   return value === null || isDate(value);

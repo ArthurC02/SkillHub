@@ -8,6 +8,7 @@ import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import type { RunListItem } from "../../runs.service";
 import { RunVerdict } from "../../components/RunVerdict";
 import { runStatusLabel } from "../../runs.model";
+import { loadMoreLabel } from "../../../../shared/ui/loadMoreLabel";
 
 type CandidateListProps = {
   selfPending: boolean;
@@ -119,7 +120,7 @@ function CandidateList({
           onClick={onLoadMoreCandidates}
           ref={continuationRef}
         >
-          {siblingsPaused ? "等待連線…" : loadingMoreCandidates ? "載入中…" : "載入更早的試跑紀錄"}
+          {loadMoreLabel(loadingMoreCandidates, siblingsPaused === true, "載入更早的試跑紀錄")}
         </button>
       )}
     </>

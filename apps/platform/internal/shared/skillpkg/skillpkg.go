@@ -203,7 +203,7 @@ func ArchiveEntryFinding(name string) (Finding, bool) {
 	}
 	clean := strings.ReplaceAll(name, `\`, "/")
 	switch {
-	case strings.HasPrefix(clean, "/"), hasDriveLetter(clean):
+	case strings.HasPrefix(clean, "/"), HasDriveLetter(clean):
 		return Finding{Severity: SeverityError, Code: CodeEntryPathEscape, Path: name,
 			Message: "封存項目宣告了一個絕對路徑，這不是套件內的位置；" +
 				"解壓縮出來的目錄樹會與這個封存檔宣告的不同"}, true
@@ -216,7 +216,7 @@ func ArchiveEntryFinding(name string) (Finding, bool) {
 	return Finding{}, false
 }
 
-func hasDriveLetter(path string) bool {
+func HasDriveLetter(path string) bool {
 	return len(path) >= 2 && path[1] == ':' &&
 		((path[0] >= 'a' && path[0] <= 'z') || (path[0] >= 'A' && path[0] <= 'Z'))
 }

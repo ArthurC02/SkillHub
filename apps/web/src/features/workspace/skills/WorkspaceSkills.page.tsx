@@ -15,6 +15,7 @@ import { StateIcon } from "../../../shared/ui/StateIcon";
 import type { OwnSkill, Redistribution } from "../../../core/api/types";
 import { REDISTRIBUTION_BADGE } from "./WorkspaceSkills.model";
 import { TakedownMenuItem, TakedownNotice } from "./SkillTakedown";
+import { loadMoreLabel } from "../../../shared/ui/loadMoreLabel";
 import "./WorkspaceSkills.page.css";
 
 function redistributionOf(value: string) {
@@ -271,7 +272,7 @@ function SkillListProgress({
           ref={buttonRef}
           onClick={onFetchNextPage}
         >
-          {paused ? "等待連線…" : isFetchingNextPage ? "載入中…" : "載入更多"}
+          {loadMoreLabel(isFetchingNextPage, paused)}
         </button>
       )}
     </div>

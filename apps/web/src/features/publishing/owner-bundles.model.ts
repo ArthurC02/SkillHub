@@ -1,19 +1,5 @@
 import type { BundleVersion, OwnerBundleSummary } from "./publishing.service";
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
-function isUuid(value: unknown) {
-  return (
-    typeof value === "string" &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
-  );
-}
-
-function isDate(value: unknown) {
-  return typeof value === "string" && Number.isFinite(Date.parse(value));
-}
+import { isDate, isRecord, isUuid } from "../../shared/wire";
 
 function isMember(value: unknown) {
   return (

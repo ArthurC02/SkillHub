@@ -3,6 +3,7 @@ import { canRetainLoadedPage } from "../../../core/api/client";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { useOwnSkillPages, ownSkillsFromPages, useSkillSearch } from "../../skill";
 import { GENERATE_MAX_REFERENCES } from "../generate.model";
+import { loadMoreLabel } from "../../../shared/ui/loadMoreLabel";
 
 export function ReferencePicker({
   references,
@@ -191,10 +192,14 @@ function OwnedReferenceResults({
       {ownSkills.hasNextPage && !ownSkills.error && (
         <button
           type="button"
-          disabled={disabled || ownSkills.isFetchingNextPage}
+          disabled={disabled || ownSkills.isFetchingNextPage || ownSkills.fetchStatus === "paused"}
           onClick={() => void ownSkills.fetchNextPage()}
         >
-          {ownSkills.isFetchingNextPage ? "載入中…" : "載入更多小工具"}
+          {loadMoreLabel(
+            ownSkills.isFetchingNextPage,
+            ownSkills.fetchStatus === "paused",
+            "載入更多小工具",
+          )}
         </button>
       )}
     </>

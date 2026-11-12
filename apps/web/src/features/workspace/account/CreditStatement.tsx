@@ -9,14 +9,18 @@ import {
   useCredits,
   type CreditStatementEntry,
 } from "../../../core/session/credits.service";
+import { loadMoreLabel } from "../../../shared/ui/loadMoreLabel";
 
 function signedCredits(delta: number): string {
   return delta > 0 ? `+${delta}` : String(delta);
 }
 
 function statementLoadMoreLabel(statement: ReturnType<typeof useCreditStatement>) {
-  if (statement.fetchStatus === "paused") return "等待連線…";
-  return statement.isFetchingNextPage ? "載入中…" : "載入更早的紀錄";
+  return loadMoreLabel(
+    statement.isFetchingNextPage,
+    statement.fetchStatus === "paused",
+    "載入更早的紀錄",
+  );
 }
 
 export function CreditStatement() {

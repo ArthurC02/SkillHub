@@ -133,7 +133,7 @@ func (h *Handler) CorrectedSearch(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) writeSearchResult(w http.ResponseWriter, query string, limit int32, out searchOutcome, err error) {
 	if err != nil {
-		httpx.WriteError(w, http.StatusInternalServerError, "搜尋失敗，這不是你的輸入造成的，稍後再試一次")
+		httpx.WriteError(w, http.StatusInternalServerError, searchFailed)
 		return
 	}
 	resp := searchResponse{

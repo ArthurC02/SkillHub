@@ -13,6 +13,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 )
 
@@ -258,7 +259,7 @@ func unsafeDatasetName(datasets []testlab.Dataset) bool {
 func dataFileName(name string) string {
 	name = strings.TrimSpace(name)
 	if name == "" || name == "." || name == ".." ||
-		strings.ContainsAny(name, `/\`) || hasDriveLetter(name) {
+		strings.ContainsAny(name, `/\`) || skillpkg.HasDriveLetter(name) {
 		return ""
 	}
 	return name

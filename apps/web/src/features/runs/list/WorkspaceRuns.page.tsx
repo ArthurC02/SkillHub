@@ -17,11 +17,7 @@ import { ListFreshness } from "../../../shared/ui/ListFreshness";
 import { IN_FLIGHT_RUN_STATUSES } from "../trace.service";
 import { canRetainLoadedPage } from "../../../core/api/client";
 import { usePaginationFocus } from "../../../shared/ui/usePaginationFocus";
-
-function loadMoreLabel(fetching: boolean, paused: boolean) {
-  if (paused) return "等待連線…";
-  return fetching ? "載入中…" : "載入更多";
-}
+import { loadMoreLabel } from "../../../shared/ui/loadMoreLabel";
 
 export function WorkspaceRuns() {
   const runs = useRuns();

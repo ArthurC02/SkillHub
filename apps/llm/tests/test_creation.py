@@ -607,6 +607,28 @@ def test_a_gateway_failure_is_502_with_a_fixed_detail():
     assert response.json() == {"detail": "creation model returned unusable output"}
 
 
+def test_a_completion_with_no_choices_is_unusable_output_not_a_server_error():
+    completion = SimpleNamespace(
+        choices=[], usage=SimpleNamespace(prompt_tokens=7, completion_tokens=0)
+    )
+    raw = SimpleNamespace(parse=lambda: completion, headers={})
+
+    async def create(**_kwargs):
+        return raw
+
+    value = SimpleNamespace(
+        chat=SimpleNamespace(
+            completions=SimpleNamespace(with_raw_response=SimpleNamespace(create=create))
+        )
+    )
+    value.with_options = lambda **_: value
+    with patch.object(creation, "client", lambda _: value):
+        response = client.post("/v1/creation/step", headers=HEADERS, json=request())
+
+    assert response.status_code == 502
+    assert response.json() == {"detail": "creation model returned unusable output"}
+
+
 @pytest.mark.parametrize(
     "changes, status",
     [

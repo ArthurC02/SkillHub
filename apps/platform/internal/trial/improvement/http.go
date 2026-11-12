@@ -22,11 +22,7 @@ type Handler struct {
 }
 
 func (h *Handler) workspace(w http.ResponseWriter, r *http.Request) (identity.Workspace, bool) {
-	return sessionWorkspace(h.Identity, w, r)
-}
-
-func sessionWorkspace(identities *identity.Service, w http.ResponseWriter, r *http.Request) (identity.Workspace, bool) {
-	_, ws, ok := identity.SessionWorkspace(identities, w, r)
+	_, ws, ok := identity.SessionWorkspace(h.Identity, w, r)
 	return ws, ok
 }
 

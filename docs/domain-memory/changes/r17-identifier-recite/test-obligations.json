@@ -1,0 +1,16 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "r17-identifier-recite",
+  "proposal_id": "r17-identifier-recite",
+  "obligations": [
+    {
+      "id": "evidence-current",
+      "source_type": "acceptance-criterion",
+      "source_id": "citations-current",
+      "expected_outcome": "verify-evidence reports current for every citation of the updated records.",
+      "level": "architecture",
+      "status": "planned",
+      "check": ".domain-memory/domain-memory.exe verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/r17-identifier-recite --path apps/platform/internal/creator/workspace/account.go --path apps/platform/internal/creator/workspace/http.go --path apps/platform/internal/skill/delivery/export.go --path apps/platform/internal/skill/delivery/export_path_test.go --path contracts/openapi/public.yaml"
+    }
+  ]
+}

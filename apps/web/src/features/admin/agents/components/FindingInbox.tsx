@@ -11,6 +11,7 @@ import { Timestamp } from "../../../../shared/ui/Timestamp";
 import { ListFreshness } from "../../../../shared/ui/ListFreshness";
 import { usePaginationFocus } from "../../../../shared/ui/usePaginationFocus";
 import { FINDING_STATUS } from "./findingLabels";
+import { loadMoreLabel } from "../../../../shared/ui/loadMoreLabel";
 
 type ClosedView = "resolved" | "dismissed" | "recovered";
 
@@ -25,9 +26,11 @@ function findingLoadMoreLabel(
   findings: ReturnType<typeof usePlatformAgentFindings>,
   nextPageError: boolean,
 ) {
-  if (findings.fetchStatus === "paused") return "等待連線…";
-  if (findings.isFetchingNextPage) return "載入中…";
-  return nextPageError ? "重試載入更多待辦" : "載入更多待辦";
+  return loadMoreLabel(
+    findings.isFetchingNextPage,
+    findings.fetchStatus === "paused",
+    nextPageError ? "重試載入更多待辦" : "載入更多待辦",
+  );
 }
 
 function FindingRow({

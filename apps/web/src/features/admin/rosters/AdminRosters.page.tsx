@@ -10,11 +10,13 @@ export function AdminRosters() {
   return (
     <AdminPage heading="名冊" lede="要改名冊只能改部署設定再重啟，後台不提供編輯。">
       {rosters.isPending && <Loading what="名冊" />}
-      <ReadFailure error={rosters.error} what="名冊">
+      <ReadFailure
+        error={rosters.error}
+        what="名冊"
+        retry={() => void rosters.refetch()}
+        retrying={rosters.isFetching}
+      >
         <p role="alert">{staleReadNotice("名冊", "先前載入的名冊", Boolean(rosters.data))}</p>
-        <button type="button" disabled={rosters.isFetching} onClick={() => void rosters.refetch()}>
-          {rosters.isFetching ? "重新讀取中…" : "再試一次"}
-        </button>
       </ReadFailure>
       {rosters.data && !rosters.error && (
         <>

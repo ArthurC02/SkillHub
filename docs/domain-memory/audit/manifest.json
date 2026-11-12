@@ -1,8 +1,8 @@
 {
   "format": "domain-memory-audit/v1",
-  "events": 750,
-  "head_sha256": "sha256:b8e49090445d7797f9dad3644f8cfe68815d05091601cbdd64e6d5c24267a4c2",
+  "events": 753,
+  "head_sha256": "sha256:dc2e041fa381ce25a14b2d3b32430ea9e41c2d54d1f8e5c2ba1f61d928162aa8",
   "heads": [
-    "sha256:b8e49090445d7797f9dad3644f8cfe68815d05091601cbdd64e6d5c24267a4c2"
+    "sha256:dc2e041fa381ce25a14b2d3b32430ea9e41c2d54d1f8e5c2ba1f61d928162aa8"
   ]
 }

@@ -29,6 +29,14 @@ func UUIDString(u pgtype.UUID) string {
 	return s
 }
 
+func OptionalUUIDString(u pgtype.UUID) *string {
+	if !u.Valid {
+		return nil
+	}
+	s := UUIDString(u)
+	return &s
+}
+
 func RFC3339(ts pgtype.Timestamptz) string {
 	if !ts.Valid {
 		return ""

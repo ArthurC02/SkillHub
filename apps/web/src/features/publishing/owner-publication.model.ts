@@ -1,6 +1,7 @@
 import { isCategorizedFindings } from "../../core/api/findings";
 import type { DeclarableLicense } from "@skillhub/api-client-ts";
 import type { Publication, Publisher } from "./publishing.service";
+import { isDate, isRecord, isUuid } from "../../shared/wire";
 
 export const DECLARABLE_LICENSES: readonly DeclarableLicense[] = [
   "Apache-2.0",
@@ -18,21 +19,6 @@ export const DECLARABLE_LICENSES: readonly DeclarableLicense[] = [
   "CC-BY-4.0",
   "CC-BY-SA-4.0",
 ];
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
-function isDate(value: unknown) {
-  return typeof value === "string" && Number.isFinite(Date.parse(value));
-}
-
-function isUuid(value: unknown) {
-  return (
-    typeof value === "string" &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
-  );
-}
 
 function isRelease(value: unknown) {
   return (

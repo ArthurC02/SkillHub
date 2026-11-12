@@ -24,6 +24,8 @@ import (
 	limits "github.com/ArthurC02/skillhub/apps/platform/internal/shared/contractlimits/gen"
 )
 
+const deletionIrreversible = "刪除已經不可逆，無法再變更"
+
 const (
 	sessionCookie = "sh_session"
 	stateCookie   = "sh_oauth_state"
@@ -391,9 +393,8 @@ func (h *Handler) LookupAccount(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "email is required")
 		return
 	}
-	operator, ok := SessionUser(r.Context())
+	operator, ok := SessionActor(w, r)
 	if !ok {
-		httpx.WriteError(w, http.StatusNotFound, "not found")
 		return
 	}
 	found, ok, err := h.Service.LookupAccount(r.Context(), email, operator.ID)
@@ -424,9 +425,8 @@ func (h *Handler) LookupAccount(w http.ResponseWriter, r *http.Request) {
 const maxErasureBodyBytes = 4096
 
 func (h *Handler) ExpediteErasure(w http.ResponseWriter, r *http.Request) {
-	operator, ok := SessionUser(r.Context())
+	operator, ok := SessionActor(w, r)
 	if !ok {
-		httpx.WriteError(w, http.StatusNotFound, "not found")
 		return
 	}
 	userID, ok := httpx.PathUUID(w, r, "user_id", "not found")
@@ -493,6 +493,15 @@ func (h *Handler) LogInviteRoster(ctx context.Context) error {
 func SessionUser(ctx context.Context) (User, bool) {
 	u, ok := ctx.Value(ctxKey{}).(User)
 	return u, ok
+}
+
+func SessionActor(w http.ResponseWriter, r *http.Request) (User, bool) {
+	user, ok := SessionUser(r.Context())
+	if !ok {
+		httpx.WriteError(w, http.StatusNotFound, "not found")
+		return user, false
+	}
+	return user, true
 }
 
 func SessionWorkspace(svc *Service, w http.ResponseWriter, r *http.Request) (User, Workspace, bool) {
@@ -636,7 +645,7 @@ func (h *Handler) requestDeletion(w http.ResponseWriter, r *http.Request) {
 	updated, err := h.Service.RequestAccountDeletion(r.Context(), user)
 	if err != nil {
 		if errors.Is(err, ErrAccountPurging) {
-			httpx.WriteError(w, http.StatusConflict, "刪除已經不可逆，無法再變更")
+			httpx.WriteError(w, http.StatusConflict, deletionIrreversible)
 			return
 		}
 		httpx.WriteError(w, http.StatusInternalServerError, "刪除要求沒有記錄成功，可以再試一次")
@@ -654,7 +663,7 @@ func (h *Handler) cancelDeletion(w http.ResponseWriter, r *http.Request) {
 	user, _ := SessionUser(r.Context())
 	if _, err := h.Service.CancelAccountDeletion(r.Context(), user); err != nil {
 		if errors.Is(err, ErrAccountPurging) {
-			httpx.WriteError(w, http.StatusConflict, "刪除已經不可逆，無法再變更")
+			httpx.WriteError(w, http.StatusConflict, deletionIrreversible)
 			return
 		}
 		httpx.WriteError(w, http.StatusInternalServerError, "取消刪除沒有記錄成功，可以再試一次")

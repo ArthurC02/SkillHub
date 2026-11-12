@@ -1,0 +1,39 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "r17-identifier-recite",
+  "proposal_id": "r17-identifier-recite",
+  "registry_revision": {
+    "observed_commit": "c26bbdd0deae731e49fd761fb911e5c33acb2b95",
+    "registry_digest": "sha256:d1d0e0f050c8a5361c1380616685d7e31c473e033d65b3fce873ed0ec848d68a",
+    "committed_digest": "sha256:d1d0e0f050c8a5361c1380616685d7e31c473e033d65b3fce873ed0ec848d68a"
+  },
+  "approvals": [],
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "6c756098f0beb7871f4668c1423b7eeaee0ec2aa",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "c26bbdd0deae731e49fd761fb911e5c33acb2b95",
+      "registry_digest": "sha256:d1d0e0f050c8a5361c1380616685d7e31c473e033d65b3fce873ed0ec848d68a",
+      "committed_digest": "sha256:d1d0e0f050c8a5361c1380616685d7e31c473e033d65b3fce873ed0ec848d68a"
+    }
+  },
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": ".domain-memory/domain-memory.exe verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/r17-identifier-recite --path apps/platform/internal/creator/workspace/account.go --path apps/platform/internal/creator/workspace/http.go --path apps/platform/internal/skill/delivery/export.go --path apps/platform/internal/skill/delivery/export_path_test.go --path contracts/openapi/public.yaml",
+      "command_profile": "verify-evidence",
+      "exit_code": 0,
+      "output_sha256": "sha256:4e0bb789e8182cd532c7f72a9c35687d5cae77040de215b2adb8543ca2f52bbd",
+      "finished_at": "2026-11-11T17:10:17.742680Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

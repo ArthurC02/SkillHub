@@ -17,6 +17,8 @@ import (
 	"time"
 )
 
+const creationUnavailable = "創作服務暫時無法完成這個動作，進度已保留。"
+
 type creationHandler struct {
 	Svc      *creation.Service
 	Identity *identity.Service
@@ -98,7 +100,7 @@ func (h *creationHandler) present(v creation.View) (creationSessionResponse, err
 func (h *creationHandler) writeView(w http.ResponseWriter, v creation.View) {
 	out, err := h.present(v)
 	if err != nil {
-		httpx.WriteError(w, http.StatusServiceUnavailable, "創作服務暫時無法完成這個動作，進度已保留。")
+		httpx.WriteError(w, http.StatusServiceUnavailable, creationUnavailable)
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, out)
@@ -135,7 +137,7 @@ func (h *creationHandler) scope(w http.ResponseWriter, r *http.Request) (identit
 }
 func (h *creationHandler) creationError(w http.ResponseWriter, err error) {
 	code := 503
-	text := "創作服務暫時無法完成這個動作，進度已保留。"
+	text := creationUnavailable
 	switch {
 	case errors.Is(err, creation.ErrNotFound):
 		code = 404
@@ -222,7 +224,7 @@ func (h *creationHandler) List(w http.ResponseWriter, r *http.Request) {
 	for _, one := range v {
 		presented, err := h.present(one)
 		if err != nil {
-			httpx.WriteError(w, http.StatusServiceUnavailable, "創作服務暫時無法完成這個動作，進度已保留。")
+			httpx.WriteError(w, http.StatusServiceUnavailable, creationUnavailable)
 			return
 		}
 		out = append(out, presented)
@@ -316,12 +318,12 @@ func (h *creationHandler) Act(w http.ResponseWriter, r *http.Request) {
 func (h *creationHandler) Limits(w http.ResponseWriter, r *http.Request) {
 	l := h.Svc.Limits
 	if !l.Valid() {
-		httpx.WriteError(w, http.StatusServiceUnavailable, "創作服務暫時無法完成這個動作，進度已保留。")
+		httpx.WriteError(w, http.StatusServiceUnavailable, creationUnavailable)
 		return
 	}
 	minCredits, maxCredits, ok := h.budgetBand()
 	if !ok {
-		httpx.WriteError(w, http.StatusServiceUnavailable, "創作服務暫時無法完成這個動作，進度已保留。")
+		httpx.WriteError(w, http.StatusServiceUnavailable, creationUnavailable)
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, creationLimitsResponse{

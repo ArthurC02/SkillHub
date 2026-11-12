@@ -5,6 +5,8 @@ import (
 	"strings"
 )
 
+const crossSiteWriteRefused = "跨站的寫入請求已被拒絕。"
+
 // SameOriginWrites checks Sec-Fetch-Site first and falls back to Origin only
 // when that header is absent; a request with neither header set passes, since
 // only non-browser clients omit both.
@@ -28,11 +30,11 @@ func SameOriginWrites(next http.Handler, appURL string) http.Handler {
 		case "":
 
 		default:
-			WriteError(w, http.StatusForbidden, "跨站的寫入請求已被拒絕。")
+			WriteError(w, http.StatusForbidden, crossSiteWriteRefused)
 			return
 		}
 		if origin := r.Header.Get("Origin"); origin != "" && Origin(origin) != want {
-			WriteError(w, http.StatusForbidden, "跨站的寫入請求已被拒絕。")
+			WriteError(w, http.StatusForbidden, crossSiteWriteRefused)
 			return
 		}
 		next.ServeHTTP(w, r)

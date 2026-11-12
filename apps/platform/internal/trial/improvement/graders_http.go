@@ -42,7 +42,7 @@ func viewOfGrader(g graders.Grader) graderView {
 }
 
 func (h *GraderHandler) ListGraders(w http.ResponseWriter, r *http.Request) {
-	ws, ok := sessionWorkspace(h.Identity, w, r)
+	_, ws, ok := identity.SessionWorkspace(h.Identity, w, r)
 	if !ok {
 		return
 	}
@@ -51,7 +51,7 @@ func (h *GraderHandler) ListGraders(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *GraderHandler) CreateGrader(w http.ResponseWriter, r *http.Request) {
-	ws, ok := sessionWorkspace(h.Identity, w, r)
+	_, ws, ok := identity.SessionWorkspace(h.Identity, w, r)
 	if !ok {
 		return
 	}
@@ -59,7 +59,7 @@ func (h *GraderHandler) CreateGrader(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *GraderHandler) ReviseGrader(w http.ResponseWriter, r *http.Request) {
-	ws, ok := sessionWorkspace(h.Identity, w, r)
+	_, ws, ok := identity.SessionWorkspace(h.Identity, w, r)
 	if !ok {
 		return
 	}

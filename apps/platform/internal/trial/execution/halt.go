@@ -125,17 +125,8 @@ type declaredHaltResponse struct {
 	Note       string `json:"note"`
 }
 
-func sessionActor(w http.ResponseWriter, r *http.Request) (identity.User, bool) {
-	user, ok := identity.SessionUser(r.Context())
-	if !ok {
-		httpx.WriteError(w, http.StatusNotFound, "not found")
-		return user, false
-	}
-	return user, true
-}
-
 func (h *Handler) Halts(w http.ResponseWriter, r *http.Request) {
-	if _, ok := sessionActor(w, r); !ok {
+	if _, ok := identity.SessionActor(w, r); !ok {
 		return
 	}
 	state, err := h.Svc.halts().Active(r.Context())
@@ -162,7 +153,7 @@ func (h *Handler) DeclareHalt(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	user, ok := sessionActor(w, r)
+	user, ok := identity.SessionActor(w, r)
 	if !ok {
 		return
 	}
@@ -184,7 +175,7 @@ func (h *Handler) LiftHalt(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	user, ok := sessionActor(w, r)
+	user, ok := identity.SessionActor(w, r)
 	if !ok {
 		return
 	}

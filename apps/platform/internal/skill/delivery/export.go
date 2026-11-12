@@ -15,6 +15,8 @@ import (
 	"strings"
 	"testing/fstest"
 	"time"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
 const (
@@ -78,7 +80,7 @@ func travels(path string, d fs.DirEntry) (bool, string) {
 	if !fs.ValidPath(path) || path == "." || strings.ContainsAny(path, `\`) {
 		return false, ReasonUnsafePath
 	}
-	if strings.HasPrefix(path, "/") || hasDriveLetter(path) {
+	if strings.HasPrefix(path, "/") || skillpkg.HasDriveLetter(path) {
 		return false, ReasonUnsafePath
 	}
 	lowerPath := strings.ToLower(path)
@@ -120,11 +122,6 @@ func pathUsesExcludedDir(path string) bool {
 
 func hasPathSuffix(path, suffix string) bool {
 	return path == suffix || strings.HasSuffix(path, "/"+suffix)
-}
-
-func hasDriveLetter(path string) bool {
-	return len(path) >= 2 && path[1] == ':' &&
-		((path[0] >= 'a' && path[0] <= 'z') || (path[0] >= 'A' && path[0] <= 'Z'))
 }
 
 func lastSegment(path string) string {

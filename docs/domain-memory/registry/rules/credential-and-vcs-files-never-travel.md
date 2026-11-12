@@ -6,12 +6,12 @@ version: "1"
 effective_from: unknown
 verified:
   - by: "human:ArthurC"
-    at: "2026-10-16T17:57:56.233858Z"
+    at: "2026-11-11T17:10:17.837079Z"
 sources:
   - resource: "apps/platform/internal/skill/delivery/export.go#L28-37"
     excerpt_sha256: "sha256:144ac89c6b055019a6757a4461b7305f2c8c0ad656dc2ce6d87cf63a63ef3d0f"
-  - resource: "apps/platform/internal/skill/delivery/export.go#L76-109"
-    excerpt_sha256: "sha256:3675b017b98d8b9bbc2a8e93a9cde1fde82156532962433fd8de84acd5835901"
+  - resource: "apps/platform/internal/skill/delivery/export.go#L78-111"
+    excerpt_sha256: "sha256:9a11395419488567ede88f6e491a4451b0cd3cdaf664c7f432447e6c8acb9a14"
 ---
 A package never carries version-control or tool-cache directories, credential files, non-regular files or paths that escape the package root; each is listed as an excluded file with its reason.
 

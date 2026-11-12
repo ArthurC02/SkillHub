@@ -121,9 +121,9 @@ func (h *operatorAuditHandler) List(w http.ResponseWriter, r *http.Request) {
 	events := make([]operatorAuditEventView, 0, len(records))
 	for _, rec := range records {
 		events = append(events, operatorAuditEventView{
-			ActorKind: rec.ActorKind(), ActorUserID: optionalUUID(rec.Actor), ActorAgentID: optionalUUID(rec.Agent),
+			ActorKind: rec.ActorKind(), ActorUserID: pgconv.OptionalUUIDString(rec.Actor), ActorAgentID: pgconv.OptionalUUIDString(rec.Agent),
 			Action: rec.Action, ResourceType: rec.ResourceType,
-			ResourceID: optionalUUID(rec.ResourceID), WorkspaceID: optionalUUID(rec.Workspace),
+			ResourceID: pgconv.OptionalUUIDString(rec.ResourceID), WorkspaceID: pgconv.OptionalUUIDString(rec.Workspace),
 			OccurredAt: rec.OccurredAt.UTC().Format(time.RFC3339), Metadata: rec.Metadata,
 		})
 	}
@@ -142,14 +142,6 @@ func parseOperatorAuditCursor(raw string) (time.Time, int64, error) {
 
 func operatorAuditCursor(record audit.Record) string {
 	return httpx.KeysetCursor(record.OccurredAt, strconv.FormatInt(record.ID, 10))
-}
-
-func optionalUUID(id pgtype.UUID) *string {
-	if !id.Valid {
-		return nil
-	}
-	s := pgconv.UUIDString(id)
-	return &s
 }
 
 func sessionActorID(r *http.Request) (pgtype.UUID, bool) {
