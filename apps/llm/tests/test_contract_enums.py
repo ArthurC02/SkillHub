@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from skillhub_llm.agent import AgentStepResponse
 from skillhub_llm.app import Readiness
 from skillhub_llm.creation import (
+    ChallengeCase,
     CreationMessage,
     CreationStepRequest,
     CreationStepResponse,
@@ -26,6 +27,7 @@ from skillhub_llm.intent import SearchFilters
 
 MODELS: dict[str, type[BaseModel]] = {
     "AgentStepResponse": AgentStepResponse,
+    "CreationChallengeCase": ChallengeCase,
     "CreationMessage": CreationMessage,
     "CreationStepRequest": CreationStepRequest,
     "CreationStepResponse": CreationStepResponse,

@@ -92,7 +92,7 @@ func diagramDecompositionFromWire(value *llmclient.DiagramDecomposition) *Diagra
 func wireChallengeCases(cases []ChallengeCase) []llmclient.CreationChallengeCase {
 	var out []llmclient.CreationChallengeCase
 	for _, c := range cases {
-		out = append(out, llmclient.CreationChallengeCase{Name: c.Name, Prompt: c.Prompt, Criteria: append([]string(nil), c.Criteria...)})
+		out = append(out, llmclient.CreationChallengeCase{Name: c.Name, Prompt: c.Prompt, Criteria: append([]string(nil), c.Criteria...), ExpectedInteraction: caseInteraction(c.ExpectedInteraction)})
 	}
 	return out
 }
@@ -100,7 +100,7 @@ func wireChallengeCases(cases []ChallengeCase) []llmclient.CreationChallengeCase
 func challengeCasesFromWire(cases []llmclient.CreationChallengeCase) []ChallengeCase {
 	var out []ChallengeCase
 	for _, c := range cases {
-		out = append(out, ChallengeCase{Name: c.Name, Prompt: c.Prompt, Criteria: append([]string(nil), c.Criteria...)})
+		out = append(out, ChallengeCase{Name: c.Name, Prompt: c.Prompt, Criteria: append([]string(nil), c.Criteria...), ExpectedInteraction: c.ExpectedInteraction})
 	}
 	return out
 }

@@ -64,9 +64,10 @@ type CreationMCPTool struct {
 	Parameters string `json:"parameters"`
 }
 type CreationChallengeCase struct {
-	Name     string   `json:"name"`
-	Prompt   string   `json:"prompt"`
-	Criteria []string `json:"criteria"`
+	Name                string   `json:"name"`
+	Prompt              string   `json:"prompt"`
+	Criteria            []string `json:"criteria"`
+	ExpectedInteraction string   `json:"expected_interaction,omitempty"`
 }
 
 type CreationMessage struct {

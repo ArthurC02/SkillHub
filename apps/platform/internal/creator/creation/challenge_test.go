@@ -13,13 +13,13 @@ import (
 )
 
 func aChallengeCase() ChallengeCase {
-	return ChallengeCase{Name: "日期不存在", Prompt: "請算 2 月 30 日入住的房價", Criteria: []string{"指出 2 月 30 日不存在"}}
+	return ChallengeCase{Name: "日期不存在", Prompt: "請算 2 月 30 日入住的房價", Criteria: []string{"指出 2 月 30 日不存在"}, ExpectedInteraction: "question"}
 }
 
 func pairedEvaluationCases() []ChallengeCase {
 	return []ChallengeCase{
-		{Name: "缺少輸入", Prompt: "請整理摘要。", Criteria: []string{"詢問要整理的原文。"}},
-		{Name: "完整輸入", Prompt: "請整理摘要：會議決定明天出貨。", Criteria: []string{"直接列出明天出貨的決議。"}},
+		{Name: "缺少輸入", Prompt: "請整理摘要。", Criteria: []string{"詢問要整理的原文。"}, ExpectedInteraction: "question"},
+		{Name: "完整輸入", Prompt: "請整理摘要：會議決定明天出貨。", Criteria: []string{"直接列出明天出貨的決議。"}, ExpectedInteraction: "direct_answer"},
 	}
 }
 
@@ -158,7 +158,7 @@ func TestAFailedChallengeTestCaseFailsTheMaterialize(t *testing.T) {
 
 func TestChallengeCasesCrossTheWireBothWays(t *testing.T) {
 	var sent llmclient.CreationStepRequest
-	wire := []llmclient.CreationChallengeCase{{Name: "日期不存在", Prompt: "請算 2 月 30 日入住的房價", Criteria: []string{"指出 2 月 30 日不存在"}}}
+	wire := []llmclient.CreationChallengeCase{{Name: "日期不存在", Prompt: "請算 2 月 30 日入住的房價", Criteria: []string{"指出 2 月 30 日不存在"}, ExpectedInteraction: "question"}}
 	model := stepOverAWire(t, &sent, llmclient.CreationStepResponse{Outcome: "confirm_brief", ChallengeCases: wire})
 	req := aStepRequest()
 	req.ChallengeCases = []ChallengeCase{aChallengeCase()}

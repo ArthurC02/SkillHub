@@ -56,7 +56,7 @@ def test_a_brief_to_confirm_comes_back_with_challenge_cases_written_from_it_alon
     assert response.status_code == 200
     body = response.json()
     assert body["outcome"] == "confirm_brief"
-    assert body["challenge_cases"] == [case(), direct_case()]
+    assert body["challenge_cases"] == [modeled(case()), modeled(direct_case(), "direct_answer")]
     assert len(calls) == 2
     challenge = calls[1]
     assert challenge["messages"][0]["content"] == creation.EVALUATION_CASE_INSTRUCTIONS
@@ -88,13 +88,19 @@ def test_paired_evaluation_cases_keep_question_and_direct_answer_expectations():
     )
 
     assert response.status_code == 200
-    assert response.json()["challenge_cases"] == cases
+    assert response.json()["challenge_cases"] == [
+        modeled(cases[0]),
+        modeled(cases[1], "direct_answer"),
+    ]
     assert len(calls) == 2
     instructions = calls[1]["messages"][0]["content"]
     assert "You try to break" not in instructions
     assert "never a question back" not in instructions
     assert "ordinary reading gives" not in instructions
-    assert all("expected_interaction" not in case for case in response.json()["challenge_cases"])
+    assert [case["expected_interaction"] for case in response.json()["challenge_cases"]] == [
+        "question",
+        "direct_answer",
+    ]
 
 
 def test_challenge_cases_past_a_bound_are_dropped_and_at_most_three_are_kept():
@@ -135,7 +141,11 @@ def test_duplicate_optional_inputs_do_not_displace_a_distinct_case():
     response, _ = invoke_in_turn(request(), json.dumps(PROPOSAL), json.dumps({"cases": written}))
 
     assert response.status_code == 200
-    assert response.json()["challenge_cases"] == [case(), direct_case(), extra]
+    assert response.json()["challenge_cases"] == [
+        modeled(case()),
+        modeled(direct_case(), "direct_answer"),
+        modeled(extra),
+    ]
 
 
 @pytest.mark.parametrize(
@@ -228,7 +238,11 @@ def test_a_brief_go_will_refuse_asks_for_no_challenge_cases():
     unchanged = decision(outcome="confirm_brief", message="Confirm again?", brief="agreed")
 
     response, calls = invoke_in_turn(
-        request(brief="agreed", brief_confirmed=True, challenge_cases=[case(), direct_case()]),
+        request(
+            brief="agreed",
+            brief_confirmed=True,
+            challenge_cases=[modeled(case()), modeled(direct_case(), "direct_answer")],
+        ),
         json.dumps(unchanged),
     )
 
@@ -253,7 +267,10 @@ def test_a_confirmed_legacy_brief_can_acquire_a_pair_without_changing_its_text(l
     )
 
     assert response.status_code == 200
-    assert response.json()["challenge_cases"] == [case(), direct_case()]
+    assert response.json()["challenge_cases"] == [
+        modeled(case()),
+        modeled(direct_case(), "direct_answer"),
+    ]
     assert response.json()["brief"] == BRIEF
     assert len(calls) == 2
 
@@ -267,3 +284,38 @@ def test_confirmed_challenge_cases_reach_the_author_and_four_are_refused():
     assert "Price my two-night stay." in calls[0]["messages"][1]["content"]
     too_many = request(challenge_cases=[case()] * (creation.MAX_CHALLENGE_CASES + 1))
     assert client.post("/v1/creation/step", headers=HEADERS, json=too_many).status_code == 422
+
+
+@pytest.mark.parametrize(
+    "legacy_cases",
+    [
+        [case(), direct_case()],
+        [modeled(case()), modeled(direct_case())],
+        [modeled(case(), "direct_answer"), modeled(direct_case(), "direct_answer")],
+        [modeled(case()), direct_case()],
+    ],
+    ids=["unclassified", "questions_only", "answers_only", "one_missing"],
+)
+def test_a_legacy_pair_without_both_classifications_is_regenerated(legacy_cases):
+    response, calls = invoke_in_turn(
+        request(brief=BRIEF, brief_confirmed=True, challenge_cases=legacy_cases),
+        json.dumps(decision(outcome="confirm_brief", brief=BRIEF)),
+        json.dumps({"cases": [modeled(case()), modeled(direct_case(), "direct_answer")]}),
+    )
+    assert response.status_code == 200
+    assert response.json()["brief"] == BRIEF
+    assert response.json()["challenge_cases"] == [
+        modeled(case()),
+        modeled(direct_case(), "direct_answer"),
+    ]
+    assert len(calls) == 2
+
+
+def test_an_unknown_request_classification_is_refused_by_the_internal_contract():
+    req = request(
+        challenge_cases=[modeled(case(), "other"), modeled(direct_case(), "direct_answer")]
+    )
+    response, calls = invoke_in_turn(req, json.dumps(decision()))
+    assert response.status_code == 422
+    assert response.json() == {"detail": "request validation failed"}
+    assert calls == []

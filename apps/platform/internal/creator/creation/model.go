@@ -63,9 +63,17 @@ type MCPTool struct {
 }
 
 type ChallengeCase struct {
-	Name     string   `json:"name"`
-	Prompt   string   `json:"prompt"`
-	Criteria []string `json:"criteria"`
+	Name                string   `json:"name"`
+	Prompt              string   `json:"prompt"`
+	Criteria            []string `json:"criteria"`
+	ExpectedInteraction string   `json:"expected_interaction,omitempty"`
+}
+
+func caseInteraction(kind string) string {
+	if kind == "question" || kind == "direct_answer" {
+		return kind
+	}
+	return ""
 }
 
 type ToolIntent struct {

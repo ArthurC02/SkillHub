@@ -224,6 +224,7 @@
         "apps/platform/internal/entrypoint/api/apiserver/creation_attempt_integration_test.go",
         "apps/platform/internal/entrypoint/api/apiserver/creation_batch_integration_test.go",
         "apps/platform/internal/entrypoint/api/apiserver/creation_billing_characterization_test.go",
+        "apps/platform/internal/entrypoint/api/apiserver/creation_case_classification_integration_test.go",
         "apps/platform/internal/entrypoint/api/apiserver/creation_cost_metrics_integration_test.go",
         "apps/platform/internal/entrypoint/api/apiserver/creation_credit_integration_test.go",
         "apps/platform/internal/entrypoint/api/apiserver/creation_draft_check_characterization_test.go",

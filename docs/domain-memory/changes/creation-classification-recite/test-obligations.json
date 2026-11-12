@@ -1,0 +1,16 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "GEN-013",
+  "proposal_id": "creation-classification-recite",
+  "obligations": [
+    {
+      "id": "evidence-current",
+      "source_type": "acceptance-criterion",
+      "source_id": "citations-current",
+      "expected_outcome": "verify-evidence reports current for every citation of the updated records.",
+      "level": "architecture",
+      "status": "planned",
+      "check": ".domain-memory/domain-memory.exe verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/creation-classification-recite --path apps/platform/internal/creator/creation/proposal.go --path apps/platform/internal/creator/creation/proposal_test.go"
+    }
+  ]
+}

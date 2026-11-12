@@ -2545,6 +2545,10 @@ components:
       additionalProperties: false
       required: [name, prompt, criteria]
       properties:
+        expected_interaction:
+          type: string
+          enum: [question, direct_answer]
+          description: The provider's claimed interaction kind. Go retains it privately and requires both kinds before confirming or accepting a new draft or candidate. Missing legacy classifications require generation and re-confirmation; classification alone does not prove semantic correctness.
         name:
           type: string
           minLength: 1

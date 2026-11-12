@@ -49,6 +49,9 @@ func validateChallengeCases(cases []ChallengeCase) error {
 		return rejectedReply(fmt.Sprintf("has %d challenge cases, more than %d", len(cases), MaxChallengeCases))
 	}
 	for _, c := range cases {
+		if c.ExpectedInteraction != "" && caseInteraction(c.ExpectedInteraction) == "" {
+			return rejectedReply("has an unknown evaluation interaction")
+		}
 		if strings.TrimSpace(c.Name) == "" || utf8.RuneCountInString(c.Name) > MaxChallengeNameRunes ||
 			strings.TrimSpace(c.Prompt) == "" || utf8.RuneCountInString(c.Prompt) > MaxSampleInputRunes {
 			return rejectedReply("has a challenge case with an empty or over-long name or prompt")
@@ -64,18 +67,20 @@ func validateChallengeCases(cases []ChallengeCase) error {
 }
 
 func completeEvaluationCases(cases []ChallengeCase) bool {
-	if len(cases) < 2 || validateChallengeCases(cases) != nil {
+	if validateChallengeCases(cases) != nil {
 		return false
 	}
 	seen := make(map[string]bool, len(cases))
+	interactions := make(map[string]bool)
 	for _, c := range cases {
 		prompt := strings.TrimSpace(c.Prompt)
-		if seen[prompt] {
+		if seen[prompt] || c.ExpectedInteraction == "" {
 			return false
 		}
 		seen[prompt] = true
+		interactions[c.ExpectedInteraction] = true
 	}
-	return true
+	return interactions["question"] && interactions["direct_answer"]
 }
 
 func equalStrings(a, b []string) bool {

@@ -43,7 +43,7 @@ logger = logging.getLogger("skillhub_llm.creation")
 
 router = APIRouter()
 MODEL = os.getenv("CREATION_MODEL") or "skillhub-creation"
-PROMPT_VERSION = "creation-step/v46"
+PROMPT_VERSION = "creation-step/v47"
 SHIPPED_FILES_RULE = (
     "- `files`: every reference, data asset and script the body uses, each with its full "
     "relative path under references/, assets/ or scripts/ and its complete content. "
@@ -62,7 +62,6 @@ SEARCH_REWRITE_MAX_CHARS = 200  # one-number: creationMaxSearchRewriteChars
 MAX_SEARCH_REWRITES = 3  # one-number: creationMaxSearchRewrites
 DIAGNOSIS_MAX_TOKENS = 4000
 MAX_CHALLENGE_CASES = 3  # one-number: creationMaxChallengeCases
-MIN_EVALUATION_CASES = 2
 MAX_CHALLENGE_CRITERIA = 4  # one-number: creationMaxChallengeCriteria
 CHALLENGE_NAME_MAX_CHARS = 60  # one-number: creationMaxChallengeNameRunes
 CHALLENGE_MAX_TOKENS = 4000
@@ -178,6 +177,7 @@ def _diagram_text(value: str) -> str:
 
 class ChallengeCase(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    expected_interaction: Literal["question", "direct_answer"] | None = None
     name: str = Field(..., min_length=1, max_length=CHALLENGE_NAME_MAX_CHARS)
     prompt: str = Field(..., min_length=1, max_length=SAMPLE_INPUT_MAX_CHARS)
     criteria: list[Annotated[str, Field(min_length=1, max_length=CRITERION_MAX_CHARS)]] = Field(
@@ -1149,7 +1149,7 @@ def _bounded_challenges(drafts: list[ChallengeDraft]) -> list[ChallengeCase]:
     extra = []
     for draft in drafts:
         try:
-            case = ChallengeCase.model_validate(draft.model_dump(exclude={"expected_interaction"}))
+            case = ChallengeCase.model_validate(draft.model_dump())
         except ValidationError:
             continue
         if not _case_has_content(case):
@@ -1208,7 +1208,7 @@ def _proposes_a_brief_to_confirm(req: CreationStepRequest, d: CreationDecision) 
     if not (d.brief or req.brief).strip():
         return False
     complete_cases = (
-        len(req.challenge_cases) >= MIN_EVALUATION_CASES
+        {case.expected_interaction for case in req.challenge_cases} == {"question", "direct_answer"}
         and all(_case_has_content(case) for case in req.challenge_cases)
         and len({case.prompt.strip() for case in req.challenge_cases}) == len(req.challenge_cases)
     )

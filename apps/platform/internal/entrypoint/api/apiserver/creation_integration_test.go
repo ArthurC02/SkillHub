@@ -113,8 +113,8 @@ func creationModelAnswer(in llmclient.CreationStepRequest) llmclient.CreationSte
 
 func creationFixtureEvaluationCases() []llmclient.CreationChallengeCase {
 	return []llmclient.CreationChallengeCase{
-		{Name: "缺少原文", Prompt: "請整理摘要。", Criteria: []string{"詢問要整理的原文。"}},
-		{Name: "完整原文", Prompt: "請整理摘要：會議決定明天出貨。", Criteria: []string{"直接列出明天出貨的決議。"}},
+		{Name: "缺少原文", Prompt: "請整理摘要。", Criteria: []string{"詢問要整理的原文。"}, ExpectedInteraction: "question"},
+		{Name: "完整原文", Prompt: "請整理摘要：會議決定明天出貨。", Criteria: []string{"直接列出明天出貨的決議。"}, ExpectedInteraction: "direct_answer"},
 	}
 }
 

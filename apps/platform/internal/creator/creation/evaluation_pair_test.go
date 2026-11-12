@@ -12,6 +12,8 @@ import (
 )
 
 func TestEvaluationCasesNeedTwoDifferentValidInputs(t *testing.T) {
+	duplicate := pairedEvaluationCases()
+	duplicate[1].Prompt = duplicate[0].Prompt
 	for _, tc := range []struct {
 		name  string
 		cases []ChallengeCase
@@ -21,9 +23,9 @@ func TestEvaluationCasesNeedTwoDifferentValidInputs(t *testing.T) {
 		{"one", pairedEvaluationCases()[:1], false},
 		{"two", pairedEvaluationCases(), true},
 		{"three", append(pairedEvaluationCases(), aChallengeCase()), true},
-		{"four", append(pairedEvaluationCases(), aChallengeCase(), ChallengeCase{Name: "另一份摘要", Prompt: "請整理更新：會議改為後天出貨。", Criteria: []string{"列出後天出貨的更新。"}}), false},
-		{"same input", []ChallengeCase{aChallengeCase(), aChallengeCase()}, false},
-		{"blank criterion", []ChallengeCase{aChallengeCase(), {Name: "second", Prompt: "other", Criteria: []string{" "}}}, false},
+		{"four", append(pairedEvaluationCases(), aChallengeCase(), ChallengeCase{Name: "另一份摘要", Prompt: "請整理更新：會議改為後天出貨。", Criteria: []string{"列出後天出貨的更新。"}, ExpectedInteraction: "direct_answer"}), false},
+		{"same input", duplicate, false},
+		{"blank criterion", []ChallengeCase{aChallengeCase(), {Name: "second", Prompt: "other", Criteria: []string{" "}, ExpectedInteraction: "direct_answer"}}, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := completeEvaluationCases(tc.cases); got != tc.want {
@@ -31,10 +33,50 @@ func TestEvaluationCasesNeedTwoDifferentValidInputs(t *testing.T) {
 			}
 		})
 	}
-	duplicate := pairedEvaluationCases()
+	duplicate = pairedEvaluationCases()
 	duplicate[1].Prompt = " \n" + duplicate[0].Prompt + "\t"
 	if completeEvaluationCases(duplicate) {
 		t.Fatal("surrounding whitespace cannot make a second input")
+	}
+}
+
+func TestEvaluationCasesRequireBothKnownInteractionKinds(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		kinds []string
+		want  bool
+	}{
+		{"both", []string{"question", "direct_answer"}, true},
+		{"reverse", []string{"direct_answer", "question"}, true},
+		{"questions only", []string{"question", "question"}, false},
+		{"answers only", []string{"direct_answer", "direct_answer"}, false},
+		{"legacy", []string{"", ""}, false},
+		{"one missing", []string{"question", ""}, false},
+		{"unknown", []string{"question", "other"}, false},
+		{"unclassified extra", []string{"question", "direct_answer", ""}, false},
+		{"unsupported extra", []string{"question", "direct_answer", "other"}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cases := append(pairedEvaluationCases(), aChallengeCase())[:len(tc.kinds)]
+			for i, kind := range tc.kinds {
+				cases[i].ExpectedInteraction = kind
+			}
+			if got := completeEvaluationCases(cases); got != tc.want {
+				t.Fatalf("classifications %v: complete=%v, want %v", tc.kinds, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestUnsupportedStoredClassificationsBecomeUnknownInTheProviderRequest(t *testing.T) {
+	cases := pairedEvaluationCases()
+	cases[0].ExpectedInteraction = "future"
+	wire := wireChallengeCases(cases)
+	if wire[0].ExpectedInteraction != "" || wire[1].ExpectedInteraction != "direct_answer" || cases[0].ExpectedInteraction != "future" {
+		t.Fatalf("wire=%+v stored=%+v, want unknown metadata omitted without changing the stored cases", wire, cases)
+	}
+	if wire[0].Name != "缺少輸入" || wire[0].Prompt != "請整理摘要。" || !reflect.DeepEqual(wire[0].Criteria, []string{"詢問要整理的原文。"}) {
+		t.Fatalf("repair request lost the legacy case content: %+v", wire[0])
 	}
 }
 

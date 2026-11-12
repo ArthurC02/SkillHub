@@ -811,6 +811,11 @@ class Reason(Enum):
     diagram_incomplete = 'diagram_incomplete'
 
 
+class ExpectedInteraction(Enum):
+    question = 'question'
+    direct_answer = 'direct_answer'
+
+
 class Criterion(RootModel[constr(min_length=1, max_length=500)]):
     root: constr(min_length=1, max_length=500)
 
@@ -818,6 +823,10 @@ class Criterion(RootModel[constr(min_length=1, max_length=500)]):
 class CreationChallengeCase(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
+    )
+    expected_interaction: ExpectedInteraction | None = Field(
+        None,
+        description="The provider's claimed interaction kind. Go retains it privately and requires both kinds before confirming or accepting a new draft or candidate. Missing legacy classifications require generation and re-confirmation; classification alone does not prove semantic correctness.",
     )
     name: constr(min_length=1, max_length=60)
     prompt: constr(min_length=1, max_length=4000)
