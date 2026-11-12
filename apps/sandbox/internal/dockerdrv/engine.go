@@ -26,6 +26,7 @@ type execEngine interface {
 type engine interface {
 	containerEngine
 	execEngine
+	ImageInspect(ctx context.Context, image string, options ...client.ImageInspectOption) (client.ImageInspectResult, error)
 	Ping(ctx context.Context, options client.PingOptions) (client.PingResult, error)
 	Close() error
 }

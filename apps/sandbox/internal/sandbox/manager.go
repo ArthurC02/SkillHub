@@ -170,7 +170,7 @@ func (m *Manager) Capability(ctx context.Context) ProviderCapability {
 	}
 	return ProviderCapability{
 		Provider:               m.cfg.Provider,
-		Runtimes:               m.cfg.Runtimes,
+		Runtimes:               m.runtimeCapabilities(ctx),
 		MaxResources:           m.cfg.MaxResources,
 		MaxResourcesUnenforced: m.cfg.MaxResourcesUnenforced,
 		Injects:                m.drv.InjectsFromGrant(),
@@ -301,16 +301,21 @@ func (m *Manager) Create(ctx context.Context, req RunRequest) (run ProviderRun, 
 	if err := validate(req); err != nil {
 		return ProviderRun{}, false, err
 	}
-	if re := m.cfg.accept(req); re != nil {
+	hash, key := HashRequest(req), req.RunID+"|"+fmt.Sprint(req.Attempt)
+	if replay, exists, err := m.replay(key, hash); exists || err != nil {
+		return replay, false, err
+	}
+	cfg := m.cfg
+	if req.ModelGateway != nil && req.ModelGateway.SearchTool != "" {
+		cfg.Runtimes = m.runtimeCapabilities(ctx)
+	}
+	if re := cfg.accept(req); re != nil {
 		return ProviderRun{}, false, re
 	}
 
 	if err := m.p02Refusal(); err != nil {
 		return ProviderRun{}, false, err
 	}
-	hash := HashRequest(req)
-	key := req.RunID + "|" + fmt.Sprint(req.Attempt)
-
 	m.mu.Lock()
 	if id, ok := m.byKey[key]; ok {
 		e := m.runs[id]
@@ -365,6 +370,24 @@ func (m *Manager) Create(ctx context.Context, req RunRequest) (run ProviderRun, 
 		return m.startFailed(id, err)
 	}
 	return m.enterRunning(id, req.ResourceLimits)
+}
+
+func (m *Manager) replay(key, hash string) (ProviderRun, bool, error) {
+	m.mu.Lock()
+	id, exists := m.byKey[key]
+	previous := m.runs[id]
+	m.mu.Unlock()
+	if !exists {
+		return ProviderRun{}, false, nil
+	}
+	if previous == nil {
+		return ProviderRun{}, true, ErrNotFound
+	}
+	if previous.hash != hash {
+		return ProviderRun{}, true, ErrConflict
+	}
+	run, _, err := m.snapshot(id)
+	return run, true, err
 }
 
 func (m *Manager) enterRunning(id string, limits ResourceLimits) (ProviderRun, bool, error) {

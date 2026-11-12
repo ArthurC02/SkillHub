@@ -1,6 +1,6 @@
 # Run 的公開資料搜尋
 
-`02:GEN-014`／`03:GEN-025` 要求 Skill 宣告、試跑前確認、經模型閘道搜尋，以及查詢、來源、費用進入私人 Trace。目前已接通宣告、確認、Run 政策與閘道授權，並有免費協定驗證；runtime 的實際能力讀取、搜尋工具與 Trace 尚待接線，不能將這份局部證據當作功能完成。
+`02:GEN-014`／`03:GEN-025` 要求 Skill 宣告、試跑前確認、經模型閘道搜尋，以及查詢、來源、費用進入私人 Trace。目前已接通宣告、確認、Run 政策、runtime 能力讀取與閘道授權，並有免費協定驗證；runtime 搜尋工具與 Trace 尚待交付，不能將這份局部證據當作功能完成。
 
 ## 宣告與確認
 
@@ -8,7 +8,17 @@ Skill 的 `compatibility` 必須以獨立一行寫出 `skillhub-web-search`；�
 
 試跑前的權限摘要會列出搜尋、送往搜尋供應商的查詢、私人 Trace 的來源與費用，以及本次 Run 預算。這些文字納入既有摘要雜湊，必須先留下該摘要的確認紀錄才能建立 Run。需求保存於不可變政策快照；舊快照缺少欄位時不補授權。不載入 Skill 的對照 Run 保留相同 runtime 要求，但不取得搜尋工具。
 
-Provider 的 runtime 項目以 `web_search` 回報 `supported`、`unsupported` 或 `unavailable`；支援必須涵蓋該項目中的每個版本。缺席視為不支援；讀不到證據與未知值暫不派工。平台與 Sandbox 都會核對相同版本及接法，前面的不合格項目不會遮住後面的合格項目。一般 Run 不依賴搜尋能力。實際映像與 runner 的能力讀取尚未接通，不能只靠手動填入 `supported` 當作 runtime 驗收；目前預設 runtime 不宣告支援。
+Provider 的 runtime 項目以 `web_search` 回報 `supported`、`unsupported` 或 `unavailable`；支援必須涵蓋該項目中的每個版本。缺席視為不支援；讀不到證據與未知值暫不派工。平台與 Sandbox 都會核對相同版本及接法，前面的不合格項目不會遮住後面的合格項目。一般 Run 不依賴搜尋能力。
+
+## 實際 runtime 能力
+
+Sandbox 不採信設定檔手動填入的搜尋支援。能力讀取將設定中的版本拆開，只有 Driver 讀到的實際 runtime 與版本一致時才列為支援；沒有 reader 的 Driver 不宣告支援。新搜尋請求在建立工作負載前重讀證據；同一請求重送先回傳原有 Run，內容不同仍回衝突，不因後來的能力讀取失敗而重建工作負載。
+
+Docker Driver 以有逾時的映像檢查讀取 `io.skillhub.runtime.web-search=1`、`SKILLHUB_RUNTIME`、`SKILLHUB_RUNTIME_VERSION` 與映像 ID。搜尋派工再次核對並使用該 ID 建立容器，避免標籤在核對後換到其他映像。缺標記代表不支援；標記存在但版本或 ID 不完整代表證據不可讀。
+
+Local Driver 只對設定的受信任 runner 執行 `--capabilities`，不執行 Skill 套件。runner 須回傳 `runtime`、`version` 與明確布林值 `web_search` 的單一 JSON；輸出上限 4096 bytes、逾時 5 秒，接受呼叫端取消，不繼承模型金鑰、搜尋授權或 `NODE_OPTIONS`。新搜尋工作在準備輸入前再次核對。兩種 Driver 都只在固定授權成立時將 `SKILLHUB_SEARCH_TOOL` 傳給工作負載，普通 Run 建立工作負載時不做搜尋探詢。
+
+預設 runtime 映像仍不支援搜尋；映像標記與 runner 能力回覆必須隨真正的搜尋工具一起交付，不能只補標記或修改設定便當成功能完成。映像發佈、預設映像切換與節點部署另行驗收。
 
 ## 閘道邊界
 
@@ -34,4 +44,4 @@ go -C tools/devctl run . gateway-search-proof
 
 原生探針依各入口的合法格式：Responses 測 `web_search` 與 `web_search_preview`，Chat 測 `web_search_options`，Messages 測其搜尋工具；空的 guardrails 清單也不能擴大權限。[Chat API 契約](https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create) 的 `tools` 只接受 function／custom，不把送錯入口的無效工具當成成功搜尋或授權證據。
 
-這些是協定與授權證據。宣告／確認流程另有真實 PostgreSQL 測試，涵蓋不支援的 runtime、知道雜湊卻未確認、錯誤雜湊、政策保存與派工授權，以及未宣告和不載入 Skill 的拒授權案例；仍不替代 runtime 實際能力與工具、私人 Trace、真實搜尋品質、部署出口控制及模型品質驗收。
+這些是協定與授權證據。宣告／確認流程另有真實 PostgreSQL 測試，涵蓋不支援的 runtime、知道雜湊卻未確認、錯誤雜湊、政策保存與派工授權，以及未宣告和不載入 Skill 的拒授權案例。Driver 測試另涵蓋能力漂移、版本隔離、未知證據、重送、映像 ID、runner 輸出邊界與金鑰隔離；仍不替代搜尋工具、私人 Trace、真實搜尋品質、部署出口控制及模型品質驗收。

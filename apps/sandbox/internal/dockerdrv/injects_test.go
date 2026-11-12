@@ -47,3 +47,13 @@ func TestTheNamesDeclaredAreTheNamesTheGrantActuallySets(t *testing.T) {
 		t.Fatal("the grant added no variable at all; this test would pass on any declaration")
 	}
 }
+
+func TestSearchEnvironmentRequiresTheFixedGrant(t *testing.T) {
+	for _, alias := range []string{"", "other-search", "skillhub-web-search"} {
+		req := sandbox.RunRequest{ModelGateway: &sandbox.ModelGatewayGrant{SearchTool: alias}}
+		set := namesSetBy(env(req))
+		if got, want := set["SKILLHUB_SEARCH_TOOL"], alias == "skillhub-web-search"; got != want {
+			t.Fatalf("search environment for %q = %v, want %v", alias, got, want)
+		}
+	}
+}

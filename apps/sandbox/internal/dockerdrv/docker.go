@@ -113,6 +113,10 @@ func workShare(diskBytes int64) int64 { return diskBytes * workDirDiskShares / t
 func name(providerRunID string) string { return "skillhub-run-" + providerRunID }
 
 func (d *Driver) Start(ctx context.Context, id string, req sandbox.RunRequest) error {
+	image, err := d.runImage(ctx, req)
+	if err != nil {
+		return err
+	}
 	lim := req.ResourceLimits
 
 	workBytes := workShare(lim.DiskBytes)
@@ -124,7 +128,7 @@ func (d *Driver) Start(ctx context.Context, id string, req sandbox.RunRequest) e
 	network := d.networkFor(req)
 
 	cfg := &container.Config{
-		Image:      d.cfg.Image,
+		Image:      image,
 		User:       fmt.Sprintf("%d:%d", d.cfg.UID, d.cfg.GID),
 		Env:        env(req),
 		WorkingDir: WorkDir,
@@ -422,6 +426,9 @@ func env(req sandbox.RunRequest) []string {
 	}
 	if g := req.ModelGateway; g != nil {
 		e = append(e, grantBaseURLVar+"="+g.BaseURL)
+		if g.SearchTool == "skillhub-web-search" {
+			e = append(e, "SKILLHUB_SEARCH_TOOL="+g.SearchTool)
+		}
 		if g.VirtualKey != "" {
 			e = append(e, grantTokenVar+"="+g.VirtualKey)
 		}

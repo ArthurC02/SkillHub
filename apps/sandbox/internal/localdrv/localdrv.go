@@ -112,6 +112,15 @@ func (d *Driver) take(id string) *run {
 }
 
 func (d *Driver) Start(ctx context.Context, id string, req sandbox.RunRequest) error {
+	if req.ModelGateway != nil && req.ModelGateway.SearchTool != "" {
+		profile, err := d.WebSearchRuntime(ctx)
+		if err != nil {
+			return err
+		}
+		if req.ModelGateway.SearchTool != "skillhub-web-search" || profile.Runtime != req.Runtime.Runtime || profile.RuntimeVersion != req.Runtime.RuntimeVersion {
+			return errors.New("selected local runner does not support the granted search tool")
+		}
+	}
 	workDir, outDir := d.paths(id)
 	dirs := []string{
 		workDir, outDir,
@@ -390,6 +399,9 @@ func optionalRunEnv(req sandbox.RunRequest) []envVar {
 	}
 	if g := req.ModelGateway; g != nil {
 		pairs = append(pairs, envVar{grantBaseURLVar, g.BaseURL})
+		if g.SearchTool == "skillhub-web-search" {
+			pairs = append(pairs, envVar{"SKILLHUB_SEARCH_TOOL", g.SearchTool})
+		}
 		if g.VirtualKey != "" {
 			pairs = append(pairs, envVar{grantTokenVar, g.VirtualKey})
 		}
