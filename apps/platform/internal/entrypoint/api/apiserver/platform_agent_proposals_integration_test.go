@@ -120,7 +120,7 @@ func (w *proposalWorld) proposals() []storedProposal {
 func (w *proposalWorld) decide(id pgtype.UUID, decision, note string) (int, map[string]any) {
 	w.t.Helper()
 	body, _ := json.Marshal(map[string]string{"decision": decision, "note": note})
-	return operatorCall(w.t, w.operator, http.MethodPut, "/admin/agents/proposals/"+uuidString(id)+"/decision", string(body))
+	return operatorCall(w.t, w.operator, http.MethodPut, "/admin/agents/proposals/"+uuidText(id)+"/decision", string(body))
 }
 
 func TestAnAgentProposesOnlyARegisteredActionWithItsPreviewAndOnceWhileItIsLive(t *testing.T) {
@@ -270,7 +270,7 @@ func TestAnOperatorDecidesAWaitingProposalOnceAndNotAfterItExpires(t *testing.T)
 
 func assertDecided(t *testing.T, w *proposalWorld, id pgtype.UUID, status string, finished bool) {
 	t.Helper()
-	code, body := operatorCall(t, w.operator, http.MethodGet, "/admin/agents/proposals/"+uuidString(id), "")
+	code, body := operatorCall(t, w.operator, http.MethodGet, "/admin/agents/proposals/"+uuidText(id), "")
 	if code != http.StatusOK || body["status"] != status {
 		t.Fatalf("proposal: %d %v, want status %s", code, body, status)
 	}
@@ -315,11 +315,11 @@ func TestTheMaintenanceRunnerTakesEachApprovedProposalOnceAndRecordsItsOutcome(t
 	if err := w.svc.FinishProposal(ctx, claimed[ok.Name], nil); !errors.Is(err, operations.ErrProposalClosed) {
 		t.Errorf("finishing twice: %v, want ErrProposalClosed", err)
 	}
-	_, body := operatorCall(t, w.operator, http.MethodGet, "/admin/agents/proposals/"+uuidString(claimed[ok.Name]), "")
+	_, body := operatorCall(t, w.operator, http.MethodGet, "/admin/agents/proposals/"+uuidText(claimed[ok.Name]), "")
 	if body["status"] != "succeeded" || body["started_at"] == nil {
 		t.Errorf("successful proposal %v, want succeeded with its start", body)
 	}
-	_, body = operatorCall(t, w.operator, http.MethodGet, "/admin/agents/proposals/"+uuidString(claimed[bad.Name]), "")
+	_, body = operatorCall(t, w.operator, http.MethodGet, "/admin/agents/proposals/"+uuidText(claimed[bad.Name]), "")
 	if body["status"] != "failed" || body["outcome"] != "the job stopped part way" {
 		t.Errorf("failed proposal %v, want failed with the error", body)
 	}
@@ -399,7 +399,7 @@ func TestAnApprovedProposalWhoseJobIsBusyWaitsForTheNextRound(t *testing.T) {
 
 func assertProposalState(t *testing.T, w *proposalWorld, id pgtype.UUID, status string, started bool) {
 	t.Helper()
-	_, body := operatorCall(t, w.operator, http.MethodGet, "/admin/agents/proposals/"+uuidString(id), "")
+	_, body := operatorCall(t, w.operator, http.MethodGet, "/admin/agents/proposals/"+uuidText(id), "")
 	if _, has := body["started_at"]; body["status"] != status || has != started {
 		t.Errorf("proposal %v, want %s with started_at present = %v", body, status, started)
 	}
@@ -448,11 +448,11 @@ func TestAProposalWhoseRunnerVanishedFailsOnlyAfterItsLease(t *testing.T) {
 	if err := sweep.Work(context.Background(), &river.Job[worker.ProposalExpiryArgs]{}); err != nil {
 		t.Fatalf("proposal sweep: %v", err)
 	}
-	_, body := operatorCall(t, w.operator, http.MethodGet, "/admin/agents/proposals/"+uuidString(claimed[gone.Name]), "")
+	_, body := operatorCall(t, w.operator, http.MethodGet, "/admin/agents/proposals/"+uuidText(claimed[gone.Name]), "")
 	if body["status"] != "failed" || body["outcome"] != "the maintenance process stopped before it reported an outcome" {
 		t.Errorf("abandoned proposal %v, want failed saying the process stopped", body)
 	}
-	_, body = operatorCall(t, w.operator, http.MethodGet, "/admin/agents/proposals/"+uuidString(claimed[slow.Name]), "")
+	_, body = operatorCall(t, w.operator, http.MethodGet, "/admin/agents/proposals/"+uuidText(claimed[slow.Name]), "")
 	if body["status"] != "running" {
 		t.Errorf("proposal inside its lease %v, want still running", body)
 	}
@@ -469,7 +469,7 @@ func TestAJobThatFailsWithoutAMessageStillClosesItsProposal(t *testing.T) {
 	if err := w.svc.FinishProposal(context.Background(), id, errors.New("  ")); err != nil {
 		t.Fatalf("finish: %v, want the proposal closed", err)
 	}
-	_, body := operatorCall(t, w.operator, http.MethodGet, "/admin/agents/proposals/"+uuidString(id), "")
+	_, body := operatorCall(t, w.operator, http.MethodGet, "/admin/agents/proposals/"+uuidText(id), "")
 	if body["status"] != "failed" || body["outcome"] != "the job failed without saying why" {
 		t.Errorf("proposal %v, want failed saying the job gave no reason", body)
 	}
@@ -537,7 +537,7 @@ func TestOperatorsListLiveAndRecentlyClosedProposals(t *testing.T) {
 	}
 	code, body := operatorCall(t, w.operator, http.MethodGet, "/admin/agents/proposals", "")
 	listed := idsOf(body["proposals"])
-	if code != http.StatusOK || !containsAll(listed, uuidString(ids[live.Name]), uuidString(ids[old.Name])) {
+	if code != http.StatusOK || !containsAll(listed, uuidText(ids[live.Name]), uuidText(ids[old.Name])) {
 		t.Fatalf("list %d %v, want the waiting one and the one rejected today", code, listed)
 	}
 	if _, err := testPool.Exec(context.Background(),
@@ -546,7 +546,7 @@ func TestOperatorsListLiveAndRecentlyClosedProposals(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, body = operatorCall(t, w.operator, http.MethodGet, "/admin/agents/proposals", "")
-	if listed := idsOf(body["proposals"]); containsAll(listed, uuidString(ids[old.Name])) || !containsAll(listed, uuidString(ids[live.Name])) {
+	if listed := idsOf(body["proposals"]); containsAll(listed, uuidText(ids[old.Name])) || !containsAll(listed, uuidText(ids[live.Name])) {
 		t.Errorf("list %v, want the live one and not one closed eight days ago", listed)
 	}
 }

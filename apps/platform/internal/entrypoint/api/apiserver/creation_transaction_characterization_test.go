@@ -47,11 +47,11 @@ func assertCreationTransactionRows(t *testing.T, pool *pgxpool.Pool, workspaceID
 	}
 	for _, check := range checks {
 		var got int
-		if err := pool.QueryRow(ctx, check.query, uuidString(id), uuidString(workspaceID)).Scan(&got); err != nil {
+		if err := pool.QueryRow(ctx, check.query, uuidText(id), uuidText(workspaceID)).Scan(&got); err != nil {
 			t.Fatal(err)
 		}
 		if got != check.want {
-			t.Fatalf("%s for session %s = %d, want %d", check.name, uuidString(id), got, check.want)
+			t.Fatalf("%s for session %s = %d, want %d", check.name, uuidText(id), got, check.want)
 		}
 	}
 }
