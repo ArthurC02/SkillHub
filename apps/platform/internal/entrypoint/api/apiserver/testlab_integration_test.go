@@ -592,7 +592,7 @@ func TestDatasetDeletionRemovesTheObject(t *testing.T) {
 	if len(a.packages) != keyCount-1 {
 		t.Error("the stored object survived the deletion")
 	}
-	if n := countRows(t, pool, "SELECT count(*) FROM object_reconcile_sightings WHERE resource_id = $1",
+	if n := countRow(t, pool, "SELECT count(*) FROM object_reconcile_sightings WHERE resource_id = $1",
 		mustUUID(t, datasetID)); n != 0 {
 		t.Error("the deleted dataset left a stale missing-object sighting")
 	}

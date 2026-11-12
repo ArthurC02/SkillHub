@@ -197,11 +197,11 @@ func TestPackagingPersistsCleanupIntentBeforeObjectIO(t *testing.T) {
 	if !store.sawIntent {
 		t.Fatal("object Put began before its durable cleanup intent was visible")
 	}
-	if got := countRows(t, pool,
+	if got := countRow(t, pool,
 		`SELECT count(*) FROM download_object_cleanup_intents WHERE object_key = $1`, store.key); got != 1 {
 		t.Fatalf("cleanup intents after failed compensation = %d, want 1", got)
 	}
-	if got := countRows(t, pool, `SELECT count(*) FROM download_object_cleanup_intents
+	if got := countRow(t, pool, `SELECT count(*) FROM download_object_cleanup_intents
 		WHERE object_key = $1 AND not_before BETWEEN now() + interval '59 minutes' AND now() + interval '61 minutes'`,
 		store.key); got != 1 {
 		t.Fatal("the cleanup intent is not held back for the hour an in-flight upload gets")
@@ -247,24 +247,15 @@ func (c *client) listDownloads(t *testing.T) []downloadView {
 	return out.Downloads
 }
 
-func countRows(t *testing.T, pool *pgxpool.Pool, sql string, args ...any) int64 {
+func downloadRecordCount(t *testing.T, pool *pgxpool.Pool, artifactID string) int {
 	t.Helper()
-	var n int64
-	if err := pool.QueryRow(context.Background(), sql, args...).Scan(&n); err != nil {
-		t.Fatal(err)
-	}
-	return n
-}
-
-func downloadRecordCount(t *testing.T, pool *pgxpool.Pool, artifactID string) int64 {
-	t.Helper()
-	return countRows(t, pool, "SELECT count(*) FROM download_records WHERE artifact_id = $1",
+	return countRow(t, pool, "SELECT count(*) FROM download_records WHERE artifact_id = $1",
 		mustUUID(t, artifactID))
 }
 
-func auditCount(t *testing.T, pool *pgxpool.Pool, action, resourceID string) int64 {
+func auditCount(t *testing.T, pool *pgxpool.Pool, action, resourceID string) int {
 	t.Helper()
-	return countRows(t, pool,
+	return countRow(t, pool,
 		"SELECT count(*) FROM audit_events WHERE action = $1 AND resource_id = $2",
 		action, mustUUID(t, resourceID))
 }
@@ -385,7 +376,7 @@ func TestASoftDeleteRefusedAtCommitLeavesNoAuditEventBehind(t *testing.T) {
 		t.Errorf("audit_events: %d rows for a deletion that did not happen, want 0", n)
 	}
 
-	if n := countRows(t, pool,
+	if n := countRow(t, pool,
 		"SELECT count(*) FROM artifacts WHERE id = $1 AND deleted_at IS NULL",
 		mustUUID(t, art.ArtifactID)); n != 1 {
 		t.Errorf("the artifact was deleted anyway: %d live rows, want 1", n)
@@ -657,13 +648,13 @@ func TestFailedDownloadObjectDeletionIsRetriedDurably(t *testing.T) {
 	if code := c.status(t, http.MethodDelete, "/downloads/"+art.ArtifactID); code != http.StatusNoContent {
 		t.Fatalf("DELETE status = %d", code)
 	}
-	if n := countRows(t, pool, "SELECT count(*) FROM artifacts WHERE id = $1 AND deleted_at IS NOT NULL AND purged_at IS NULL", mustUUID(t, art.ArtifactID)); n != 1 {
+	if n := countRow(t, pool, "SELECT count(*) FROM artifacts WHERE id = $1 AND deleted_at IS NOT NULL AND purged_at IS NULL", mustUUID(t, art.ArtifactID)); n != 1 {
 		t.Fatal("failed removal did not leave durable unpurged cleanup work")
 	}
 	if err := newSweep(pool, store).Sweep(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if n := countRows(t, pool, "SELECT count(*) FROM artifacts WHERE id = $1 AND purged_at IS NOT NULL", mustUUID(t, art.ArtifactID)); n != 1 {
+	if n := countRow(t, pool, "SELECT count(*) FROM artifacts WHERE id = $1 AND purged_at IS NOT NULL", mustUUID(t, art.ArtifactID)); n != 1 {
 		t.Fatal("retention sweep did not finish the failed deletion")
 	}
 }
@@ -841,7 +832,7 @@ func TestDeletingADownloadIsIdempotentAndKeepsTheRecord(t *testing.T) {
 	if _, ok := a.packages[objectKey]; ok {
 		t.Error("the stored object survived the delete")
 	}
-	if n := countRows(t, pool, "SELECT count(*) FROM object_reconcile_sightings WHERE resource_id = $1",
+	if n := countRow(t, pool, "SELECT count(*) FROM object_reconcile_sightings WHERE resource_id = $1",
 		mustUUID(t, art.ArtifactID)); n != 0 {
 		t.Error("the deleted download left a stale missing-object sighting")
 	}
@@ -896,7 +887,7 @@ func TestAnExpiredArtifactIsNotServedAndItsBytesAreSweptAway(t *testing.T) {
 	if err := sweep.Sweep(context.Background()); err != nil {
 		t.Fatalf("the second sweep failed: %v", err)
 	}
-	if n := countRows(t, pool,
+	if n := countRow(t, pool,
 		"SELECT count(*) FROM artifacts WHERE id = $1 AND purged_at IS NOT NULL",
 		mustUUID(t, art.ArtifactID)); n != 1 {
 		t.Error("the swept artifact was not marked purged")
@@ -918,12 +909,12 @@ func TestTheReconcilerNeedsTwoRoundsBeforeItMarksAMissingObject(t *testing.T) {
 	if err := sweep.Sweep(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if n := countRows(t, pool,
+	if n := countRow(t, pool,
 		"SELECT count(*) FROM object_reconcile_sightings WHERE resource_id = $1 AND rounds = 1",
 		mustUUID(t, art.ArtifactID)); n != 1 {
 		t.Fatal("the first round recorded no sighting")
 	}
-	if n := countRows(t, pool,
+	if n := countRow(t, pool,
 		"SELECT count(*) FROM artifacts WHERE id = $1 AND purged_at IS NULL",
 		mustUUID(t, art.ArtifactID)); n != 1 {
 		t.Error("one round was enough to mark the row; it must not be")
@@ -933,7 +924,7 @@ func TestTheReconcilerNeedsTwoRoundsBeforeItMarksAMissingObject(t *testing.T) {
 	if err := sweep.Sweep(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if n := countRows(t, pool,
+	if n := countRow(t, pool,
 		"SELECT count(*) FROM artifacts WHERE id = $1 AND purged_at IS NOT NULL",
 		mustUUID(t, art.ArtifactID)); n != 1 {
 		t.Fatal("two rounds did not mark the row whose object is gone")
@@ -946,7 +937,7 @@ func TestTheReconcilerNeedsTwoRoundsBeforeItMarksAMissingObject(t *testing.T) {
 		t.Errorf("audit_events for the lost object: got %d, want 1", n)
 	}
 
-	if n := countRows(t, pool, "SELECT count(*) FROM object_reconcile_sightings WHERE resource_id = $1",
+	if n := countRow(t, pool, "SELECT count(*) FROM object_reconcile_sightings WHERE resource_id = $1",
 		mustUUID(t, art.ArtifactID)); n != 0 {
 		t.Error("the sighting was not cleared after the row was marked")
 	}
@@ -973,7 +964,7 @@ func TestAReturningObjectResetsTheSightingCount(t *testing.T) {
 	if err := sweep.Sweep(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if n := countRows(t, pool, "SELECT count(*) FROM object_reconcile_sightings WHERE resource_id = $1",
+	if n := countRow(t, pool, "SELECT count(*) FROM object_reconcile_sightings WHERE resource_id = $1",
 		mustUUID(t, art.ArtifactID)); n != 0 {
 		t.Fatal("the sighting survived the object coming back")
 	}
@@ -983,7 +974,7 @@ func TestAReturningObjectResetsTheSightingCount(t *testing.T) {
 	if err := sweep.Sweep(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if n := countRows(t, pool,
+	if n := countRow(t, pool,
 		"SELECT count(*) FROM artifacts WHERE id = $1 AND purged_at IS NOT NULL",
 		mustUUID(t, art.ArtifactID)); n != 0 {
 		t.Error("the count did not start over, so one round after a flap was enough to mark the row")
@@ -1011,7 +1002,7 @@ func TestTheReconcilerCorrectsADatasetThatClaimsAMissingFile(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if n := countRows(t, pool, "SELECT count(*) FROM datasets WHERE id = $1 AND deleted_at IS NOT NULL",
+	if n := countRow(t, pool, "SELECT count(*) FROM datasets WHERE id = $1 AND deleted_at IS NOT NULL",
 		mustUUID(t, datasetID)); n != 1 {
 		t.Fatal("the dataset still claims a file that is not there")
 	}

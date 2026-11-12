@@ -999,12 +999,12 @@ func TestExpiredRunOutputsLoseTheirBytesAndNothingInsideItsWindowDoes(t *testing
 	if _, ok := a.packages[expiredKey]; ok {
 		t.Error("the expired object survived the sweep")
 	}
-	if n := countRows(t, pool,
+	if n := countRow(t, pool,
 		"SELECT count(*) FROM artifacts WHERE id = $1 AND purged_at IS NOT NULL AND deleted_at IS NULL",
 		expired); n != 1 {
 		t.Error("the expired row was not marked purged, or it left the history")
 	}
-	if n := countRows(t, pool,
+	if n := countRow(t, pool,
 		"SELECT count(*) FROM object_reconcile_sightings WHERE resource_kind = 'artifact' AND resource_id = $1",
 		expired); n != 0 {
 		t.Error("the expired run output left a stale missing-object sighting")
@@ -1016,11 +1016,11 @@ func TestExpiredRunOutputsLoseTheirBytesAndNothingInsideItsWindowDoes(t *testing
 	if _, ok := a.packages[liveKey]; !ok {
 		t.Error("the sweep removed an object still inside its retention window")
 	}
-	if n := countRows(t, pool, "SELECT count(*) FROM artifacts WHERE id = $1 AND purged_at IS NOT NULL", deletedID); n != 1 {
+	if n := countRow(t, pool, "SELECT count(*) FROM artifacts WHERE id = $1 AND purged_at IS NOT NULL", deletedID); n != 1 {
 		t.Error("the deleted row was not marked purged after its object was removed")
 	}
 	for name, id := range map[string]pgtype.UUID{"live": liveID} {
-		if n := countRows(t, pool,
+		if n := countRow(t, pool,
 			"SELECT count(*) FROM artifacts WHERE id = $1 AND purged_at IS NULL", id); n != 1 {
 			t.Errorf("the %s row was marked purged; the sweep must not reach it", name)
 		}

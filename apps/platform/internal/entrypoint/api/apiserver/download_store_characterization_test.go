@@ -62,9 +62,9 @@ func workspaceDownloadObjects(a *api, workspaceID string) []string {
 	return keys
 }
 
-func downloadIntentsIn(t *testing.T, pool *pgxpool.Pool, workspaceID string) int64 {
+func downloadIntentsIn(t *testing.T, pool *pgxpool.Pool, workspaceID string) int {
 	t.Helper()
-	return countRows(t, pool, `SELECT count(*) FROM download_object_cleanup_intents WHERE workspace_id = $1`,
+	return countRow(t, pool, `SELECT count(*) FROM download_object_cleanup_intents WHERE workspace_id = $1`,
 		mustUUID(t, workspaceID))
 }
 
