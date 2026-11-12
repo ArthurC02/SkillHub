@@ -9,7 +9,7 @@ set -euo pipefail
 : "${LLM_IMAGE:?LLM_IMAGE must name the built llm image}"
 
 PG_IMAGE="docker.io/pgvector/pgvector:pg18@sha256:c29f30688a9ad961691bdf0ec1650717cc132a5814619d80f80463d6e4c42e47"
-S3_IMAGE="docker.io/chrislusf/seaweedfs:4.48@sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d"
+S3_IMAGE="docker.io/chrislusf/seaweedfs:4.52@sha256:57877e32bb90073b37dc109b438ba66e84fd5ed9ced5f5c04f56444ef243ce59"
 # Runs every check from inside the docker network rather than through a
 # published host port, which also exercises the DNS name nginx.conf dials.
 CURL_IMAGE="docker.io/curlimages/curl@sha256:c1fe1679c34d9784c1b0d1e5f62ac0a79fca01fb6377cdd33e90473c6f9f9a69"
