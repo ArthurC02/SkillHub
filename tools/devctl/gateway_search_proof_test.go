@@ -32,28 +32,33 @@ func TestSearchProofConfigChecksEveryProductionRouteBeforeReplacingTheProvider(t
 			if strings.Join(missing["unguarded_models"], ",") != strings.Join(tc.unguarded, ",") || strings.Join(missing["unintercepted_providers"], ",") != strings.Join(tc.unintercepted, ",") {
 				t.Fatalf("production routes escaped coverage: %s", coverage)
 			}
-			var out struct {
-				Models []struct {
-					Name   string `json:"model_name"`
-					Params struct {
-						Model   string `json:"model"`
-						APIKey  string `json:"api_key"`
-						APIBase string `json:"api_base"`
-					} `json:"litellm_params"`
-				} `json:"model_list"`
-				Settings map[string]bool `json:"general_settings"`
-				Search   []any           `json:"search_tools"`
-			}
-			if err := json.Unmarshal(config, &out); err != nil {
-				t.Fatal(err)
-			}
-			if len(out.Models) != 1 || out.Models[0].Name != "trial-model" || !out.Settings["search_tool_deny_by_default"] || len(out.Search) != 2 {
-				t.Fatalf("the local proof changed production authorization or left live routes: %s", config)
-			}
-			if out.Models[0].Params.Model != "openai/gpt-4o-mini" || out.Models[0].Params.APIKey != "local-model-only" || out.Models[0].Params.APIBase != "http://mock:8000/v1" {
-				t.Fatalf("the local proof did not replace the live provider: %s", config)
-			}
+			assertLocalSearchProofConfig(t, config)
 		})
+	}
+}
+
+func assertLocalSearchProofConfig(t *testing.T, config []byte) {
+	t.Helper()
+	var out struct {
+		Models []struct {
+			Name   string `json:"model_name"`
+			Params struct {
+				Model   string `json:"model"`
+				APIKey  string `json:"api_key"`
+				APIBase string `json:"api_base"`
+			} `json:"litellm_params"`
+		} `json:"model_list"`
+		Settings map[string]bool `json:"general_settings"`
+		Search   []any           `json:"search_tools"`
+	}
+	if err := json.Unmarshal(config, &out); err != nil {
+		t.Fatal(err)
+	}
+	if len(out.Models) != 1 || out.Models[0].Name != "trial-model" || !out.Settings["search_tool_deny_by_default"] || len(out.Search) != 2 {
+		t.Fatalf("the local proof changed production authorization or left live routes: %s", config)
+	}
+	if out.Models[0].Params.Model != "openai/gpt-4o-mini" || out.Models[0].Params.APIKey != "local-model-only" || out.Models[0].Params.APIBase != "http://mock:8000/v1" {
+		t.Fatalf("the local proof did not replace the live provider: %s", config)
 	}
 }
 

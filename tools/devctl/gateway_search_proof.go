@@ -24,6 +24,13 @@ type searchProof struct {
 	sourceHashes                          map[string]string
 }
 
+const searchGatewayStartupTimeout = 3 * time.Minute
+
+type searchProofModelObservation struct {
+	Tools   []map[string]any
+	Options any `json:"web_search_options"`
+}
+
 func gatewaySearchProof(root string, args []string, out io.Writer) (resultErr error) {
 	if len(args) != 0 {
 		return errors.New("usage: devctl gateway-search-proof")
@@ -233,7 +240,7 @@ func (p *searchProof) execute() error {
 	if err != nil {
 		return err
 	}
-	if err := p.wait("gateway-ready", 3*time.Minute, "docker", "exec", mock, "/tmp/search-proof-provider", "--get", "http://gateway:4000/health/liveliness"); err != nil {
+	if err := p.wait("gateway-ready", searchGatewayStartupTimeout, "docker", "exec", mock, "/tmp/search-proof-provider", "--get", "http://gateway:4000/health/liveliness"); err != nil {
 		return err
 	}
 	if _, err := p.command("gateway-proof-install", nil, "docker", "exec", gateway, "sh", "-c", "cp /proof/gateway-search-proof.test /tmp/gateway-search-proof.test && chmod +x /tmp/gateway-search-proof.test"); err != nil {
@@ -257,10 +264,7 @@ func (p *searchProof) execute() error {
 func (p *searchProof) checkStats(data []byte) error {
 	var stats struct {
 		Calls  []struct{ Query, Path string }
-		Models []struct {
-			Tools   []map[string]any
-			Options any `json:"web_search_options"`
-		} `json:"model_calls"`
+		Models []searchProofModelObservation `json:"model_calls"`
 	}
 	if err := json.Unmarshal(data, &stats); err != nil {
 		return err
@@ -268,8 +272,28 @@ func (p *searchProof) checkStats(data []byte) error {
 	if len(stats.Calls) != 1 || stats.Calls[0].Query != "local source proof" || stats.Calls[0].Path != "/search" {
 		return fmt.Errorf("unexpected backend search calls: %+v", stats.Calls)
 	}
+	if err := checkSearchProofModels(stats.Models); err != nil {
+		return err
+	}
+	coverage, err := os.ReadFile(filepath.Join(p.dir, "native-search-coverage.json"))
+	if err != nil {
+		return err
+	}
+	var missing map[string][]string
+	if err := json.Unmarshal(coverage, &missing); err != nil {
+		return err
+	}
+	for _, values := range missing {
+		if len(values) != 0 {
+			return fmt.Errorf("configured models lack native-search protection: %s", coverage)
+		}
+	}
+	return nil
+}
+
+func checkSearchProofModels(calls []searchProofModelObservation) error {
 	functionSeen := false
-	for _, call := range stats.Models {
+	for _, call := range calls {
 		if call.Options != nil {
 			return errors.New("native search parameters reached the model provider")
 		}
@@ -284,19 +308,6 @@ func (p *searchProof) checkStats(data []byte) error {
 	}
 	if !functionSeen {
 		return errors.New("ordinary function tools did not reach the model provider")
-	}
-	coverage, err := os.ReadFile(filepath.Join(p.dir, "native-search-coverage.json"))
-	if err != nil {
-		return err
-	}
-	var missing map[string][]string
-	if err := json.Unmarshal(coverage, &missing); err != nil {
-		return err
-	}
-	for _, values := range missing {
-		if len(values) != 0 {
-			return fmt.Errorf("configured models lack native-search protection: %s", coverage)
-		}
 	}
 	return nil
 }

@@ -18,13 +18,27 @@ type provider struct {
 	models []map[string]any
 }
 
+const (
+	proofHTTPTimeout  = 5 * time.Second
+	proofStatsLimit   = 8 << 20
+	proofRequestLimit = 1 << 20
+	proofInputTokens  = 4
+	proofOutputTokens = 3
+	proofTotalTokens  = 7
+	responseContent   = "content"
+	responseType      = "type"
+	responseCompleted = "completed"
+	responseStatus    = "status"
+)
+
 func main() {
 	var err error
-	if len(os.Args) == 3 && os.Args[1] == "--get" {
+	switch {
+	case len(os.Args) == 3 && os.Args[1] == "--get":
 		err = get(os.Args[2])
-	} else if len(os.Args) == 1 {
-		err = (&http.Server{Addr: ":8000", Handler: &provider{}, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 5 * time.Second, WriteTimeout: 5 * time.Second}).ListenAndServe()
-	} else {
+	case len(os.Args) == 1:
+		err = (&http.Server{Addr: ":8000", Handler: &provider{}, ReadHeaderTimeout: proofHTTPTimeout, ReadTimeout: proofHTTPTimeout, WriteTimeout: proofHTTPTimeout}).ListenAndServe()
+	default:
 		err = errors.New("usage: search-proof-provider [--get URL]")
 	}
 	if err != nil {
@@ -43,7 +57,7 @@ func get(url string) error {
 	if response.StatusCode != http.StatusOK {
 		return fmt.Errorf("HTTP %d", response.StatusCode)
 	}
-	_, err = io.Copy(os.Stdout, io.LimitReader(response.Body, 8<<20))
+	_, err = io.Copy(os.Stdout, io.LimitReader(response.Body, proofStatsLimit))
 	return err
 }
 
@@ -56,14 +70,14 @@ func (p *provider) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body map[string]any
-	raw, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 1<<20))
+	raw, err := io.ReadAll(http.MaxBytesReader(w, r.Body, proofRequestLimit))
 	if err != nil || json.Unmarshal(raw, &body) != nil {
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
 	if r.URL.Path == "/search" {
 		p.calls = append(p.calls, map[string]any{"query": body["query"], "path": r.URL.Path})
-		_ = json.NewEncoder(w).Encode(map[string]any{"results": []any{map[string]any{"title": "Checked source", "url": "https://example.test/checked-source", "content": "Local fake-provider evidence."}}})
+		_ = json.NewEncoder(w).Encode(map[string]any{"results": []any{map[string]any{"title": "Checked source", "url": "https://example.test/checked-source", responseContent: "Local fake-provider evidence."}}})
 		return
 	}
 	p.models = append(p.models, map[string]any{"path": r.URL.Path, "tools": body["tools"], "web_search_options": body["web_search_options"]})
@@ -73,11 +87,15 @@ func (p *provider) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if denied {
 		text = "not allowed to access search tool"
 	}
+	tool := ""
+	if requested && !denied {
+		tool = "litellm_web_search"
+	}
 	var result any
 	if r.URL.Path == "/v1/chat/completions" {
-		result = chatResponse(text, requested && !denied)
+		result = chatResponse(text, tool)
 	} else {
-		result = responsesResponse(text, requested && !denied)
+		result = responsesResponse(text, tool)
 	}
 	_ = json.NewEncoder(w).Encode(result)
 }
@@ -97,21 +115,21 @@ func searchRequested(body map[string]any) bool {
 	return false
 }
 
-func chatResponse(text string, requested bool) any {
-	message := map[string]any{"role": "assistant", "content": text}
+func chatResponse(text, tool string) any {
+	message := map[string]any{"role": "assistant", responseContent: text}
 	finish := "stop"
-	if requested {
-		message["content"] = nil
-		message["tool_calls"] = []any{map[string]any{"id": "call_proof", "type": "function", "function": map[string]any{"name": "litellm_web_search", "arguments": `{"query":"native local source proof"}`}}}
+	if tool != "" {
+		message[responseContent] = nil
+		message["tool_calls"] = []any{map[string]any{"id": "call_proof", responseType: "function", "function": map[string]any{"name": tool, "arguments": `{"query":"native local source proof"}`}}}
 		finish = "tool_calls"
 	}
-	return map[string]any{"id": "chatcmpl-proof", "object": "chat.completion", "created": time.Now().Unix(), "model": "gpt-4o-mini", "choices": []any{map[string]any{"index": 0, "message": message, "finish_reason": finish}}, "usage": map[string]any{"prompt_tokens": 4, "completion_tokens": 3, "total_tokens": 7}}
+	return map[string]any{"id": "chatcmpl-proof", "object": "chat.completion", "created": time.Now().Unix(), "model": "gpt-4o-mini", "choices": []any{map[string]any{"index": 0, "message": message, "finish_reason": finish}}, "usage": map[string]any{"prompt_tokens": proofInputTokens, "completion_tokens": proofOutputTokens, "total_tokens": proofTotalTokens}}
 }
 
-func responsesResponse(text string, requested bool) any {
-	output := []any{map[string]any{"type": "message", "id": "msg_proof", "role": "assistant", "status": "completed", "content": []any{map[string]any{"type": "output_text", "text": text, "annotations": []any{}}}}}
-	if requested {
-		output = []any{map[string]any{"type": "function_call", "id": "fc_proof", "call_id": "call_proof", "name": "litellm_web_search", "arguments": `{"query":"native local source proof"}`, "status": "completed"}}
+func responsesResponse(text, tool string) any {
+	output := []any{map[string]any{responseType: "message", "id": "msg_proof", "role": "assistant", responseStatus: responseCompleted, responseContent: []any{map[string]any{responseType: "output_text", "text": text, "annotations": []any{}}}}}
+	if tool != "" {
+		output = []any{map[string]any{responseType: "function_call", "id": "fc_proof", "call_id": "call_proof", "name": tool, "arguments": `{"query":"native local source proof"}`, responseStatus: responseCompleted}}
 	}
-	return map[string]any{"id": "resp_proof", "object": "response", "created_at": time.Now().Unix(), "status": "completed", "model": "gpt-4o-mini", "output": output, "usage": map[string]any{"input_tokens": 4, "output_tokens": 3, "total_tokens": 7}}
+	return map[string]any{"id": "resp_proof", "object": "response", "created_at": time.Now().Unix(), responseStatus: responseCompleted, "model": "gpt-4o-mini", "output": output, "usage": map[string]any{"input_tokens": proofInputTokens, "output_tokens": proofOutputTokens, "total_tokens": proofTotalTokens}}
 }

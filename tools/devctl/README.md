@@ -4,6 +4,8 @@
 the Go standard library so the diagnostic tool does not need its own dependency
 bootstrap.
 
+修改本工具後，在 `tools/devctl` 執行 `go test -count=1 ./...`、`go vet ./...`、`golangci-lint run` 與 `golangci-lint fmt --diff`；CI 的工具模組使用相同的驗證入口。
+
 From the repository root:
 
 - `go -C tools/devctl run . doctor` checks required native tools without printing
