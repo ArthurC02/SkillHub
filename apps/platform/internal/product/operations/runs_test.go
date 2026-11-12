@@ -2,6 +2,8 @@ package operations
 
 import (
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 	"time"
@@ -54,5 +56,20 @@ func TestHaltReasonNamesTheBrakeBeforeTheDisable(t *testing.T) {
 				t.Errorf("haltReason(enabled=%v, braked=%v) = %q, want %q", tc.enabled, tc.braked, got, tc.want)
 			}
 		})
+	}
+}
+
+func TestARunIDThatIsNotAUUIDIsABadRequest(t *testing.T) {
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodGet, "/admin/agents/runs/not-a-uuid", nil)
+	r.SetPathValue("id", "not-a-uuid")
+
+	(&Handler{}).Run(w, r)
+
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want 400", w.Code)
+	}
+	if body := w.Body.String(); body != "{\"error\":\"run id must be a UUID\"}\n" {
+		t.Errorf("body = %q, want the run id refusal", body)
 	}
 }
