@@ -589,6 +589,7 @@ func TestFinishWhenCreditSettleFailsStepReturnsItAndTheSessionStaysWorking(t *te
 	ws := newCreationWorkspace(t, pool)
 	rec := &jobRecorder{}
 	settleErr := errors.New("ledger down")
+	settles := 0
 	svc := &creation.Service{
 		Pool: pool, Limits: creationLimits(), Insert: rec.insert,
 		IssueKey: okIssueKey, RevokeKey: okRevokeKey,
@@ -597,7 +598,12 @@ func TestFinishWhenCreditSettleFailsStepReturnsItAndTheSessionStaysWorking(t *te
 		}),
 		Billing: creation.BillingHooks{
 			SettleDeadline: 2 * time.Second,
-			SettleFunc: func(context.Context, pgx.Tx, creation.StepSettlement) error {
+			SettleFunc: func(ctx context.Context, _ pgx.Tx, _ creation.StepSettlement) error {
+				settles++
+				if settles > 1 {
+					<-ctx.Done()
+					return ctx.Err()
+				}
 				return settleErr
 			},
 		},

@@ -162,11 +162,16 @@ const (
 func (s *Service) settle(a JobArgs, call stepCall) error {
 	ctx, cancel := context.WithTimeout(context.Background(), s.Billing.settleDeadline())
 	defer cancel()
+	var lastErr error
 	for {
 		err := s.finish(ctx, a, call)
 		if err == nil {
 			return nil
 		}
+		if ctx.Err() != nil {
+			return errors.Join(lastErr, err)
+		}
+		lastErr = err
 		slog.Warn("creation: a finished model call could not be settled yet; trying again",
 			"receipt_id", UUID(a.ReceiptID), "error", err)
 		select {
