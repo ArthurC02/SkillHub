@@ -12,14 +12,16 @@ import { SkillDetail } from "../skill/detail/SkillDetail.page";
 import { ImportSkill } from "../creation/import/ImportSkill.page";
 import { CancelRunControl } from "../runs/trace/components/CancelRunControl";
 import {
-  ME as SESSION,
   IMPORT_LIMITS,
+  ME as SESSION,
   platformResponse,
+  RUN,
   RUNS,
+  SKILL,
   SKILL_VERSIONS,
+  skillDetail,
   VERSION,
   VERSION_DIFF,
-  skillDetail,
 } from "../../testing/fixtures/platform";
 import { useForkSkill } from "../skill/skills.service";
 import { BundleSection } from "../publishing";
@@ -29,9 +31,7 @@ import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 import { queryKeys } from "../../core/api/queryKeys";
 import { json } from "../../testing/http";
 
-const SKILL = "11111111-1111-1111-1111-111111111111";
 const TEST_CASE = "55555555-5555-5555-5555-555555555555";
-const RUN = "9b1d4f2e-77c3-4a2b-8f10-3c9e5a6b7d20";
 const CANCEL_NOTE = "已送出取消要求；在工作負載真的停下來之前，這次試跑會維持目前的狀態。";
 const ARTIFACT = "33333333-3333-3333-3333-333333333333";
 

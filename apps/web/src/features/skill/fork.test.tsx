@@ -7,12 +7,16 @@ import { queryKeys } from "../../core/api/queryKeys";
 import { SkillDetail } from "./detail/SkillDetail.page";
 import { SkillFiles } from "./files/SkillFiles.page";
 import { ForkAction } from "./detail/components/ForkAction";
-import { ME, SKILL_VERSIONS, skillDetail, platformResponse } from "../../testing/fixtures/platform";
+import {
+  ME,
+  platformResponse,
+  SKILL,
+  SKILL_VERSIONS,
+  skillDetail,
+} from "../../testing/fixtures/platform";
 import type { OwnSkills } from "../../core/api/types";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 import { json } from "../../testing/http";
-
-const SKILL = "11111111-1111-1111-1111-111111111111";
 
 let container: HTMLDivElement;
 let root: Root;

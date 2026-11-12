@@ -6,16 +6,15 @@ import { queryClient } from "../../core/api/queryClient";
 import { queryKeys } from "../../core/api/queryKeys";
 import { SkillDetail } from "./detail/SkillDetail.page";
 import {
-  ME,
   CATEGORIES,
+  ME,
+  SKILL,
   SKILL_VERSIONS,
-  VERSION,
   skillDetail,
+  VERSION,
 } from "../../testing/fixtures/platform";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 import { json } from "../../testing/http";
-
-const SKILL = "11111111-1111-1111-1111-111111111111";
 
 let container: HTMLDivElement;
 let root: Root;

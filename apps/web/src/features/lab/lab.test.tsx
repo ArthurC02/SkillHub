@@ -7,7 +7,7 @@ import { router } from "../../app/router";
 import type { PreflightResponse } from "./lab.service";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 import { preloadEveryPage } from "../../testing/pages";
-import { platformResponse } from "../../testing/fixtures/platform";
+import { platformResponse, SKILL, TEST_CASE, VERSION } from "../../testing/fixtures/platform";
 
 beforeAll(preloadEveryPage);
 
@@ -26,11 +26,8 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 
-const SKILL = "11111111-1111-1111-1111-111111111111";
-const VERSION = "22222222-2222-2222-2222-222222222222";
 const OLDER_VERSION = "44444444-4444-4444-4444-444444444444";
 const UNKNOWN_VERSION = "66666666-6666-6666-6666-666666666666";
-const TEST_CASE = "33333333-3333-3333-3333-333333333333";
 const OTHER_SKILL = "55555555-5555-5555-5555-555555555555";
 
 const VERSIONS = {

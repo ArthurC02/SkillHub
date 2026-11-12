@@ -4,12 +4,10 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { queryClient } from "../../core/api/queryClient";
 import { SkillDetail } from "./detail/SkillDetail.page";
-import { skillDetail, VERSION } from "../../testing/fixtures/platform";
+import { SKILL, skillDetail, VERSION } from "../../testing/fixtures/platform";
 import type { SkillDetail as SkillDetailModel, SkillSource } from "../../core/api/types";
 import { DEFAULT_WAIT_MS, pollUntil } from "../../testing/poll";
 import { json } from "../../testing/http";
-
-const SKILL = "11111111-1111-1111-1111-111111111111";
 
 let container: HTMLDivElement;
 let root: Root;
