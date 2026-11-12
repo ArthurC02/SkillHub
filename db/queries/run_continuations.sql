@@ -56,6 +56,30 @@ ORDER BY chain.start_id, chain.depth DESC;
 -- name: GetRunSettings :one
 SELECT * FROM run_settings;
 
+-- name: SummarizeContinuationChains :one
+WITH RECURSIVE chain AS (
+    SELECT r.id AS root_id, r.id AS run_id, r.workspace_id
+    FROM runs r
+    WHERE r.created_at >= @since::timestamptz AND r.created_at < @until::timestamptz
+      AND NOT EXISTS (
+          SELECT 1 FROM run_continuations c
+          WHERE c.run_id = r.id AND c.workspace_id = r.workspace_id
+      )
+    UNION
+    SELECT chain.root_id, c.run_id, chain.workspace_id
+    FROM chain
+    JOIN run_continuations c
+      ON c.continues_run_id = chain.run_id AND c.workspace_id = chain.workspace_id
+    JOIN runs r ON r.id = c.run_id AND r.workspace_id = chain.workspace_id
+    WHERE c.created_at < @until::timestamptz AND r.created_at < @until::timestamptz
+), lengths AS (
+    SELECT root_id, count(*) - 1 AS rounds FROM chain GROUP BY root_id
+)
+SELECT count(*)::bigint AS chains,
+       coalesce(sum(rounds), 0)::bigint AS rounds,
+       coalesce(max(rounds), 0)::bigint AS longest
+FROM lengths;
+
 -- name: SetRunSettings :one
 INSERT INTO run_settings (singleton, continuation_rounds, reason, set_by)
 VALUES (true, @continuation_rounds, @reason, @set_by)

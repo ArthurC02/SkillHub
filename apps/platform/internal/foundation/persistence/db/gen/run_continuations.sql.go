@@ -355,3 +355,46 @@ func (q *Queries) SetRunSettings(ctx context.Context, arg SetRunSettingsParams) 
 	)
 	return i, err
 }
+
+const summarizeContinuationChains = `-- name: SummarizeContinuationChains :one
+WITH RECURSIVE chain AS (
+    SELECT r.id AS root_id, r.id AS run_id, r.workspace_id
+    FROM runs r
+    WHERE r.created_at >= $1::timestamptz AND r.created_at < $2::timestamptz
+      AND NOT EXISTS (
+          SELECT 1 FROM run_continuations c
+          WHERE c.run_id = r.id AND c.workspace_id = r.workspace_id
+      )
+    UNION
+    SELECT chain.root_id, c.run_id, chain.workspace_id
+    FROM chain
+    JOIN run_continuations c
+      ON c.continues_run_id = chain.run_id AND c.workspace_id = chain.workspace_id
+    JOIN runs r ON r.id = c.run_id AND r.workspace_id = chain.workspace_id
+    WHERE c.created_at < $2::timestamptz AND r.created_at < $2::timestamptz
+), lengths AS (
+    SELECT root_id, count(*) - 1 AS rounds FROM chain GROUP BY root_id
+)
+SELECT count(*)::bigint AS chains,
+       coalesce(sum(rounds), 0)::bigint AS rounds,
+       coalesce(max(rounds), 0)::bigint AS longest
+FROM lengths
+`
+
+type SummarizeContinuationChainsParams struct {
+	Since pgtype.Timestamptz
+	Until pgtype.Timestamptz
+}
+
+type SummarizeContinuationChainsRow struct {
+	Chains  int64
+	Rounds  int64
+	Longest int64
+}
+
+func (q *Queries) SummarizeContinuationChains(ctx context.Context, arg SummarizeContinuationChainsParams) (SummarizeContinuationChainsRow, error) {
+	row := q.db.QueryRow(ctx, summarizeContinuationChains, arg.Since, arg.Until)
+	var i SummarizeContinuationChainsRow
+	err := row.Scan(&i.Chains, &i.Rounds, &i.Longest)
+	return i, err
+}

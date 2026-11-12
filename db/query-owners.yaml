@@ -34,6 +34,7 @@ files:
   workspaces.sql: identity
 
 queries:
+  SummarizeContinuationChains: run
   CountQuotaRuns: run
   RunInWorkspace: run
   RunIDsInWorkspace: run
@@ -284,6 +285,7 @@ queries:
   CountTraceMaskingInWindow: trace
 
 scope:
+  SummarizeContinuationChains: worker
   TakeRateLimitToken: platform-wide
   SweepRateLimitBuckets: platform-wide
   RecordDatabaseSize: platform-wide

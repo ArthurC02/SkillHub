@@ -45,6 +45,16 @@ Catalog 參考畫面列出選定不可變版本的描述、相容性與工具需
 
 Clean mode 由同一程序內的 Go Worker 服務接收瞬時圖像，仍不讓 API 呼叫 Python。此模式的設定與曝光規則相同。
 
+## 接續鏈的品質觀察
+
+Run owner 在既有 Worker gauge 更新流程中，從同一次資料庫讀取取得最近 24 小時建立的初始 Run，以及觀察時間之前已保存的接續關係。初始 Run 建立時間的下界包含、上界不包含；接續的 Run 與關係都必須早於觀察時間。鏈以初始 Run 計一次，中間的接續 Run 不另算一條；初始 Run 本身是零輪，每個已保存的接續關係增加一輪。較早開始的鏈即使最近有人回答，也不進這一批初始 Run 的統計。
+
+skillhub_continuation_chains 是這批鏈數，skillhub_continuation_rounds 是它們的接續輪數總和，skillhub_continuation_longest_rounds 是其中最長輪數。平均輪數只能在鏈數大於零時以總輪數除以鏈數；空集合的三個數字都是零，不表示已完成一場零輪對話。統計包含所有狀態、一般試跑、評估與不載入 Skill 的對照，不是只看已結束對話，也不是只看真人。未回答或仍在執行的鏈可能繼續變長。
+
+skillhub_continuation_observation_success 表示讀取成功，skillhub_continuation_observed_at_seconds 是時間上界。讀取失敗時撤下鏈數、輪數與時間，成功值改為 0；恢復後重讀資料。各 Worker 副本獨立觀察，不可相加；先確認觀察成功，再選最近仍新鮮的副本。新鮮門檻依部署的 gauge 更新與 scrape 週期設定。這些指標沒有個人、Workspace、Run、問題或答案標籤，不另存對話歷史，也不作告警、派送或授權依據。帳號清除依現行規則保留去識別的永久 Run 與接續關係，因此結構統計不承諾隨帳號清除歸零；問答原文的保存由既有歷史輸入與清除規則負責，這些指標不讀取原文。
+
+初始 Run 的建立時間索引涵蓋所有狀態；正式資料量下的查詢與 migration 建索引耗時尚未量測。追問率的可信分母、費用涵蓋率與人工分歧率仍待補齊。
+
 ## 可重現的免費證據
 
 - Python `apps/llm/tests/test_creation.py`：多輪與工具 observation、需求更正、圖像只傳一次、strict schema、截斷、未知費用、關閉 LangSmith tracing、取消傳至模型 await。

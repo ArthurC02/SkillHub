@@ -168,7 +168,7 @@ func (s *Service) superviseRun(ctx context.Context, run gen.Run, policy []byte) 
 }
 
 func (s *Service) PublishGauges(ctx context.Context) error {
-	errs := []error{s.publishCleanupBacklog(ctx), publishRunQueue(ctx, s.queries(), s.now())}
+	errs := []error{s.publishCleanupBacklog(ctx), publishRunQueue(ctx, s.queries(), s.now()), publishContinuationGauges(ctx, s.queries(), s.now())}
 	for _, provider := range s.providers().Providers {
 		errs = append(errs, s.publishPersistentOrphans(ctx, provider.Name()))
 	}
@@ -199,5 +199,27 @@ func publishRunQueue(ctx context.Context, q *gen.Queries, now time.Time) error {
 	}
 	metrics.RunsQueued.WithLabelValues().Set(float64(queue.Queued))
 	metrics.RunQueueOldestSeconds.WithLabelValues().Set(waited)
+	return nil
+}
+
+const continuationObservationWindow = 24 * time.Hour
+
+func publishContinuationGauges(ctx context.Context, q *gen.Queries, until time.Time) error {
+	stats, err := q.SummarizeContinuationChains(ctx, gen.SummarizeContinuationChainsParams{
+		Since: pgconv.Timestamptz(until.Add(-continuationObservationWindow)), Until: pgconv.Timestamptz(until),
+	})
+	if err != nil {
+		metrics.ContinuationChains.Reset()
+		metrics.ContinuationRounds.Reset()
+		metrics.ContinuationLongest.Reset()
+		metrics.ContinuationObservedAt.Reset()
+		metrics.ContinuationObservationSuccess.WithLabelValues().Set(0)
+		return err
+	}
+	metrics.ContinuationChains.WithLabelValues().Set(float64(stats.Chains))
+	metrics.ContinuationRounds.WithLabelValues().Set(float64(stats.Rounds))
+	metrics.ContinuationLongest.WithLabelValues().Set(float64(stats.Longest))
+	metrics.ContinuationObservedAt.WithLabelValues().Set(float64(until.Unix()))
+	metrics.ContinuationObservationSuccess.WithLabelValues().Set(1)
 	return nil
 }
