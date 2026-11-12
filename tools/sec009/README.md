@@ -99,6 +99,8 @@ SKILLHUB_SANDBOX_IMAGE=<repo:tag@digest> python tools/sec009/t8-image-audit.py  
 
 探針把選定的 bundle 交給 `gh attestation verify`，固定驗證 `ArthurC02/SkillHub` 與 `.github/workflows/runtime-image.yml` 的簽署身分、predicate type 和映像 subject digest，只讀取驗證成功後的 statement。SBOM 與掃描各自驗證；CLI 缺席、逾時、拒絕、輸出格式錯誤或超過 16 MiB 都保留為 `UNKNOWN`。每次驗證最多 60 秒，臨時 bundle 與輸出檔會回收。
 
+掃描時間必須帶時區且不晚於目前時間，30 天到期的瞬間即失效；未來、缺少或無法解析的時間沒有可用期限，維持 `UNKNOWN`。可修 Critical／High 的數量必須是非負整數，布林值不當作零；metadata 或 summary 的形狀錯誤不會中斷整份報告。選填的 severity 分布讀不到時省略該分布，I-06 仍只依已驗證的可修數量判定。
+
 ### 輸出與證據
 
 | | |

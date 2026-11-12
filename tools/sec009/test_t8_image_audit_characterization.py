@@ -280,6 +280,72 @@ def test_an_expired_scan_fails_and_keeps_its_negative_expiry():
                        "2026-07-31 -- EXPIRED", -23), rows
 
 
+def test_a_scan_expires_at_thirty_days_with_one_microsecond_on_either_side():
+    cases = [
+        ("2026-07-24T00:00:00.000001Z", "PASS", 0),
+        ("2026-07-24T00:00:00Z", "FAIL", 0),
+        ("2026-07-23T23:59:59.999999Z", "FAIL", -1),
+        ("2026-08-23T00:00:00Z", "PASS", 30),
+        ("2026-08-23T01:00:00+01:00", "PASS", 30),
+    ]
+    for finished, status, days in cases:
+        assert audit.grade_scan_age(finished, NOW)[0] == status, finished
+        assert audit.scan_expires_in_days(finished, NOW) == days, finished
+
+
+def test_a_future_naive_or_non_string_scan_time_is_unknown_without_an_expiry():
+    for finished in ["2026-08-23T00:00:00.000001Z", "2026-08-23T00:00:00", "2026-08-23",
+                     "whenever", None, "", False, True, 0, 1, [], {}]:
+        assert audit.grade_scan_age(finished, NOW)[0] == "UNKNOWN", finished
+        assert audit.scan_expires_in_days(finished, NOW) is None, finished
+
+
+def test_the_seven_day_warning_starts_at_the_boundary():
+    for finished, warning in [("2026-07-31T00:00:00.000001Z", False),
+                              ("2026-07-31T00:00:00Z", True),
+                              ("2026-07-30T23:59:59.999999Z", True)]:
+        status, detail = audit.grade_scan_age(finished, NOW)
+        assert status == "PASS" and ("warning window" in detail) == warning, (finished, detail)
+
+
+def test_only_a_nonnegative_integer_can_be_a_fixable_finding_count():
+    for value, expected in [(False, "UNKNOWN"), (True, "UNKNOWN"), (0.0, "UNKNOWN"),
+                            (-1, "UNKNOWN"), ("0", "UNKNOWN"), ([], "UNKNOWN"),
+                            ({}, "UNKNOWN"), (0, "PASS"), (1, "FAIL")]:
+        rows, _ = run(*registry(manifest=HEADERS, index=INDEX,
+                               bundle=statement(summary={"fixable_critical_high": value})))
+        assert rows[-1][:2] == ("I-06", expected), (value, rows)
+
+
+def test_malformed_scan_metadata_or_summary_stays_unknown_without_crashing():
+    for field, check in [("metadata", "I-04"), ("summary", "I-06")]:
+        for value in [None, {}, [1], True, 1, "private malformed value"]:
+            bundle = statement(summary={"fixable_critical_high": 0})
+            body = json.loads(base64.b64decode(bundle["dsseEnvelope"]["payload"]))
+            body["predicate"][field] = value
+            bundle["dsseEnvelope"]["payload"] = base64.b64encode(json.dumps(body).encode()).decode()
+            rows, err = run(*registry(manifest=HEADERS, index=INDEX, bundle=bundle))
+            assert next(row[1] for row in rows if row[0] == check) == "UNKNOWN", (field, value, rows)
+            assert "private malformed value" not in str(rows) + err
+
+
+def test_an_unreadable_optional_severity_breakdown_does_not_replace_the_verified_count():
+    for value in [None, [], [1], True, 1, "private malformed value"]:
+        rows, err = run(*registry(manifest=HEADERS, index=INDEX,
+                                 bundle=statement(summary={"fixable_critical_high": 0, "by_severity": value})))
+        assert rows[-1][:2] == ("I-06", "PASS"), (value, rows)
+        assert "private malformed value" not in str(rows) + err
+
+
+def test_a_verified_matching_subject_does_not_crash_on_an_unrelated_malformed_subject():
+    bundle = statement(summary={"fixable_critical_high": 0})
+    body = json.loads(base64.b64decode(bundle["dsseEnvelope"]["payload"]))
+    body["subject"].extend([None, {"digest": None}])
+    bundle["dsseEnvelope"]["payload"] = base64.b64encode(json.dumps(body).encode()).decode()
+    rows, _ = run(*registry(manifest=HEADERS, index=INDEX, bundle=bundle))
+    assert rows[3][1] == "PASS" and rows[-1][1] == "PASS", rows
+
+
 def test_first_value_skips_comments_and_blank_lines():
     with tempfile.TemporaryDirectory() as folder:
         path = Path(folder) / "value.txt"

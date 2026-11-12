@@ -171,10 +171,21 @@ def grade_node_tag(node_tag: str, version: str) -> tuple[str, str]:
     return PASS, "the node's tag %s matches its checkout's IMAGE_VERSION" % node_tag
 
 
-def scan_expires_in_days(finished: str | None, now: datetime) -> int | None:
+def _scan_time(finished: object, now: datetime) -> datetime | None:
+    if not isinstance(finished, str):
+        return None
     try:
-        scanned = datetime.fromisoformat((finished or "").replace("Z", "+00:00"))
+        scanned = datetime.fromisoformat(finished.replace("Z", "+00:00"))
     except ValueError:
+        return None
+    if scanned.tzinfo is None or scanned > now:
+        return None
+    return scanned
+
+
+def scan_expires_in_days(finished: str | None, now: datetime) -> int | None:
+    scanned = _scan_time(finished, now)
+    if scanned is None:
         return None
     return (scanned + timedelta(days=SCAN_VALIDITY_DAYS) - now).days
 
@@ -184,17 +195,16 @@ def grade_scan_age(finished: str | None, now: datetime) -> tuple[str, str]:
     pulled out of audit() so --self-check can drive it offline."""
     if not finished:
         return UNKNOWN, "predicate has no scan_finished_on"
-    try:
-        scanned = datetime.fromisoformat(finished.replace("Z", "+00:00"))
-    except ValueError:
-        return UNKNOWN, "scan_finished_on is not a timestamp: %r" % finished
+    scanned = _scan_time(finished, now)
+    if scanned is None:
+        return UNKNOWN, "scan_finished_on is not a past or present timestamp with a timezone"
     age = now - scanned
     expires = scanned + timedelta(days=SCAN_VALIDITY_DAYS)
     detail = "scanned %s, %d day(s) old, expires %s" % (
         finished, age.days, expires.date().isoformat())
-    if age > timedelta(days=SCAN_VALIDITY_DAYS):
+    if age >= timedelta(days=SCAN_VALIDITY_DAYS):
         return FAIL, detail + " -- EXPIRED"
-    if age > timedelta(days=SCAN_VALIDITY_DAYS - SCAN_WARN_DAYS):
+    if age >= timedelta(days=SCAN_VALIDITY_DAYS - SCAN_WARN_DAYS):
         detail += "  [within the 7-day expiry warning window]"
     return PASS, detail
 
@@ -352,7 +362,7 @@ def _audit_attestations(rep: Report, digest: str, token: str) -> None:
 
     statement = _scan_statement(rep, found[VULN_PREDICATE], token, digest)
     if statement is not None:
-        _grade_scan_statement(rep, digest, statement)
+        _grade_scan_statement(rep, statement)
 
 
 def _scan_statement(rep: Report, bundle_digest: str, token: str, digest: str) -> dict | None:
@@ -401,29 +411,24 @@ def _verified_statement(bundle_digest: str, token: str, digest: str, predicate_t
     return statement
 
 
-def _grade_scan_statement(rep: Report, digest: str, statement: dict) -> None:
-    subjects = {
-        "sha256:" + s.get("digest", {}).get("sha256", "")
-        for s in statement.get("subject", [])
-    }
-    if digest not in subjects:
-        rep.add("I-04", "scan attestation in date", FAIL,
-                "attestation subject %s != published digest" % (sorted(subjects) or ["<none>"])[0])
-        rep.add("I-06", "no fixable Critical/High", UNKNOWN, "attestation is about other bytes")
-        return
-
+def _grade_scan_statement(rep: Report, statement: dict) -> None:
     predicate = statement.get("predicate", {})
-    finished = (predicate.get("metadata") or {}).get("scan_finished_on")
+    metadata = predicate.get("metadata")
+    finished = metadata.get("scan_finished_on") if isinstance(metadata, dict) else None
     now = datetime.now(timezone.utc)
     rep.add("I-04", "scan attestation in date", *grade_scan_age(finished, now))
     rep.rows[-1]["expires_in_days"] = scan_expires_in_days(finished, now)
 
-    summary = predicate.get("summary") or {}
+    summary = predicate.get("summary")
+    summary = summary if isinstance(summary, dict) else {}
     fixable = summary.get("fixable_critical_high")
     if fixable is None:
         rep.add("I-06", "no fixable Critical/High", UNKNOWN, "predicate has no summary.fixable_critical_high")
+    elif type(fixable) is not int or fixable < 0:
+        rep.add("I-06", "no fixable Critical/High", UNKNOWN, "summary.fixable_critical_high is not a nonnegative integer")
     else:
-        by_sev = summary.get("by_severity") or {}
+        by_sev = summary.get("by_severity")
+        by_sev = by_sev if isinstance(by_sev, dict) else {}
         detail = "fixable Critical/High = %s (of %s findings: %s)" % (
             fixable, summary.get("total"),
             ", ".join("%s %s" % (v, k) for k, v in sorted(by_sev.items())))
