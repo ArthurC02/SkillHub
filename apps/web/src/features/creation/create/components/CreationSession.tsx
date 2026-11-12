@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { Link } from "@tanstack/react-router";
-import { ApiError } from "../../../../core/api/client";
+import { ApiError, isNotFound } from "../../../../core/api/client";
 import { useDeadlinePassed } from "../../../../shared/useDeadlinePassed";
 import {
   useCreationLimits,
@@ -258,7 +258,7 @@ function CreationReadState({
         retry={() => void read.refetch()}
         focusTarget="creation-workspace"
       >
-        {read.error instanceof ApiError && read.error.status === 404 && (
+        {isNotFound(read.error) && (
           <p role="alert">
             找不到這次創作：它可能已超過保存期限或已被刪除。{" "}
             <Link to="/workspace/creations" search={{ session: undefined }}>

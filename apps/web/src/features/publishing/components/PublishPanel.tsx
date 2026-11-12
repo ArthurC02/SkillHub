@@ -6,7 +6,6 @@ import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import { ConfirmDelete } from "../../../shared/ui/ConfirmDelete";
 import { SignInAction } from "../../../shared/ui/SignIn";
-import { ApiError } from "../../../core/api/client";
 import type { SkillDetail as SkillDetailModel, SkillVersionSummary } from "../../../core/api/types";
 import {
   useOwnPublisher,
@@ -20,6 +19,7 @@ import { PublishDeclarations, PublishForm, type Declarations } from "./PublishFo
 import { PublisherRegistration } from "./PublisherSection";
 import { VersionCatalogExposure } from "./CatalogExposure";
 import { DeliveryAudience } from "./DeliveryAudience";
+import { isNotFound } from "../../../core/api/client";
 
 export function PublishPanel({
   skill,
@@ -61,8 +61,8 @@ function PublicationEditor({
   const nameInputId = useId();
   const headingId = `${nameInputId}-heading`;
 
-  const noPublisherYet = publisher.error instanceof ApiError && publisher.error.status === 404;
-  const notPublishedYet = publication.error instanceof ApiError && publication.error.status === 404;
+  const noPublisherYet = isNotFound(publisher.error);
+  const notPublishedYet = isNotFound(publication.error);
 
   const { needsAttestation, declaresLicense, disabledReason, cannotSubmit } = publishGateState(
     skill,

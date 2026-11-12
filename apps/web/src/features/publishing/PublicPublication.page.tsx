@@ -6,7 +6,7 @@ import { Timestamp } from "../../shared/ui/Timestamp";
 import { LabelledBadge } from "../../shared/ui/LabelledBadge";
 import { SOURCE_LABELS } from "../../shared/ui/LicenseBadge.model";
 import { Findings } from "../../shared/ui/Findings";
-import { API_BASE_URL, ApiError } from "../../core/api/client";
+import { API_BASE_URL, isNotFound } from "../../core/api/client";
 import {
   useAcquirePublication,
   usePublicPublication,
@@ -266,7 +266,7 @@ function PublicationContent({ publisher, name }: { publisher: string; name: stri
   }, [publication.isPending, publication.error, availability]);
 
   if (publication.isPending || publication.error) {
-    const missing = publication.error instanceof ApiError && publication.error.status === 404;
+    const missing = isNotFound(publication.error);
     const paused = publication.fetchStatus === "paused";
     return (
       <section>

@@ -9,7 +9,7 @@ import { useTestCase } from "../testcases.service";
 import { PreflightShell } from "./components/PreflightShell";
 import { PreflightFacts } from "../components/PreflightFacts";
 import { RunStartControl } from "./components/RunStartControl";
-import { ApiError } from "../../../core/api/client";
+import { ApiError, isNotFound } from "../../../core/api/client";
 import { NOT_INVITED_SENTENCE, runCeilingCredits } from "./preflight.model";
 import "./RunPreflight.page.css";
 
@@ -44,7 +44,7 @@ export function RunPreflight() {
 function PreflightReadFailure({ preflight }: { preflight: ReturnType<typeof usePreflight> }) {
   if (preflight.error instanceof ApiError && preflight.error.status === 403)
     return <p role="alert">{NOT_INVITED_SENTENCE}</p>;
-  if (preflight.error instanceof ApiError && preflight.error.status === 404)
+  if (isNotFound(preflight.error))
     return (
       <p role="alert">
         找不到這個小工具版本或測試題，可能已被刪除；重新讀取也不會出現。

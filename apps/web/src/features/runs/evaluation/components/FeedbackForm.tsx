@@ -3,7 +3,7 @@ import { textLengthReason } from "../../../../shared/textLength.model";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
 import { ReadFailure } from "../../../../shared/ui/LoginRequired";
 import { useState } from "react";
-import { ApiError, isWriteResultUnknown } from "../../../../core/api/client";
+import { isNotFound, isWriteResultUnknown } from "../../../../core/api/client";
 import { useEvaluationFeedback } from "../../evaluation.service";
 import type { Evaluation } from "../../evaluation.service";
 
@@ -76,7 +76,7 @@ export function FeedbackForm({
       {submit.isSuccess && <p role="status">已送出回饋。</p>}
       <ReadFailure error={error} what="回饋">
         <p role="alert">
-          {error instanceof ApiError && error.status === 404
+          {isNotFound(error)
             ? "這次試跑目前沒有可以附回饋的判定。"
             : isWriteResultUnknown(error)
               ? "尚未確認回饋是否已儲存。補充說明已保留，可以再按一次。"
