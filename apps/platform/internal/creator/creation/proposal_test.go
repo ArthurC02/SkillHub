@@ -192,7 +192,7 @@ func TestProposalConfirmBriefWithAnEmptyBriefStillRecordsTheReply(t *testing.T) 
 func TestProposalConfirmBriefReopensConfirmationWhenUnconfirmed(t *testing.T) {
 	s := &Service{}
 	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "existing brief text", BriefConfirmed: false}}
-	r := &StepResult{Message: "confirm please", Outcome: "confirm_brief"}
+	r := &StepResult{Message: "confirm please", Outcome: "confirm_brief", ChallengeCases: pairedEvaluationCases()}
 	state, next, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if err != nil || next || state != StateWaitingConfirmation || e.Snapshot.BriefConfirmed || e.Snapshot.PendingAction != "confirm_brief" {
 		t.Fatalf("state=%q next=%v snap=%+v err=%v", state, next, e.Snapshot, err)
@@ -262,7 +262,7 @@ func TestProposalDraftGuardClauses(t *testing.T) {
 		{
 			name: "validator not wired",
 			build: func() (Snapshot, *StepResult) {
-				return Snapshot{Brief: "task", BriefConfirmed: true},
+				return Snapshot{ChallengeCases: pairedEvaluationCases(), Brief: "task", BriefConfirmed: true},
 					&StepResult{Message: "ok", Brief: "task", Draft: newDraft()}
 			},
 		},
@@ -284,7 +284,7 @@ func TestProposalValidateDraftErrorLeavesDraftUnchanged(t *testing.T) {
 				return "", "", false, sentinel
 			}}}
 			existing := &Draft{Revision: 1, ContentHash: "h", Skill: GeneratedSkill{Name: "x", Body: "old"}}
-			e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true, Draft: existing}}
+			e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Brief: "b", BriefConfirmed: true, Draft: existing}}
 			r := &StepResult{Message: "ok", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "new"}}
 			if entry == "draft" {
 				r.Outcome = "draft"
@@ -309,7 +309,7 @@ func TestNudgePrefersACopiedMarkerOverMissingNodes(t *testing.T) {
 	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "new-hash", "{}", false, nil
 	}}}
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(),
 		Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero, Draft: prior,
 		DiagramFingerprint: "fp", DiagramDescription: "請款流程", DiagramDescriptionConfirmed: true, DiagramConfirmed: true, DiagramInterpretation: &DiagramInterpretation{Nodes: []string{"核准請款"}},
 		EvaluationText: feedback.EvaluationText(attackObservation),
@@ -332,7 +332,7 @@ func TestNudgePrefersANewToolOverACopiedMarker(t *testing.T) {
 	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "new-hash", "{}", false, nil
 	}}}
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(),
 		Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero, Draft: prior,
 		EvaluationText: feedback.EvaluationText(attackObservation),
 	}}
@@ -353,7 +353,7 @@ func TestNudgeNamesMissingDiagramNodes(t *testing.T) {
 	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "new-hash", "{}", false, nil
 	}}}
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(),
 		Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero,
 		DiagramFingerprint: "fp", DiagramDescription: "付款流程", DiagramDescriptionConfirmed: true, DiagramConfirmed: true, DiagramInterpretation: &DiagramInterpretation{Nodes: []string{"寄出付款通知"}},
 	}}
@@ -376,7 +376,7 @@ func TestNudgeNamesTheEvaluationOnlyWhenItMentionsTheNewTool(t *testing.T) {
 		s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 			return "new-hash", "{}", false, nil
 		}}}
-		e := &envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
+		e := &envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(),
 			Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero, Draft: prior,
 			EvaluationText: evaluation,
 		}}
@@ -411,7 +411,7 @@ func TestHandBackPrefersTheUnchangedSentenceOverMissingNodes(t *testing.T) {
 	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "same-hash", "{}", false, nil
 	}}}
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(),
 		Brief: "b", BriefConfirmed: true, Draft: ran, RunUnmet: true, Candidate: candidate, Nudges: MaxNudges,
 		DiagramFingerprint: "fp", DiagramDescription: "請款流程", DiagramDescriptionConfirmed: true, DiagramConfirmed: true, DiagramInterpretation: &DiagramInterpretation{Nodes: []string{"核准請款"}},
 	}}
@@ -435,7 +435,7 @@ func TestHandBackPrefersMissingNodesOverACopiedMarker(t *testing.T) {
 	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "new-hash", "{}", false, nil
 	}}}
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(),
 		Brief: "b", BriefConfirmed: true, Nudges: MaxNudges, Draft: prior,
 		DiagramFingerprint: "fp", DiagramDescription: "請款流程", DiagramDescriptionConfirmed: true, DiagramConfirmed: true, DiagramInterpretation: &DiagramInterpretation{Nodes: []string{"核准請款"}},
 		EvaluationText: feedback.EvaluationText(attackObservation),
@@ -457,7 +457,7 @@ func TestHandBackPrefersACopiedMarkerOverANewTool(t *testing.T) {
 	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "new-hash", "{}", false, nil
 	}}}
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(),
 		Brief: "b", BriefConfirmed: true, Nudges: MaxNudges, Draft: prior,
 		EvaluationText: feedback.EvaluationText(attackObservation),
 	}}
@@ -478,7 +478,7 @@ func TestHandBackReportsANewToolWhenNothingElseApplies(t *testing.T) {
 	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "new-hash", "{}", false, nil
 	}}}
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(),
 		Brief: "b", BriefConfirmed: true, Nudges: MaxNudges, Draft: prior,
 		EvaluationText: "the output was missing a totals column",
 	}}
@@ -499,7 +499,7 @@ func TestDraftOutcomeCopiesEnvelopePreviousDraftRegardlessOfHashChange(t *testin
 	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "new-hash", "ok", false, nil
 	}}}
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}, PreviousDraft: sentinel}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Brief: "b", BriefConfirmed: true}, PreviousDraft: sentinel}
 	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "body"}}
 	_, _, err := s.proposal(context.Background(), 3, &e, r, nil)
 	if err != nil {
@@ -516,7 +516,7 @@ func TestDraftOutcomeClearsCandidateAndRunUnmetWhenTheHashChanges(t *testing.T) 
 	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "new-hash", "ok", false, nil
 	}}}
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true, Draft: prior, Candidate: candidate, RunUnmet: true}}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Brief: "b", BriefConfirmed: true, Draft: prior, Candidate: candidate, RunUnmet: true}}
 	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "changed body"}}
 	_, _, err := s.proposal(context.Background(), 5, &e, r, nil)
 	if err != nil {
@@ -531,7 +531,7 @@ func TestDraftOutcomeStoresTheRevisionHashReportAndBlockedFlag(t *testing.T) {
 	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "hash-xyz", "the finding text", true, nil
 	}}}
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Brief: "b", BriefConfirmed: true}}
 	r := &StepResult{Message: "draft", Outcome: "draft", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "body"}}
 	_, _, err := s.proposal(context.Background(), 42, &e, r, nil)
 	if err != nil {
@@ -548,7 +548,7 @@ func TestDraftOutcomeKeepsDuplicatesOnARenameOnlyChange(t *testing.T) {
 	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "h2", "ok", false, nil
 	}}}
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(),
 		Brief: "b", BriefConfirmed: true, Draft: prior,
 		Duplicates: []Reference{{SkillID: "dup"}}, PendingMaterialize: "pm", DuplicateAcknowledged: true,
 	}}
@@ -567,7 +567,7 @@ func TestDraftOutcomeClearsDuplicatesOnAnyOtherChange(t *testing.T) {
 	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "h2", "ok", false, nil
 	}}}
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(),
 		Brief: "b", BriefConfirmed: true, Draft: prior,
 		Duplicates: []Reference{{SkillID: "dup"}}, PendingMaterialize: "pm", DuplicateAcknowledged: true,
 	}}
@@ -596,7 +596,7 @@ func assertToolRefusedWithoutCharge(t *testing.T, s *Service, e *envelope, r *St
 const toolUnavailableSentence = "目前無法使用這項工具，請補充需求或選擇可用的參考。"
 
 func TestProposalToolIntentWithoutAToolIsRefusedAndChargesNothing(t *testing.T) {
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Brief: "b", BriefConfirmed: true}}
 	assertToolRefusedWithoutCharge(t, &Service{}, &e, &StepResult{Message: "go", Outcome: "tool_intent", Brief: "b"}, toolUnavailableSentence)
 }
 
@@ -618,12 +618,12 @@ func TestTheToolCallCeilingHoldsEvenForAToolTheScreenLetThrough(t *testing.T) {
 }
 
 func TestProposalToolIntentRefusesAnUnknownKindBeforeChargingIt(t *testing.T) {
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Brief: "b", BriefConfirmed: true}}
 	assertToolRefusedWithoutCharge(t, &Service{}, &e, &StepResult{Message: "go", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "bogus"}}, toolUnavailableSentence)
 }
 
 func TestProposalSearchToolWithoutASearchFunctionIsRefused(t *testing.T) {
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Brief: "b", BriefConfirmed: true}}
 	r := &StepResult{Message: "find", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "search_knowledge", Query: "x"}}
 	assertToolRefusedWithoutCharge(t, &Service{}, &e, r, toolUnavailableSentence)
 }
@@ -633,13 +633,13 @@ func TestProposalSearchToolWithABlankQueryAsksThePersonForOne(t *testing.T) {
 		t.Fatal("a blank query must not reach the search function")
 		return nil, 0, nil
 	}}
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Brief: "b", BriefConfirmed: true}}
 	r := &StepResult{Message: "find", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "search_knowledge", Query: "  "}}
 	assertToolRefusedWithoutCharge(t, s, &e, r, "請告訴我要在目錄中搜尋什麼關鍵字。")
 }
 
 func TestProposalFetchToolWithoutAWebAddressAsksThePersonForOne(t *testing.T) {
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Brief: "b", BriefConfirmed: true}}
 	r := &StepResult{Message: "fetch", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "fetch_url", Query: " example.com/page"}}
 	s := &Service{Fetch: func(context.Context, string) (Fetch, string) {
 		t.Fatal("fetched without a web address")
@@ -658,7 +658,7 @@ func TestProposalSearchRoutesToSearchReferencesWhenSearchKnowledgeIsNil(t *testi
 		}
 		return []Reference{{SkillID: "s1", VersionID: "v1", Name: "found", Available: true}}, nil
 	}}
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true, SpentUSD: &spent}}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Brief: "b", BriefConfirmed: true, SpentUSD: &spent}}
 	r := &StepResult{Message: "find", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "search_knowledge", Query: "  find me a helper  "}}
 	_, _, err := s.proposal(context.Background(), 2, &e, r, s.searchAhead(context.Background(), identity.Workspace{}, r))
 	if err != nil || calls != 1 {
@@ -674,7 +674,7 @@ func TestProposalSearchErrorLeavesSearchRoundsUnchanged(t *testing.T) {
 	s := &Service{SearchKnowledge: func(context.Context, identity.Workspace, []string) ([]Reference, float64, error) {
 		return nil, 0, sentinel
 	}}
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Brief: "b", BriefConfirmed: true}}
 	r := &StepResult{Message: "find", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "search_knowledge", Query: "x"}}
 	_, _, err := s.proposal(context.Background(), 2, &e, r, s.searchAhead(context.Background(), identity.Workspace{}, r))
 	if !errors.Is(err, sentinel) || e.Snapshot.SearchRounds != 0 {
@@ -686,7 +686,7 @@ func TestProposalSearchCostIsIgnoredWhenSpentUSDIsNil(t *testing.T) {
 	s := &Service{SearchKnowledge: func(context.Context, identity.Workspace, []string) ([]Reference, float64, error) {
 		return []Reference{{SkillID: "s1", VersionID: "v1", Name: "found", Available: true}}, 0.01, nil
 	}}
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Brief: "b", BriefConfirmed: true}}
 	r := &StepResult{Message: "find", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "search_knowledge", Query: "x"}}
 	_, _, err := s.proposal(context.Background(), 2, &e, r, s.searchAhead(context.Background(), identity.Workspace{}, r))
 	if err != nil {
@@ -703,7 +703,7 @@ func TestProposalSearchCostIsNotAddedWhenTheCallErrors(t *testing.T) {
 	s := &Service{SearchKnowledge: func(context.Context, identity.Workspace, []string) ([]Reference, float64, error) {
 		return nil, 0.02, sentinel
 	}}
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true, SpentUSD: &spent}}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Brief: "b", BriefConfirmed: true, SpentUSD: &spent}}
 	r := &StepResult{Message: "find", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "search_knowledge", Query: "x"}}
 	_, _, err := s.proposal(context.Background(), 2, &e, r, s.searchAhead(context.Background(), identity.Workspace{}, r))
 	if !errors.Is(err, sentinel) {
@@ -727,7 +727,7 @@ func TestProposalSearchKeepsOnlyTheFirstThreeReferences(t *testing.T) {
 	}}
 	draft := &Draft{Revision: 1, ContentHash: "h"}
 	candidate := &Candidate{SkillID: "c1"}
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(),
 		Brief: "b", BriefConfirmed: true, Draft: draft, Candidate: candidate,
 	}}
 	r := &StepResult{Message: "find", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "search_knowledge", Query: "x"}}
@@ -749,7 +749,7 @@ func TestProposalSearchKeepsOnlyTheFirstThreeReferences(t *testing.T) {
 }
 
 func TestProposalFetchToolWithoutAFetcherIsRefused(t *testing.T) {
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Brief: "b", BriefConfirmed: true}}
 	r := &StepResult{Message: "fetch", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "fetch_url", Query: "https://example.com"}}
 	assertToolRefusedWithoutCharge(t, &Service{}, &e, r, toolUnavailableSentence)
 }
@@ -780,7 +780,7 @@ func TestValidateDraftRecordsThePreviousDraftWhenTheHashChanges(t *testing.T) {
 		return "new-hash", "report text", false, nil
 	}}}
 	candidate := &Candidate{SkillID: "s1"}
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true, Draft: prior, Candidate: candidate, RunUnmet: true}}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Brief: "b", BriefConfirmed: true, Draft: prior, Candidate: candidate, RunUnmet: true}}
 	r := &StepResult{Message: "revised", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "validate_draft"}, Draft: &GeneratedSkill{Name: "y", Body: "new body", AllowedTools: "Read"}}
 	state, next, err := s.proposal(context.Background(), 9, &e, r, nil)
 	if err != nil || next || state != StateDraftReady {
@@ -800,7 +800,7 @@ func TestValidateDraftDoesNotShortCircuitWhenTheStoredDraftIsBlocked(t *testing.
 		return "same-hash", "now passes", false, nil
 	}}}
 	candidate := &Candidate{SkillID: "keep-me"}
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true, Draft: blockedDraft, Candidate: candidate, RunUnmet: true}}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Brief: "b", BriefConfirmed: true, Draft: blockedDraft, Candidate: candidate, RunUnmet: true}}
 	r := &StepResult{Message: "retry", Outcome: "tool_intent", Brief: "b", ToolIntent: &ToolIntent{Kind: "validate_draft"}, Draft: &GeneratedSkill{Name: "z", Body: "body", AllowedTools: "Read"}}
 	state, next, err := s.proposal(context.Background(), 4, &e, r, nil)
 	if err != nil || !next || state != StateQueued {
@@ -825,7 +825,7 @@ func TestValidateDraftKeepsDuplicatesOnARenameOnlyChange(t *testing.T) {
 	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "h2", "ok", false, nil
 	}}}
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(),
 		Brief: "b", BriefConfirmed: true, Draft: prior,
 		Duplicates: []Reference{{SkillID: "dup"}}, PendingMaterialize: "pm", DuplicateAcknowledged: true,
 	}}
@@ -844,7 +844,7 @@ func TestValidateDraftClearsDuplicatesOnAnyOtherChange(t *testing.T) {
 	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "h2", "ok", false, nil
 	}}}
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(),
 		Brief: "b", BriefConfirmed: true, Draft: prior,
 		Duplicates: []Reference{{SkillID: "dup"}}, PendingMaterialize: "pm", DuplicateAcknowledged: true,
 	}}
@@ -860,7 +860,7 @@ func TestValidateDraftClearsDuplicatesOnAnyOtherChange(t *testing.T) {
 
 func TestProposalRejectsAnUnknownOutcomeButKeepsTheRecordedReply(t *testing.T) {
 	s := &Service{}
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Brief: "b", BriefConfirmed: true}}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Brief: "b", BriefConfirmed: true}}
 	r := &StepResult{Message: "trying something new", Outcome: "bogus", Brief: "b"}
 	state, next, err := s.proposal(context.Background(), 3, &e, r, nil)
 	if !errors.Is(err, ErrUnknownOutcome) || !errors.Is(err, ErrInvalidCommand) || next || state != "" {

@@ -447,10 +447,20 @@ func confirmBrief(p *Snapshot) (commandOutcome, error) {
 	if p.PendingAction != PendingBriefConfirmation || strings.TrimSpace(p.Brief) == "" {
 		return commandOutcome{}, ErrInvalidCommand
 	}
+	if !completeEvaluationCases(p.ChallengeCases) {
+		return requestEvaluationCases(p), nil
+	}
 	p.BriefConfirmed = true
 	p.PendingAction = NothingPending
 	p.ModelChanged = nil
 	return stepQueued(), nil
+}
+
+func requestEvaluationCases(p *Snapshot) commandOutcome {
+	p.BriefConfirmed = false
+	p.PendingAction = NothingPending
+	p.appendMessage("assistant", reasonSentences[reasonEvaluationCasesMissing])
+	return stepQueued()
 }
 
 func confirmDiagramDescription(p *Snapshot) (commandOutcome, error) {

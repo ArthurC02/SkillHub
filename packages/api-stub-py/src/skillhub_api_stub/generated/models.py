@@ -1125,7 +1125,7 @@ class CreationStepResponse(BaseModel):
     )
     challenge_cases: list[CreationChallengeCase] | None = Field(
         None,
-        description='Inputs written by a second call that sees only the brief, the criteria and the sample, each aimed at a condition the sample does not exercise. Present only with confirm_brief; empty means none.',
+        description='Evaluation inputs written by a second call that sees only the brief, criteria and sample. The provider requires a classified question case and direct-answer case with different inputs before returning the set. Present only with confirm_brief; an empty or incomplete set cannot confirm a new proposal in Go.',
         max_length=3,
     )
     diagram_understanding: constr(max_length=20000) = Field(

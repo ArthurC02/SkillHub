@@ -8,18 +8,20 @@ import (
 )
 
 const (
-	reasonToolUnavailable     = "tool_unavailable"
-	reasonConfirmDiagramFirst = "confirm_diagram_first"
-	reasonConfirmBriefFirst   = "confirm_brief_first"
-	reasonSearchQueryMissing  = "search_query_missing"
-	reasonFetchURLMissing     = "fetch_url_missing"
-	reasonBriefMissing        = "brief_missing"
-	reasonDraftMissing        = "draft_missing"
+	reasonToolUnavailable        = "tool_unavailable"
+	reasonConfirmDiagramFirst    = "confirm_diagram_first"
+	reasonConfirmBriefFirst      = "confirm_brief_first"
+	reasonSearchQueryMissing     = "search_query_missing"
+	reasonFetchURLMissing        = "fetch_url_missing"
+	reasonBriefMissing           = "brief_missing"
+	reasonDraftMissing           = "draft_missing"
+	reasonEvaluationCasesMissing = "evaluation_cases_missing"
 )
 
 var screenReasons = []string{
 	reasonToolUnavailable, reasonConfirmDiagramFirst, reasonConfirmBriefFirst,
 	reasonSearchQueryMissing, reasonFetchURLMissing, reasonBriefMissing, reasonDraftMissing,
+	reasonEvaluationCasesMissing,
 }
 
 func offeredTools(s *Service, e envelope) []string {
@@ -51,6 +53,9 @@ func screenReply(e envelope, r *StepResult, allowed []string) {
 	dropUnproposedBriefChanges(p, r)
 	if reason, outcome := refusalOf(p, r, allowed); reason != "" {
 		r.Reason, r.Outcome, r.Draft, r.ToolIntent = reason, outcome, nil, nil
+		if reason == reasonEvaluationCasesMissing {
+			r.Brief, r.AcceptanceCriteria, r.SampleInput, r.ChallengeCases = "", nil, "", nil
+		}
 	}
 }
 
@@ -76,8 +81,11 @@ func refusalOf(p Snapshot, r *StepResult, allowed []string) (reason, outcome str
 		if proposed == "" {
 			proposed = p.Brief
 		}
-		if strings.TrimSpace(proposed) == "" || (p.BriefConfirmed && !briefChangeIn(p, r).any()) {
+		if strings.TrimSpace(proposed) == "" || (p.BriefConfirmed && !briefChangeIn(p, r).any() && completeEvaluationCases(p.ChallengeCases)) {
 			return reasonBriefMissing, outcomeClarification
+		}
+		if !completeEvaluationCases(r.ChallengeCases) {
+			return reasonEvaluationCasesMissing, outcomeClarification
 		}
 	case outcomeDraft:
 		return draftRefusal(p, r)
@@ -95,6 +103,8 @@ func draftRefusal(p Snapshot, r *StepResult) (reason, outcome string) {
 		return reasonConfirmBriefFirst, outcomeConfirmBrief
 	case r.Draft == nil:
 		return reasonDraftMissing, outcomeClarification
+	case !completeEvaluationCases(p.ChallengeCases):
+		return reasonEvaluationCasesMissing, outcomeClarification
 	}
 	return "", ""
 }

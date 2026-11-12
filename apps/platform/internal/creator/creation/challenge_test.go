@@ -16,6 +16,13 @@ func aChallengeCase() ChallengeCase {
 	return ChallengeCase{Name: "日期不存在", Prompt: "請算 2 月 30 日入住的房價", Criteria: []string{"指出 2 月 30 日不存在"}}
 }
 
+func pairedEvaluationCases() []ChallengeCase {
+	return []ChallengeCase{
+		{Name: "缺少輸入", Prompt: "請整理摘要。", Criteria: []string{"詢問要整理的原文。"}},
+		{Name: "完整輸入", Prompt: "請整理摘要：會議決定明天出貨。", Criteria: []string{"直接列出明天出貨的決議。"}},
+	}
+}
+
 func challengeCasesWith(n int) []ChallengeCase {
 	cases := make([]ChallengeCase, n)
 	for i := range cases {

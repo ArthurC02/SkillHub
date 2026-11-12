@@ -146,7 +146,11 @@ func creationLangGraphGateway(t *testing.T, calls *atomic.Int32, script creation
 		if !ok {
 			return
 		}
-		var decision any = map[string]any{"cases": []any{}}
+		cases := creationFixtureEvaluationCases()
+		var decision any = map[string]any{"cases": []any{
+			map[string]any{"expected_interaction": "question", "name": cases[0].Name, "prompt": cases[0].Prompt, "criteria": cases[0].Criteria},
+			map[string]any{"expected_interaction": "direct_answer", "name": cases[1].Name, "prompt": cases[1].Prompt, "criteria": cases[1].Criteria},
+		}}
 		if schema != "challenge_cases" {
 			var problem string
 			decision, problem = script.respond(calls.Add(1), system, prompt)

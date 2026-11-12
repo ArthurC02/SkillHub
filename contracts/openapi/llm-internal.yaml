@@ -2520,7 +2520,7 @@ components:
           maxItems: 3
           items:
             $ref: '#/components/schemas/CreationChallengeCase'
-          description: Inputs written by a second call that sees only the brief, the criteria and the sample, each aimed at a condition the sample does not exercise. Present only with confirm_brief; empty means none.
+          description: Evaluation inputs written by a second call that sees only the brief, criteria and sample. The provider requires a classified question case and direct-answer case with different inputs before returning the set. Present only with confirm_brief; an empty or incomplete set cannot confirm a new proposal in Go.
         diagram_understanding:
           type: string
           maxLength: 20000

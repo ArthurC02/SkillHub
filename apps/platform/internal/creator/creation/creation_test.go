@@ -48,14 +48,14 @@ func TestChangedConfirmedBriefCannotProduceDraft(t *testing.T) {
 		calls++
 		return "hash", "ok", false, nil
 	}}}
-	e := envelope{Snapshot: Snapshot{Brief: "confirmed", BriefConfirmed: true}, Limits: testLimits()}
+	e := envelope{Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Brief: "confirmed", BriefConfirmed: true}, Limits: testLimits()}
 	state, next, err := s.proposal(context.Background(), 3, &e, &StepResult{Outcome: "draft", Message: "proposal", Brief: "different", Draft: &GeneratedSkill{Body: "body"}}, nil)
 	if err != nil || next || state != "waiting_confirmation" || e.Snapshot.BriefConfirmed || e.Snapshot.Draft != nil || calls != 0 {
 		t.Fatalf("confirmation bypass: %s %+v", state, e)
 	}
 }
 func TestUnavailableReferenceBlocksDraft(t *testing.T) {
-	e := envelope{Snapshot: Snapshot{Brief: "task", BriefConfirmed: true, References: []Reference{{Confirmed: true, Available: false}}}}
+	e := envelope{Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Brief: "task", BriefConfirmed: true, References: []Reference{{Confirmed: true, Available: false}}}}
 	s := Service{}
 	_, _, err := s.proposal(context.Background(), 3, &e, &StepResult{Outcome: "draft", Message: "draft", Draft: &GeneratedSkill{}}, nil)
 	if err == nil {
@@ -86,7 +86,7 @@ func TestALinearDiagramSendsEmptyListsNotNull(t *testing.T) {
 
 func TestDiagramInterpretationRequiresConfirmedDescriptionAndEveryAnswer(t *testing.T) {
 	interpretation := &DiagramInterpretation{Nodes: []string{"start"}, Uncertainties: []DiagramUncertainty{{ID: "11111111-1111-4111-8111-111111111111", Question: "who", Answer: "owner"}}}
-	p := Snapshot{Brief: "task", BriefConfirmed: true, DiagramFingerprint: "digest", DiagramDescription: "start", DiagramDescriptionConfirmed: true, DiagramConfirmed: true, DiagramInterpretation: interpretation}
+	p := Snapshot{ChallengeCases: pairedEvaluationCases(), Brief: "task", BriefConfirmed: true, DiagramFingerprint: "digest", DiagramDescription: "start", DiagramDescriptionConfirmed: true, DiagramConfirmed: true, DiagramInterpretation: interpretation}
 	if !validDiagramInterpretation(interpretation) || !confirmed(p) {
 		t.Fatal("complete confirmed interpretation rejected")
 	}
@@ -117,7 +117,7 @@ func TestValidateToolKeepsNewDraftAndRequiresConfirmation(t *testing.T) {
 			}
 			return "new-hash", "actual finding", true, nil
 		}}}
-		e := envelope{Snapshot: Snapshot{Brief: "task", BriefConfirmed: confirmedBrief}, Limits: testLimits()}
+		e := envelope{Snapshot: Snapshot{Brief: "task", BriefConfirmed: confirmedBrief, ChallengeCases: pairedEvaluationCases()}, Limits: testLimits()}
 		state, next, err := s.proposal(context.Background(), 3, &e, &StepResult{
 			Outcome: "tool_intent", Message: "validate", Brief: "task", ToolIntent: &ToolIntent{Kind: "validate_draft"},
 			Draft: &GeneratedSkill{Body: "newly proposed body"},
@@ -265,8 +265,9 @@ func testLimitsForProposal() Limits {
 
 func TestProposalKeepsAConfirmedBriefWhenTheModelMerelyRestatesIt(t *testing.T) {
 	s := &Service{}
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "整理輸入資料，依指定格式輸出摘要。", BriefConfirmed: true, AcceptanceCriteria: []string{"輸出含摘要"}}}
-	state, next, err := s.proposal(context.Background(), 3, &e, &StepResult{Outcome: "confirm_brief", Message: "請再確認一次。", Brief: e.Snapshot.Brief, AcceptanceCriteria: []string{"輸出含摘要"}}, nil)
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Messages: []Message{}, Brief: "整理輸入資料，依指定格式輸出摘要。", BriefConfirmed: true, AcceptanceCriteria: []string{"輸出含摘要"}}}
+	e.Snapshot.ChallengeCases = pairedEvaluationCases()
+	state, next, err := s.proposal(context.Background(), 3, &e, &StepResult{Outcome: "confirm_brief", Message: "請再確認一次。", Brief: e.Snapshot.Brief, AcceptanceCriteria: []string{"輸出含摘要"}, ChallengeCases: pairedEvaluationCases()}, nil)
 	if err != nil || next || state != "waiting_input" {
 		t.Fatalf("restated brief: state=%q next=%v err=%v", state, next, err)
 	}
@@ -278,7 +279,7 @@ func TestProposalKeepsAConfirmedBriefWhenTheModelMerelyRestatesIt(t *testing.T) 
 func TestProposalRetriesOnceWhenTheDraftIsMissing(t *testing.T) {
 	s := &Service{}
 	zero := 0.0
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
 	r := &StepResult{Outcome: "clarification", Message: "draft missing", Reason: "draft_missing"}
 	state, next, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if err != nil || !next || state != "queued" || e.Snapshot.DraftRetries != 1 {
@@ -297,8 +298,8 @@ func TestProposalRetriesOnceWhenTheDraftIsMissing(t *testing.T) {
 func TestProposalTreatsAChangedSampleInputAsAChangedBrief(t *testing.T) {
 	s := &Service{}
 	zero := 0.0
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", AcceptanceCriteria: []string{"c"}, SampleInput: "old", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
-	r := &StepResult{Outcome: "confirm_brief", Message: "again", Brief: "b", AcceptanceCriteria: []string{"c"}, SampleInput: "new"}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Messages: []Message{}, Brief: "b", AcceptanceCriteria: []string{"c"}, SampleInput: "old", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
+	r := &StepResult{Outcome: "confirm_brief", Message: "again", Brief: "b", AcceptanceCriteria: []string{"c"}, SampleInput: "new", ChallengeCases: pairedEvaluationCases()}
 	state, next, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if err != nil || next || state != "waiting_confirmation" || e.Snapshot.BriefConfirmed || e.Snapshot.SampleInput != "new" || e.Snapshot.PendingAction != "confirm_brief" {
 		t.Fatalf("changed sample_input did not reopen the confirmation: state=%q next=%v snap=%+v err=%v", state, next, e.Snapshot, err)
@@ -339,7 +340,7 @@ func TestProposalNudgesAnUnchangedDraftAfterAnUnmetRun(t *testing.T) {
 	}}}
 	zero := 0.0
 	ran := &Draft{Revision: 3, ContentHash: "same-hash"}
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero, Draft: ran, RunUnmet: true}}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero, Draft: ran, RunUnmet: true}}
 	r := &StepResult{Outcome: "draft", Message: "我已修正草稿。", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "same"}}
 	for i := 1; i <= MaxNudges; i++ {
 		assertNudgeQueuesAnotherAttempt(t, s, &e, r, ran, i)
@@ -361,7 +362,7 @@ func TestProposalNudgesADraftThatSkipsDiagramNodes(t *testing.T) {
 		return "h-" + d.Body, "{}", false, nil
 	}}}
 	zero := 0.0
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, DiagramDescription: "報帳流程", DiagramDescriptionConfirmed: true, DiagramConfirmed: true, DiagramFingerprint: "fp", DiagramInterpretation: &DiagramInterpretation{Nodes: []string{"收到報帳申請", "送經理簽核", "寄出付款通知"}}, BudgetUSD: 1, SpentUSD: &zero}}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Messages: []Message{}, Brief: "b", BriefConfirmed: true, DiagramDescription: "報帳流程", DiagramDescriptionConfirmed: true, DiagramConfirmed: true, DiagramFingerprint: "fp", DiagramInterpretation: &DiagramInterpretation{Nodes: []string{"收到報帳申請", "送經理簽核", "寄出付款通知"}}, BudgetUSD: 1, SpentUSD: &zero}}
 	half := &StepResult{Outcome: "draft", Message: "草稿", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "1. 收到報帳申請\n2. 送經理簽核"}}
 	state, next, err := s.proposal(context.Background(), 2, &e, half, nil)
 	if err != nil || !next || state != "queued" || e.Snapshot.Draft != nil {
@@ -407,7 +408,7 @@ func TestProposalStopsARepeatedBlockedValidation(t *testing.T) {
 		return "h-" + d.Body, "套件結構無法通過驗證：a second SKILL.md", true, nil
 	}}}
 	zero := 0.0
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
 	for i, body := range []string{"one", "two"} {
 		assertBlockedValidationIsCounted(t, s, &e, i, body)
 	}
@@ -432,7 +433,7 @@ func TestProposalStopsARepeatedBlockedValidation(t *testing.T) {
 func TestProposalIgnoresADiagramInterpretationWhenNoDiagramWasUploaded(t *testing.T) {
 	s := &Service{}
 	zero := 0.0
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
 	r := &StepResult{Outcome: "clarification", Message: "請先確認流程圖的理解。", Brief: "b", DiagramUnderstanding: `{"nodes":["invented"],"conditions":[],"branches":[],"uncertainties":[]}`}
 	state, _, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if err != nil || state != "waiting_input" || e.Snapshot.DiagramUnderstanding != "" || e.Snapshot.PendingAction == "confirm_diagram" {
@@ -445,7 +446,7 @@ func TestProposalDoesNotRevalidateTheSameAcceptedDraft(t *testing.T) {
 		return "h-" + d.Body, "{}", false, nil
 	}}}
 	zero := 0.0
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
 	r := &StepResult{Outcome: "tool_intent", Message: "validate", Brief: "b", ToolIntent: &ToolIntent{Kind: "validate_draft"}, Draft: &GeneratedSkill{Name: "x", Body: "same"}}
 	state, next, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if err != nil || !next || state != "queued" {
@@ -480,7 +481,7 @@ func TestARevisionAfterAnUnmetRunStopsForThePersonOnceItValidates(t *testing.T) 
 				return "revised-hash", "{}", tc.blocked, nil
 			}}}
 			zero := 0.0
-			e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero, Draft: tc.ranDraft, RunUnmet: tc.runUnmet}}
+			e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero, Draft: tc.ranDraft, RunUnmet: tc.runUnmet}}
 			r := &StepResult{Outcome: "tool_intent", Message: "依評估改了 body。", Brief: "b", ToolIntent: &ToolIntent{Kind: "validate_draft"}, Draft: &GeneratedSkill{Name: "x", Body: "revised"}}
 			state, next, err := s.proposal(context.Background(), 4, &e, r, nil)
 			if err != nil || state != tc.wantState || next != tc.wantNext {
@@ -498,7 +499,7 @@ func TestProposalAcceptsADraftWithAnEmptyMessage(t *testing.T) {
 		return "h-" + d.Body, "{}", false, nil
 	}}}
 	zero := 0.0
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero}}
 	r := &StepResult{Outcome: "draft", Message: "", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "body"}}
 	state, _, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if err != nil || state != "draft_ready" || e.Snapshot.Draft == nil {
@@ -803,7 +804,7 @@ func testInjectionAddBashToolIsCaught(t *testing.T, c injectionCase) {
 	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "new-hash", "{}", false, nil
 	}}}
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(),
 		Messages: []Message{}, Brief: "process the attached CSV",
 		BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero,
 		Draft: prior, EvaluationText: feedback.EvaluationText(string(c.Payload)),
@@ -823,10 +824,10 @@ func testInjectionAddBashToolIsCaught(t *testing.T, c injectionCase) {
 func testInjectionChangeBriefIsCaught(t *testing.T, c injectionCase) {
 	t.Helper()
 	s := &Service{}
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(),
 		Messages: []Message{}, Brief: "original confirmed brief", BriefConfirmed: true,
 	}}
-	r := &StepResult{Outcome: "confirm_brief", Message: "已依回饋更新。", Brief: c.Marker + ": a brief the judge's words asked for, not the person"}
+	r := &StepResult{Outcome: "confirm_brief", Message: "已依回饋更新。", Brief: c.Marker + ": a brief the judge's words asked for, not the person", ChallengeCases: pairedEvaluationCases()}
 	state, next, err := s.proposal(context.Background(), 2, &e, r, nil)
 	if err != nil || next || state != "waiting_confirmation" || e.Snapshot.BriefConfirmed || e.Snapshot.PendingAction != "confirm_brief" {
 		t.Fatalf("corpus case %s: a rewritten brief must fall back to confirmation, not take effect silently: state=%q next=%v snap=%+v err=%v", c.ID, state, next, e.Snapshot, err)
@@ -847,7 +848,7 @@ func testInjectionClaimMetIsCaught(t *testing.T, c injectionCase) {
 	}}}
 	zero := 0.0
 	ran := &Draft{Revision: 3, ContentHash: "same-hash"}
-	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{
+	e := envelope{Limits: testLimitsForProposal(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(),
 		Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1, SpentUSD: &zero,
 		Draft: ran, RunUnmet: feedback.RunUnmet(observation),
 	}}
@@ -917,9 +918,10 @@ func TestOnlyTheOverturnedFieldIsRecordedAsChanged(t *testing.T) {
 	s := Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "hash", "ok", false, nil
 	}}}
-	e := envelope{Snapshot: Snapshot{Brief: "B1", AcceptanceCriteria: []string{"C1"}, SampleInput: "S1", BriefConfirmed: true}, Limits: testLimits()}
+	e := envelope{Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Brief: "B1", AcceptanceCriteria: []string{"C1"}, SampleInput: "S1", BriefConfirmed: true}, Limits: testLimits()}
 	state, _, err := s.proposal(context.Background(), 3, &e, &StepResult{
 		Outcome: "confirm_brief", Message: "revised", Brief: "B1", AcceptanceCriteria: []string{"C2"},
+		ChallengeCases: pairedEvaluationCases(),
 	}, nil)
 	if err != nil || state != "waiting_confirmation" {
 		t.Fatalf("a rewritten criterion should re-open confirmation: %s %v", state, err)

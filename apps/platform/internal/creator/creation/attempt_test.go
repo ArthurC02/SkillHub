@@ -359,7 +359,7 @@ func TestAUsableResponseIsJudgedAtTheNextRevision(t *testing.T) {
 	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "h", "{}", false, nil
 	}}}
-	e := &envelope{Deadline: time.Now().Add(time.Hour), Limits: testLimits(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1}}
+	e := &envelope{Deadline: time.Now().Add(time.Hour), Limits: testLimits(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1}}
 	response := &StepResult{Outcome: "draft", Message: "draft", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "body"}}
 	state, next, err := s.attemptOutcome(context.Background(), liveRow(6), e, stepCall{reply: response})
 	if err != nil || state != StateDraftReady || next || e.Snapshot.Draft == nil || e.Snapshot.Draft.Revision != 7 {

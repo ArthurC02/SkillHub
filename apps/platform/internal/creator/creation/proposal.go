@@ -9,14 +9,15 @@ import (
 )
 
 var reasonSentences = map[string]string{
-	"tool_unavailable":      "目前無法使用這項工具，請補充需求或選擇可用的參考。",
-	"confirm_diagram_first": "請先確認流程圖的理解；確認後再依它建立草稿。",
-	"confirm_brief_first":   "請先確認這份需求與驗收條件，再建立草稿。",
-	"diagram_incomplete":    "請補充流程圖的節點、條件、分支與不確定處，或重新上傳流程圖。",
-	"search_query_missing":  "請告訴我要在目錄中搜尋什麼關鍵字。",
-	"fetch_url_missing":     "模型想連網取得資料，但沒有給出網址；請告訴它要看哪個網頁。",
-	"brief_missing":         "模型這一步沒有整理出需求；已自動再試一次。",
-	"draft_missing":         "模型這一步說要交草稿卻沒有交出來；請補一句需求，或直接請它再試一次。",
+	"tool_unavailable":         "目前無法使用這項工具，請補充需求或選擇可用的參考。",
+	"confirm_diagram_first":    "請先確認流程圖的理解；確認後再依它建立草稿。",
+	"confirm_brief_first":      "請先確認這份需求與驗收條件，再建立草稿。",
+	"diagram_incomplete":       "請補充流程圖的節點、條件、分支與不確定處，或重新上傳流程圖。",
+	"search_query_missing":     "請告訴我要在目錄中搜尋什麼關鍵字。",
+	"fetch_url_missing":        "模型想連網取得資料，但沒有給出網址；請告訴它要看哪個網頁。",
+	"brief_missing":            "模型這一步沒有整理出需求；已自動再試一次。",
+	"draft_missing":            "模型這一步說要交草稿卻沒有交出來；請補一句需求，或直接請它再試一次。",
+	"evaluation_cases_missing": "模型尚未提供完整且不同輸入的評估案例；請它補上應追問與應直接回答的案例，再確認需求。",
 }
 
 func reasonSentence(code string) (string, error) {
@@ -60,6 +61,21 @@ func validateChallengeCases(cases []ChallengeCase) error {
 		}
 	}
 	return nil
+}
+
+func completeEvaluationCases(cases []ChallengeCase) bool {
+	if len(cases) < 2 || validateChallengeCases(cases) != nil {
+		return false
+	}
+	seen := make(map[string]bool, len(cases))
+	for _, c := range cases {
+		prompt := strings.TrimSpace(c.Prompt)
+		if seen[prompt] {
+			return false
+		}
+		seen[prompt] = true
+	}
+	return true
 }
 
 func equalStrings(a, b []string) bool {
@@ -113,6 +129,8 @@ func (s *Service) proposal(ctx context.Context, revision int64, e *envelope, r *
 		p.PendingAction = NothingPending
 		return StateWaitingInput, false, nil
 	case outcomeConfirmBrief:
+		p.ChallengeCases = r.ChallengeCases
+		p.BriefConfirmed = false
 		return askToConfirmBrief(p)
 	case outcomeConfirmDiagram, outcomeConfirmDiagramDescription, outcomeConfirmDiagramInterpretation:
 		return "", false, rejectedReply("asks to confirm a diagram it did not describe or interpret")

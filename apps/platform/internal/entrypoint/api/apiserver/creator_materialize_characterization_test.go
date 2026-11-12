@@ -41,9 +41,11 @@ func (p *materializeProbe) service(pool *pgxpool.Pool) *creation.Service {
 			}
 			return tx.Commit(ctx)
 		},
-		CreateAcceptanceTestCase: func(_ context.Context, _ pgx.Tx, _ identity.Workspace, _, _, prompt string, _ []string) (string, error) {
-			p.testPrompt = prompt
-			return "characterized-test-case", nil
+		CreateAcceptanceTestCase: func(_ context.Context, _ pgx.Tx, _ identity.Workspace, _, name, prompt string, _ []string) (string, error) {
+			if name == "創作驗收條件" {
+				p.testPrompt = prompt
+			}
+			return "characterized-" + name, nil
 		},
 		DuplicateCheck: func(context.Context, identity.Workspace, string) ([]creation.Reference, float64, error) {
 			return nil, p.duplicateCost, nil
@@ -76,6 +78,7 @@ func saveReadySnapshot(sampleInput string) map[string]any {
 		"brief_confirmed":     true,
 		"sample_input":        sampleInput,
 		"acceptance_criteria": []string{"摘要列出每個決議"},
+		"challenge_cases":     creationFixtureEvaluationCases(),
 		"spent_usd":           0.25,
 		"draft":               map[string]any{"content_hash": "draft-hash", "skill": map[string]any{"name": "meeting-summary", "description": "summarise"}, "blocked": false},
 	}

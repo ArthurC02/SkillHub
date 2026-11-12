@@ -90,6 +90,9 @@ func (s *Service) save(ctx context.Context, ws identity.Workspace, p *Snapshot, 
 	if s.Materialize == nil {
 		return commandOutcome{}, ErrUnavailable
 	}
+	if !completeEvaluationCases(p.ChallengeCases) {
+		return requestEvaluationCases(p), nil
+	}
 	if !p.DuplicateAcknowledged && s.DuplicateCheck != nil && s.holdForDuplicates(ctx, ws, p, kind) {
 		return settledIn(StateWaitingConfirmation), nil
 	}
@@ -210,18 +213,20 @@ func lockMaterializable(ctx context.Context, tx pgx.Tx, ws identity.Workspace, o
 }
 
 func (s *Service) attachAcceptanceTestCase(ctx context.Context, tx pgx.Tx, ws identity.Workspace, p Snapshot, candidate *Candidate) error {
-	if s.CreateAcceptanceTestCase == nil || len(p.AcceptanceCriteria) == 0 {
-		return nil
+	if s.CreateAcceptanceTestCase == nil {
+		return ErrUnavailable
 	}
-	prompt := p.SampleInput
-	if strings.TrimSpace(prompt) == "" {
-		prompt = p.Brief
+	if len(p.AcceptanceCriteria) > 0 {
+		prompt := p.SampleInput
+		if strings.TrimSpace(prompt) == "" {
+			prompt = p.Brief
+		}
+		id, err := s.CreateAcceptanceTestCase(ctx, tx, ws, candidate.SkillID, "創作驗收條件", prompt, p.AcceptanceCriteria)
+		if err != nil {
+			return err
+		}
+		candidate.TestCaseID = id
 	}
-	id, err := s.CreateAcceptanceTestCase(ctx, tx, ws, candidate.SkillID, "創作驗收條件", prompt, p.AcceptanceCriteria)
-	if err != nil {
-		return err
-	}
-	candidate.TestCaseID = id
 	for _, c := range p.ChallengeCases {
 		id, err := s.CreateAcceptanceTestCase(ctx, tx, ws, candidate.SkillID, evaluationTestCaseName(c), c.Prompt, c.Criteria)
 		if err != nil {

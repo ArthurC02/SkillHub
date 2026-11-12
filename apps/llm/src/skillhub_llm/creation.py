@@ -43,7 +43,7 @@ logger = logging.getLogger("skillhub_llm.creation")
 
 router = APIRouter()
 MODEL = os.getenv("CREATION_MODEL") or "skillhub-creation"
-PROMPT_VERSION = "creation-step/v45"
+PROMPT_VERSION = "creation-step/v46"
 SHIPPED_FILES_RULE = (
     "- `files`: every reference, data asset and script the body uses, each with its full "
     "relative path under references/, assets/ or scripts/ and its complete content. "
@@ -62,6 +62,7 @@ SEARCH_REWRITE_MAX_CHARS = 200  # one-number: creationMaxSearchRewriteChars
 MAX_SEARCH_REWRITES = 3  # one-number: creationMaxSearchRewrites
 DIAGNOSIS_MAX_TOKENS = 4000
 MAX_CHALLENGE_CASES = 3  # one-number: creationMaxChallengeCases
+MIN_EVALUATION_CASES = 2
 MAX_CHALLENGE_CRITERIA = 4  # one-number: creationMaxChallengeCriteria
 CHALLENGE_NAME_MAX_CHARS = 60  # one-number: creationMaxChallengeNameRunes
 CHALLENGE_MAX_TOKENS = 4000
@@ -186,6 +187,7 @@ class ChallengeCase(BaseModel):
 
 class ChallengeDraft(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    expected_interaction: Literal["question", "direct_answer"]
     name: str
     prompt: str
     criteria: list[str]
@@ -469,7 +471,8 @@ PHASE_INSTRUCTIONS = {
         "the author and no draft, or an offered tool intent to obtain the source through Go. "
         "Otherwise compose from the exact confirmed requirements. Go must validate the draft. "
         "Return outcome draft or tool_intent validate_draft; do not return confirm_brief again "
-        "just to restate confirmed requirements. New answers that change the requirements "
+        "just to restate confirmed requirements, except to replace incomplete evaluation "
+        "cases. New answers that change the requirements "
         "must be proposed for confirmation before drafting. When submitting a draft, its object "
         "must be present and complete (name, description, compatibility, allowed_tools, the full "
         "SKILL.md body, files); outcome draft with draft null is a wasted turn. The agent that "
@@ -1117,7 +1120,8 @@ EVALUATION_CASE_INSTRUCTIONS = (
     "Write evaluation cases for the Agent Skill the author is confirming. Use only its "
     "brief, acceptance criteria and sample input; do not add business rules or a blanket "
     "ban on questions. Return two or three concrete requests a user would really send, "
-    "each with its literal input material and 1-4 objectively checkable criteria. Include "
+    "each with its literal input material and 1-4 objectively checkable criteria. Set "
+    "expected_interaction to question or direct_answer to match its criteria. Include "
     "at least one case where an essential fact only the user knows is missing: require "
     "a targeted question naming that fact and no fabricated result that depends on it. "
     "Include at least one case with every essential fact and rule provided or derivable: "
@@ -1136,14 +1140,38 @@ EVALUATION_CASE_INSTRUCTIONS = (
 )
 
 
+def _case_has_content(case: ChallengeCase) -> bool:
+    return bool(case.name.strip() and case.prompt.strip() and all(c.strip() for c in case.criteria))
+
+
 def _bounded_challenges(drafts: list[ChallengeDraft]) -> list[ChallengeCase]:
-    cases = []
+    paired = {}
+    extra = []
     for draft in drafts:
         try:
-            cases.append(ChallengeCase.model_validate(draft.model_dump()))
+            case = ChallengeCase.model_validate(draft.model_dump(exclude={"expected_interaction"}))
         except ValidationError:
             continue
-    return cases[:MAX_CHALLENGE_CASES]
+        if not _case_has_content(case):
+            continue
+        if draft.expected_interaction in paired:
+            extra.append(case)
+        else:
+            paired[draft.expected_interaction] = case
+    if set(paired) != {"question", "direct_answer"}:
+        return []
+    cases = [paired["question"], paired["direct_answer"]]
+    if cases[0].prompt.strip() == cases[1].prompt.strip():
+        return []
+    seen = {case.prompt.strip() for case in cases}
+    for case in extra:
+        if len(cases) == MAX_CHALLENGE_CASES:
+            break
+        prompt = case.prompt.strip()
+        if prompt not in seen:
+            cases.append(case)
+            seen.add(prompt)
+    return cases
 
 
 async def _write_evaluation_cases(
@@ -1179,10 +1207,19 @@ async def _write_evaluation_cases(
 def _proposes_a_brief_to_confirm(req: CreationStepRequest, d: CreationDecision) -> bool:
     if not (d.brief or req.brief).strip():
         return False
-    return not req.brief_confirmed or (
-        d.brief not in (None, "", req.brief)
-        or d.acceptance_criteria not in (None, [], req.acceptance_criteria)
-        or d.sample_input not in (None, "", req.sample_input)
+    complete_cases = (
+        len(req.challenge_cases) >= MIN_EVALUATION_CASES
+        and all(_case_has_content(case) for case in req.challenge_cases)
+        and len({case.prompt.strip() for case in req.challenge_cases}) == len(req.challenge_cases)
+    )
+    return (
+        not req.brief_confirmed
+        or not complete_cases
+        or (
+            d.brief not in (None, "", req.brief)
+            or d.acceptance_criteria not in (None, [], req.acceptance_criteria)
+            or d.sample_input not in (None, "", req.sample_input)
+        )
     )
 
 

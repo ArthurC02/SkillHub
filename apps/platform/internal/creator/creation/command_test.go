@@ -39,6 +39,7 @@ func saveableSnapshot() Snapshot {
 		Messages:       []Message{},
 		Brief:          "b",
 		BriefConfirmed: true,
+		ChallengeCases: pairedEvaluationCases(),
 		Draft:          &Draft{ContentHash: "h", Skill: GeneratedSkill{Name: "summary", Description: "d", Body: "body"}},
 	}
 }
@@ -173,7 +174,7 @@ func TestConfirmingTheBriefNeedsTheQuestionAndABrief(t *testing.T) {
 			t.Errorf("%s: err = %v, want ErrInvalidCommand", name, err)
 		}
 	}
-	p := Snapshot{PendingAction: "confirm_brief", Brief: "b", ModelChanged: &ModelChange{Brief: "a"}}
+	p := Snapshot{PendingAction: "confirm_brief", Brief: "b", ModelChanged: &ModelChange{Brief: "a"}, ChallengeCases: pairedEvaluationCases()}
 	got, err := confirmBrief(&p)
 	if err != nil || !got.queueStep || !p.BriefConfirmed || p.PendingAction != "" || p.ModelChanged != nil {
 		t.Fatalf("outcome = %+v, snapshot = %+v, err = %v", got, p, err)

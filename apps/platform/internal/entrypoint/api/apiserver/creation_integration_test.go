@@ -105,7 +105,17 @@ func creationModelAnswer(in llmclient.CreationStepRequest) llmclient.CreationSte
 		out.AcceptanceCriteria = []string{"輸出摘要含所有輸入重點"}
 		out.SampleInput = "會議紀錄：一、預算案通過。二、下週三交付報告。"
 	}
+	if out.Outcome == "confirm_brief" {
+		out.ChallengeCases = creationFixtureEvaluationCases()
+	}
 	return out
+}
+
+func creationFixtureEvaluationCases() []llmclient.CreationChallengeCase {
+	return []llmclient.CreationChallengeCase{
+		{Name: "缺少原文", Prompt: "請整理摘要。", Criteria: []string{"詢問要整理的原文。"}},
+		{Name: "完整原文", Prompt: "請整理摘要：會議決定明天出貨。", Criteria: []string{"直接列出明天出貨的決議。"}},
+	}
 }
 
 func creationFixtureDraft(messages []llmclient.CreationMessage) *llmclient.GeneratedSkill {
