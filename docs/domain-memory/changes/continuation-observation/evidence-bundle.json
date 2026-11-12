@@ -1,0 +1,38 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "GEN-028",
+  "proposal_id": "continuation-observation",
+  "registry_revision": {
+    "observed_commit": "3cce6459cc3f4407055dcffda81e425adf420b65",
+    "registry_digest": "sha256:c5ee3e2bb0a338593dee735e0c3e2614cadf4bccc6348d3b99e5f853fb34e3f9",
+    "committed_digest": "sha256:d1d0e0f050c8a5361c1380616685d7e31c473e033d65b3fce873ed0ec848d68a"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": [
+    {
+      "status": "passed",
+      "obligation_id": "retained-chain-observation",
+      "mutated_protection": "apps/platform/internal/trial/execution/supervisor.go:220: metrics.ContinuationRounds.WithLabelValues().Set(float64(stats.Rounds)) -> metrics.ContinuationRounds.WithLabelValues().Add(float64(stats.Rounds))",
+      "failure_evidence": "=== RUN   TestContinuationObservationUsesActualWorkerAndDoesNotAccumulateOnReplay\n    continuation_metrics_integration_test.go:170: skillhub_continuation_rounds = \"2\"; want 1\n--- FAIL: TestContinuationObservationUsesActualWorkerAndDoesNotAccumulateOnReplay (1.45s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/apiserver\t2.226s\nFAIL\n",
+      "restored": true
+    }
+  ],
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "retained-chain-observation",
+      "status": "passed",
+      "evidence": "go -C apps/platform test -v -count=1 ./internal/entrypoint/api/apiserver -run ^TestContinuationObservation",
+      "command_profile": "integration",
+      "exit_code": 0,
+      "output_sha256": "sha256:cb7fbd0e180d2ebb5990702df3f185d6b0dab66b753fe685a22d2fd3e63054d9",
+      "finished_at": "2026-11-12T01:05:33.726703Z",
+      "working_directory": "."
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}
