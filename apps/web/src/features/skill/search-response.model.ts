@@ -10,11 +10,7 @@ import type {
   ReasonedSearchResult,
 } from "../../core/api/types";
 import { runeCount } from "../../shared/textLength.model";
-import { isCount, isDate, isRecord, isText, isUuid } from "../../core/api/wire";
-
-function isMember(value: unknown, values: readonly string[]): boolean {
-  return isText(value) && values.includes(value);
-}
+import { isCount, isDate, isMember, isRecord, isText, isUuid } from "../../core/api/wire";
 
 function optionalText(value: Record<string, unknown>, ...keys: string[]): boolean {
   return keys.every((key) => value[key] === undefined || isText(value[key]));
