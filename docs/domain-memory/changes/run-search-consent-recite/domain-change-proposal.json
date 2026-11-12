@@ -3,12 +3,12 @@
   "proposal_id": "run-search-consent-recite",
   "proposer": "agent:codex",
   "requirement_id": "GEN-014",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-11-12T09:50:49.956506Z",
   "verified_at": "2026-11-12T09:50:50.786812Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-11-12T09:52:17.440190Z",
+  "applied_at": "2026-11-12T09:52:28.756437Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "24f57c09fca12eca37bf5793c2ba1dc82d0d66e6",
@@ -92,5 +92,9 @@
   "approvals": [],
   "supersedes": [
     "mcp-tool-stand-ins-2026-11-01"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "02f3391cd9bee9b6bd868214bb88149b202d16af",
+    "registry_digest": "sha256:dcab2da470943d60c4d0e769964d4f99c3ca9b227f73d71523f3636ff92596a4"
+  }
 }
