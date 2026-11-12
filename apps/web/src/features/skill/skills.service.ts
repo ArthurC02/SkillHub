@@ -39,6 +39,14 @@ import { isDate, isUuid } from "../../core/api/wire";
 
 export const MAX_COMPARE = 3;
 
+function applyFilterParams(params: URLSearchParams, filters: SearchFilters) {
+  if (filters.script) params.set("script", filters.script);
+  if (filters.validation) params.set("validation", filters.validation);
+  if (filters.agent) params.set("agent", filters.agent);
+  if (filters.tier) params.set("tier", filters.tier);
+  if (filters.category) params.set("category", filters.category);
+}
+
 export async function searchSkills(
   query: string,
   filters: SearchFilters = {},
@@ -46,11 +54,7 @@ export async function searchSkills(
   purpose?: "reference",
 ) {
   const params = new URLSearchParams({ q: query, limit: String(limit) });
-  if (filters.script) params.set("script", filters.script);
-  if (filters.validation) params.set("validation", filters.validation);
-  if (filters.agent) params.set("agent", filters.agent);
-  if (filters.tier) params.set("tier", filters.tier);
-  if (filters.category) params.set("category", filters.category);
+  applyFilterParams(params, filters);
   if (purpose) params.set("purpose", purpose);
   return readSearchResponse(await apiFetch<unknown>(`/api/skills/search?${params.toString()}`));
 }
@@ -174,11 +178,7 @@ export function withMatchReasons(
 
 function requestCatalog(filters: SearchFilters, limit: number) {
   const params = new URLSearchParams({ limit: String(limit) });
-  if (filters.script) params.set("script", filters.script);
-  if (filters.validation) params.set("validation", filters.validation);
-  if (filters.agent) params.set("agent", filters.agent);
-  if (filters.tier) params.set("tier", filters.tier);
-  if (filters.category) params.set("category", filters.category);
+  applyFilterParams(params, filters);
   return apiFetch<CatalogResponse>(`/api/skills/catalog?${params.toString()}`);
 }
 
