@@ -296,6 +296,7 @@
         "apps/platform/internal/entrypoint/api/apiserver/generate_live_modes_test.go",
         "apps/platform/internal/entrypoint/api/apiserver/generate_modes_batch_test.go",
         "apps/platform/internal/entrypoint/api/apiserver/generated_health_test.go",
+        "apps/platform/internal/entrypoint/api/apiserver/generated_search_integration_test.go",
         "apps/platform/internal/entrypoint/api/apiserver/governance_integration_test.go",
         "apps/platform/internal/entrypoint/api/apiserver/halt_supervise_a4_integration_test.go",
         "apps/platform/internal/entrypoint/api/apiserver/identity_hardening_a3_integration_test.go",

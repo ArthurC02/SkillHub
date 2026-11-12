@@ -30,6 +30,7 @@ from skillhub_llm.gateway import (
 from skillhub_llm.generate import (
     FIELD_RULES,
     REFERENCE_TAG,
+    RUNTIME_SEARCH_RULE,
     GeneratedFile,
     GenerateDiagram,
     GeneratedSkill,
@@ -43,7 +44,7 @@ logger = logging.getLogger("skillhub_llm.creation")
 
 router = APIRouter()
 MODEL = os.getenv("CREATION_MODEL") or "skillhub-creation"
-PROMPT_VERSION = "creation-step/v48"
+PROMPT_VERSION = "creation-step/v49"
 MAX_CREATION_MESSAGES = 100
 SHIPPED_FILES_RULE = (
     "- `files`: every reference, data asset and script the body uses, each with its full "
@@ -765,6 +766,7 @@ def _system_prompt(phase: str) -> str:
             "its own claims",
         )
     )
+    system += "\n\n" + RUNTIME_SEARCH_RULE
     if phase != "understand":
         system += "\n\n" + FIELD_RULES + "\n" + SHIPPED_FILES_RULE
     return system + "\n\n" + SOURCE_ASSESSMENT_INSTRUCTIONS

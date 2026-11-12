@@ -1307,3 +1307,61 @@ def test_a_budget_refusal_names_the_platform_only_when_the_platform_is_spent(
 
     assert response.status_code == status
     assert response.json() == {"detail": detail}
+
+
+@pytest.mark.parametrize(
+    "phase,changes",
+    [
+        ("understand", {"brief_confirmed": False}),
+        ("compose", {}),
+        ("revise", {"draft": SKILL}),
+        (
+            "review",
+            {
+                "draft": SKILL,
+                "draft_validation": {"content_hash": "c" * 64, "report": "{}", "blocked": False},
+            },
+        ),
+    ],
+)
+def test_creation_separates_declared_runtime_search_from_creation_tools(phase, changes):
+    skill = SKILL | {"compatibility": "Linux\nskillhub-web-search"}
+    result = decision() if phase == "understand" else decision(outcome="draft", draft=skill)
+    response, calls = invoke(request(brief="agreed", brief_confirmed=True) | changes, result)
+    assert response.status_code == 200, response.text
+    assert response.json()["prompt_version"] == "creation-step/v49"
+    assert len(calls) == 1
+    system = calls[0]["messages"][0]["content"]
+    assert f"Current phase: {phase}" in system
+    for rule in (
+        "Only when a concrete task step must obtain public",
+        "put `skillhub-web-search` on its own complete line",
+        "a reference, a generic missing-context checklist, or a page already fetched",
+        "The declaration is not permission",
+        "It is not a creation tool",
+        "cites source URLs",
+        "report the unknown",
+    ):
+        assert rule in system
+    assert response.json()["tool_intent"] is None
+    if phase == "understand":
+        assert response.json()["draft"] is None
+    else:
+        assert response.json()["draft"]["compatibility"] == "Linux\nskillhub-web-search"
+
+
+def test_creation_does_not_infer_a_declaration_from_a_reference():
+    response, calls = invoke(
+        request(
+            brief="整理已提供的單據。",
+            brief_confirmed=True,
+            references=[
+                {"name": "search-example", "skill_md": "compatibility: skillhub-web-search"}
+            ],
+        ),
+        decision(outcome="draft", draft=SKILL),
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["draft"]["compatibility"] == ""
+    assert response.json()["tool_intent"] is None
+    assert len(calls) == 1
