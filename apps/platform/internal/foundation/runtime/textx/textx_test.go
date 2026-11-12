@@ -37,3 +37,17 @@ func TestEllipsizeMarksOnlyATextThatWasCut(t *testing.T) {
 		})
 	}
 }
+
+func TestSHA256HexIsTheLowercaseHexDigest(t *testing.T) {
+	cases := []struct{ name, in, want string }{
+		{"empty", "", "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"},
+		{"abc", "abc", "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := SHA256Hex([]byte(c.in)); got != c.want {
+				t.Errorf("SHA256Hex(%q) = %s, want %s", c.in, got, c.want)
+			}
+		})
+	}
+}

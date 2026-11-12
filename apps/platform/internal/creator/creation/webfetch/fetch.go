@@ -2,8 +2,6 @@ package webfetch
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
@@ -175,13 +173,12 @@ func (f *Fetcher) once(ctx context.Context, rawURL string) fetchAttempt {
 	if !utf8.Valid(body) {
 		return fetchEndedWith("unsupported")
 	}
-	sum := sha256.Sum256(body)
 	text := string(body)
 	if strings.HasPrefix(ct, "text/html") {
 		text = htmlToText(text)
 	}
 	text = textx.Ellipsize(strings.TrimSpace(text), MaxTextRunes)
-	return fetchAttempt{status: "ok", text: text, sha256: hex.EncodeToString(sum[:]), bytes: len(body)}
+	return fetchAttempt{status: "ok", text: text, sha256: textx.SHA256Hex(body), bytes: len(body)}
 }
 
 func htmlToText(s string) string {

@@ -2,8 +2,9 @@ package skillpkg
 
 import (
 	"crypto/sha256"
-	"encoding/hex"
 	"strings"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/textx"
 )
 
 const (
@@ -12,8 +13,7 @@ const (
 )
 
 func PackageObjectKey(data []byte) (key, digest string) {
-	sum := sha256.Sum256(data)
-	digest = hex.EncodeToString(sum[:])
+	digest = textx.SHA256Hex(data)
 	return packageKeyPrefix + digest + packageKeySuffix, digest
 }
 

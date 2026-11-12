@@ -4,8 +4,6 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/flate"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,6 +14,7 @@ import (
 	"testing/fstest"
 	"time"
 
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/textx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
@@ -218,20 +217,13 @@ func manifestHash(files []exportFile) (string, error) {
 		if f.path == ManifestFile {
 			continue
 		}
-		sum := sha256.Sum256(f.data)
-		digests[f.path] = hex.EncodeToString(sum[:])
+		digests[f.path] = textx.SHA256Hex(f.data)
 	}
 	canonical, err := json.Marshal(digests)
 	if err != nil {
 		return "", err
 	}
-	sum := sha256.Sum256(canonical)
-	return hex.EncodeToString(sum[:]), nil
-}
-
-func sha256Hex(data []byte) string {
-	sum := sha256.Sum256(data)
-	return hex.EncodeToString(sum[:])
+	return textx.SHA256Hex(canonical), nil
 }
 
 func exportFS(files []exportFile) fs.FS {

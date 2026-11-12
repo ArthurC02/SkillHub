@@ -1,5 +1,10 @@
 package textx
 
+import (
+	"crypto/sha256"
+	"encoding/hex"
+)
+
 func CutRunes(s string, limit int) (string, bool) {
 	runes := []rune(s)
 	if len(runes) <= limit {
@@ -13,4 +18,9 @@ func Ellipsize(s string, limit int) string {
 		return cut + "…"
 	}
 	return s
+}
+
+func SHA256Hex(data []byte) string {
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
 }
