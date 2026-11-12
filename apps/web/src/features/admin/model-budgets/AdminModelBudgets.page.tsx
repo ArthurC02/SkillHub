@@ -208,11 +208,13 @@ export function AdminModelBudgets() {
         上限由程式決定，這裡只能在上限以內調整。
       </p>
       {budgets.isPending && <Loading what="模型呼叫逾時" />}
-      <ReadFailure error={budgets.error} what="模型呼叫逾時">
+      <ReadFailure
+        error={budgets.error}
+        what="模型呼叫逾時"
+        retry={() => void budgets.refetch()}
+        retrying={budgets.isFetching}
+      >
         <p role="alert">暫時無法讀取模型呼叫逾時。</p>
-        <button type="button" disabled={budgets.isFetching} onClick={() => void budgets.refetch()}>
-          {budgets.isFetching ? "重新讀取中…" : "再試一次"}
-        </button>
       </ReadFailure>
       {completed && (
         <p

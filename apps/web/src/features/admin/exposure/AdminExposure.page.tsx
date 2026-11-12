@@ -118,11 +118,13 @@ function ExposureQueueSection() {
         待審清單
       </h2>
       {queue.isPending && <Loading what="待審清單" />}
-      <ReadFailure error={queue.error} what="待審清單">
+      <ReadFailure
+        error={queue.error}
+        what="待審清單"
+        retry={() => void queue.refetch()}
+        retrying={queue.isFetching}
+      >
         <p role="alert">{staleReadNotice("待審清單", "先前載入的內容", Boolean(queue.data))}</p>
-        <button type="button" disabled={queue.isFetching} onClick={() => void queue.refetch()}>
-          {queue.isFetching ? "重新讀取中…" : "再試一次"}
-        </button>
       </ReadFailure>
       {queue.data && !queue.error && (
         <>

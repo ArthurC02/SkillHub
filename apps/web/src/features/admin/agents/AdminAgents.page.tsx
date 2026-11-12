@@ -46,20 +46,14 @@ function brakeRead(
 
 function AgentControlReadFailure({ agents }: { agents: ReturnType<typeof usePlatformAgents> }) {
   return (
-    <ReadFailure error={agents.error} what="Agent 控制">
+    <ReadFailure
+      error={agents.error}
+      what="Agent 控制"
+      retry={agents.data ? undefined : () => void agents.refetch()}
+      retrying={agents.isFetching}
+      focusTarget="admin-agent-brake-heading"
+    >
       <p role="alert">暫時無法讀取 Agent 控制。請重新整理，或稍後再試。</p>
-      {!agents.data && (
-        <button
-          type="button"
-          disabled={agents.isFetching}
-          onClick={() => {
-            void agents.refetch();
-            document.getElementById("admin-agent-brake-heading")?.focus();
-          }}
-        >
-          {agents.isFetching ? "重新讀取中…" : "再試一次"}
-        </button>
-      )}
     </ReadFailure>
   );
 }

@@ -53,11 +53,13 @@ export function AdminAccounts() {
         (isNotFound(account.error) ? (
           <p role="status">沒有 email 是「{email}」的帳號。已刪除的帳號查不到。</p>
         ) : (
-          <ReadFailure error={account.error} what="帳號">
+          <ReadFailure
+            error={account.error}
+            what="帳號"
+            retry={() => void account.refetch()}
+            retrying={reading}
+          >
             <p role="alert">{staleReadNotice("帳號", "先前查到的內容", Boolean(account.data))}</p>
-            <button type="button" disabled={reading} onClick={() => void account.refetch()}>
-              {reading ? "重新讀取中…" : "再試一次"}
-            </button>
           </ReadFailure>
         ))}
       {!queryChanged && account.data && !reading && !account.error && (
