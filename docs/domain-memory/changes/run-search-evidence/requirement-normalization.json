@@ -1,0 +1,51 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "GEN-014",
+  "status": "draft",
+  "intent": "每次執行時搜尋的查詢、來源與費用可在既有私人 Run Trace 獨立辨識，不依賴可能裁切的工具結果文字。",
+  "actor": "Run 所屬 Workspace 的使用者",
+  "observable_outcome": "進階 Trace 可讀取已遮罩的查詢、來源及費用；未回報費用明確為未知。",
+  "acceptance_criteria": [
+    {
+      "id": "shape",
+      "statement": "只有固定搜尋工具可附帶結構化搜尋證據，必填欄位完整、拒絕額外欄位，舊事件仍可讀。"
+    },
+    {
+      "id": "bounds",
+      "statement": "查詢為 1 至 1000 個 Unicode 字元、來源最多 5 筆且每筆 1 至 2048 個字元；費用僅接受 null 或有限非負數，零與未知不同。"
+    },
+    {
+      "id": "private-storage",
+      "statement": "實際接收、儲存與讀取路徑保存遮罩後證據，拒絕其他 Workspace、錯誤 Run／attempt 並維持重送冪等。"
+    },
+    {
+      "id": "inert-display",
+      "statement": "既有進階 Trace 以惰性文字呈現搜尋證據，不執行網址、HTML 或來源內指令；查詢不進公開投影、成本事件或動態監控標籤。"
+    }
+  ],
+  "candidate_terms": [
+    "Run Trace",
+    "tool_call",
+    "搜尋證據"
+  ],
+  "open_questions": [
+    "runtime 映像內搜尋工具仍需映像負責人同意並另行交付；本提案不授權映像變更、部署或供應商開通。"
+  ],
+  "risk_flags": [
+    "public_contract",
+    "sensitive_data"
+  ],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    {
+      "path": "docs/plans/02-specifications-and-acceptance-criteria.md",
+      "reference": "GEN-014"
+    },
+    {
+      "path": "contracts/events/trace-event.schema.json",
+      "reference": "$defs/toolCallPayload"
+    }
+  ]
+}

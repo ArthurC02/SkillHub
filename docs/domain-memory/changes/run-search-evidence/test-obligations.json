@@ -1,0 +1,53 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "GEN-014",
+  "proposal_id": "run-search-evidence",
+  "obligations": [
+    {
+      "id": "shape",
+      "source_type": "acceptance-criterion",
+      "source_id": "shape",
+      "expected_outcome": "只有固定搜尋工具可附帶結構化搜尋證據，必填欄位完整、拒絕額外欄位，舊事件仍可讀。",
+      "level": "unit",
+      "status": "planned",
+      "check": "go -C apps/platform test -v -count=1 ./internal/trial/evidence -run ^TestSearchEvidence",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-trace-payload-matches-its-types-schema"
+        },
+        {
+          "source_type": "rule",
+          "source_id": "a-trace-payload-is-at-most-96-kib"
+        }
+      ]
+    },
+    {
+      "id": "bounds",
+      "source_type": "acceptance-criterion",
+      "source_id": "bounds",
+      "expected_outcome": "查詢為 1 至 1000 個 Unicode 字元、來源最多 5 筆且每筆 1 至 2048 個字元；費用僅接受 null 或有限非負數，零與未知不同。",
+      "level": "unit",
+      "status": "planned",
+      "check": "go -C apps/platform test -v -count=1 ./internal/trial/evidence -run ^TestSearchEvidence"
+    },
+    {
+      "id": "private-storage",
+      "source_type": "acceptance-criterion",
+      "source_id": "private-storage",
+      "expected_outcome": "實際接收、儲存與讀取路徑保存遮罩後證據，拒絕其他 Workspace、錯誤 Run／attempt 並維持重送冪等。",
+      "level": "integration",
+      "status": "planned",
+      "check": "go -C apps/platform test -v -count=1 ./internal/entrypoint/api/apiserver -run ^TestSearchTrace"
+    },
+    {
+      "id": "inert-display",
+      "source_type": "acceptance-criterion",
+      "source_id": "inert-display",
+      "expected_outcome": "既有進階 Trace 以惰性文字呈現搜尋證據，不執行網址、HTML 或來源內指令；查詢不進公開投影、成本事件或動態監控標籤。",
+      "level": "security",
+      "status": "planned",
+      "check": "npm --prefix apps/web test -- --run src/features/runs/trace/trace.test.tsx"
+    }
+  ]
+}

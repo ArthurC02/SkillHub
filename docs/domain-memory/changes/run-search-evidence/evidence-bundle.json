@@ -1,0 +1,26 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "GEN-014",
+  "proposal_id": "run-search-evidence",
+  "registry_revision": {
+    "observed_commit": "811f99bbe22cbc3bcd7d3d3204b38fcb2f52c171",
+    "registry_digest": "sha256:aae2cd9ea0384d8430da04f31887d999572f0da9064ab6963c8e4fc914fb003c",
+    "committed_digest": "sha256:aae2cd9ea0384d8430da04f31887d999572f0da9064ab6963c8e4fc914fb003c"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": {
+    "status": "planned",
+    "description": "分別移除搜尋欄位接收、工具綁定、長度／數量／費用限制、遮罩、Workspace scope 及重送保護，對應焦點測試必須出現斷言失敗後精確還原。"
+  },
+  "sources": [],
+  "test_results": [],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": [
+    "尚未記錄 developer 同意；程式與正式事件契約保持原狀。",
+    "測試義務為後續實作的要求，沒有執行或通過宣稱。",
+    "runtime 工具、真實來源品質、部署出口及正式金流不在本提案的完成宣稱內。"
+  ]
+}

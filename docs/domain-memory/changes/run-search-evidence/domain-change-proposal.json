@@ -1,0 +1,104 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "run-search-evidence",
+  "proposer": "agent:codex",
+  "requirement_id": "GEN-014",
+  "status": "submitted",
+  "change_classification": "material",
+  "submitted_at": "2026-11-12T11:52:22.481864Z",
+  "verified_at": null,
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "811f99bbe22cbc3bcd7d3d3204b38fcb2f52c171",
+    "registry_digest": "sha256:aae2cd9ea0384d8430da04f31887d999572f0da9064ab6963c8e4fc914fb003c",
+    "committed_digest": "sha256:aae2cd9ea0384d8430da04f31887d999572f0da9064ab6963c8e4fc914fb003c"
+  },
+  "affected_contexts": [
+    "trace"
+  ],
+  "rule_ids": [
+    "a-trace-payload-matches-its-types-schema",
+    "a-trace-payload-is-at-most-96-kib"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "trace",
+    "invariant": "Trace owner 接收、遮罩與保存 Run 證據；不接管 Run 狀態、授權或結算。",
+    "evidence": [
+      {
+        "path": "apps/platform/internal/trial/evidence/doc.go",
+        "lines": {
+          "start": 1,
+          "end": 2
+        }
+      }
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "沿用既有短效 ingestion token、Workspace scope、遮罩、不可變儲存與進階閱讀路徑；不新增 Context 依賴。",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [
+      "Trace 不依 sandbox 回報的費用決定扣點或 Run 狀態。"
+    ],
+    "evidence": [
+      {
+        "path": "apps/platform/internal/trial/evidence/service.go",
+        "lines": {
+          "start": 74,
+          "end": 105
+        }
+      }
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "工具文字可能裁切；私人證據仍須有界且可遮罩。",
+      "Sandbox 回報不是計費事實，未知不能當零。",
+      "既有工具事件與 Trace 閱讀者必須維持相容。"
+    ],
+    "decision": "為既有 tool_call 增加選填 search 物件，沿用既有儲存、遮罩與惰性文字顯示，不新增事件種類、資料表或 UI 路由。",
+    "invariants_preserved": [
+      "固定工具名稱綁定，不能附給其他工具。",
+      "單筆 payload 仍不得超過 96 KiB。",
+      "既有 Run／attempt token、Workspace 與冪等規則維持。"
+    ],
+    "rejected_alternatives": [
+      "新增搜尋事件種類與資料表會重複既有工具呼叫。",
+      "從裁切文字推算來源或把未知費用設零會偽造證據。",
+      "把查詢寫進監控標籤或 cost_events 會擴散私人內容。"
+    ],
+    "proof_obligations": [
+      "shape",
+      "bounds",
+      "private-storage",
+      "inert-display"
+    ],
+    "counterfactual_check": "分別移除搜尋欄位接收、工具綁定、長度／數量／費用限制、遮罩、Workspace scope 及重送保護，對應焦點測試必須出現斷言失敗後精確還原。"
+  },
+  "event_change": null,
+  "contract_change": {
+    "producer": "sandbox",
+    "consumers": [
+      "trace",
+      "私人 Run Trace 閱讀者"
+    ],
+    "version": "1.3",
+    "compatibility_policy": "相容新增：既有事件無需 search；舊生產者仍可宣告既有 1.x 版本。帶搜尋證據的新生產者宣告 1.3。",
+    "data_classification": "private; secret-bearing query and source URLs; masked before storage",
+    "breaking_change": false,
+    "timeout_retry_behavior": "沿用既有批次接收與重送冪等，未通過檢查只拒絕該筆事件。",
+    "proposed_schema": "proposed-search-evidence.schema.json",
+    "cost_authority": "gateway header advisory evidence only; never a billing input"
+  },
+  "registry_updates": [],
+  "risk_flags": [
+    "public_contract",
+    "sensitive_data"
+  ],
+  "open_questions": [
+    "新事件契約需 developer 審查；未記錄同意前保持提案，不以本提案作為 runtime 或資料接收的新契約依據。"
+  ],
+  "approvals": []
+}
