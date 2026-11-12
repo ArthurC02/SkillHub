@@ -99,6 +99,7 @@ jobs:
               - 'infra/images/web/**'
               - 'infra/images/llm/**'
               - 'infra/images/postgres/**'
+              - 'infra/images/postgres-exporter/**'
               - 'apps/sandbox/**'
               - 'infra/images/sandboxd/**'
               - 'infra/compose/**'
@@ -930,6 +931,20 @@ jobs:
         env:
           POSTGRES_IMAGE: ${{ env.REGISTRY }}/skillhub-postgres:${{ github.sha }}
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Backup drill' bash tools/ci/backup-drill.sh
+      - name: Build the postgres-exporter image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: infra/images/postgres-exporter
+          tags: ${{ env.REGISTRY }}/skillhub-postgres-exporter:${{ github.sha }}
+          load: true
+          provenance: false
+          cache-from: type=gha,scope=postgres-exporter
+          cache-to: type=gha,mode=max,scope=postgres-exporter
+      - name: Collect real database metrics and reject invalid credentials
+        env:
+          POSTGRES_IMAGE: ${{ env.REGISTRY }}/skillhub-postgres:${{ github.sha }}
+          POSTGRES_EXPORTER_IMAGE: ${{ env.REGISTRY }}/skillhub-postgres-exporter:${{ github.sha }}
+        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Postgres exporter smoke' bash tools/ci/postgres-exporter-smoke.sh
       - name: Build the sandboxd image
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
@@ -978,6 +993,7 @@ jobs:
           - { image: web, context: ., file: infra/images/web/Dockerfile }
           - { image: llm, context: apps/llm, file: infra/images/llm/Dockerfile }
           - { image: postgres, context: infra/images/postgres, file: infra/images/postgres/Dockerfile }
+          - { image: postgres-exporter, context: infra/images/postgres-exporter, file: infra/images/postgres-exporter/Dockerfile }
           - { image: sandboxd, context: ., file: infra/images/sandboxd/Dockerfile }
     runs-on: ubuntu-latest
     timeout-minutes: 15

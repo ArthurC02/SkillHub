@@ -409,7 +409,7 @@ docker run --rm --network container:skillhub-postgres-1 \
 
 **Runtime Image**（`runtime-image.yml`）：發佈前先查 registry 有沒有這個版本的 tag，**有就只跑閘門、不推送、不移 tag**。版本 tag 一旦發佈就不再變，因為 [Sandbox 隔離與執行安全](../adr/README.md#sandbox-隔離與執行安全)那項決策的事實來源是 digest，而 build 不是位元可重現的——同版重推會讓同一個版本字串悄悄指向另一份沒量過的映像。attestation 失敗會在同一個 run 裡自動重試一次；發佈中的 run 不會被下一次 push 取消。
 
-**Image Scan**（`image-scan.yml`）：compose 拉下來的映像與我們自己建的四顆各出一份 SBOM 與 grype 報告，判準與不對稱的閘門見〈依賴的准入、更新與閘門〉。`runtime-agent-sdk` 不在這一支裡，它有自己的 `runtime-image.yml`。
+**Image Scan**（`image-scan.yml`）：Compose 引用的上游映像與自行建置的部署服務各出一份 SBOM 與 grype 報告，判準與不對稱的閘門見〈依賴的准入、更新與閘門〉。`runtime-agent-sdk` 不在這一支裡，它有自己的 `runtime-image.yml`。
 
 ## 依賴的准入、更新與閘門
 
@@ -452,9 +452,9 @@ npm registry 對 `npm audit` 回 5xx 時，`dep-audit` 會再問，最多三次�
 
 Go 全掃仍保留模組層級 advisory。有修補版仍是 `FAIL`；沒有修補版且已匯入受影響套件時是 `NOTE`。只有 source 掃描明確完成 package／symbol 分析、且 advisory 僅有模組層級證據時，才以 `INFO` 說明受影響套件未匯入；缺少分析能力資訊時不作這個判定。同一筆 advisory 有多份證據，以較高可達性為準。已停止維護的 OpenPGP 套件另外由 Go 出貨依賴檢查禁止引入，不以安裝另一個未使用的套件來取代。
 
-**映像不在 `dep-audit` 裡，它讀的是 lockfile**（見[開發自動化與依賴治理](../adr/README.md#開發自動化與依賴治理)）。 映像由 [`tools/ci/scan-images.sh`](../../tools/ci/scan-images.sh) 掃，掛在 `image-scan.yml`（改到 compose 或四個應用映像時跑、每週排程、可手動觸發），`runtime-agent-sdk` 仍留在自己的 `runtime-image.yml`。**清單從 compose 讀出來，不另抄一份**——抄一份就會漂，而這個缺口本來就是漂出來的。
+**映像不在 `dep-audit` 裡，它讀的是 lockfile**（見[開發自動化與依賴治理](../adr/README.md#開發自動化與依賴治理)）。 映像由 [`tools/ci/scan-images.sh`](../../tools/ci/scan-images.sh) 掃，掛在 `image-scan.yml`（改到 Compose 或受掃描的服務映像時跑、每週排程、可手動觸發），`runtime-agent-sdk` 仍留在自己的 `runtime-image.yml`。**清單從 compose 讀出來，不另抄一份**——抄一份就會漂，而這個缺口本來就是漂出來的。
 
-**閘門分三層，照「誰能修」與「會不會被部署」畫**：會被部署的 `platform`／`web`／`llm` 出現**有修補版的** Critical／High 就紅（修法在我們手上：換基底、升依賴，或像 `runtime-agent-sdk` 與 `llm` 那樣對單一套件 `--only-upgrade`）；compose 拉下來的上游四顆只報，**只有排程那一跑設 `FAIL_ON_UPSTREAM=1` 才紅**，所以每週有人被通知而沒有人的 PR 被擋，處置是**升那個 pin 或換 tag**，不是把閘門關掉；開發容器 `devtools` **永不紅**——它不部署，而它兩萬多列的發現絕大多數住在第三方工具的編譯產物裡，擋了也沒有人做得出對應的修正。
+**閘門分三層，照「誰能修」與「會不會被部署」畫**：會被部署的 `platform`／`web`／`llm` 出現**有修補版的** Critical／High 就紅（修法在我們手上：換基底、升依賴，或像 `runtime-agent-sdk` 與 `llm` 那樣對單一套件 `--only-upgrade`）；Compose 直接引用的上游映像只報，**只有排程那一跑設 `FAIL_ON_UPSTREAM=1` 才紅**，所以每週有人被通知而沒有人的 PR 被擋，處置是**升那個 pin 或換 tag**，不是把閘門關掉；從釘定穩定版原始碼重建的 `postgres-exporter` 已由我們擁有建置與修補，與部署服務相同，在每次掃描阻擋可修 Critical／High，不能保留上游僅排程阻擋的待遇；開發容器 `devtools` **永不紅**——它不部署，而它兩萬多列的發現絕大多數住在第三方工具的編譯產物裡，擋了也沒有人做得出對應的修正。
 
 **automation-check 的 `dependency-policy`** 擋的是：FROM、compose 與 workflow 的 `image:` 沒釘 digest；`uses:` 沒釘 SHA 或少了 `# vX` 註解；npm 專案少了 `.npmrc` 的 `ignore-scripts=true`；uv 專案少了 `exclude-newer`；新目錄沒列進 `.github/dependabot.yml`；compose 與 workflow、`tools/ci/*.sh` 裡同一個映像的 tag 或 digest 不一樣；上表同一個工具在各位置的版本不一致（名冊在 `tools/devctl/toolchain_versions.go`，syft 與 grype 的 pin 也在上面，所以兩支 workflow 的掃描器版本不會各走各的）。
 

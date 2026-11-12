@@ -543,6 +543,12 @@ Dockerfile 與 `infra/compose/docker-compose.yml` 新 `app` profile 的說明。
 | [`llm/`](llm/) | `apps/llm`（FastAPI＋uv，build context 是 `apps/llm` 本身，不是 repo root——`packages/api-stub-py` 那個本機路徑依賴只在 `dev` dependency group，`--no-dev` sync 用不到） | build stage 從與 Python codegen 相同的釘選映像複製 `uv`，版本由工具鏈檢查與 `tools/toolchain.yaml` 對帳，`uv sync --frozen --no-dev --no-editable` 到 `/opt/venv`——**`--no-editable` 是必要的**：預設的 editable 安裝是一個指回 build stage `/src/src` 的 `.pth` 檔，runtime stage 只複製 `/opt/venv` 的話 `import skillhub_llm` 會找不到套件（本批實測撞過這個） | `uvicorn skillhub_llm.app:app --host 0.0.0.0 --port 8000`，match `contracts/openapi/llm-internal.yaml` 的 `servers[0]`；`/healthz` 不需要 `LLM_SERVICE_TOKEN`，掛了 `HEALTHCHECK` |
 | [`web/`](web/) | `apps/web` ＋ `packages/api-client-ts`（build context 是 repo root，因為 `apps/web` 的 `file:../../packages/api-client-ts` 依賴需要兩棵樹都在） | build stage 依序 `npm ci`＋`npm run build`（先 client 套件再 web，與 `Taskfile.yml` 的 `build:web`／`build:api-client` 一致；`npm run build` 本身會跑 `check-bundle-origins.mjs`，建置失敗代表 bundle 裡出現了預期外的絕對網址）；runtime stage 是 `nginx:1.31-alpine-slim`，只放編譯好的 `dist/` 與 [`nginx.conf`](web/nginx.conf) | 見下一節 |
 
+### Postgres Exporter
+
+[`postgres-exporter/`](postgres-exporter/) 從釘定的上游穩定版 commit 重建相同版本，使用 Repo 的 Go 工具鏈與修補後的既有 Go 相依套件。最終層保留上游的非 root 使用者、入口與 9187 埠，只替換執行檔，不帶編譯工具。
+
+`images-postgres-sandboxd` 建置後以隔離的真實 Postgres 驗證指標與錯誤密碼；`images-push` 沿用 main 全部閘門通過才發佈、commit SHA 作 tag 的規則。控制平面的 renderer 取得同一 release 的 `SKILLHUB_POSTGRES_EXPORTER_IMAGE` 與 digest，缺少已發佈映像就拒絕，不退回上游舊映像。`Image Scan` 對重建後的實際映像套用部署層的可修 Critical／High 阻擋。
+
 ### `web` 的反向代理：為什麼不是 `location /api/`
 
 `core/api/client.ts` 的 `API_BASE_URL` 預設空字串（同源），這在 clean test mode（`cmd/api`

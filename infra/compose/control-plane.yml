@@ -145,7 +145,7 @@ services:
       - ${SKILLHUB_SECRETS_DIR:-/etc/skillhub/secrets}/postgres.env
 
   postgres-exporter:
-    image: prometheuscommunity/postgres-exporter:v0.20.1@sha256:ac5ec343104fae0e2d84a27bb8d69b38430a11910c5382cad85d478d2bab713e
+    image: ${SKILLHUB_POSTGRES_EXPORTER_IMAGE:?set SKILLHUB_POSTGRES_EXPORTER_IMAGE in release.env}
     cpus: "0.25"
     mem_limit: 128m
     restart: unless-stopped

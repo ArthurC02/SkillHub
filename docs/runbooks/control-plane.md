@@ -6,7 +6,7 @@
 
 | 路徑 | 內容 | 誰寫 |
 | --- | --- | --- |
-| `/etc/skillhub/release.env` | 角色、commit、網域、四個釘 digest 的映像。**不含秘密** | cloud-init（由 `tools/deploy/render.py` 產生） |
+| `/etc/skillhub/release.env` | 角色、commit、網域、同一 release 各服務釘 digest 的映像（含 Postgres Exporter）。**不含秘密** | cloud-init（由 `tools/deploy/render.py` 產生） |
 | `/opt/skillhub` | 該 commit 的部分 checkout：只有 [`checkout-paths`](../../infra/deploy/control-plane/checkout-paths) 列的路徑（compose、部署腳本、告警規則、migration），不含應用程式原始碼與測試 fixture | `/usr/local/sbin/skillhub-checkout`（cloud-init 放的），並驗 `git rev-parse HEAD` 等於 release |
 | `/etc/skillhub/secrets/*` | 秘密，目錄 700、檔案 600 | 人，手動放 |
 | `/etc/skillhub/alertmanager.yml` | 由範本代入 SMTP 設定 | `skillhub-bootstrap` |
