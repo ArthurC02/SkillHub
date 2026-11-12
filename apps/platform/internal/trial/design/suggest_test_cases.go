@@ -14,6 +14,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/modelbudget"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/textx"
 	limits "github.com/ArthurC02/skillhub/apps/platform/internal/shared/contractlimits/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/platformbudget"
 )
@@ -106,9 +107,10 @@ func (s *TestCaseSuggestions) Suggest(
 	}
 	callCtx, cancel := context.WithTimeout(ctx, suggestTestCasesTimeout)
 	defer cancel()
+	summary, _ := textx.CutBytes(derefString(skill.Summary), maxSkillSummaryBytes)
 	proposal, err := s.LLM.SuggestTestCases(callCtx, TestCasesRequest{
 		SkillName:     skill.Name,
-		SkillSummary:  truncate(derefString(skill.Summary), maxSkillSummaryBytes),
+		SkillSummary:  summary,
 		Focus:         focus,
 		ExistingNames: names[max(0, len(names)-maxExistingNamesSent):],
 		Within:        s.Lab.Budgets.Within(ctx, SuggestTestCasesBudget),

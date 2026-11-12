@@ -19,6 +19,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/textx"
 )
 
 const (
@@ -1072,8 +1073,8 @@ func orDefault[T ~string](v, fallback T) T {
 // Cutting by byte count can split a multi-byte rune; ToValidUTF8 drops the
 // broken tail instead of writing invalid UTF-8 to a text column.
 func truncate[T ~string](s T) T {
-	if len(s) <= reasonLimit {
-		return s
+	if cut, truncated := textx.CutBytes(string(s), reasonLimit); truncated {
+		return T(cut + "...")
 	}
-	return T(strings.ToValidUTF8(string(s)[:reasonLimit], "") + "...")
+	return s
 }

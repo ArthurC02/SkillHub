@@ -51,3 +51,25 @@ func TestSHA256HexIsTheLowercaseHexDigest(t *testing.T) {
 		})
 	}
 }
+
+func TestCutBytesKeepsAValidPrefixOfAtMostTheLimitInBytes(t *testing.T) {
+	cases := []struct {
+		name, in      string
+		limit         int
+		want          string
+		wantTruncated bool
+	}{
+		{"exactly at the limit", "abc", 3, "abc", false},
+		{"one past the limit", "abcd", 3, "abc", true},
+		{"a cut inside a character drops its partial bytes", "驗收", 4, "驗", true},
+		{"a cut on a character boundary keeps it", "驗收", 3, "驗", true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got, truncated := CutBytes(c.in, c.limit)
+			if got != c.want || truncated != c.wantTruncated {
+				t.Errorf("CutBytes(%q, %d) = %q, %v; want %q, %v", c.in, c.limit, got, truncated, c.want, c.wantTruncated)
+			}
+		})
+	}
+}
