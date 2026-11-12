@@ -1,0 +1,209 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "r19-recite",
+  "proposer": "agent:coding-agent",
+  "requirement_id": "r19-recite",
+  "status": "verified",
+  "change_classification": "routine",
+  "submitted_at": "2026-11-12T09:33:54.726931Z",
+  "verified_at": "2026-11-12T09:34:38.490515Z",
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "1690ae33f4bc0448415e2c0191dec39afeb3a66e",
+    "registry_digest": "sha256:02ad52e39b673542689996121cd5719b189934742c805f0b9a26a27266d42552",
+    "committed_digest": "sha256:02ad52e39b673542689996121cd5719b189934742c805f0b9a26a27266d42552"
+  },
+  "affected_contexts": [
+    "operations",
+    "packaging"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "<context-id>",
+    "invariant": "<falsifiable-rule>",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "<existing-or-proposed-collaboration>",
+    "consistency": "<synchronous-or-eventual>",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": null,
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "releasing-an-unengaged-brake-records-nothing",
+        "statement": "Releasing the brake when none is engaged succeeds without recording a brake-released audit event.",
+        "contexts": [
+          "operations"
+        ],
+        "examples": [
+          "A second release adds no brake_released event."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/operations/agents.go",
+            "lines": {
+              "start": 204,
+              "end": 215
+            },
+            "excerpt_sha256": "sha256:f483f5c5d2072f5b1177577b0307267473ff2dff0c43b63f849649bbc402884a"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/platform_agents_integration_test.go",
+            "lines": {
+              "start": 209,
+              "end": 253
+            },
+            "content_sha256": "sha256:cdc90279ab3ddbe2e3a54a1dc1d3c75d4fcf9e9e9f123fab8c5facae48df42f3",
+            "excerpt_sha256": "sha256:35fbfb8dbeeada26d3ad30f92dfa2e661983dc0dd434de25a7d1f3e77471bbb5",
+            "source_kind": "tests"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-running-proposal-is-abandoned-after-a-2-hour-lease",
+        "statement": "A proposal still running two hours after it started is failed as abandoned; one inside the lease keeps running.",
+        "contexts": [
+          "operations"
+        ],
+        "examples": [
+          "A proposal running for 2h01s fails; one at 1h59m59s keeps running."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/operations/proposals.go",
+            "lines": {
+              "start": 254,
+              "end": 258
+            },
+            "excerpt_sha256": "sha256:2f0f56161722da877351b1edaea85468509b53996c8dfadec4b2d8eb9cb85fb3"
+          },
+          {
+            "path": "apps/platform/internal/product/operations/proposals.go",
+            "lines": {
+              "start": 260,
+              "end": 278
+            },
+            "excerpt_sha256": "sha256:91f7e39c69d2231d1a8fba9a2cc3fe4ac98c7ff54b65daf1330922a7e08da56d"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/platform_agent_proposals_integration_test.go",
+            "lines": {
+              "start": 434,
+              "end": 462
+            },
+            "content_sha256": "sha256:d9093e2160fa19c6ed9ee47bdff6f326a7dec0764d3ac60c71371023650e2921",
+            "excerpt_sha256": "sha256:5b74f6a0be01ceb53689ad8dd1ae0f79a39dca14e7b37b0009b7d8b0c6e2ef6a",
+            "source_kind": "tests"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-job-failing-silently-still-closes-its-proposal",
+        "statement": "A maintenance job that fails with a blank message closes its proposal as failed with an outcome saying it failed without saying why.",
+        "contexts": [
+          "operations"
+        ],
+        "examples": [
+          "A job error of '' closes the proposal as failed."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/product/operations/proposals.go",
+            "lines": {
+              "start": 231,
+              "end": 238
+            },
+            "excerpt_sha256": "sha256:df09f74be9edddff5127675954f11c26e231b676f900df19f6f9b9deeb657a93"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/platform_agent_proposals_integration_test.go",
+            "lines": {
+              "start": 464,
+              "end": 476
+            },
+            "content_sha256": "sha256:d9093e2160fa19c6ed9ee47bdff6f326a7dec0764d3ac60c71371023650e2921",
+            "excerpt_sha256": "sha256:0cd96fcda573475dbc718944126ae8c37618c9d4d17ffb62f9ccb21b1f0ef412",
+            "source_kind": "tests"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-expired-or-purged-package-is-not-served",
+        "statement": "A package is not served once it has expired, been purged or is not scan-available.",
+        "contexts": [
+          "packaging"
+        ],
+        "examples": [
+          "Fetching an expired download answers gone."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/delivery/download.go",
+            "lines": {
+              "start": 210,
+              "end": 212
+            },
+            "excerpt_sha256": "sha256:d43408a8449614683e3c4c6f52c1369828da2b270d7a0857288af091184ce342"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/download_integration_test.go",
+            "lines": {
+              "start": 857,
+              "end": 895
+            },
+            "content_sha256": "sha256:f6783eed04e778db6c3c1b9d553535c93446b4380fd5946da2451bb9ea613a23",
+            "excerpt_sha256": "sha256:c55a2048a302d10a44148a436b6b88689b6275429cb22b1b0165d6bdba4979fd",
+            "source_kind": "tests"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-11-12T09:34:36.964247Z",
+      "scope": "routine re-citation: four rules whose cited test lines changed with round 19 helper merges (uuidString->uuidText, countRows->countRow, agentAuditCount->auditActionCount)",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "1690ae33f4bc0448415e2c0191dec39afeb3a66e",
+        "registry_digest": "sha256:02ad52e39b673542689996121cd5719b189934742c805f0b9a26a27266d42552",
+        "committed_digest": "sha256:02ad52e39b673542689996121cd5719b189934742c805f0b9a26a27266d42552"
+      }
+    }
+  ],
+  "supersedes": [
+    "shifted-recite-2026-10-24",
+    "operations-findings-proposals-and-runs-rules-2026-10-18"
+  ]
+}
