@@ -9,7 +9,6 @@ import json
 import pathlib
 import sys
 
-from _schema_check import check_counterexamples, check_sample
 from jsonschema import Draft202012Validator
 
 EVENTS_DIR = pathlib.Path(__file__).resolve().parents[2] / "contracts" / "events"
@@ -81,6 +80,35 @@ def _check_examples(validator: Draft202012Validator, examples: list[dict]) -> in
     return failures
 
 
+def _check_sample(validator: Draft202012Validator, path: pathlib.Path) -> int:
+    lines = [ln for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip()]
+    if not lines:
+        print(f"FAIL  sample {path.name} is empty")
+        return 1
+    bad = 0
+    for number, line in enumerate(lines, start=1):
+        instance = json.loads(line)
+        for err in sorted(validator.iter_errors(instance), key=lambda e: e.path):
+            bad += 1
+            pointer = "/".join(map(str, err.path))
+            print(f"FAIL  {path.name}:{number} /{pointer}: {err.message}")
+    if bad:
+        return 1
+    print(f"ok    sample {path.name} ({len(lines)} records)")
+    return 0
+
+
+def _check_counterexamples(validator: Draft202012Validator, cases: list[tuple[str, dict]]) -> int:
+    failures = 0
+    for label, case in cases:
+        if validator.is_valid(case):
+            failures += 1
+            print(f"FAIL  counterexample accepted: {label}")
+        else:
+            print(f"ok    counterexample rejected: {label}")
+    return failures
+
+
 def main() -> int:
     schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
     Draft202012Validator.check_schema(schema)
@@ -95,9 +123,9 @@ def main() -> int:
         print(f"FAIL  no recorded sample under {SAMPLES_DIR}")
         failures += 1
     for path in samples:
-        failures += check_sample(validator, path, "records")
+        failures += _check_sample(validator, path)
 
-    failures += check_counterexamples(validator, NEGATIVE_CASES)
+    failures += _check_counterexamples(validator, NEGATIVE_CASES)
 
     print(
         f"\n{len(examples)} examples, {len(samples)} sample file(s), "
