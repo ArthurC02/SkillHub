@@ -3,12 +3,12 @@
   "proposal_id": "creation-classification-recite",
   "proposer": "agent:codex",
   "requirement_id": "GEN-013",
-  "status": "verified",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-11-12T05:03:19.526276Z",
   "verified_at": "2026-11-12T05:03:30.501130Z",
-  "finalized_at": null,
-  "applied_at": null,
+  "finalized_at": "2026-11-12T05:06:17.401001Z",
+  "applied_at": "2026-11-12T05:06:33.487892Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "f6cd68242be5ca2768a73b45451f8f6f9df8c305",
@@ -114,5 +114,9 @@
   "approvals": [],
   "supersedes": [
     "creation-screen-recite-2026-10-26"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "06a15906f896bc3dd5aab0ebd4344109ad947e11",
+    "registry_digest": "sha256:0ee5449d3f9d34fbe4be91d5d46f696ee44ecb87a1629b3cecff6ee4500c57a3"
+  }
 }
