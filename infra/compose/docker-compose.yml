@@ -2,7 +2,7 @@ name: skillhub
 
 services:
   postgres:
-    image: pgvector/pgvector:pg18@sha256:2358fcba361ed2233a5ed81b5fe4ca779ccb304120ce531a3bf51c0ed7e2bc11
+    image: pgvector/pgvector:pg18@sha256:c29f30688a9ad961691bdf0ec1650717cc132a5814619d80f80463d6e4c42e47
     environment:
       POSTGRES_USER: skillhub
       POSTGRES_PASSWORD: skillhub
@@ -34,7 +34,7 @@ services:
       retries: 10
 
   litellm:
-    image: ghcr.io/berriai/litellm:main-stable@sha256:c169fb3adc514fcf210377c203f3de406d54f10bfdacf13948a4a839db9af7de
+    image: ghcr.io/berriai/litellm:main-stable@sha256:11175975a3093e05e92faee2fe2fe3412a3ae2fcaa849eb0fe25d5f0d8bcb2e9
     profiles: ["model"]
     command: ["--config", "/app/config.yaml", "--port", "4000"]
     environment:
