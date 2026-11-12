@@ -14,6 +14,7 @@ import {
   type ActivityItem,
   type ActivitySource,
 } from "./activity.service";
+import { loadMoreLabel } from "../../shared/ui/loadMoreLabel";
 import "./Activity.page.css";
 
 const GROUPS: Array<{
@@ -140,7 +141,7 @@ export function Activity() {
           ref={bindTarget}
           onClick={loadMore}
         >
-          {paused ? "等待連線…" : activity.isFetchingNextPage ? "載入中…" : "載入更多活動"}
+          {loadMoreLabel(activity.isFetchingNextPage, paused, "載入更多活動")}
         </button>
       )}
     </section>

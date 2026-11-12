@@ -9,6 +9,7 @@ import { ACTION_LABEL, staleReadNotice } from "../admin.model";
 import type { OperatorAuditEvent } from "../admin.service";
 import { MetadataCell } from "./components/MetadataCell";
 import { usePaginationFocus } from "../../../shared/ui/usePaginationFocus";
+import { loadMoreLabel } from "../../../shared/ui/loadMoreLabel";
 import "./AdminAuditLog.page.css";
 
 const RESOURCE_LABEL: Record<string, string> = {
@@ -42,13 +43,11 @@ function auditPageState(log: ReturnType<typeof useOperatorAuditLog>) {
     nextPageError,
     showRows: log.data && (!log.error || nextPageError),
     blockingError: nextPageError ? null : log.error,
-    loadMoreLabel: paused
-      ? "等待連線…"
-      : log.isFetchingNextPage
-        ? "載入中…"
-        : nextPageError
-          ? "重試載入更多"
-          : "載入更多",
+    loadMoreLabel: loadMoreLabel(
+      log.isFetchingNextPage,
+      paused,
+      nextPageError ? "重試載入更多" : "載入更多",
+    ),
   };
 }
 

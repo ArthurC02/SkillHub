@@ -27,6 +27,7 @@ import { unreadableSkillSentence } from "../skills.service";
 import { useSkillDetail, useSkillVersions, skillDiffUrl } from "../skills.service";
 import { inLine, lineNewest } from "../versions.model";
 import { VersionUpload } from "./components/VersionUpload";
+import { loadMoreLabel } from "../../../shared/ui/loadMoreLabel";
 import "./SkillVersion.page.css";
 
 export function SkillVersion() {
@@ -397,10 +398,10 @@ function VersionEvidence({
       {runs.hasNextPage && !runs.error && (
         <button
           type="button"
-          disabled={runs.isFetchingNextPage}
+          disabled={runs.isFetchingNextPage || runs.fetchStatus === "paused"}
           onClick={() => runs.fetchNextPage()}
         >
-          {runs.isFetchingNextPage ? "載入中…" : "載入更多證據"}
+          {loadMoreLabel(runs.isFetchingNextPage, runs.fetchStatus === "paused", "載入更多證據")}
         </button>
       )}
     </section>
