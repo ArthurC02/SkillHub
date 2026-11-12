@@ -1,6 +1,7 @@
 package skillpkg
 
 import (
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -171,11 +172,11 @@ func TestDiscoverDisclosesTheComponentsItWillNeverImport(t *testing.T) {
 		paths = append(paths, f.Path)
 	}
 	for _, want := range []string{"mcp.json", "com.example.client/", "org.other.agent/"} {
-		if !contains(paths, want) {
+		if !slices.Contains(paths, want) {
 			t.Errorf("%s was not disclosed as a component: %v", want, paths)
 		}
 	}
-	if contains(paths, "scripts/") || contains(paths, "skills/") {
+	if slices.Contains(paths, "scripts/") || slices.Contains(paths, "skills/") {
 		t.Errorf("a plain directory was disclosed as a client namespace: %v", paths)
 	}
 }

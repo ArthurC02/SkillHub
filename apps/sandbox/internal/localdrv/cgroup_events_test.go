@@ -29,10 +29,3 @@ func TestEventOccurredReadsOneNamedCounter(t *testing.T) {
 		})
 	}
 }
-
-func TestEventCountReturnsTheCounterValue(t *testing.T) {
-	got, ok := eventCount("low 0\nmax 17\n", "max")
-	if got != 17 || !ok {
-		t.Errorf("eventCount = %d, %v, want 17, true", got, ok)
-	}
-}

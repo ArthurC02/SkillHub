@@ -11,7 +11,7 @@ import {
   type BatchTestCase,
   type DifferenceVerdict,
 } from "./batches.model";
-import { isCount, isRecord } from "../../../shared/wire";
+import { isCount, isRecord } from "../../../core/api/wire";
 
 export type ReflectionOutcome = BatchReflectionOutcomeEnum;
 

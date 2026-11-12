@@ -2,8 +2,6 @@ package testlab
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,6 +13,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/textx"
 )
 
 type DatasetRef struct {
@@ -286,8 +285,7 @@ func (c snapshotContent) hash() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	sum := sha256.Sum256(body)
-	return hex.EncodeToString(sum[:]), nil
+	return textx.SHA256Hex(body), nil
 }
 
 var ErrPromptTooLong = fmt.Errorf("%w: Prompt 最多 %d 個字", ErrInvalid, MaxPromptChars)

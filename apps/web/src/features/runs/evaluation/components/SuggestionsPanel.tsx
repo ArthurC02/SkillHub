@@ -17,11 +17,10 @@ import { MatchLegend } from "./MatchLegend";
 import { ApplyFailureBody } from "./ApplyFailureBody";
 import { SuggestionItem, type SuggestionDecisionState } from "./SuggestionItem";
 import { AppliedResult } from "./AppliedResult";
+import { focusAndCenter } from "../../../../shared/ui/focusAndCenter";
 
 function focusSuggestions() {
-  const heading = document.getElementById("suggestions-heading");
-  heading?.focus();
-  heading?.scrollIntoView({ block: "center" });
+  focusAndCenter(document.getElementById("suggestions-heading"));
 }
 
 export function SuggestionsPanel({

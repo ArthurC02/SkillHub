@@ -1,4 +1,5 @@
 import type { Acquisition } from "./publishing.service";
+import { isDate } from "../../core/api/wire";
 
 export class AcquisitionResultUnknown extends Error {
   constructor() {
@@ -17,8 +18,7 @@ export function readAcquisition(value: unknown): Acquisition {
     typeof receipt.size_bytes !== "number" ||
     !Number.isInteger(receipt.size_bytes) ||
     typeof receipt.content_hash !== "string" ||
-    typeof receipt.expires_at !== "string" ||
-    !Number.isFinite(Date.parse(receipt.expires_at)) ||
+    !isDate(receipt.expires_at) ||
     typeof receipt.duplicate !== "boolean" ||
     receipt.content_url !== `/downloads/${receipt.artifact_id}/content`
   )

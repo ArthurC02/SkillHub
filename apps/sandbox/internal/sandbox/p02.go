@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -99,8 +98,8 @@ func SplitP02Target(target string) (string, int, bool) {
 	if i <= 0 {
 		return "", 0, false
 	}
-	port, err := strconv.Atoi(target[i+1:])
-	if err != nil || port <= 0 || port > 65535 {
+	port, ok := tcpPort(target[i+1:])
+	if !ok {
 		return "", 0, false
 	}
 	return target[:i], port, true

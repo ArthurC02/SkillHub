@@ -7,6 +7,7 @@ import { VersionDiff } from "../../../runs";
 import { useCandidateVersions, useSkillVersions, skillDiffUrl } from "../../skills.service";
 import { heldLabel, inLine, lineNewest } from "../../versions.model";
 import { Link } from "@tanstack/react-router";
+import { focusAndCenter } from "../../../../shared/ui/focusAndCenter";
 
 export function VersionHistory({ skillId }: { skillId: string }) {
   const versions = useSkillVersions(skillId);
@@ -19,9 +20,7 @@ export function VersionHistory({ skillId }: { skillId: string }) {
   const candidates = useCandidateVersions(skillId, !list.every(inLine));
   const refresh = () => {
     void versions.refetch();
-    const heading = document.getElementById("version-history-heading");
-    heading?.focus();
-    heading?.scrollIntoView({ block: "center" });
+    focusAndCenter(document.getElementById("version-history-heading"));
   };
 
   return (

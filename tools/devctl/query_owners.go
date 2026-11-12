@@ -642,10 +642,7 @@ func rawSQLProblems(root string, allow map[string]string) []string {
 		if _, err := os.Stat(base); err != nil {
 			continue
 		}
-		err := filepath.WalkDir(base, func(path string, entry os.DirEntry, err error) error {
-			if err != nil || entry.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
-				return err
-			}
+		err := walkGoFiles(base, func(path string) error {
 			found, err := rawSQLFileProblems(root, path, allow, hit)
 			problems = append(problems, found...)
 			return err

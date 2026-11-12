@@ -129,25 +129,23 @@ func checkVersion(name string, args []string, want, statusWhenMissing string) ch
 }
 
 func checkDockerCompose() checkResult {
-	if _, err := exec.LookPath("docker"); err != nil {
-		return checkResult{name: checkNameDockerCompose, status: statusFail, detail: "docker not found", required: true}
-	}
-	output, err := exec.Command("docker", "compose", "version").CombinedOutput()
-	if err != nil {
-		return checkResult{name: checkNameDockerCompose, status: statusFail, detail: strings.TrimSpace(string(output)), required: true}
-	}
-	return checkResult{name: checkNameDockerCompose, status: statusPass, detail: firstLine(strings.TrimSpace(string(output))), required: true}
+	return checkDocker(checkNameDockerCompose, "", func(out string) string { return out }, "compose", "version")
 }
 
 func checkDockerDaemon() checkResult {
+	return checkDocker(checkNameDockerDaemon, "server ", firstLine, "info", "--format", "{{.ServerVersion}}")
+}
+
+func checkDocker(name, passPrefix string, failDetail func(string) string, args ...string) checkResult {
 	if _, err := exec.LookPath("docker"); err != nil {
-		return checkResult{name: checkNameDockerDaemon, status: statusFail, detail: "docker not found", required: true}
+		return checkResult{name: name, status: statusFail, detail: "docker not found", required: true}
 	}
-	output, err := exec.Command("docker", "info", "--format", "{{.ServerVersion}}").CombinedOutput()
+	output, err := exec.Command("docker", args...).CombinedOutput()
+	out := strings.TrimSpace(string(output))
 	if err != nil {
-		return checkResult{name: checkNameDockerDaemon, status: statusFail, detail: firstLine(strings.TrimSpace(string(output))), required: true}
+		return checkResult{name: name, status: statusFail, detail: failDetail(out), required: true}
 	}
-	return checkResult{name: checkNameDockerDaemon, status: statusPass, detail: "server " + firstLine(strings.TrimSpace(string(output))), required: true}
+	return checkResult{name: name, status: statusPass, detail: passPrefix + firstLine(out), required: true}
 }
 
 func checkPython(want string) checkResult {

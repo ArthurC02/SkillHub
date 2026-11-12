@@ -2,7 +2,6 @@ package dockerdrv
 
 import (
 	"log/slog"
-	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -40,21 +39,6 @@ func warn(log *slog.Logger, msg string, args ...any) {
 	if log != nil {
 		log.Warn(msg, args...)
 	}
-}
-
-func pidsLimitEvents(raw string) (int64, bool) {
-	for _, line := range strings.Split(raw, "\n") {
-		key, value, found := strings.Cut(strings.TrimSpace(line), " ")
-		if !found || key != "max" {
-			continue
-		}
-		n, err := strconv.ParseInt(value, 10, 64)
-		if err != nil || n < 0 {
-			return 0, false
-		}
-		return n, true
-	}
-	return 0, false
 }
 
 func cgroupV2Path(procCgroup, containerID string) (string, bool) {

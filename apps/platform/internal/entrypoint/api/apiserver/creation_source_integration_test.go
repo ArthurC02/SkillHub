@@ -120,7 +120,7 @@ func TestCreationPythonSourceInventoryReachesTheGoOwner(t *testing.T) {
 	}
 	rule := got.SourceAssessment.Rules[0]
 	messageIndex := 0
-	expected := creation.SourceRule{Rule: "Course weights", SourceMessageIndex: &messageIndex, Quote: ptr("數學占 40%、自然占 60%。"), Path: ptr("references/grading.md")}
+	expected := creation.SourceRule{Rule: "Course weights", SourceMessageIndex: &messageIndex, Quote: new("數學占 40%、自然占 60%。"), Path: new("references/grading.md")}
 	if got.Outcome != "draft" || !reflect.DeepEqual(rule, expected) {
 		t.Fatalf("the owner received different source evidence: %+v", rule)
 	}

@@ -8,10 +8,10 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"maps"
 	"net/http"
 	"net/url"
 	"slices"
-	"sort"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -250,11 +250,10 @@ func (h *Handler) RequireSession(next http.HandlerFunc) http.HandlerFunc {
 }
 
 func (h *Handler) LogOperatorRoster(ctx context.Context) error {
-	ids := make([]string, 0, len(h.Operators))
-	for id := range h.Operators {
-		ids = append(ids, id)
+	ids := slices.Sorted(maps.Keys(h.Operators))
+	if ids == nil {
+		ids = []string{}
 	}
-	sort.Strings(ids)
 	return audit.Log(ctx, h.Service.Pool, audit.Event{
 
 		Action:       audit.ActionOperatorRoster,
@@ -474,11 +473,7 @@ func (h *Handler) LogInviteRoster(ctx context.Context) error {
 	if len(h.Invited) == 0 {
 		return nil
 	}
-	ids := make([]string, 0, len(h.Invited))
-	for id := range h.Invited {
-		ids = append(ids, id)
-	}
-	sort.Strings(ids)
+	ids := slices.Sorted(maps.Keys(h.Invited))
 	return audit.Log(ctx, h.Service.Pool, audit.Event{
 		Action:       audit.ActionBetaRoster,
 		ResourceType: audit.ResourceBetaRoster,

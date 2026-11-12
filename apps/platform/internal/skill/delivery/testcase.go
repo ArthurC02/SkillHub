@@ -2,8 +2,6 @@ package packaging
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -13,6 +11,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/textx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 )
@@ -192,10 +191,9 @@ func (s *Service) portableFiles(
 		if err != nil {
 			return nil, fmt.Errorf("test case %s dataset %s: %w", slug, name, err)
 		}
-		sum := sha256.Sum256(data)
 		files = append(files, exportFile{path: testCasesDir + slug + "/data/" + name, data: data})
 		refs = append(refs, portableDataset{
-			File: "data/" + name, SHA256: hex.EncodeToString(sum[:]), ContentType: ds.ContentType,
+			File: "data/" + name, SHA256: textx.SHA256Hex(data), ContentType: ds.ContentType,
 		})
 	}
 

@@ -1,6 +1,8 @@
 import type { BundleMemberChangeChangeEnum } from "@skillhub/api-client-ts";
 import { isCategorizedFindings } from "../../core/api/findings";
 import type { PublicPublication } from "./publishing.service";
+import { isDate, isRecord } from "../../core/api/wire";
+import { isAcquisition, isLabelled } from "./availability.model";
 
 const MEMBER_CHANGES: ReadonlySet<string> = new Set<BundleMemberChangeChangeEnum>([
   "added",
@@ -8,30 +10,13 @@ const MEMBER_CHANGES: ReadonlySet<string> = new Set<BundleMemberChangeChangeEnum
   "changed",
 ]);
 
-function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function isLabelled(value: unknown) {
-  return (
-    isObject(value) &&
-    typeof value.value === "string" &&
-    typeof value.label === "string" &&
-    typeof value.note === "string"
-  );
-}
-
-function isPublicationNote(value: unknown) {
-  return isObject(value) && typeof value.available === "boolean" && typeof value.note === "string";
-}
-
 function isOptionalInteger(value: unknown) {
   return value === undefined || (typeof value === "number" && Number.isInteger(value));
 }
 
 function isMemberChange(value: unknown) {
   return (
-    isObject(value) &&
+    isRecord(value) &&
     typeof value.name === "string" &&
     typeof value.change === "string" &&
     MEMBER_CHANGES.has(value.change) &&
@@ -42,10 +27,9 @@ function isMemberChange(value: unknown) {
 
 function isRelease(value: unknown) {
   return (
-    isObject(value) &&
+    isRecord(value) &&
     typeof value.content_hash === "string" &&
-    typeof value.released_at === "string" &&
-    Number.isFinite(Date.parse(value.released_at)) &&
+    isDate(value.released_at) &&
     isOptionalInteger(value.version_number) &&
     (value.version === undefined || typeof value.version === "string") &&
     (value.changes === undefined ||
@@ -57,14 +41,14 @@ function isSkillContent(value: Record<string, unknown>) {
   const skill = value.skill;
   const release = value.release;
   return (
-    isObject(skill) &&
+    isRecord(skill) &&
     typeof skill.name === "string" &&
     typeof skill.summary === "string" &&
-    isObject(release) &&
+    isRecord(release) &&
     isRelease(release) &&
     typeof release.version_number === "number" &&
     isCategorizedFindings(release.findings) &&
-    isObject(release.license) &&
+    isRecord(release.license) &&
     typeof release.license.expression === "string" &&
     typeof release.license.source === "string" &&
     isLabelled(release.redistribution)
@@ -75,19 +59,19 @@ function isBundleContent(value: Record<string, unknown>) {
   const bundle = value.bundle;
   const release = value.bundle_release;
   return (
-    isObject(bundle) &&
+    isRecord(bundle) &&
     typeof bundle.version === "string" &&
     typeof bundle.description === "string" &&
     Array.isArray(bundle.members) &&
     bundle.members.every(
       (member) =>
-        isObject(member) &&
+        isRecord(member) &&
         typeof member.name === "string" &&
         typeof member.version_number === "number" &&
         Number.isInteger(member.version_number) &&
         typeof member.content_hash === "string",
     ) &&
-    isObject(release) &&
+    isRecord(release) &&
     isRelease(release) &&
     typeof release.version === "string" &&
     isCategorizedFindings(release.findings)
@@ -96,7 +80,7 @@ function isBundleContent(value: Record<string, unknown>) {
 
 export function readPublicPublication(value: unknown): PublicPublication {
   if (
-    !isObject(value) ||
+    !isRecord(value) ||
     (value.kind !== "skill" && value.kind !== "bundle") ||
     typeof value.publisher !== "string" ||
     typeof value.name !== "string" ||
@@ -104,10 +88,9 @@ export function readPublicPublication(value: unknown): PublicPublication {
     !isLabelled(value.availability) ||
     !Array.isArray(value.releases) ||
     !value.releases.every(isRelease) ||
-    !isPublicationNote(value.exposure) ||
-    !isPublicationNote(value.acquisition) ||
-    (value.delisted_at !== undefined &&
-      (typeof value.delisted_at !== "string" || !Number.isFinite(Date.parse(value.delisted_at))))
+    !isAcquisition(value.exposure) ||
+    !isAcquisition(value.acquisition) ||
+    (value.delisted_at !== undefined && !isDate(value.delisted_at))
   )
     throw new Error("無法確認公開發佈物的資料。");
 

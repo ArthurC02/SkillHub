@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/fs"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -649,15 +650,6 @@ func details(r Report, code string) ([]string, bool) {
 	return nil, false
 }
 
-func contains(ss []string, want string) bool {
-	for _, s := range ss {
-		if s == want {
-			return true
-		}
-	}
-	return false
-}
-
 type dependencyExtractionCase struct {
 	name        string
 	files       map[string]string
@@ -682,12 +674,12 @@ func assertDependencyExtractionCase(t *testing.T, tc dependencyExtractionCase) {
 		t.Fatalf("want no dependency finding, got %v", info)
 	}
 	for _, want := range tc.wantListed {
-		if !contains(info, want) {
+		if !slices.Contains(info, want) {
 			t.Errorf("package-dependencies missing %q: %v", want, info)
 		}
 	}
 	for _, bad := range tc.wantNot {
-		if contains(info, bad) || contains(warn, bad) {
+		if slices.Contains(info, bad) || slices.Contains(warn, bad) {
 			t.Errorf("%q must not be reported as a dependency: %v / %v", bad, info, warn)
 		}
 	}
@@ -695,7 +687,7 @@ func assertDependencyExtractionCase(t *testing.T, tc dependencyExtractionCase) {
 		t.Fatalf("want no undeclared-dependency warning, got %v", warn)
 	}
 	for _, want := range tc.wantWarning {
-		if !contains(warn, want) {
+		if !slices.Contains(warn, want) {
 			t.Errorf("undeclared-dependency missing %q: %v", want, warn)
 		}
 	}

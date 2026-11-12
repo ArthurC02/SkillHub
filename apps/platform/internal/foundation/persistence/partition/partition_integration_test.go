@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -80,7 +81,7 @@ func TestMonthlyPartitionsRollForwardAndExpireWithTheirRows(t *testing.T) {
 		t.Error("a row inside the retention window was removed")
 	}
 
-	if !contains(childPartitionNames(t, pool, analyticsTable), "analytics_events_default") {
+	if !slices.Contains(childPartitionNames(t, pool, analyticsTable), "analytics_events_default") {
 		t.Fatal("the default partition was dropped")
 	}
 
@@ -131,12 +132,12 @@ func TestAnExpiredMonthThatCannotBeDroppedHoldsBackNeitherTheOthersNorTheMonthsA
 	if err == nil || !strings.Contains(err.Error(), "trace_events_2027_12") {
 		t.Fatalf("err = %v, want the pinned month's drop reported", err)
 	}
-	if !contains(report.Dropped, "trace_events_2028_01") || contains(report.Dropped, "trace_events_2027_12") {
+	if !slices.Contains(report.Dropped, "trace_events_2028_01") || slices.Contains(report.Dropped, "trace_events_2027_12") {
 		t.Errorf("dropped = %v, want the month after the pinned one dropped and the pinned one kept", report.Dropped)
 	}
 	names := childPartitionNames(t, pool, traceTable)
 	for _, want := range []string{"trace_events_2028_03", "trace_events_2028_04", "trace_events_2028_05"} {
-		if !contains(names, want) {
+		if !slices.Contains(names, want) {
 			t.Errorf("partitions = %v, want %s created ahead", names, want)
 		}
 	}
@@ -152,7 +153,7 @@ func TestTraceEventsRollsForwardToo(t *testing.T) {
 	}
 	assertNames(t, "created", report.Created,
 		"trace_events_2026_09", "trace_events_2026_10", "trace_events_2026_11")
-	if !contains(childPartitionNames(t, pool, traceTable), "trace_events_default") {
+	if !slices.Contains(childPartitionNames(t, pool, traceTable), "trace_events_default") {
 		t.Fatal("the default partition was dropped")
 	}
 }
@@ -227,13 +228,4 @@ func assertNames(t *testing.T, label string, got []string, want ...string) {
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("%s = %v, want %v", label, got, want)
 	}
-}
-
-func contains(names []string, want string) bool {
-	for _, name := range names {
-		if name == want {
-			return true
-		}
-	}
-	return false
 }

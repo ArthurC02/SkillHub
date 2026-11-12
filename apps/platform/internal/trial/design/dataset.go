@@ -21,6 +21,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/textx"
 )
 
 type DatasetContent interface {
@@ -402,9 +403,7 @@ func sanitizeFileName(name string) string {
 		return r
 	}, name)
 
-	if len(name) > maxStoredFileNameBytes {
-		name = strings.ToValidUTF8(name[:maxStoredFileNameBytes], "")
-	}
+	name, _ = textx.CutBytes(name, maxStoredFileNameBytes)
 	return name
 }
 

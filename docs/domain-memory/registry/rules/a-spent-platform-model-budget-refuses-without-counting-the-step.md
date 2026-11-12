@@ -29,7 +29,7 @@ sources:
   - resource: "apps/platform/internal/entrypoint/worker/evaluation_execute.go#L35-44"
     excerpt_sha256: "sha256:56cec5cb8f7d53384bca8cd2953816344b9df952aba28088e2eb67198ec1efee"
   - resource: "apps/platform/internal/entrypoint/api/apiserver/evaluation_integration_test.go#L810-852"
-    excerpt_sha256: "sha256:50028b9a1a1a887d91aecd4ac6ec84f31a4157c36774b04e8747ea7fdfa1ca7b"
+    excerpt_sha256: "sha256:68606224f0f630ed60ed847ff0132cd820f7af5c6e04ff1ac2035f7b865f42c1"
 ---
 When the model gateway refuses a call because its platform-wide budget for the period is spent, the refusal is named as such rather than reported as a broken gateway, and every such refusal is counted for alerting. A creation step refused this way is not counted against the session, the session waits for the person to send again, and only the cost actually incurred is settled; a skill generation or a criteria suggestion refused this way answers 503 saying nothing was charged and that retrying now is refused too; a judgement refused this way settles as failed with a summary naming the spent budget, that it was not charged and that it will be judged again; the evaluation job is snoozed hourly without spending its attempts, and once the budget recovers a new judgement supersedes the failed one, giving up after a bounded number of snoozes. Every such refusal tells the person the budget recovers at 08:00 Taipei time (UTC midnight) each day, which holds only while the gateway's budget period is one day. A refusal of one key's own budget is not this case and stays an ordinary gateway failure.
 

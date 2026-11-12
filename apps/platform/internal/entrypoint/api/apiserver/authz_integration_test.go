@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -407,15 +408,6 @@ func seedSkill(t *testing.T, pool *pgxpool.Pool, workspaceID, name string) strin
 	return s
 }
 
-func contains(ids []string, want string) bool {
-	for _, id := range ids {
-		if id == want {
-			return true
-		}
-	}
-	return false
-}
-
 func TestLoginLogoutSessionLifecycle(t *testing.T) {
 	pool := requireDB(t)
 	a := newAPI(t, pool)
@@ -501,10 +493,10 @@ func TestPrivateContentIsolatedAcrossWorkspaces(t *testing.T) {
 	bob := a.login(t, "bob-isolation")
 	secret := seedSkill(t, pool, alice.workspaceID, "alice-private-widget")
 
-	if ids := alice.skillIDs(t, "/skills"); !contains(ids, secret) {
+	if ids := alice.skillIDs(t, "/skills"); !slices.Contains(ids, secret) {
 		t.Fatal("owner cannot see their own skill")
 	}
-	if ids := bob.skillIDs(t, "/skills"); contains(ids, secret) {
+	if ids := bob.skillIDs(t, "/skills"); slices.Contains(ids, secret) {
 		t.Fatal("another user's skill appears in the caller's list")
 	}
 
@@ -523,7 +515,7 @@ func TestPrivateContentIsolatedAcrossWorkspaces(t *testing.T) {
 		t.Errorf("anonymous delete: want 401, got %d", got)
 	}
 
-	if ids := alice.skillIDs(t, "/skills"); !contains(ids, secret) {
+	if ids := alice.skillIDs(t, "/skills"); !slices.Contains(ids, secret) {
 		t.Fatal("a non-owner request modified the owner's skill")
 	}
 }
@@ -536,7 +528,7 @@ func TestClientSuppliedWorkspaceIDIsIgnored(t *testing.T) {
 	bob := a.login(t, "bob-forgery")
 	secret := seedSkill(t, pool, alice.workspaceID, "alice-forgery-target")
 
-	if ids := alice.skillIDs(t, "/skills/search?q=forgery"); !contains(ids, secret) {
+	if ids := alice.skillIDs(t, "/skills/search?q=forgery"); !slices.Contains(ids, secret) {
 		t.Fatalf("the owner's own search for the seeded skill came back without it: %v", ids)
 	}
 
@@ -546,7 +538,7 @@ func TestClientSuppliedWorkspaceIDIsIgnored(t *testing.T) {
 		"/skills/search?q=forgery&workspace_id=" + alice.workspaceID,
 	}
 	for _, path := range forged {
-		if ids := bob.skillIDs(t, path); contains(ids, secret) {
+		if ids := bob.skillIDs(t, path); slices.Contains(ids, secret) {
 			t.Errorf("GET %s leaked another workspace's skill", path)
 		}
 	}
@@ -594,10 +586,10 @@ func TestPublicSearchSeesOnlyCatalogWorkspaces(t *testing.T) {
 
 	anon := &client{Client: http.DefaultClient, base: a.URL}
 	ids := anon.skillIDs(t, "/api/skills/search?q=zaphodian")
-	if contains(ids, private) {
+	if slices.Contains(ids, private) {
 		t.Fatal("public search exposed a private workspace's skill")
 	}
-	if !contains(ids, published) {
+	if !slices.Contains(ids, published) {
 		t.Fatalf("public search missed the catalog skill; got %v", ids)
 	}
 }

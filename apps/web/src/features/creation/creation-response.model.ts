@@ -5,6 +5,7 @@ import type {
 } from "@skillhub/api-client-ts";
 import { contractEnum } from "../../core/api/contract-enum";
 import type { CreationSession } from "./creation.service";
+import { isDate } from "../../core/api/wire";
 
 type Check = (value: unknown) => boolean;
 
@@ -27,7 +28,7 @@ const MESSAGE_ROLES = contractEnum<CreationMessageRoleEnum>({
 const text: Check = (value) => typeof value === "string";
 const flag: Check = (value) => typeof value === "boolean";
 const count: Check = (value) => Number.isSafeInteger(value) && Number(value) >= 0;
-const date: Check = (value) => typeof value === "string" && Number.isFinite(Date.parse(value));
+const date: Check = (value) => isDate(value);
 const identifier: Check = (value) => typeof value === "string" && value.trim().length > 0;
 const optional =
   (check: Check): Check =>

@@ -101,14 +101,11 @@ func (s *Service) Findings(ctx context.Context, statuses []string, beforeAt pgty
 }
 
 func findingCursor(raw string) (pgtype.Timestamptz, pgtype.UUID, error) {
-	var beforeAt pgtype.Timestamptz
-	var beforeID pgtype.UUID
-	when, id, ok := httpx.SplitKeysetCursor(raw)
-	if !ok || beforeID.Scan(id) != nil {
-		return beforeAt, beforeID, errors.New("cursor is invalid")
+	when, id, ok := httpx.SplitUUIDKeysetCursor(raw)
+	if !ok {
+		return pgtype.Timestamptz{}, pgtype.UUID{}, errors.New("cursor is invalid")
 	}
-	beforeAt = pgconv.Timestamptz(when)
-	return beforeAt, beforeID, nil
+	return pgconv.Timestamptz(when), id, nil
 }
 
 func (s *Service) Finding(ctx context.Context, id pgtype.UUID) (gen.GetFindingRow, []gen.ListFindingEventsRow, error) {

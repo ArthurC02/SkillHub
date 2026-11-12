@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -65,21 +64,6 @@ func TestFetchRefusesToFollowARedirect(t *testing.T) {
 	}
 	if strings.Contains(err.Error(), srv.URL) || strings.Contains(err.Error(), "secret") {
 		t.Fatalf("grant URL leaked into error: %v", err)
-	}
-}
-
-func TestDatasetNamesSkipsEmptyKeysAndUnsafeNames(t *testing.T) {
-	req := sandbox.RunRequest{TestCase: sandbox.TestCaseSnapshotRef{DatasetRefs: []sandbox.DatasetRef{
-		{ObjectKey: "k1", FileName: "input.csv"},
-		{ObjectKey: "", FileName: "no-key.csv"},
-		{ObjectKey: "k2", FileName: ".."},
-		{ObjectKey: "k3", FileName: "-rf"},
-	}}}
-
-	got := datasetNames(req)
-	want := map[string]string{"k1": "input.csv"}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("datasetNames = %v, want %v", got, want)
 	}
 }
 

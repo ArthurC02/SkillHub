@@ -18,6 +18,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/platformbudget"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/modelbudget"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/textx"
 )
 
 var ErrSuggestUnavailable = errors.New("目前無法自動建議驗收條件，請自己手動輸入")
@@ -81,9 +82,10 @@ func (s *Service) SuggestCriteria(ctx context.Context, ws identity.Workspace, id
 		return nil, err
 	}
 
+	summary, _ := textx.CutBytes(derefString(skill.Summary), maxSkillSummaryBytes)
 	req := CriteriaRequest{
 		SkillName:    skill.Name,
-		SkillSummary: truncate(derefString(skill.Summary), maxSkillSummaryBytes),
+		SkillSummary: summary,
 		UserPrompt:   tc.UserPrompt,
 		Datasets:     s.outlineDatasets(ctx, datasets),
 		Within:       s.Budgets.Within(ctx, SuggestCriteriaBudget),
@@ -200,13 +202,6 @@ func inferType(value string) string {
 		return "number"
 	}
 	return "text"
-}
-
-func truncate(s string, n int) string {
-	if len(s) <= n {
-		return s
-	}
-	return strings.ToValidUTF8(s[:n], "")
 }
 
 func derefString(s *string) string {

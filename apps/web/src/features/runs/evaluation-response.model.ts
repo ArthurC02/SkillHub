@@ -30,7 +30,7 @@ import type {
   SuggestionDiff,
 } from "./evaluation.service";
 import { SUGGESTION_OUTCOMES } from "./evaluation.service";
-import { isDate, isOptionalText, isRecord, isText } from "../../shared/wire";
+import { isDate, isOptionalText, isRecord, isText } from "../../core/api/wire";
 
 function isNullableDate(value: unknown): boolean {
   return value === null || isDate(value);

@@ -71,7 +71,7 @@ func evaluateWithScreening(t *testing.T, pool *pgxpool.Pool, tc screeningCase) (
 			{CriterionID: "c1", Result: "passed", Reason: "the reply says so",
 				EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: "agent_output", Quote: "Removed 17 duplicate rows"}}},
 			{CriterionID: "c2", Result: "passed", Reason: "output.xlsx is in the manifest",
-				EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: "artifact", ArtifactPath: strPtrTest("output.xlsx")}}},
+				EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: "artifact", ArtifactPath: new("output.xlsx")}}},
 		},
 		Overall: "met", Summary: "both conditions were met",
 	}, "judge-run@2026-08-17")

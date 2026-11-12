@@ -13,6 +13,7 @@ import (
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/textx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 )
 
@@ -142,7 +143,7 @@ func (s *Service) PlanPlugin(ctx context.Context, source identity.Workspace, spe
 		return nil, err
 	}
 	p.Allowed = true
-	p.Zip, p.ContentHash, p.ManifestHash = zipped, sha256Hex(zipped), hash
+	p.Zip, p.ContentHash, p.ManifestHash = zipped, textx.SHA256Hex(zipped), hash
 	p.FileName = fmt.Sprintf("%s-%s.zip", spec.Name, spec.Version)
 	return p, nil
 }

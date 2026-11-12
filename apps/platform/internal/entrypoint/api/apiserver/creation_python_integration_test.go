@@ -122,7 +122,7 @@ func (s creationTurnScript) respond(call int32, system, prompt string) (map[stri
 		if !strings.Contains(system, "Current phase: understand") {
 			problem = "first prompt did not use understand phase"
 		}
-		return creationDecision("confirm_brief", "請確認任務與成功條件。", ptr("整理輸入資料並依指定格式輸出摘要。"), nil), problem
+		return creationDecision("confirm_brief", "請確認任務與成功條件。", new("整理輸入資料並依指定格式輸出摘要。"), nil), problem
 	case 2:
 		problem := ""
 		if !strings.Contains(system, "Current phase: compose") {
@@ -231,8 +231,6 @@ func creationDraft(description, suffix string) map[string]any {
 		"files": []any{},
 	}
 }
-
-func ptr(s string) *string { return &s }
 
 func creationPythonExecutable(t *testing.T) string {
 	t.Helper()

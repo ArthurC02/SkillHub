@@ -10,7 +10,6 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/ArthurC02/skillhub/apps/sandbox/internal/sandbox"
 )
@@ -38,7 +37,7 @@ func donePath(outDir string) string      { return filepath.Join(outDir, doneName
 func collectedPath(outDir string) string { return filepath.Join(outDir, collectedName) }
 
 func (d *Driver) pushInputs(ctx context.Context, r *run, req sandbox.RunRequest) error {
-	names := datasetNames(req)
+	names := req.DatasetNames()
 	for _, g := range req.InputGrants() {
 		var target string
 		switch g.Purpose {
@@ -75,21 +74,6 @@ func (d *Driver) pushInputs(ctx context.Context, r *run, req sandbox.RunRequest)
 		return fmt.Errorf("signal the run that its inputs are ready: %w", err)
 	}
 	return nil
-}
-
-func datasetNames(req sandbox.RunRequest) map[string]string {
-	out := map[string]string{}
-	for _, ref := range req.TestCase.DatasetRefs {
-		if ref.ObjectKey == "" {
-			continue
-		}
-		name := filepath.Base(strings.ReplaceAll(ref.FileName, "\\", "/"))
-		if name == "" || name == "." || name == ".." || strings.HasPrefix(name, "-") {
-			continue
-		}
-		out[ref.ObjectKey] = name
-	}
-	return out
 }
 
 type limitWriter struct {

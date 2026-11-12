@@ -9,12 +9,12 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"maps"
 	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
 	"slices"
-	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -1337,7 +1337,7 @@ func TestTheStandardPackageIsTheSourceBytesPlusExactlyThreeFiles(t *testing.T) {
 	}
 	if len(stripped) != len(source) {
 		t.Fatalf("the package carries %d source files, the source has %d: %v vs %v",
-			len(stripped), len(source), keysOfString(stripped), keysOfString(source))
+			len(stripped), len(source), slices.Sorted(maps.Keys(stripped)), slices.Sorted(maps.Keys(source)))
 	}
 	for name, want := range source {
 		if got, ok := stripped[name]; !ok || got != want {
@@ -1356,15 +1356,6 @@ func TestTheStandardPackageIsTheSourceBytesPlusExactlyThreeFiles(t *testing.T) {
 	if report.Manifest == nil || report.Manifest.Name != "byte-stable-skill" {
 		t.Fatalf("the stripped package is not the same skill: %+v", report.Manifest)
 	}
-}
-
-func keysOfString(m map[string]string) []string {
-	out := make([]string, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	sort.Strings(out)
-	return out
 }
 
 func dumpManifest(t *testing.T, name string, raw []byte) {

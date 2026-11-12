@@ -17,13 +17,14 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import importlib.util
 import json
 import os
 import pathlib
 import sys
 import uuid
 from dataclasses import dataclass
+
+from curate_seed import _load
 
 HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parents[1]
@@ -56,17 +57,6 @@ BASELINE_CRITERIA = [
     "/out/artifacts/ 至少產出一個檔案。",
     "最終回覆說明了這次產出哪些檔案。",
 ]
-
-
-def _load_import_seed():
-    """Reuse the sibling tool's HTTP helpers rather than writing a second client."""
-    spec = importlib.util.spec_from_file_location("import_seed", HERE / "import_seed.py")
-    if spec is None or spec.loader is None:  # pragma: no cover - environment
-        raise SystemExit("cannot load import_seed.py")
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
-
 
 
 def curated_plan() -> list[dict]:
@@ -129,7 +119,6 @@ def resolve_rubric_ids(rubric: dict, created_criteria: list[dict]) -> dict:
     return {"version": rubric["version"], "items": items}
 
 
-
 def multipart(field: str, filename: str, data: bytes) -> tuple[bytes, str]:
     boundary = "----skillhub" + uuid.uuid4().hex
     body = (
@@ -180,7 +169,6 @@ class Client:
         return json.loads(body) if body else {}
 
 
-
 def seed_one(client: Client, entry: dict, skill_id: str, files: dict[str, bytes]) -> dict:
     tc = client.call("POST", "/test-cases", json_body={
         "skill_id": skill_id,
@@ -204,7 +192,7 @@ def seed_one(client: Client, entry: dict, skill_id: str, files: dict[str, bytes]
 
 
 def run(args) -> int:
-    mod = _load_import_seed()
+    mod = _load("import_seed")
     plan = curated_plan()
     if args.only:
         plan = [e for e in plan if args.only in e["skill_name"]]
@@ -267,7 +255,6 @@ def run(args) -> int:
                        ensure_ascii=False, indent=1), encoding="utf-8")
         print(f"\nwrote {args.out}")
     return 0 if all(r["status"] != "skill_absent" for r in results) else 1
-
 
 
 def selftest() -> int:

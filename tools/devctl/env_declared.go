@@ -98,10 +98,7 @@ type goSource struct {
 func parseGoSources(root, dir string) ([]*goSource, error) {
 	var sources []*goSource
 	fset := token.NewFileSet()
-	err := filepath.WalkDir(filepath.Join(root, dir), func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
-			return err
-		}
+	err := walkGoFiles(filepath.Join(root, dir), func(path string) error {
 		file, err := parser.ParseFile(fset, path, nil, 0)
 		if err != nil {
 			return err

@@ -6,6 +6,7 @@ import { Loading } from "../../../shared/ui/Loading";
 import { PageReadFailure, ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import { ListFreshness } from "../../../shared/ui/ListFreshness";
+import { refetchThenFocusOnFailure } from "../../../shared/ui/refetchThenFocusOnFailure";
 import {
   PACKAGING_BLOCKED_LABEL,
   packagingGate,
@@ -371,10 +372,7 @@ function VersionEvidence({
           updatedAt={runs.dataUpdatedAt}
           fetching={runs.isFetching && !runs.isFetchingNextPage}
           paused={paused}
-          refetch={async () => {
-            const result = await runs.refetch();
-            if (result.error) document.getElementById("version-evidence-title")?.focus();
-          }}
+          refetch={refetchThenFocusOnFailure(runs.refetch, "version-evidence-title")}
         />
       )}
       {data &&

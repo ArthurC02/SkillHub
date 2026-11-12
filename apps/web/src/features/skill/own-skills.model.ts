@@ -3,6 +3,7 @@ import { ListSkillsLimitMaximum } from "@skillhub/api-client-ts/limits";
 import { contractEnum } from "../../core/api/contract-enum";
 import type { OwnSkill, OwnSkills, OwnSkillTakedown, Skill } from "../../core/api/types";
 import { isSkillRisk } from "./search-response.model";
+import { isDate, isUuid } from "../../core/api/wire";
 
 const SKILL_REDISTRIBUTIONS = contractEnum<SkillRedistributionEnum>({
   allowed: true,
@@ -13,10 +14,7 @@ const SKILL_REDISTRIBUTIONS = contractEnum<SkillRedistributionEnum>({
 });
 
 function isSkillId(value: unknown): value is string {
-  return (
-    typeof value === "string" &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value)
-  );
+  return isUuid(value);
 }
 
 export function isSkillReceipt(value: unknown): value is Skill {
@@ -30,8 +28,7 @@ export function isSkillReceipt(value: unknown): value is Skill {
   );
 }
 
-const isTimestamp = (value: unknown) =>
-  typeof value === "string" && Number.isFinite(Date.parse(value));
+const isTimestamp = (value: unknown) => isDate(value);
 
 function isOwnSkillTakedown(value: unknown): value is OwnSkillTakedown {
   if (!value || typeof value !== "object") return false;
@@ -63,8 +60,7 @@ function isOwnSkill(value: unknown): value is OwnSkill {
     typeof verification.note === "string" &&
     (verification.scanned_at === undefined ||
       verification.scanned_at === null ||
-      (typeof verification.scanned_at === "string" &&
-        Number.isFinite(Date.parse(verification.scanned_at))))
+      isDate(verification.scanned_at))
   );
 }
 

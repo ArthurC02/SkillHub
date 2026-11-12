@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/ArthurC02/skillhub/apps/sandbox/internal/sandbox"
 	"golang.org/x/sys/unix"
 )
 
@@ -91,7 +92,7 @@ func (w *pidsWatch) check(path string) {
 		return
 	}
 	w.readable.Store(true)
-	if n, ok := pidsLimitEvents(string(raw)); ok && n > 0 {
+	if n, ok := sandbox.CgroupEventCount(string(raw), "max"); ok && n > 0 {
 		w.hit.Store(true)
 	}
 }

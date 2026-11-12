@@ -2,12 +2,12 @@ import { useEffect, useRef } from "react";
 import type { AccountLookup } from "../../admin.service";
 import { Timestamp } from "../../../../shared/ui/Timestamp";
 import { CreditPanel } from "./CreditPanel";
+import { focusAndCenter } from "../../../../shared/ui/focusAndCenter";
 
 export function AccountCard({ account }: { account: AccountLookup }) {
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
-    heading.current?.focus();
-    heading.current?.scrollIntoView?.({ block: "center" });
+    focusAndCenter(heading.current);
   }, []);
   return (
     <>

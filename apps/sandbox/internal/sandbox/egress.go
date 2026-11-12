@@ -73,11 +73,16 @@ func hostPort(raw string) (string, int, bool) {
 			return "", 0, false
 		}
 	}
-	port, err := strconv.Atoi(portStr)
-	if err != nil || port <= 0 || port > 65535 {
+	port, ok := tcpPort(portStr)
+	if !ok {
 		return "", 0, false
 	}
 	return host, port, true
+}
+
+func tcpPort(s string) (int, bool) {
+	port, err := strconv.Atoi(s)
+	return port, err == nil && port > 0 && port <= 65535
 }
 
 const (

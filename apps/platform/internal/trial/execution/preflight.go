@@ -2,8 +2,6 @@ package run
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,6 +17,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/textx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
 )
@@ -374,8 +373,6 @@ func (s *Service) permissionSummaryFor(
 	if err != nil {
 		return PermissionSummary{}, err
 	}
-	sum := sha256.Sum256(body)
-
 	blocked := ""
 	var quota *policy.QuotaView
 	var notes []string
@@ -399,7 +396,7 @@ func (s *Service) permissionSummaryFor(
 	}
 	return PermissionSummary{
 		Content:        content,
-		Hash:           hex.EncodeToString(sum[:]),
+		Hash:           textx.SHA256Hex(body),
 		EstimatedCost:  estimate,
 		CeilingCredits: ceiling,
 		Quota:          quota,

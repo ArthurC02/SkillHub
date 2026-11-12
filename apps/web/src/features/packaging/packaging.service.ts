@@ -4,7 +4,7 @@ import type {
   PackagingBlockedReason,
 } from "@skillhub/api-client-ts";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { API_BASE_URL, apiFetch } from "../../core/api/client";
+import { API_BASE_URL, apiFetch, jsonInit } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
 import type { Finding, Labelled } from "../../core/api/types";
 
@@ -151,11 +151,10 @@ export function createDownloadArtifact(
   target: PackagingTargetId,
   includeTestCases: boolean,
 ) {
-  return apiFetch<CreatedDownloadArtifact>(`/skills/${skillId}/versions/${versionId}/packaging`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ target, include_test_cases: includeTestCases }),
-  });
+  return apiFetch<CreatedDownloadArtifact>(
+    `/skills/${skillId}/versions/${versionId}/packaging`,
+    jsonInit("POST", { target, include_test_cases: includeTestCases }),
+  );
 }
 
 export type DownloadRequest = {

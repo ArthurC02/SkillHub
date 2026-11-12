@@ -7,7 +7,7 @@ import {
   CreateEvaluationBatchBodyTestCaseIdsMaxItems as MAX_TEST_CASES,
   CreateEvaluationBatchBodyTrialsMaximum as MAX_TRIALS,
 } from "@skillhub/api-client-ts/limits";
-import { isCount, isOptionalText, isRecord } from "../../../shared/wire";
+import { isCount, isOptionalText, isRecord } from "../../../core/api/wire";
 
 export type BatchStatus = EvaluationBatchStatusEnum;
 

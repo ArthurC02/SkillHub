@@ -2,8 +2,6 @@ package ingest
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -16,6 +14,7 @@ import (
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/audit"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/textx"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 )
@@ -173,8 +172,7 @@ func (s *Service) contentDiffers(ctx context.Context, row gen.ListSourcesToCheck
 
 func importedContentHash(data []byte, sourcePath string) (string, error) {
 	if sourcePath == "" {
-		sum := sha256.Sum256(data)
-		return hex.EncodeToString(sum[:]), nil
+		return textx.SHA256Hex(data), nil
 	}
 	sub, err := skillpkg.SkillFS(data, sourcePath)
 	if err != nil {

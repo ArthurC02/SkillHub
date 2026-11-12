@@ -345,7 +345,8 @@
   font-size: 14px;
 }
 
-.creation-who {
+.creation-who,
+#composer-limits {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -855,15 +856,6 @@
   border-radius: 999px;
   color: var(--link);
   font-size: 14px;
-}
-
-#composer-limits {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
 }
 
 .composer {

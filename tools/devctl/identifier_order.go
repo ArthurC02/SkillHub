@@ -5,7 +5,6 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"os"
 	"path/filepath"
 	"strings"
 )
@@ -26,10 +25,7 @@ func identifierOrderProblems(root string) []string {
 		filepath.Join(root, "apps", "platform", "internal"),
 		filepath.Join(root, "apps", "platform", platformCmdDir),
 	} {
-		walkErr := filepath.WalkDir(base, func(path string, entry os.DirEntry, err error) error {
-			if err != nil || entry.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
-				return err
-			}
+		walkErr := walkGoFiles(base, func(path string) error {
 			relative, err := filepath.Rel(root, path)
 			if err != nil {
 				return err

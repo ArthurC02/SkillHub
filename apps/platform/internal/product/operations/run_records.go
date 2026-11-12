@@ -72,9 +72,8 @@ func (h *Handler) Runs(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Run(w http.ResponseWriter, r *http.Request) {
-	var id pgtype.UUID
-	if err := id.Scan(r.PathValue("id")); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, "run id must be a UUID")
+	id, ok := pathID(w, r, "run")
+	if !ok {
 		return
 	}
 	row, err := h.Svc.Run(r.Context(), id)

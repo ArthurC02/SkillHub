@@ -17,6 +17,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/observability/metrics"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/pgconv"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/textx"
 	policy "github.com/ArthurC02/skillhub/apps/platform/internal/product/entitlements"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg"
 	testlab "github.com/ArthurC02/skillhub/apps/platform/internal/trial/design"
@@ -421,7 +422,7 @@ func (s *Service) build(ctx context.Context, ws identity.Workspace, p *Plan) err
 
 	p.Allowed = true
 	p.Zip = zipped
-	p.ContentHash = sha256Hex(zipped)
+	p.ContentHash = textx.SHA256Hex(zipped)
 	p.FileName = fmt.Sprintf("%s-v%d-%s.zip", skillName, p.Version.VersionNumber, p.Profile.ID)
 	return nil
 }

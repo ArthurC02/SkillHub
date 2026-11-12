@@ -4,6 +4,7 @@ import {
   ApiError,
   isWriteResultUnknown,
   SessionNotReadyError,
+  jsonInit,
 } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
 import type {
@@ -192,12 +193,7 @@ export function useOwnPublications(enabled = true) {
 export function useRegisterPublisher() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (name: string) =>
-      apiFetch<Publisher>("/me/publisher", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
-      }),
+    mutationFn: (name: string) => apiFetch<Publisher>("/me/publisher", jsonInit("POST", { name })),
     onSettled: (_, error) => {
       if (error instanceof SessionNotReadyError) return;
       void client.invalidateQueries({ queryKey: queryKeys.publishing.publisher });
@@ -225,16 +221,15 @@ export function usePublish(skillId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: ({ name, versionId, rightsAttested, declaredLicense }: PublishRequest) =>
-      apiFetch<Publication>(`/skills/${skillId}/publication`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      apiFetch<Publication>(
+        `/skills/${skillId}/publication`,
+        jsonInit("POST", {
           name,
           version_id: versionId,
           rights_attested: rightsAttested,
           declared_license: declaredLicense || undefined,
         }),
-      }),
+      ),
     onSettled: (_, error) => {
       if (error instanceof SessionNotReadyError) return;
       return Promise.all([
@@ -319,16 +314,15 @@ export function useCreateBundleVersion() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: ({ name, version, description, memberVersionIds }: CreateBundleRequest) =>
-      apiFetch<BundleVersion>("/me/bundles", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      apiFetch<BundleVersion>(
+        "/me/bundles",
+        jsonInit("POST", {
           name,
           version,
           description,
           member_version_ids: memberVersionIds,
         }),
-      }),
+      ),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: queryKeys.publishing.bundles });
       void client.invalidateQueries({ queryKey: queryKeys.publishing.bundleOverview });
@@ -355,11 +349,10 @@ export function usePublishBundle(bundle: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: ({ name, version, rightsAttested }: PublishBundleRequest) =>
-      apiFetch<Publication>(`/me/bundles/${bundle}/publication`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, version, rights_attested: rightsAttested }),
-      }),
+      apiFetch<Publication>(
+        `/me/bundles/${bundle}/publication`,
+        jsonInit("POST", { name, version, rights_attested: rightsAttested }),
+      ),
     onSettled: (_, error) => {
       if (error instanceof SessionNotReadyError) return;
       return client.invalidateQueries({ queryKey: queryKeys.publishing.bundleOverview });

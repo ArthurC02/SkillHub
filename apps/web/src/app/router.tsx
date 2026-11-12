@@ -12,6 +12,7 @@ import { RouteNotFound } from "../shared/ui/RouteNotFound";
 import { RouteError } from "../shared/ui/RouteError";
 import type { AgentRuntime, SkillCategory } from "../core/api/types";
 import { runeCount } from "../shared/textLength.model";
+import { isUuid } from "../core/api/wire";
 
 const rootRoute = createRootRoute({ shellComponent: RootLayout });
 
@@ -30,8 +31,6 @@ const AGENT_RUNTIMES: AgentRuntime[] = ["native", "transpiled", "failed", "unver
 
 const CATEGORIES: SkillCategory[] = ["documents", "writing", "data"];
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 const openingTask = (value: unknown) =>
   typeof value === "string" &&
   value.trim() !== "" &&
@@ -47,9 +46,7 @@ export type PublishingWorkspaceSearch = {
 };
 
 function publishingArtifact(search: Record<string, unknown>) {
-  return typeof search.artifact === "string" && UUID.test(search.artifact)
-    ? search.artifact
-    : undefined;
+  return isUuid(search.artifact) ? search.artifact : undefined;
 }
 
 function publishingPublication(search: Record<string, unknown>) {
@@ -59,9 +56,7 @@ function publishingPublication(search: Record<string, unknown>) {
 }
 
 function publishingBundleVersion(search: Record<string, unknown>) {
-  return typeof search.bundleVersion === "string" && UUID.test(search.bundleVersion)
-    ? search.bundleVersion
-    : undefined;
+  return isUuid(search.bundleVersion) ? search.bundleVersion : undefined;
 }
 
 export function validatePublishingWorkspaceSearch(
@@ -240,8 +235,7 @@ const createSkillRoute = createRoute({
     "CreateSkill",
   ),
   validateSearch: (search: Record<string, unknown>): { session?: string; task?: string } => ({
-    session:
-      typeof search.session === "string" && UUID.test(search.session) ? search.session : undefined,
+    session: isUuid(search.session) ? search.session : undefined,
     task: openingTask(search.task),
   }),
 });
@@ -349,8 +343,7 @@ const datasetUploadRoute = createRoute({
     "DatasetUpload",
   ),
   validateSearch: (search: Record<string, unknown>) => ({
-    version:
-      typeof search.version === "string" && UUID.test(search.version) ? search.version : undefined,
+    version: isUuid(search.version) ? search.version : undefined,
   }),
 });
 
@@ -372,8 +365,7 @@ const legacyDatasetUploadRoute = createRoute({
   path: "/lab/datasets",
   validateSearch: (search: Record<string, unknown>) => ({
     test_case: typeof search.test_case === "string" ? search.test_case : undefined,
-    version:
-      typeof search.version === "string" && UUID.test(search.version) ? search.version : undefined,
+    version: isUuid(search.version) ? search.version : undefined,
   }),
   beforeLoad: ({ search }) => {
     throw redirect(legacyDatasetDestination(search));
@@ -420,9 +412,8 @@ const testCaseListRoute = createRoute({
     "TestCaseList",
   ),
   validateSearch: (search: Record<string, unknown>): { skill?: string; version?: string } => ({
-    skill: typeof search.skill === "string" && UUID.test(search.skill) ? search.skill : undefined,
-    version:
-      typeof search.version === "string" && UUID.test(search.version) ? search.version : undefined,
+    skill: isUuid(search.skill) ? search.skill : undefined,
+    version: isUuid(search.version) ? search.version : undefined,
   }),
 });
 
@@ -434,8 +425,7 @@ const testCaseDetailRoute = createRoute({
     "TestCaseDetail",
   ),
   validateSearch: (search: Record<string, unknown>): { version?: string } => ({
-    version:
-      typeof search.version === "string" && UUID.test(search.version) ? search.version : undefined,
+    version: isUuid(search.version) ? search.version : undefined,
   }),
 });
 
@@ -589,12 +579,8 @@ const adminAgentsRoute = createRoute({
         "recovered",
       ] as const satisfies readonly PlatformAgentFindingStatusEnum[]
     ).find((s) => s === search.status),
-    finding:
-      typeof search.finding === "string" && UUID.test(search.finding) ? search.finding : undefined,
-    proposal:
-      typeof search.proposal === "string" && UUID.test(search.proposal)
-        ? search.proposal
-        : undefined,
+    finding: isUuid(search.finding) ? search.finding : undefined,
+    proposal: isUuid(search.proposal) ? search.proposal : undefined,
     proposal_view: (["proposed", "processing", "closed"] as const).find(
       (view) => view === search.proposal_view,
     ),
@@ -604,7 +590,7 @@ const adminAgentsRoute = createRoute({
       Number(search.proposal_offset) <= 2147483647
         ? Number(search.proposal_offset)
         : undefined,
-    run: typeof search.run === "string" && UUID.test(search.run) ? search.run : undefined,
+    run: isUuid(search.run) ? search.run : undefined,
   }),
 });
 

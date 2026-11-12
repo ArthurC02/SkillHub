@@ -178,13 +178,12 @@ func statementLabel(e credit.StatementEntry) string {
 }
 
 func parseStatementCursor(raw string) (time.Time, pgtype.UUID, error) {
-	var id pgtype.UUID
 	if raw == "" {
-		return time.Time{}, id, nil
+		return time.Time{}, pgtype.UUID{}, nil
 	}
-	t, rawID, ok := httpx.SplitKeysetCursor(raw)
-	if !ok || id.Scan(rawID) != nil {
-		return time.Time{}, id, errors.New("before must be a cursor this endpoint returned")
+	t, id, ok := httpx.SplitUUIDKeysetCursor(raw)
+	if !ok {
+		return time.Time{}, pgtype.UUID{}, errors.New("before must be a cursor this endpoint returned")
 	}
 	return t, id, nil
 }

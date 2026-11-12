@@ -13,9 +13,10 @@ import {
   SetReflectionCandidatesBodyCountMaximum as MAX_REFLECTION_CANDIDATES,
 } from "@skillhub/api-client-ts/limits";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiError, apiFetch, isLastingReadFailure } from "../../core/api/client";
+import { ApiError, apiFetch, isLastingReadFailure, jsonInit } from "../../core/api/client";
 import { useMe } from "../../core/session/me.service";
 import { queryKeys } from "../../core/api/queryKeys";
+import { isDate, isUuid } from "../../core/api/wire";
 
 const LEDGER_KINDS: ReadonlySet<string> = new Set<CreditLedgerEntryKindEnum>([
   "debit",
@@ -177,10 +178,6 @@ function useOperator(): boolean {
   return useMe().data?.operator === true;
 }
 
-function send(method: string, body: unknown): RequestInit {
-  return { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
-}
-
 export async function lookupAccount(email: string): Promise<AccountLookup> {
   const result = await apiFetch<unknown>(`/admin/accounts?email=${encodeURIComponent(email)}`);
   if (!isAccountLookup(result)) throw new Error("Invalid account lookup response");
@@ -191,19 +188,12 @@ function isAccountLookup(value: unknown): value is AccountLookup {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const account = value as Partial<AccountLookup>;
   return (
-    [account.user_id, account.workspace_id].every(
-      (id) =>
-        typeof id === "string" &&
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id),
-    ) &&
+    [account.user_id, account.workspace_id].every((id) => isUuid(id)) &&
     typeof account.email === "string" &&
     typeof account.display_name === "string" &&
     typeof account.in_beta_allowlist === "boolean" &&
-    typeof account.created_at === "string" &&
-    Number.isFinite(Date.parse(account.created_at)) &&
-    (account.deletion_requested_at === null ||
-      (typeof account.deletion_requested_at === "string" &&
-        Number.isFinite(Date.parse(account.deletion_requested_at))))
+    isDate(account.created_at) &&
+    (account.deletion_requested_at === null || isDate(account.deletion_requested_at))
   );
 }
 
@@ -241,8 +231,7 @@ function isCreditLedgerEntry(value: unknown): value is CreditLedgerEntry {
     Number.isSafeInteger(entry.delta_credits) &&
     (entry.ref_type === null || typeof entry.ref_type === "string") &&
     typeof entry.estimated === "boolean" &&
-    typeof entry.created_at === "string" &&
-    Number.isFinite(Date.parse(entry.created_at))
+    isDate(entry.created_at)
   );
 }
 
@@ -266,7 +255,7 @@ export async function grantCredits(
 ): Promise<CreditGrantResult> {
   const result = await apiFetch<unknown>(
     `/admin/credits/${encodeURIComponent(workspaceId)}/grants`,
-    send("POST", body),
+    jsonInit("POST", body),
   );
   if (!isCreditGrantResult(result, workspaceId, body.amount_credits))
     throw new Error("Invalid credit grant response");
@@ -313,19 +302,13 @@ function isSkillGovernance(value: unknown): value is SkillGovernance {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const skill = value as Partial<SkillGovernance>;
   return (
-    [skill.skill_id, skill.workspace_id].every(
-      (id) =>
-        typeof id === "string" &&
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id),
-    ) &&
+    [skill.skill_id, skill.workspace_id].every((id) => isUuid(id)) &&
     typeof skill.name === "string" &&
     typeof skill.redistribution === "string" &&
     [skill.access_restriction, skill.takedown_reason].every(
       (text) => text === null || typeof text === "string",
     ) &&
-    [skill.takedown_at, skill.deleted_at].every(
-      (at) => at === null || (typeof at === "string" && Number.isFinite(Date.parse(at))),
-    )
+    [skill.takedown_at, skill.deleted_at].every((at) => at === null || isDate(at))
   );
 }
 
@@ -345,7 +328,7 @@ export function useGovernanceAction(
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ method, body }: { method: "PUT" | "DELETE"; body: Record<string, unknown> }) =>
-      apiFetch<unknown>(`/admin/skills/${skillId}/${action}`, send(method, body)),
+      apiFetch<unknown>(`/admin/skills/${skillId}/${action}`, jsonInit(method, body)),
     onSuccess: (_result, submitted) => {
       onComplete?.(submitted);
       return queryClient.invalidateQueries({ queryKey: queryKeys.admin.skills });
@@ -376,8 +359,7 @@ function isDispatchHalt(value: unknown): value is DispatchHalt {
     typeof halt.target === "string" &&
     (halt.source === "p1_incident" || halt.source === "orphan_threshold") &&
     typeof halt.reason === "string" &&
-    typeof halt.declared_at === "string" &&
-    Number.isFinite(Date.parse(halt.declared_at)) &&
+    isDate(halt.declared_at) &&
     typeof halt.automatic_recovery === "boolean" &&
     (halt.clear_rounds === undefined || Number.isSafeInteger(halt.clear_rounds))
   );
@@ -395,7 +377,7 @@ export function useDispatchHalt(method: "PUT" | "DELETE") {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: { note: string; provider?: string }) =>
-      apiFetch<{ note?: string } | undefined>("/admin/dispatch/halt", send(method, body)),
+      apiFetch<{ note?: string } | undefined>("/admin/dispatch/halt", jsonInit(method, body)),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.dispatch }),
   });
 }
@@ -414,7 +396,7 @@ export function useModelBudgetChange(method: "PUT" | "DELETE") {
     mutationFn: ({ kind, ...body }: { kind: string; reason: string; seconds?: number }) =>
       apiFetch<ModelCallBudget | undefined>(
         `/admin/model-budgets/${encodeURIComponent(kind)}`,
-        send(method, body),
+        jsonInit(method, body),
       ),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.modelBudgets }),
   });
@@ -431,11 +413,7 @@ function isRosters(value: unknown): value is Rosters {
   const result = value as Partial<Rosters>;
   return (
     Array.isArray(result.operator_user_ids) &&
-    result.operator_user_ids.every(
-      (id) =>
-        typeof id === "string" &&
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id),
-    ) &&
+    result.operator_user_ids.every((id) => isUuid(id)) &&
     Array.isArray(result.beta_allowlist) &&
     result.beta_allowlist.every((id) => typeof id === "string")
   );
@@ -489,7 +467,8 @@ export function useReviewExposure(publication: string) {
       expected_snapshot_digest: string;
       decision: ExposureDecision;
       reason: string;
-    }) => apiFetch<ExposureCase>(`/admin/publications/${publication}/exposure`, send("POST", body)),
+    }) =>
+      apiFetch<ExposureCase>(`/admin/publications/${publication}/exposure`, jsonInit("POST", body)),
     onSuccess: (currentCase) => {
       queryClient.setQueryData(queryKeys.admin.exposureCase(publication), currentCase);
       queryClient.invalidateQueries({ queryKey: queryKeys.admin.exposureQueue });
@@ -520,9 +499,7 @@ function isCostStatisticsWindow(value: unknown): value is CostStatisticsWindow {
   const statistic = value as Partial<CostStatisticsWindow>;
   return (
     typeof statistic.kind === "string" &&
-    [statistic.window_start, statistic.window_end].every(
-      (date) => typeof date === "string" && Number.isFinite(Date.parse(date)),
-    ) &&
+    [statistic.window_start, statistic.window_end].every((date) => isDate(date)) &&
     Number.isSafeInteger(statistic.sample_count) &&
     [
       statistic.p50_usd_micros,
@@ -589,11 +566,7 @@ export type PlatformAgentStep = {
 };
 
 function isAgentActor(value: unknown) {
-  return (
-    value === undefined ||
-    (typeof value === "string" &&
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value))
-  );
+  return value === undefined || isUuid(value);
 }
 
 function isPlatformAgent(value: unknown): value is PlatformAgent {
@@ -617,8 +590,7 @@ function isPlatformAgentBrake(value: unknown): value is PlatformAgentBrake {
   const brake = value as Partial<PlatformAgentBrake>;
   return (
     typeof brake.reason === "string" &&
-    typeof brake.engaged_at === "string" &&
-    Number.isFinite(Date.parse(brake.engaged_at)) &&
+    isDate(brake.engaged_at) &&
     isAgentActor(brake.engaged_by_user_id)
   );
 }
@@ -651,7 +623,7 @@ export function usePlatformAgentSwitch() {
     mutationFn: ({ name, ...body }: { name: string; enabled: boolean; note: string }) =>
       apiFetch<PlatformAgent>(
         `/admin/agents/${encodeURIComponent(name)}/enabled`,
-        send("PUT", body),
+        jsonInit("PUT", body),
       ),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.agents }),
   });
@@ -672,7 +644,7 @@ export function usePlatformAgentSpendCap() {
     }) =>
       apiFetch<unknown>(
         `/admin/agents/${encodeURIComponent(name)}/spend-cap`,
-        send("PUT", body),
+        jsonInit("PUT", body),
       ).then((agent) => (isPlatformAgent(agent) && agent.name === name ? agent : undefined)),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.agents }),
   });
@@ -705,13 +677,8 @@ function isSetting(value: unknown): value is Record<string, unknown> {
   const setting = value as Record<string, unknown>;
   return (
     (setting.reason === undefined || typeof setting.reason === "string") &&
-    (setting.set_at === undefined ||
-      (typeof setting.set_at === "string" && Number.isFinite(Date.parse(setting.set_at)))) &&
-    (setting.set_by_user_id === undefined ||
-      (typeof setting.set_by_user_id === "string" &&
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-          setting.set_by_user_id,
-        )))
+    (setting.set_at === undefined || isDate(setting.set_at)) &&
+    (setting.set_by_user_id === undefined || isUuid(setting.set_by_user_id))
   );
 }
 
@@ -743,7 +710,7 @@ export function useReflectionCandidatesSetting() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: { count: number; round_credit_cap?: number; note: string }) =>
-      apiFetch<unknown>("/admin/settings/reflection-candidates", send("PUT", body)),
+      apiFetch<unknown>("/admin/settings/reflection-candidates", jsonInit("PUT", body)),
     onSuccess: (settings) => {
       if (isPlatformSettings(settings)) {
         queryClient.setQueryData(queryKeys.admin.settings, settings);
@@ -766,7 +733,7 @@ export function useInjectionCheckSwitch() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: { enabled: boolean; credits_per_million_tokens: number; note: string }) =>
-      apiFetch<unknown>("/admin/settings/injection-check", send("PUT", body)),
+      apiFetch<unknown>("/admin/settings/injection-check", jsonInit("PUT", body)),
     onSuccess: (settings) => {
       if (isPlatformSettings(settings)) {
         queryClient.setQueryData(queryKeys.admin.settings, settings);
@@ -808,12 +775,8 @@ function isMCPTool(value: unknown): value is MCPTool {
   const retired = tool.retired_at !== undefined || tool.retire_reason !== undefined;
   return (
     MCP_TOOL_TEXT_FIELDS.every((field) => typeof tool[field] === "string") &&
-    typeof tool.created_at === "string" &&
-    Number.isFinite(Date.parse(tool.created_at)) &&
-    (!retired ||
-      (typeof tool.retired_at === "string" &&
-        Number.isFinite(Date.parse(tool.retired_at)) &&
-        typeof tool.retire_reason === "string"))
+    isDate(tool.created_at) &&
+    (!retired || (isDate(tool.retired_at) && typeof tool.retire_reason === "string"))
   );
 }
 
@@ -844,7 +807,8 @@ export type MCPToolDraft = Pick<
 export function useAddMCPTool() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body: MCPToolDraft) => apiFetch<unknown>("/admin/mcp-tools", send("POST", body)),
+    mutationFn: (body: MCPToolDraft) =>
+      apiFetch<unknown>("/admin/mcp-tools", jsonInit("POST", body)),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.mcpTools }),
   });
 }
@@ -855,7 +819,7 @@ export function useRetireMCPTool() {
     mutationFn: ({ id, note }: { id: string; note: string }) =>
       apiFetch<unknown>(
         `/admin/mcp-tools/${encodeURIComponent(id)}/retire`,
-        send("POST", { note }),
+        jsonInit("POST", { note }),
       ),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.mcpTools }),
   });
@@ -865,7 +829,7 @@ export function useJudgePanelSwitch() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: { enabled: boolean; note: string }) =>
-      apiFetch<unknown>("/admin/settings/judge-panel", send("PUT", body)),
+      apiFetch<unknown>("/admin/settings/judge-panel", jsonInit("PUT", body)),
     onSuccess: (settings) => {
       if (isPlatformSettings(settings)) {
         queryClient.setQueryData(queryKeys.admin.settings, settings);
@@ -950,7 +914,7 @@ export function useContinuationRounds() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: { rounds: number; note: string }) =>
-      apiFetch<unknown>("/admin/settings/runs/continuation-rounds", send("PUT", body)),
+      apiFetch<unknown>("/admin/settings/runs/continuation-rounds", jsonInit("PUT", body)),
     onSuccess: (settings) => reconcileRunSettings(queryClient, settings),
   });
 }
@@ -961,7 +925,7 @@ export function useRunModelBudget() {
     mutationFn: (body: { credits?: number; note: string }) =>
       apiFetch<unknown>(
         "/admin/settings/runs/model-budget",
-        send(body.credits === undefined ? "DELETE" : "PUT", body),
+        jsonInit(body.credits === undefined ? "DELETE" : "PUT", body),
       ),
     onSuccess: (settings) => reconcileRunSettings(queryClient, settings),
   });
@@ -973,7 +937,7 @@ export function useRunTokensPerMinute() {
     mutationFn: (body: { limit?: number; note: string }) =>
       apiFetch<unknown>(
         "/admin/settings/runs/tokens-per-minute",
-        send(body.limit === undefined ? "DELETE" : "PUT", body),
+        jsonInit(body.limit === undefined ? "DELETE" : "PUT", body),
       ),
     onSuccess: (settings) => reconcileRunSettings(queryClient, settings),
   });
@@ -983,7 +947,7 @@ export function usePlatformAgentBrake(method: "PUT" | "DELETE") {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: { note: string }) =>
-      apiFetch<PlatformAgentBrake | undefined>("/admin/agents/brake", send(method, body)),
+      apiFetch<PlatformAgentBrake | undefined>("/admin/agents/brake", jsonInit(method, body)),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.agents }),
   });
 }
@@ -1083,7 +1047,7 @@ export function useMoveFinding() {
     mutationFn: ({ id, ...body }: { id: string; status: FindingStatus; note: string }) =>
       apiFetch<undefined>(
         `/admin/agents/findings/${encodeURIComponent(id)}/status`,
-        send("PUT", body),
+        jsonInit("PUT", body),
       ),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.agentFindings }),
     onError: () => {
@@ -1158,7 +1122,7 @@ export function useDecideProposal() {
     mutationFn: ({ id, ...body }: { id: string; decision: "approve" | "reject"; note: string }) =>
       apiFetch<undefined>(
         `/admin/agents/proposals/${encodeURIComponent(id)}/decision`,
-        send("PUT", body),
+        jsonInit("PUT", body),
       ),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.admin.agentProposals }),
     onError: () => {

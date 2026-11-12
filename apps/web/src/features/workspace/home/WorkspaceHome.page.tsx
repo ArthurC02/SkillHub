@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useMe } from "../../../core/session/me.service";
 import { Loading } from "../../../shared/ui/Loading";
 import { ListFreshness } from "../../../shared/ui/ListFreshness";
+import { refetchThenFocusOnFailure } from "../../../shared/ui/refetchThenFocusOnFailure";
 import { PageReadFailure, ReadFailure } from "../../../shared/ui/LoginRequired";
 import { Timestamp } from "../../../shared/ui/Timestamp";
 import {
@@ -125,10 +126,7 @@ function WorkspaceHomeContent({
             updatedAt={runs.dataUpdatedAt}
             fetching={runs.isFetching}
             paused={paused}
-            refetch={async () => {
-              const result = await runs.refetch();
-              if (result.error) document.getElementById("workspace-attention-heading")?.focus();
-            }}
+            refetch={refetchThenFocusOnFailure(runs.refetch, "workspace-attention-heading")}
           />
           {runs.error && !busy && (
             <p className="note" data-role="reason">
@@ -363,10 +361,7 @@ function CreationContinuations() {
         updatedAt={sessions.dataUpdatedAt}
         fetching={sessions.isFetching}
         paused={paused}
-        refetch={async () => {
-          const result = await sessions.refetch();
-          if (result.error) document.getElementById("workspace-creations-heading")?.focus();
-        }}
+        refetch={refetchThenFocusOnFailure(sessions.refetch, "workspace-creations-heading")}
         subject="創作"
       />
       {(sessions.isPending || paused || (resumable.length === 0 && busy)) && (

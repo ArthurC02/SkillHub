@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -308,16 +309,16 @@ func TestAGeneratedSkillIsNotFoundBySearchIncludingItsOwnCreator(t *testing.T) {
 	}
 	id := uuidString(res.Skill.ID)
 
-	if ids := c.skillIDs(t, "/skills"); !contains(ids, id) {
+	if ids := c.skillIDs(t, "/skills"); !slices.Contains(ids, id) {
 		t.Fatalf("the generated skill is missing from its own workspace list: %v", ids)
 	}
 
 	control := seedSkill(t, pool, c.workspaceID, "zarquon widget control")
 	ids := c.skillIDs(t, "/skills/search?q=zarquon+widget")
-	if !contains(ids, control) {
+	if !slices.Contains(ids, control) {
 		t.Fatalf("the same query did not find a listable skill of the same workspace, so it proves nothing: %v", ids)
 	}
-	if contains(ids, id) {
+	if slices.Contains(ids, id) {
 		t.Error("the creator found their own generated skill in search (GEN-007)")
 	}
 

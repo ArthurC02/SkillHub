@@ -6,11 +6,11 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/textx"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"io"
@@ -35,8 +35,7 @@ func diagramMatches(p Snapshot, d *Diagram) bool {
 	if err != nil || len(b) == 0 || len(b) > MaxDiagramBytes {
 		return false
 	}
-	h := sha256.Sum256(b)
-	return hex.EncodeToString(h[:]) == p.DiagramFingerprint && d.MediaType == p.DiagramMediaType && len(b) == p.DiagramBytes
+	return textx.SHA256Hex(b) == p.DiagramFingerprint && d.MediaType == p.DiagramMediaType && len(b) == p.DiagramBytes
 }
 
 const maxTransientRequestBytes = 8 << 20

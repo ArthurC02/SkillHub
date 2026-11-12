@@ -10,7 +10,7 @@ import type {
   ReasonedSearchResult,
 } from "../../core/api/types";
 import { runeCount } from "../../shared/textLength.model";
-import { isCount, isDate, isRecord, isText } from "../../shared/wire";
+import { isCount, isDate, isRecord, isText, isUuid } from "../../core/api/wire";
 
 function isMember(value: unknown, values: readonly string[]): boolean {
   return isText(value) && values.includes(value);
@@ -68,7 +68,7 @@ function isResult(value: unknown): boolean {
   return (
     isRecord(value) &&
     isText(value.skill_id) &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value.skill_id) &&
+    isUuid(value.skill_id) &&
     isText(value.name) &&
     isText(value.summary) &&
     isMember(value.summary_source, ["model", "package"]) &&

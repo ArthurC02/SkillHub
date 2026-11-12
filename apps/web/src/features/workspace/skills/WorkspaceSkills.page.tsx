@@ -2,6 +2,7 @@ import { Loading } from "../../../shared/ui/Loading";
 import { ReadFailure } from "../../../shared/ui/LoginRequired";
 import { canRetainLoadedPage, isWriteResultUnknown } from "../../../core/api/client";
 import { ListFreshness } from "../../../shared/ui/ListFreshness";
+import { refetchThenFocusOnFailure } from "../../../shared/ui/refetchThenFocusOnFailure";
 import { usePaginationFocus } from "../../../shared/ui/usePaginationFocus";
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
@@ -433,10 +434,7 @@ function SkillsReadStatus({
           updatedAt={skills.dataUpdatedAt}
           fetching={skills.isFetching && !skills.isFetchingNextPage}
           paused={paused}
-          refetch={async () => {
-            const result = await skills.refetch();
-            if (result.error) document.getElementById("workspace-skills-heading")?.focus();
-          }}
+          refetch={refetchThenFocusOnFailure(skills.refetch, "workspace-skills-heading")}
         />
       )}
     </>

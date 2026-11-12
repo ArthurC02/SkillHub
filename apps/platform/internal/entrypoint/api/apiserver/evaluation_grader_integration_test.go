@@ -226,7 +226,7 @@ func TestAPromptGraderBehindAPassingGateIsJudgedWithItsOwnInstructions(t *testin
 		          {"kind":"prompt_grader","values":[%q]}]}}]`, versionID), nil)
 	seedFinalOutput(t, pool, c.workspaceID, runID, "Removed 17 duplicate rows and saved the result to output.xlsx.")
 	judge, sent := countingJudge(t, llmclient.CriterionVerdict{CriterionID: "c1@0.1", Result: "failed", Reason: "the reply is curt",
-		EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: "artifact", ArtifactPath: strPtrTest("output.xlsx")}}})
+		EvidenceRefs: []llmclient.JudgeEvidenceRef{{Kind: "artifact", ArtifactPath: new("output.xlsx")}}})
 	a.evaluations.Judge = judge
 
 	if err := a.evaluations.Evaluate(context.Background(), mustUUID(t, c.workspaceID), mustUUID(t, runID)); err != nil {

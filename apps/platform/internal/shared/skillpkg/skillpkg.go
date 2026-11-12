@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"maps"
 	"net/url"
 	"regexp"
 	"slices"
@@ -931,11 +932,7 @@ func symlinkMessage(fsys fs.FS, path string, size int64) string {
 const urlExamplesPerHost = 3
 
 func (r *Report) addURLDisclosures(byHost map[string][]string) {
-	hosts := make([]string, 0, len(byHost))
-	for h := range byHost {
-		hosts = append(hosts, h)
-	}
-	sort.Strings(hosts)
+	hosts := slices.Sorted(maps.Keys(byHost))
 	for _, h := range hosts {
 		refs := byHost[h]
 		sort.Strings(refs)

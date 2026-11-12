@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -63,7 +64,7 @@ func TestCreationKnowledgeWithoutAModelFillsFromAnyWordMatchesUpToThree(t *testi
 		t.Fatalf("got %v, want the all-words match %s first, then two any-word matches, none repeated", got, ids[0])
 	}
 	for _, id := range got {
-		if !contains(ids, id) {
+		if !slices.Contains(ids, id) {
 			t.Errorf("%s is not one of this test's skills %v", id, ids)
 		}
 	}
@@ -79,7 +80,7 @@ func TestCreationKnowledgeWithThreeAllWordMatchesLooksNoFurther(t *testing.T) {
 	if err != nil || !degraded {
 		t.Fatalf("degraded=%v err=%v", degraded, err)
 	}
-	if len(got) != 3 || contains(got, ids[3]) || !distinct(got) {
+	if len(got) != 3 || slices.Contains(got, ids[3]) || !distinct(got) {
 		t.Errorf("got %v, want exactly the three all-words matches %v", got, ids[:3])
 	}
 }
@@ -90,7 +91,7 @@ func TestCreationKnowledgeLeavesOutASkillWaitingForItsEmbedding(t *testing.T) {
 	w := uniqueReferenceWord("lexpending")
 	ids := lexicalCatalogSkills(t, pool, w+" embedded", w+" pending")
 	seedEmbedding(t, pool, ids[0], axis)
-	if words, err := knowledgeSearch(pool, "").CreationKnowledgeIDs(context.Background(), w, catalog.CreationMaxDistance); err != nil || !contains(words.IDs, ids[1]) {
+	if words, err := knowledgeSearch(pool, "").CreationKnowledgeIDs(context.Background(), w, catalog.CreationMaxDistance); err != nil || !slices.Contains(words.IDs, ids[1]) {
 		t.Fatalf("the pending skill must be a word match for this test to mean anything: %v err=%v", words.IDs, err)
 	}
 

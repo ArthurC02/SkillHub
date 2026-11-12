@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -284,18 +285,9 @@ func wireFields(t reflect.Type) map[string]bool {
 		if parts[0] == "" || parts[0] == "-" {
 			continue
 		}
-		fields[parts[0]] = slicesContains(parts[1:], "omitempty")
+		fields[parts[0]] = slices.Contains(parts[1:], "omitempty")
 	}
 	return fields
-}
-
-func slicesContains(haystack []string, needle string) bool {
-	for _, s := range haystack {
-		if s == needle {
-			return true
-		}
-	}
-	return false
 }
 
 func reportSorted(t *testing.T, problems []string, lead string) {

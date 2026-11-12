@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { SubmitFeedbackBodyMessageMaxLength } from "@skillhub/api-client-ts/limits";
-import { apiFetch } from "../../core/api/client";
+import { apiFetch, jsonInit } from "../../core/api/client";
 
 export type FeedbackKind = "blocking_issue" | "need_signal";
 
@@ -17,11 +17,7 @@ export interface FeedbackReport {
 export const BUILD_ID: string | undefined = import.meta.env.VITE_BUILD_ID;
 
 export function submitFeedback(report: FeedbackReport) {
-  return apiFetch<void>("/feedback", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(report),
-  });
+  return apiFetch<void>("/feedback", jsonInit("POST", report));
 }
 
 export function useSubmitFeedback() {

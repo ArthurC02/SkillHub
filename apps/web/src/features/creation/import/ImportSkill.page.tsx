@@ -23,6 +23,7 @@ import {
 import type { ImportResult, ImportedSkill, RefusedSkill } from "../../../core/api/types";
 import { importRefusal } from "../import.model";
 import { bytes } from "../../../shared/format";
+import { focusAndCenter } from "../../../shared/ui/focusAndCenter";
 import "./ImportSkill.page.css";
 
 export function ImportSkill() {
@@ -138,8 +139,7 @@ function ImportFailure({
       ? error.body
       : undefined;
   useEffect(() => {
-    message.current?.focus();
-    message.current?.scrollIntoView({ block: "center" });
+    focusAndCenter(message.current);
   }, [error]);
   return (
     <>

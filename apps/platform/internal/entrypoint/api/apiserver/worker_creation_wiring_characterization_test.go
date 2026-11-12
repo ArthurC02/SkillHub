@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
@@ -74,7 +75,7 @@ func TestWorkerKnowledgeSearchFusesEveryQueryAndResolvesAtMostThree(t *testing.T
 		t.Fatalf("got %d references %v, want %d", len(refs), referenceIDs(refs), creation.MaxReferences)
 	}
 	for _, r := range refs {
-		if !r.Available || !contains(shelf.skills[:4], r.SkillID) {
+		if !r.Available || !slices.Contains(shelf.skills[:4], r.SkillID) {
 			t.Errorf("reference %+v is not one of the shelf's readable skills", r)
 		}
 	}

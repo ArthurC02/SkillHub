@@ -3,6 +3,7 @@ package apiserver_test
 import (
 	"encoding/json"
 	"net/http"
+	"slices"
 	"strings"
 	"testing"
 
@@ -54,7 +55,7 @@ type journey struct {
 func (j *journey) discoverTheCatalogueSkill(t *testing.T) {
 	traveller, catalogSkill := j.traveller, j.catalogSkill
 	results := traveller.search(t, "/api/skills/search?q=remove+duplicate+rows")
-	if !contains(results.ids(), catalogSkill) {
+	if !slices.Contains(results.ids(), catalogSkill) {
 		t.Fatalf("the catalogue skill is not findable by intent: %v", results.ids())
 	}
 

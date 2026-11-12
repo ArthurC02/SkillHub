@@ -10,11 +10,10 @@ import { SuggestionsPanel } from "./components/SuggestionsPanel";
 import { EvaluatingNotice } from "./components/EvaluatingNotice";
 import { NotEvaluatedNotice } from "./components/NotEvaluatedNotice";
 import { RevisionPicker } from "./components/RevisionPicker";
+import { focusAndCenter } from "../../../shared/ui/focusAndCenter";
 
 function focusEvaluationHeading() {
-  const heading = document.getElementById("evaluation-heading");
-  heading?.focus();
-  heading?.scrollIntoView({ block: "center" });
+  focusAndCenter(document.getElementById("evaluation-heading"));
 }
 
 function EvaluationReadState({

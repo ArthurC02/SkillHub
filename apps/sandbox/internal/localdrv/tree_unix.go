@@ -55,12 +55,8 @@ func (t *pgroupTree) attach(pid int, lim treeLimits) error {
 	return nil
 }
 
-// A negative pid signals the whole process group rather than one process.
 func (t *pgroupTree) terminate(pid int) error {
-	if err := syscall.Kill(-pid, syscall.SIGKILL); err != nil && err != syscall.ESRCH {
-		return err
-	}
-	return nil
+	return terminateResidue(pid)
 }
 
 func (t *pgroupTree) release() error {

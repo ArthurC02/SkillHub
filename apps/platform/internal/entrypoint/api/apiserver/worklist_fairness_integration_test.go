@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -982,10 +983,10 @@ func TestEnrichmentClaimsTheExactVersionAndLeavesVersionlessSkillsUnclaimed(t *t
 			t.Errorf("claimed version %s, want %s", uuidText(row.VersionID), versioned.versionID)
 		}
 	}
-	if !contains(ids, versioned.skillID) {
+	if !slices.Contains(ids, versioned.skillID) {
 		t.Fatalf("the pending skill with a version was not claimed: %v", ids)
 	}
-	if contains(ids, versionless) {
+	if slices.Contains(ids, versionless) {
 		t.Errorf("claimed a skill with no version, which has no package to enrich: %v", ids)
 	}
 }

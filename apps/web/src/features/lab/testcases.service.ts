@@ -1,8 +1,10 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiFetch, isWriteResultUnknown } from "../../core/api/client";
+import { apiFetch, isWriteResultUnknown, jsonInit } from "../../core/api/client";
 import type { Dataset } from "./lab.service";
 import { queryKeys } from "../../core/api/queryKeys";
 import type { CheckNode } from "../evaluation";
+import { isDate, isUuid } from "../../core/api/wire";
+import { OFFSET_PAGE_REQUEST, OFFSET_PAGE_SIZE, offsetPage } from "../../core/api/offsetPage";
 
 export type AcceptanceCriterion = {
   id: string;
@@ -41,7 +43,7 @@ export type TestCaseListItem = Pick<TestCase, "test_case_id" | "name" | "updated
 };
 
 export async function getTestCases(skillId?: string, offset = 0) {
-  const params = new URLSearchParams({ limit: "51", offset: String(offset) });
+  const params = new URLSearchParams({ limit: OFFSET_PAGE_REQUEST, offset: String(offset) });
   if (skillId) params.set("skill_id", skillId);
   const result = await apiFetch<unknown>(`/test-cases?${params}`);
   if (!result || typeof result !== "object" || Array.isArray(result))
@@ -49,7 +51,7 @@ export async function getTestCases(skillId?: string, offset = 0) {
   const response = result as { test_cases?: unknown };
   if (
     !Array.isArray(response.test_cases) ||
-    response.test_cases.length > 51 ||
+    response.test_cases.length > OFFSET_PAGE_SIZE + 1 ||
     !response.test_cases.every(isListedTestCase)
   )
     throw new Error("Invalid test case list response");
@@ -60,11 +62,9 @@ function isListedTestCase(value: unknown): value is TestCaseListItem {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const row = value as Partial<TestCaseListItem>;
   return (
-    typeof row.test_case_id === "string" &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(row.test_case_id) &&
+    isUuid(row.test_case_id) &&
     [row.name, row.skill_name].every((field) => typeof field === "string") &&
-    typeof row.updated_at === "string" &&
-    Number.isFinite(Date.parse(row.updated_at)) &&
+    isDate(row.updated_at) &&
     typeof row.criteria_confirmed === "number" &&
     Number.isSafeInteger(row.criteria_confirmed) &&
     row.criteria_confirmed >= 0 &&
@@ -80,10 +80,9 @@ export function useTestCases(skillId?: string) {
     queryKey: queryKeys.testCases.list(skillId),
     initialPageParam: 0,
     queryFn: ({ pageParam }) =>
-      getTestCases(skillId, pageParam).then((page) => ({
-        test_cases: page.test_cases.slice(0, 50),
-        nextOffset: page.test_cases.length > 50 ? pageParam + 50 : undefined,
-      })),
+      getTestCases(skillId, pageParam).then((page) =>
+        offsetPage("test_cases", page.test_cases, pageParam),
+      ),
     getNextPageParam: (last) => last.nextOffset,
   });
 }
@@ -97,11 +96,10 @@ export function useTestCase(testCaseId: string) {
 }
 
 export function createTestCase(skillId: string, name: string, userPrompt: string) {
-  return apiFetch<TestCase>("/test-cases", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ skill_id: skillId, name, user_prompt: userPrompt }),
-  });
+  return apiFetch<TestCase>(
+    "/test-cases",
+    jsonInit("POST", { skill_id: skillId, name, user_prompt: userPrompt }),
+  );
 }
 
 export function useCreateTestCase() {
@@ -125,11 +123,7 @@ export type TestCasePatch = {
 };
 
 export function updateTestCase(testCaseId: string, patch: TestCasePatch) {
-  return apiFetch<TestCase>(`/test-cases/${testCaseId}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(patch),
-  });
+  return apiFetch<TestCase>(`/test-cases/${testCaseId}`, jsonInit("PATCH", patch));
 }
 
 export function useUpdateTestCase(testCaseId: string) {
@@ -147,11 +141,10 @@ export function useUpdateTestCase(testCaseId: string) {
 export type NewCriterion = { text: string; source?: "user" | "suggested"; check?: CheckNode };
 
 export function addCriterion(testCaseId: string, criterion: NewCriterion) {
-  return apiFetch<TestCase>(`/test-cases/${testCaseId}/criteria`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ source: "user", ...criterion }),
-  });
+  return apiFetch<TestCase>(
+    `/test-cases/${testCaseId}/criteria`,
+    jsonInit("POST", { source: "user", ...criterion }),
+  );
 }
 
 export function useAddCriterion(testCaseId: string) {
@@ -171,11 +164,10 @@ export function updateCriterion(
   criterionId: string,
   patch: { text?: string; confirmed?: boolean },
 ) {
-  return apiFetch<TestCase>(`/test-cases/${testCaseId}/criteria/${criterionId}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(patch),
-  });
+  return apiFetch<TestCase>(
+    `/test-cases/${testCaseId}/criteria/${criterionId}`,
+    jsonInit("PATCH", patch),
+  );
 }
 
 export function deleteCriterion(testCaseId: string, criterionId: string) {
@@ -230,11 +222,10 @@ function isTestCaseSuggestion(value: unknown): value is TestCaseSuggestion {
 }
 
 export async function suggestTestCases(skillId: string, focus: string) {
-  const result = await apiFetch<unknown>("/test-cases/suggest", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ skill_id: skillId, focus }),
-  });
+  const result = await apiFetch<unknown>(
+    "/test-cases/suggest",
+    jsonInit("POST", { skill_id: skillId, focus }),
+  );
   const suggestions = (result as { suggestions?: unknown } | null)?.suggestions;
   if (!Array.isArray(suggestions) || !suggestions.every(isTestCaseSuggestion))
     throw new Error("Invalid test case proposals response");
@@ -304,13 +295,11 @@ function isListedDataset(value: unknown): value is Dataset {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const dataset = value as Partial<Dataset>;
   return (
-    typeof dataset.dataset_id === "string" &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(dataset.dataset_id) &&
+    isUuid(dataset.dataset_id) &&
     [dataset.file_name, dataset.content_type, dataset.content_hash].every(
       (field) => typeof field === "string",
     ) &&
-    typeof dataset.expires_at === "string" &&
-    Number.isFinite(Date.parse(dataset.expires_at)) &&
+    isDate(dataset.expires_at) &&
     typeof dataset.size_bytes === "number" &&
     Number.isSafeInteger(dataset.size_bytes) &&
     dataset.size_bytes >= 0

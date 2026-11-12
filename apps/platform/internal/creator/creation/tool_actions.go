@@ -3,6 +3,7 @@ package creation
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -65,7 +66,7 @@ func (s *Service) searchCatalog(p *Snapshot, found *searchAnswer) (State, bool, 
 func searchQueries(intent *ToolIntent) []string {
 	queries := []string{strings.TrimSpace(intent.Query)}
 	for _, q := range intent.Queries {
-		if q = strings.TrimSpace(q); q != "" && !containsString(queries, q) && len(queries) < 4 {
+		if q = strings.TrimSpace(q); q != "" && !slices.Contains(queries, q) && len(queries) < 4 {
 			queries = append(queries, q)
 		}
 	}
@@ -180,13 +181,4 @@ func (s *Service) validateRequestedDraft(ctx context.Context, revision int64, e 
 func renamedOnly(prev, cur *Draft) bool {
 	return prev != nil && cur != nil && prev.Skill.Name != cur.Skill.Name &&
 		prev.Skill.Description == cur.Skill.Description && prev.Skill.Body == cur.Skill.Body
-}
-
-func containsString(xs []string, x string) bool {
-	for _, v := range xs {
-		if v == x {
-			return true
-		}
-	}
-	return false
 }

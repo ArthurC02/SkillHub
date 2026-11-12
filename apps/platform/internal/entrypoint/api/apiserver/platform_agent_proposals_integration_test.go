@@ -56,7 +56,7 @@ func proposal(action, reason string, cites ...string) string {
 
 func (w *proposalWorld) propose(proposals ...string) agentloop.Report {
 	w.t.Helper()
-	result := `{"items":[` + attention("purge is late", "/jobs/purge/overdue") + `],"proposals":[` + joinComma(proposals) + `]}`
+	result := `{"items":[` + attention("purge is late", "/jobs/purge/overdue") + `],"proposals":[` + strings.Join(proposals, ",") + `]}`
 	facts := agentloop.Tool{
 		Name: "maintenance_report", Description: "facts", Parameters: map[string]any{"type": "object"},
 		Run: func(context.Context, json.RawMessage) (any, error) { return offering(proposals), nil },

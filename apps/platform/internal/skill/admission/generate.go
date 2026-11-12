@@ -4,8 +4,6 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -32,6 +30,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/integration/modelbudget"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/textx"
 )
 
 const generateMaxAttempts = 2 // one-number: generateMaxAttempts
@@ -435,10 +434,9 @@ func marshalGenerationInputs(diagram *GenerateDiagram, refs []referenceProvenanc
 	}
 	rec := generationInputsRecord{}
 	if diagram != nil {
-		sum := sha256.Sum256(diagram.Data)
 		rec.Diagram = &generationInputsDiagram{
 			MediaType: diagram.MediaType,
-			SHA256:    hex.EncodeToString(sum[:]),
+			SHA256:    textx.SHA256Hex(diagram.Data),
 			Bytes:     len(diagram.Data),
 		}
 	}

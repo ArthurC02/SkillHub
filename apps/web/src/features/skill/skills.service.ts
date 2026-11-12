@@ -16,6 +16,7 @@ import {
   apiFetch,
   isNotFound,
   isWriteResultUnknown,
+  jsonInit,
 } from "../../core/api/client";
 import { queryKeys } from "../../core/api/queryKeys";
 import { readSearchCorrection } from "../../core/api/searchIntent";
@@ -34,8 +35,17 @@ import type {
   ListedSkillVersion,
   SkillVersions,
 } from "../../core/api/types";
+import { isDate, isUuid } from "../../core/api/wire";
 
 export const MAX_COMPARE = 3;
+
+function applyFilterParams(params: URLSearchParams, filters: SearchFilters) {
+  if (filters.script) params.set("script", filters.script);
+  if (filters.validation) params.set("validation", filters.validation);
+  if (filters.agent) params.set("agent", filters.agent);
+  if (filters.tier) params.set("tier", filters.tier);
+  if (filters.category) params.set("category", filters.category);
+}
 
 export async function searchSkills(
   query: string,
@@ -44,11 +54,7 @@ export async function searchSkills(
   purpose?: "reference",
 ) {
   const params = new URLSearchParams({ q: query, limit: String(limit) });
-  if (filters.script) params.set("script", filters.script);
-  if (filters.validation) params.set("validation", filters.validation);
-  if (filters.agent) params.set("agent", filters.agent);
-  if (filters.tier) params.set("tier", filters.tier);
-  if (filters.category) params.set("category", filters.category);
+  applyFilterParams(params, filters);
   if (purpose) params.set("purpose", purpose);
   return readSearchResponse(await apiFetch<unknown>(`/api/skills/search?${params.toString()}`));
 }
@@ -68,16 +74,15 @@ export function useSkillSearch(
 
 async function fetchCorrectedSearch(query: string, filters: SearchFilters, correction: string) {
   return readSearchResponse(
-    await apiFetch<unknown>("/api/skills/search", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    await apiFetch<unknown>(
+      "/api/skills/search",
+      jsonInit("POST", {
         query,
         ...readSearchCorrection(correction),
         filters,
         limit: 20,
       } satisfies CorrectedSearchRequest),
-    }),
+    ),
   );
 }
 
@@ -124,11 +129,10 @@ function isMatchReasons(value: unknown, skillIds: string[]): value is SearchMatc
 }
 
 async function fetchMatchReasons(query: string, skillIds: string[]) {
-  const result = await apiFetch<unknown>("/api/skills/search/reasons", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query, skill_ids: skillIds }),
-  });
+  const result = await apiFetch<unknown>(
+    "/api/skills/search/reasons",
+    jsonInit("POST", { query, skill_ids: skillIds }),
+  );
   if (!isMatchReasons(result, skillIds)) throw new Error("Invalid search reasons response");
   return result;
 }
@@ -174,11 +178,7 @@ export function withMatchReasons(
 
 function requestCatalog(filters: SearchFilters, limit: number) {
   const params = new URLSearchParams({ limit: String(limit) });
-  if (filters.script) params.set("script", filters.script);
-  if (filters.validation) params.set("validation", filters.validation);
-  if (filters.agent) params.set("agent", filters.agent);
-  if (filters.tier) params.set("tier", filters.tier);
-  if (filters.category) params.set("category", filters.category);
+  applyFilterParams(params, filters);
   return apiFetch<CatalogResponse>(`/api/skills/catalog?${params.toString()}`);
 }
 
@@ -261,15 +261,13 @@ function isVersionSummary(value: unknown): value is ListedSkillVersion {
   if (!value || typeof value !== "object") return false;
   const version = value as Partial<ListedSkillVersion>;
   return (
-    typeof version.version_id === "string" &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(version.version_id) &&
+    isUuid(version.version_id) &&
     typeof version.version_number === "number" &&
     Number.isSafeInteger(version.version_number) &&
     version.version_number > 0 &&
     typeof version.content_hash === "string" &&
     version.content_hash.trim().length > 0 &&
-    typeof version.created_at === "string" &&
-    Number.isFinite(Date.parse(version.created_at)) &&
+    isDate(version.created_at) &&
     typeof version.held_for_evaluation === "boolean" &&
     typeof version.promoted === "boolean"
   );
@@ -417,11 +415,7 @@ function useOwnSkillWrite<T>(write: (input: T) => Promise<unknown>) {
 
 export function useTakedownSkill() {
   return useOwnSkillWrite(({ skillId, reason }: { skillId: string; reason: string }) =>
-    apiFetch(`/skills/${skillId}/takedown`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reason }),
-    }),
+    apiFetch(`/skills/${skillId}/takedown`, jsonInit("POST", { reason })),
   );
 }
 
@@ -435,8 +429,7 @@ function isForkReceipt(value: unknown): value is ForkedSkill {
   if (!isSkillReceipt(value)) return false;
   const receipt = value as Partial<ForkedSkill>;
   return (
-    typeof receipt.version_id === "string" &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(receipt.version_id) &&
+    isUuid(receipt.version_id) &&
     typeof receipt.version_number === "number" &&
     Number.isSafeInteger(receipt.version_number) &&
     receipt.version_number > 0
@@ -468,11 +461,10 @@ export function useForkSkill() {
 export type SkillCategoryChoice = SetSkillCategoryRequest["category"];
 
 export async function setSkillCategory(skillId: string, category: SkillCategoryChoice) {
-  const result = await apiFetch<unknown>(`/skills/${skillId}/category`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ category }),
-  });
+  const result = await apiFetch<unknown>(
+    `/skills/${skillId}/category`,
+    jsonInit("PUT", { category }),
+  );
   if (!isSkillReceipt(result) || result.skill_id.toLowerCase() !== skillId.toLowerCase())
     throw new Error("Invalid category response");
   return result;

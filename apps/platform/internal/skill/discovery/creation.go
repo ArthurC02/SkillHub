@@ -2,6 +2,7 @@ package catalog
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/persistence/db/gen"
@@ -89,7 +90,7 @@ func (w creationWordSearch) degradedIDs(ctx context.Context) ([]string, error) {
 			return nil, err
 		}
 		for _, id := range any {
-			if !containsID(all, id) && len(all) < degradedKnowledgeLimit {
+			if !slices.Contains(all, id) && len(all) < degradedKnowledgeLimit {
 				all = append(all, id)
 			}
 		}
@@ -160,13 +161,4 @@ func (s *Service) CatalogReferenceFacts(ctx context.Context, skillID, versionID 
 	}
 	risk := riskHint(row.Scan)
 	return ReferenceFacts{Tier: tier, ScanStatus: risk.ScanStatus, Warnings: risk.Warnings}, nil
-}
-
-func containsID(ids []string, id string) bool {
-	for _, x := range ids {
-		if x == id {
-			return true
-		}
-	}
-	return false
 }

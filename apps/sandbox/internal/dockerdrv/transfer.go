@@ -6,8 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"path"
-	"strings"
 	"time"
 
 	cerrdefs "github.com/containerd/errdefs"
@@ -50,7 +48,7 @@ func (d *Driver) pushInputs(ctx context.Context, id string, req sandbox.RunReque
 		return fmt.Errorf("prepare sandbox input directories: %w", err)
 	}
 
-	names := datasetNames(req)
+	names := req.DatasetNames()
 	for _, g := range req.InputGrants() {
 		target, ok := inputTarget(g, names)
 		if !ok {
@@ -114,21 +112,6 @@ func (d *Driver) placeInput(ctx context.Context, id string, req sandbox.RunReque
 
 func writeFileCommand(target string) []string {
 	return []string{"/bin/dd", "of=" + target, "status=none"}
-}
-
-func datasetNames(req sandbox.RunRequest) map[string]string {
-	out := map[string]string{}
-	for _, ref := range req.TestCase.DatasetRefs {
-		if ref.ObjectKey == "" {
-			continue
-		}
-		name := path.Base(strings.ReplaceAll(ref.FileName, "\\", "/"))
-		if name == "" || name == "." || name == ".." || strings.HasPrefix(name, "-") {
-			continue
-		}
-		out[ref.ObjectKey] = name
-	}
-	return out
 }
 
 func (d *Driver) ReadArtifacts(ctx context.Context, id string) ([]byte, error) {

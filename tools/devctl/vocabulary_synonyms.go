@@ -120,10 +120,7 @@ func contextIdentifiers(root string, contexts []string, identities map[string]pa
 }
 
 func collectDeclaredNames(internal, dir string, names map[string]string) error {
-	return filepath.WalkDir(dir, func(path string, entry os.DirEntry, err error) error {
-		if err != nil || entry.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
-			return err
-		}
+	return walkGoFiles(dir, func(path string) error {
 		rel, err := filepath.Rel(internal, filepath.Dir(path))
 		if err != nil {
 			return err

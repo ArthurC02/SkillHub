@@ -1,9 +1,9 @@
 package creation
 
 import (
-	"crypto/sha256"
 	"encoding/base64"
-	"encoding/hex"
+
+	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/textx"
 )
 
 func (s *Service) attachDiagram(p *Snapshot, c Command) (commandOutcome, error) {
@@ -15,8 +15,7 @@ func (s *Service) attachDiagram(p *Snapshot, c Command) (commandOutcome, error) 
 	if err := s.attachNote(p, c.Message); err != nil {
 		return commandOutcome{}, err
 	}
-	h := sha256.Sum256(image)
-	p.DiagramFingerprint = hex.EncodeToString(h[:])
+	p.DiagramFingerprint = textx.SHA256Hex(image)
 	p.DiagramMediaType = c.Diagram.MediaType
 	p.DiagramBytes = len(image)
 	p.Attachments = append(p.Attachments, Attachment{

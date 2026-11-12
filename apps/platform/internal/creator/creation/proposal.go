@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation/feedback"
+	"slices"
 	"strings"
 	"unicode/utf8"
 )
@@ -82,18 +83,6 @@ func completeEvaluationCases(cases []ChallengeCase) bool {
 		interactions[c.ExpectedInteraction] = true
 	}
 	return interactions["question"] && interactions["direct_answer"]
-}
-
-func equalStrings(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
 }
 
 func (s *Service) proposal(ctx context.Context, revision int64, e *envelope, r *StepResult, found *searchAnswer) (State, bool, error) {
@@ -261,7 +250,7 @@ type briefChange struct{ brief, criteria, sample bool }
 func briefChangeIn(p Snapshot, r *StepResult) briefChange {
 	return briefChange{
 		brief:    r.Brief != "" && r.Brief != p.Brief,
-		criteria: len(r.AcceptanceCriteria) > 0 && !equalStrings(r.AcceptanceCriteria, p.AcceptanceCriteria),
+		criteria: len(r.AcceptanceCriteria) > 0 && !slices.Equal(r.AcceptanceCriteria, p.AcceptanceCriteria),
 		sample:   r.SampleInput != "" && r.SampleInput != p.SampleInput,
 	}
 }
@@ -316,7 +305,7 @@ func askToConfirmBrief(p *Snapshot) (State, bool, error) {
 
 func draftFollowsConfirmation(p Snapshot, r *StepResult) bool {
 	return confirmed(p) && (r.Brief == "" || r.Brief == p.Brief) &&
-		(len(r.AcceptanceCriteria) == 0 || equalStrings(r.AcceptanceCriteria, p.AcceptanceCriteria)) &&
+		(len(r.AcceptanceCriteria) == 0 || slices.Equal(r.AcceptanceCriteria, p.AcceptanceCriteria)) &&
 		(r.SampleInput == "" || r.SampleInput == p.SampleInput) &&
 		(p.DiagramFingerprint == "" || (r.DiagramDescription == "" || r.DiagramDescription == p.DiagramDescription)) &&
 		r.DiagramInterpretation == nil &&
