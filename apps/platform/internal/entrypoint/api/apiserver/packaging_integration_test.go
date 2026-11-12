@@ -1037,7 +1037,7 @@ func assertACuratedPortableCaseWithoutRunData(t *testing.T, entries map[string][
 		}
 	}
 	if caseJSON == nil {
-		t.Fatalf("no portable test case in the package: %v", keysOf(entries))
+		t.Fatalf("no portable test case in the package: %v", slices.Sorted(maps.Keys(entries)))
 	}
 	var portable map[string]any
 	if err := json.Unmarshal(caseJSON, &portable); err != nil {
@@ -1143,7 +1143,7 @@ func assertExactlyOneCuratedPortableCase(t *testing.T, entries map[string][]byte
 	}
 	if len(carried) != 1 {
 		t.Fatalf("%d portable test cases in the fork's package, want exactly the curated one: %v",
-			len(carried), keysOf(entries))
+			len(carried), slices.Sorted(maps.Keys(entries)))
 	}
 }
 
@@ -1367,14 +1367,6 @@ func dumpManifest(t *testing.T, name string, raw []byte) {
 	if err := os.WriteFile(filepath.Join(dir, name+".json"), raw, 0o600); err != nil {
 		t.Fatal(err)
 	}
-}
-
-func keysOf(m map[string][]byte) []string {
-	out := make([]string, 0, len(m))
-	for k := range m {
-		out = append(out, k)
-	}
-	return out
 }
 
 func TestTheManifestKeepsTheBoundariesItsContractDraws(t *testing.T) {

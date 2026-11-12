@@ -625,11 +625,7 @@ func seedPagedProposals(t *testing.T, base pgtype.UUID) {
 
 func containsAll(list []string, want ...string) bool {
 	for _, w := range want {
-		found := false
-		for _, item := range list {
-			found = found || item == w
-		}
-		if !found {
+		if !slices.Contains(list, w) {
 			return false
 		}
 	}
