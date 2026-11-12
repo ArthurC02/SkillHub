@@ -268,8 +268,9 @@ type AttemptUsage struct {
 
 	ModelCostUSD float64
 
-	CostReported bool
-	Incomplete   bool
+	CostReported   bool
+	CostIncomplete bool
+	Incomplete     bool
 }
 
 const (
@@ -314,11 +315,14 @@ func (g *Gateway) Usage(ctx context.Context, runAttemptID string, since time.Tim
 		for _, row := range out.Data {
 			total.InputTokens += row.PromptTokens
 			total.OutputTokens += row.CompletionTokens
-			if row.Spend != nil {
-				total.ModelCostUSD += *row.Spend
-				total.CostReported = true
+			if row.Spend == nil {
+				total.CostIncomplete = true
+				continue
 			}
+			total.ModelCostUSD += *row.Spend
+			total.CostReported = true
 		}
+		total.CostReported = total.CostReported && !total.CostIncomplete
 		if len(out.Data) == 0 || page >= out.TotalPages {
 			return total, nil
 		}

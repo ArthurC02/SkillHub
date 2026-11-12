@@ -105,6 +105,9 @@ func (s *Service) reportedSpend(ctx context.Context, run gen.Run, attempts []gen
 			slog.Warn("this attempt's spend log runs past what is read; it is charged only for the calls read",
 				"run_id", pgconv.UUIDString(run.ID), "run_attempt_id", pgconv.UUIDString(attempt.ID))
 		}
+		if usage.CostIncomplete {
+			return nil
+		}
 		if usage.CostReported {
 			spent += usage.ModelCostUSD
 			reported = true
