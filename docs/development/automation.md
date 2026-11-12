@@ -437,6 +437,8 @@ docker run --rm --network container:skillhub-postgres-1 \
 
 原生環境以 `uv python list --only-downloads` 確認目標 Python 修補版列在下載表。下載表隨 uv 發版更新，Python 修補版與 uv 必須一起驗證可取得性，再執行 `task bootstrap`。
 
+Python 3.15 的部分鎖定依賴尚無符合 Bookworm 或 Windows 的 wheel，`uv sync --frozen` 會從原始碼建置。LLM builder、devtools 與 TypeScript codegen 共用既有釘選 Rust toolchain；Python codegen 另提供 C／C++，使用首個支援 3.15 的生成器版本，LLM 正式映像不帶編譯工具。原生 Linux 需 C／C++ 與 Rust，Windows 需 Visual Studio C++ Build Tools 與 Windows SDK；完整的 LLM mock 測試在 CI 同時跑 Linux 與 Windows。缺少編譯器是環境診斷結果，不得略過依賴或測試。
+
 **Dependabot 的 PR**：每週一（npm、Go、Python）與每月（Actions、映像、compose）各開一個群組 PR，major 另開。新版本要先存在 7 天才會被提（npm 的 major 14 天）。CI 綠了就能合；major 先讀 changelog。PR 只改到上表其中一處時，`dependency-policy` 會紅並列出其餘位置：在同一個 PR 補齊，不要關掉。
 
 **`devctl dep-audit`**（本機 `task deps:audit`，全掃加 `-- --full`）一次跑三件事，任何一件出現 `FAIL` 都會紅：

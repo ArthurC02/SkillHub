@@ -3,7 +3,7 @@ name = "skillhub-api-stub"
 version = "0.0.0"
 description = "Generated Pydantic models for Skill Hub internal APIs"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.15"
 dependencies = ["pydantic>=2"]
 
 [build-system]
