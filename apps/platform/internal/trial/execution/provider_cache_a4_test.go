@@ -70,12 +70,12 @@ func TestCapabilityStillCachesTheAnswerAndTheFailure(t *testing.T) {
 		t.Errorf("the node was probed %d times for 5 sequential reads; the failure cache is not holding", hits)
 	}
 
-	registry.Refresh()
+	registry.refresh()
 	if _, err := registry.Capability(context.Background(), p); err == nil {
 		t.Fatal("a 500 from the node was reported as a capability")
 	}
 	if hits != 2 {
-		t.Errorf("probes after Refresh = %d, want 2; the cache outlived the thing that clears it", hits)
+		t.Errorf("probes after refresh = %d, want 2; the cache outlived the thing that clears it", hits)
 	}
 }
 

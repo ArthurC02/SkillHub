@@ -581,7 +581,7 @@ func (r *Registry) freshCapability(name string, ttl time.Duration) (cachedCapabi
 	return entry, true
 }
 
-func (r *Registry) Refresh() {
+func (r *Registry) refresh() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.cached = nil
