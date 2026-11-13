@@ -201,29 +201,12 @@ func TestOwnedPostgresBaseRemainsTheCIFixturePin(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			root := t.TempDir()
-			files := map[string]string{
+			root := dependencyPolicyFixture(t, map[string]string{
 				".github/dependabot.yml":           "updates:\n  - package-ecosystem: docker-compose\n    directory: /infra/compose\n  - package-ecosystem: docker\n    directory: /infra/images/postgres\n",
 				"infra/compose/docker-compose.yml": "services:\n  postgres:\n    build: ../images/postgres\n    pull_policy: build\n",
 				"infra/images/postgres/Dockerfile": "FROM pgvector/pgvector:pg18" + digest + "\n",
 				".github/workflows/ci.yml":         "jobs:\n  test:\n    services:\n      db:\n        image: " + test.image + "\n",
-			}
-			var paths []string
-			for name, content := range files {
-				full := filepath.Join(root, filepath.FromSlash(name))
-				if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
-					t.Fatal(err)
-				}
-				if err := os.WriteFile(full, []byte(content), 0o600); err != nil {
-					t.Fatal(err)
-				}
-				paths = append(paths, name)
-			}
-			for _, args := range [][]string{{"init", "-q"}, append([]string{"add", "--"}, paths...)} {
-				if output, err := exec.Command("git", append([]string{"-C", root}, args...)...).CombinedOutput(); err != nil {
-					t.Fatalf("git %v: %v: %s", args, err, output)
-				}
-			}
+			})
 			var drift []string
 			for _, problem := range dependencyPolicyProblems(root) {
 				if strings.HasPrefix(problem, ".github/workflows/ci.yml:") && strings.Contains(problem, " differs from ") {
