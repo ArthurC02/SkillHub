@@ -367,6 +367,7 @@ jobs:
           file: infra/images/seaweedfs/Dockerfile
           tags: skillhub-ci/seaweedfs:${{ github.sha }}
           load: true
+          push: false
           provenance: false
           cache-from: type=gha,scope=seaweedfs
           cache-to: type=gha,mode=max,scope=seaweedfs
@@ -897,6 +898,7 @@ jobs:
           file: infra/images/platform/Dockerfile
           tags: ${{ env.REGISTRY }}/skillhub-platform:${{ github.sha }}
           load: true
+          push: false
           provenance: false
           cache-from: type=gha,scope=platform
           cache-to: type=gha,mode=max,scope=platform
@@ -907,6 +909,7 @@ jobs:
           file: infra/images/web/Dockerfile
           tags: ${{ env.REGISTRY }}/skillhub-web:${{ github.sha }}
           load: true
+          push: false
           provenance: false
           cache-from: type=gha,scope=web
           cache-to: type=gha,mode=max,scope=web
@@ -917,6 +920,7 @@ jobs:
           file: infra/images/llm/Dockerfile
           tags: ${{ env.REGISTRY }}/skillhub-llm:${{ github.sha }}
           load: true
+          push: false
           provenance: false
           cache-from: type=gha,scope=llm
           cache-to: type=gha,mode=max,scope=llm
@@ -927,6 +931,7 @@ jobs:
           file: infra/images/seaweedfs/Dockerfile
           tags: ${{ env.REGISTRY }}/skillhub-seaweedfs:${{ github.sha }}
           load: true
+          push: false
           provenance: false
           cache-from: type=gha,scope=seaweedfs
           cache-to: type=gha,mode=max,scope=seaweedfs
@@ -956,6 +961,7 @@ jobs:
           context: infra/images/postgres
           tags: ${{ env.REGISTRY }}/skillhub-postgres:${{ github.sha }}
           load: true
+          push: false
           provenance: false
           cache-from: type=gha,scope=postgres
           cache-to: type=gha,mode=max,scope=postgres
@@ -966,6 +972,7 @@ jobs:
           file: infra/images/seaweedfs/Dockerfile
           tags: ${{ env.REGISTRY }}/skillhub-seaweedfs:${{ github.sha }}
           load: true
+          push: false
           provenance: false
           cache-from: type=gha,scope=seaweedfs
           cache-to: type=gha,mode=max,scope=seaweedfs
@@ -980,6 +987,7 @@ jobs:
           context: infra/images/postgres-exporter
           tags: ${{ env.REGISTRY }}/skillhub-postgres-exporter:${{ github.sha }}
           load: true
+          push: false
           provenance: false
           cache-from: type=gha,scope=postgres-exporter
           cache-to: type=gha,mode=max,scope=postgres-exporter
@@ -994,6 +1002,7 @@ jobs:
           context: infra/images/blackbox-exporter
           tags: ${{ env.REGISTRY }}/skillhub-blackbox-exporter:${{ github.sha }}
           load: true
+          push: false
           provenance: false
           cache-from: type=gha,scope=blackbox-exporter
           cache-to: type=gha,mode=max,scope=blackbox-exporter
@@ -1008,6 +1017,7 @@ jobs:
           context: infra/images/caddy
           tags: ${{ env.REGISTRY }}/skillhub-caddy:${{ github.sha }}
           load: true
+          push: false
           provenance: false
           cache-from: type=gha,scope=caddy
           cache-to: type=gha,mode=max,scope=caddy
@@ -1022,6 +1032,7 @@ jobs:
           context: infra/images/alertmanager
           tags: ${{ env.REGISTRY }}/skillhub-alertmanager:${{ github.sha }}
           load: true
+          push: false
           provenance: false
           cache-from: type=gha,scope=alertmanager
           cache-to: type=gha,mode=max,scope=alertmanager
@@ -1037,6 +1048,7 @@ jobs:
           file: infra/images/sandboxd/Dockerfile
           tags: ${{ env.REGISTRY }}/skillhub-sandboxd:${{ github.sha }}
           load: true
+          push: false
           provenance: false
           cache-from: type=gha,scope=sandboxd
           cache-to: type=gha,mode=max,scope=sandboxd
@@ -1068,6 +1080,7 @@ jobs:
           context: infra/images/prometheus
           tags: ${{ env.REGISTRY }}/skillhub-prometheus:${{ github.sha }}
           load: true
+          push: false
           provenance: false
           cache-from: type=gha,scope=prometheus
           cache-to: type=gha,mode=max,scope=prometheus
