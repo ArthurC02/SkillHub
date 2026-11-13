@@ -28,7 +28,7 @@
 | --- | --- | --- |
 | 甲 | **5** | 部署期驗收：沙箱逃逸與資源測項、生產出口強制層、映像掃描門檻的節點查證、節點 IaC 與上線最低配。**全部在等同一件事——一台真實的 Linux 節點**，不因程式面收斂而放寬一分 <!-- open: 1,2,3,4,5 --> |
 | 乙 | **3** | 歷史 ID 保留：前兩項待決；乙-30 已裁定，仍待前置證據，依 `03` 追蹤 <!-- open: 16,19,30 --> |
-| 丙 | **14** | 實作與資料工作：回報與分析事件的關聯決策、demo 的能力服務執行期、互動創作後續驗收、搜尋 F1 的生產重跑、Credit 金流、曝光審核的範圍邊界、判定的一致性，以及四個契約或需求宣告了而程式沒有產生的值 <!-- open: 78, 113, 166, 175, 178, 179, 180, 185, 237, 238, 239, 240, 242, 243 --> |
+| 丙 | **13** | 實作與資料工作：回報與分析事件的關聯決策、demo 的能力服務執行期、互動創作後續驗收、搜尋 F1 的生產重跑、Credit 金流、曝光審核的範圍邊界、判定的一致性，以及三個契約或需求宣告了而程式沒有產生的值 <!-- open: 78, 113, 166, 175, 178, 179, 180, 185, 237, 238, 239, 240, 242 --> |
 
 ## 甲、部署期驗收
 
@@ -68,7 +68,6 @@
 | 丙-239 | **判定的引文結果少一種：`not_found` 永遠指派不到** | 契約把 `EvidenceRef.match` 寫死四個值，並明文「`not_checked` 與 `not_found` 不是同一個主張，不得折成一個值」——前者是平台沒看，後者是平台搜過而到處都沒有（`public.yaml:12663-12698`）。Go 的產生點只有 `MatchNotChecked`（`judging/judge.go:439`、`:470` 與 `checks/deterministic.go:226`）；引文找不到時走 `judge.go:443` 的 `unsettledCitation`，只回一句失敗說明、該引文不成為證據，所以 `verdict.MatchNotFound` 指派不到。契約另一句也說 `not_found`「不會成為證據」，兩句合起來，這個值可能本來就到不了線上。<br>**剩**：裁定補產生點（搜過而沒找到的引文帶 `not_found` 落地）或把它移出契約 enum（wire 變更），再據以改程式或契約 | `02:EVAL-013`、`public.yaml:12663-12698`、[評估判定與 Judge](../adr/README.md#評估判定與-judge-信任邊界) |
 | 丙-240 | **發佈拒絕理由 `file_removed_by_packager` 在發佈這一側沒有產生者** | 契約的發佈拒絕 enum 列了它（`public.yaml:13422`），同值的行為實作卻在另一個 Context：`skill/delivery/packaging.go:998` 的 `BlockedFileRemoved`（有測試守著）。`skill/publishing` 沒有 import `skill/delivery`，而 `publicationAvailability`（`publishing/service.go:514-539`）能取得的只有 bundle 可用性、下架狀態與 `ReadSkill`／`ReadVersion` 的結果，**結構上得不到「`SKILL.md` 指向的檔案被打包器拿掉」這個事實**，因此 `publishing.RefusedFileRemoved` 無從產生。<br>**剩**：裁定補跨 Context 協作（要在已審查的 Registry 立 dependency policy，並在同一個 commit 改 depguard）或把這個值移出發佈側的契約 enum。兩者都是架構或契約決定，不是清理 | `02:PACK-004`（相關 `PACK-001`）、`public.yaml:13422`、[發佈、發佈者與組合散布](../adr/README.md#發佈發佈者與組合散布) |
 | 丙-242 | **營運者授予的 Credit 分錄沒有 referent，而資料表與前端都以為有** | 資料表的 CHECK 允許 `skill_version` 與 `operator_grant` 兩種 `ref_type`（`0060_credit_ledger.sql:46`），`credit` 也為它們備了常數；但授予路徑 `apiserver/credit_wiring.go:70-78` 組 `GrantInput` 時沒有 `RefType` 可填，所以營運者授予寫入的 `ref_type` 永遠是 NULL。另一端，三個前端測試的 fixture（`credit-grant-response:43`、`credit-ledger-readiness:57`、`admin-session-recovery:53`）寫 `ref_type: "operator_grant"`，**斷言一個後端從不回傳的值**；畫面本身只是原樣顯示，沒有永遠進不去的分支。<br>**剩**：裁定補接線（讓授予帶上 referent，稽核血緣完整）或確認它本來就沒有 referent、把 fixture 改成 null 並收緊 CHECK。`OPS-003` 明訂授予分錄不帶理由文字（理由另存），那是「不帶理由」而非「不帶血緣」，兩者不同，別據此預先選邊 | `02:CRED-001`、`02:OPS-003`、`0060_credit_ledger.sql:46`、[Credit 計量與扣款](../adr/README.md#credit-計量與扣款) |
-| 丙-243 | **授權偵測不強制 `LICENSE.repo` 與 provenance 成對** | 打包器搬運 repo 根授權時要成對寫出 `LICENSE.repo` 與 `LICENSE.repo.provenance.json`（後者記 `carried_from`、`repo_url`、`commit`、`skill_path`），且兩者都要逐位元組保留。但 Go 的授權偵測（`shared/skillpkg/skillpkg.go:546`）只 `fs.Stat` `LICENSE.repo` 就把它當 repo-file 來源的授權採信，**不檢查 provenance 是否同在**；一個缺 provenance 的套件照樣被信任，等於攜帶授權卻沒有歸屬軌跡。Go 這一側從不寫出這兩個檔（唯一的寫出者是內容匯入工具），打包只做泛用的逐位元組複製。<br>**剩**：在授權偵測這個信任邊界補成對檢查（有 `LICENSE.repo` 就要求 provenance 同在，否則不採信或標記），`CarriedProvenanceFile`（`skillpkg.go:413`）即為該檢查的 referent | `02:SKILL-004`、`02:PACK-001`、[打包、授權溯源與散布](../adr/README.md#打包授權溯源與散布) |
 
 ## 移交下一階段（封測期與 MVP 之後）
 

@@ -286,9 +286,10 @@ func TestLicenseFallsBackToPackageLicenseFile(t *testing.T) {
 }
 
 const (
-	mitText    = "MIT License\n\nCopyright (c) 2026 Someone\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\n"
-	apacheText = "Apache License\nVersion 2.0, January 2004\n"
-	iscText    = "Permission to use, copy, modify, and/or distribute this software for any purpose\n"
+	mitText            = "MIT License\n\nCopyright (c) 2026 Someone\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\n"
+	apacheText         = "Apache License\nVersion 2.0, January 2004\n"
+	iscText            = "Permission to use, copy, modify, and/or distribute this software for any purpose\n"
+	repoProvenanceText = `{"carried_from":"LICENSE","repo_url":"https://example.test/skills.git","commit":"0123456789012345678901234567890123456789","skill_path":"skills/x"}`
 )
 
 func TestLicenseProvenancePrecedence(t *testing.T) {
@@ -304,22 +305,24 @@ func TestLicenseProvenancePrecedence(t *testing.T) {
 		name:    "manifest beats both files",
 		skillMD: goodMD,
 		files: map[string]string{
-			"LICENSE":          apacheText,
-			CarriedLicenseFile: iscText,
+			"LICENSE":             apacheText,
+			CarriedLicenseFile:    iscText,
+			CarriedProvenanceFile: repoProvenanceText,
 		},
 		wantSPDX: "MIT", wantSource: LicenseSourceManifest,
 	}, {
 		name:    "package file beats the carried repo file",
 		skillMD: noLicenseMD,
 		files: map[string]string{
-			"LICENSE":          apacheText,
-			CarriedLicenseFile: mitText,
+			"LICENSE":             apacheText,
+			CarriedLicenseFile:    mitText,
+			CarriedProvenanceFile: repoProvenanceText,
 		},
 		wantSPDX: "Apache-2.0", wantSource: LicenseSourcePackageFile,
 	}, {
 		name:     "carried repo file is used when the package states nothing",
 		skillMD:  noLicenseMD,
-		files:    map[string]string{CarriedLicenseFile: mitText},
+		files:    map[string]string{CarriedLicenseFile: mitText, CarriedProvenanceFile: repoProvenanceText},
 		wantSPDX: "MIT", wantSource: LicenseSourceRepoFile,
 	}, {
 
@@ -340,14 +343,15 @@ func TestLicenseProvenancePrecedence(t *testing.T) {
 		})
 	}
 
-	r := Validate(pkg(noLicenseMD, map[string]string{CarriedLicenseFile: mitText}))
+	r := Validate(pkg(noLicenseMD, map[string]string{CarriedLicenseFile: mitText, CarriedProvenanceFile: repoProvenanceText}))
 	if codes(r)["license-from-repo-file"] != SeverityInfo {
 		t.Fatalf("carried repo license must be disclosed as such: %+v", r.Findings)
 	}
 
 	r = Validate(pkg(noLicenseMD, map[string]string{
-		"LICENSE":          "All rights reserved. Ask us nicely.",
-		CarriedLicenseFile: mitText,
+		"LICENSE":             "All rights reserved. Ask us nicely.",
+		CarriedLicenseFile:    mitText,
+		CarriedProvenanceFile: repoProvenanceText,
 	}))
 	if r.LicenseExpression != "" || codes(r)["license-unknown"] != SeverityWarning {
 		t.Fatalf("unrecognised package license must stay unknown, got %q/%q: %+v",

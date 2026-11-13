@@ -522,6 +522,9 @@ func pointedLicense(fsys fs.FS, license string) (name, spdx string, ok bool) {
 	if !ok {
 		return "", "", false
 	}
+	if name == CarriedLicenseFile && !hasCarriedLicensePair(fsys) {
+		return "", "", false
+	}
 	data, err := fs.ReadFile(fsys, name)
 	if err != nil {
 		return "", "", false
@@ -535,6 +538,16 @@ type licenseCandidate struct {
 	source LicenseSource
 }
 
+func hasCarriedLicensePair(fsys fs.FS) bool {
+	for _, name := range []string{CarriedLicenseFile, CarriedProvenanceFile} {
+		info, err := fs.Stat(fsys, name)
+		if err != nil || !info.Mode().IsRegular() {
+			return false
+		}
+	}
+	return true
+}
+
 func licenseCandidates(fsys fs.FS) []licenseCandidate {
 	var out []licenseCandidate
 	entries, _ := fs.ReadDir(fsys, ".")
@@ -543,7 +556,7 @@ func licenseCandidates(fsys fs.FS) []licenseCandidate {
 			out = append(out, licenseCandidate{e.Name(), LicenseSourcePackageFile})
 		}
 	}
-	if info, err := fs.Stat(fsys, CarriedLicenseFile); err == nil && !info.IsDir() {
+	if hasCarriedLicensePair(fsys) {
 		out = append(out, licenseCandidate{CarriedLicenseFile, LicenseSourceRepoFile})
 	}
 	return out
