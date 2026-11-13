@@ -6,6 +6,7 @@ ARG CADDY_VERSION=2.11.9
 ARG CADDY_COMMIT=0d98caea58f794f88e709b1bef2880996a471bca
 ARG CADDY_SUM=h1:bhZtcRKQOq0fuLvEgCdPYvUxXyGn9kzjG4lh2332DTE=
 WORKDIR /build
+COPY listener_fixture.go prepare-tests.py /fixture/
 RUN --mount=type=cache,target=/go/pkg/mod \
     go mod init skillhub.internal/caddy-build \
     && go get github.com/caddyserver/caddy/v2/cmd/caddy@v$CADDY_VERSION \
@@ -16,6 +17,8 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     && source_dir="$(go list -m -f '{{.Dir}}' github.com/caddyserver/caddy/v2)" \
     && cp -a "$source_dir" /tmp/caddy-tests \
     && chmod -R u+w /tmp/caddy-tests \
+    && python3 /fixture/prepare-tests.py \
+    && gofmt -w /tmp/caddy-tests/listener_fixture.go /tmp/caddy-tests/modules/caddyhttp/app.go /tmp/caddy-tests/caddytest/caddytest.go \
     && test_path=/tmp/caddy-tests/caddytest/integration/reverseproxy_test.go \
     && test "$(grep -Fc 'localhost example.com {' "$test_path")" -eq 1 \
     && openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes -days 1 \
@@ -25,8 +28,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     && cp /tmp/reverseproxy_test.go "$test_path" \
     && (cd /tmp/caddy-tests \
         && go get golang.org/x/net@v0.62.0 github.com/klauspost/compress@v1.20.2 \
-        && go test -mod=mod -v -count=1 -p 2 -skip '^TestStripRewritePreservesPathAuthorization$' ./... \
-        && go test -mod=mod -v -count=1 -p 2 -run '^TestStripRewritePreservesPathAuthorization$' ./caddytest/integration) \
+        && go test -mod=mod -v -count=1 -p 2 ./...) \
     && go mod verify \
     && cp "$source_dir/cmd/caddy/main.go" /build/main.go \
     && CGO_ENABLED=0 go build -mod=readonly -p 2 -trimpath -buildvcs=false -ldflags="-s -w" \
