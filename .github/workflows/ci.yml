@@ -334,7 +334,7 @@ jobs:
           go-version-file: apps/platform/go.mod
           cache-dependency-path: apps/platform/go.sum
       - run: go mod verify
-      - uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           enable-cache: true
       - name: Sync the creation service's interpreter (Go-to-Python test)
@@ -413,7 +413,7 @@ jobs:
         with:
           go-version-file: apps/platform/go.mod
           cache-dependency-path: apps/platform/go.sum
-      - uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           enable-cache: true
       - name: Sync the creation service's interpreter (Go-to-Python test)
@@ -599,7 +599,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           enable-cache: true
       - run: uv sync --frozen
@@ -620,7 +620,7 @@ jobs:
           cache-dependency-path: |
             tools/devctl/go.mod
             apps/platform/go.sum
-      - uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
         with:
           enable-cache: true
       - uses: ./.github/actions/golangci-lint
@@ -664,7 +664,7 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .node-version
-      - uses: astral-sh/setup-uv@18d369b23da25a81e9458561248e1aafff6a70fa # v10.3.1
+      - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
       - name: Shipped dependencies — fixable vulnerabilities, licenses, workflow audit
         if: github.event_name == 'push' || github.event_name == 'pull_request'
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Dependency audit' go -C tools/devctl run . dep-audit
