@@ -228,6 +228,8 @@ test("workspace home separates decisions, active work, and owned assets from ser
 
   await render(<WorkspaceHome />, () => (container.textContent ?? "").includes("PDF Summariser"));
 
+  await waitFor(() => container.querySelectorAll("[data-loading]").length === 0);
+
   expect(section("需要留意").textContent).toContain("Needs review");
   expect(section("需要留意").textContent).toContain("Needs failure review");
   expect(section("需要留意").textContent).toContain("檢視證據");
@@ -438,6 +440,8 @@ test("workspace home keeps a publication read failure distinct from an empty res
     (container.textContent ?? "").includes("暫時無法讀取發佈成果"),
   );
 
+  await waitFor(() => container.querySelectorAll("[data-loading]").length === 0);
+
   expect(section("發佈成果").textContent).not.toContain("目前沒有發佈成果。");
   expect(section("發佈成果").textContent).not.toContain("publication backend unavailable");
   expect(section("執行中").textContent).toContain("目前沒有正在執行的試跑。");
@@ -614,6 +618,8 @@ test("workspace home omits the continuation section when the recent session slic
     (container.textContent ?? "").includes("目前沒有正在執行的試跑"),
   );
 
+  await waitFor(() => container.querySelectorAll("[data-loading]").length === 0);
+
   expect(section("繼續進行")).toBeUndefined();
 });
 
@@ -646,6 +652,9 @@ test("workspace home surfaces a refresh failure after an earlier empty creation 
   await render(<WorkspaceHome />, () =>
     (container.textContent ?? "").includes("目前沒有正在執行的試跑"),
   );
+
+  await waitFor(() => container.querySelectorAll("[data-loading]").length === 0);
+
   expect(section("繼續進行")).toBeUndefined();
 
   await act(async () => {

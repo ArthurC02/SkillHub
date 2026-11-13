@@ -494,6 +494,7 @@
         "apps/platform/internal/shared/skillpkg/discover_test.go",
         "apps/platform/internal/shared/skillpkg/generate_spike_test.go",
         "apps/platform/internal/shared/skillpkg/layout_test.go",
+        "apps/platform/internal/shared/skillpkg/license_provenance_test.go",
         "apps/platform/internal/shared/skillpkg/package_key_test.go",
         "apps/platform/internal/shared/skillpkg/package_root_test.go",
         "apps/platform/internal/shared/skillpkg/placeholder_census_test.go",
