@@ -102,6 +102,7 @@ jobs:
               - 'infra/images/postgres-exporter/**'
               - 'infra/images/blackbox-exporter/**'
               - 'infra/images/caddy/**'
+              - 'infra/images/prometheus/**'
               - 'infra/images/alertmanager/**'
               - 'apps/sandbox/**'
               - 'infra/images/sandboxd/**'
@@ -113,6 +114,7 @@ jobs:
               - '.github/workflows/ci.yml'
             deploy:
               - 'infra/images/caddy/**'
+              - 'infra/images/prometheus/**'
               - 'infra/images/alertmanager/**'
               - 'infra/deploy/**'
               - 'infra/compose/control-plane.yml'
@@ -854,7 +856,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.deploy == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -1012,6 +1014,33 @@ jobs:
           echo "$output"
           [ "$status" = 1 ] && grep -q 'SKILLHUB_SANDBOX_TOKEN is required' <<<"$output"
 
+  images-prometheus:
+    needs: changes
+    if: needs.changes.outputs.images == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      REGISTRY: ghcr.io/arthurc02
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build the prometheus image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: infra/images/prometheus
+          tags: ${{ env.REGISTRY }}/skillhub-prometheus:${{ github.sha }}
+          load: true
+          provenance: false
+          cache-from: type=gha,scope=prometheus
+          cache-to: type=gha,mode=max,scope=prometheus
+      - name: Verify preserved data, queries, rules, UI and remote-read limits
+        env:
+          PROMETHEUS_IMAGE: ${{ env.REGISTRY }}/skillhub-prometheus:${{ github.sha }}
+          PROBE_TARGET_IMAGE: python:3.15.2-slim-bookworm@sha256:96599df822d0e1c6bb700014a05c7f3c8cabc6e0f7ff3c4f9f69cee033b4b5d9
+        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Prometheus smoke' bash tools/ci/prometheus-smoke.sh
+
   devtools-image:
     needs: changes
     if: needs.changes.outputs.devtools == 'true'
@@ -1030,8 +1059,8 @@ jobs:
           push: false
 
   images-push:
-    needs: [images, images-postgres-sandboxd, web, web-browser, platform, platform-lint, platform-race, llm, sandbox, devctl, contracts-drift, dependency-audit]
-    if: ${{ !failure() && !cancelled() && needs.images.result == 'success' && needs.images-postgres-sandboxd.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    needs: [images, images-postgres-sandboxd, images-prometheus, web, web-browser, platform, platform-lint, platform-race, llm, sandbox, devctl, contracts-drift, dependency-audit]
+    if: ${{ !failure() && !cancelled() && needs.images.result == 'success' && needs.images-postgres-sandboxd.result == 'success' && needs.images-prometheus.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     strategy:
       fail-fast: false
       matrix:
@@ -1043,10 +1072,11 @@ jobs:
           - { image: postgres-exporter, context: infra/images/postgres-exporter, file: infra/images/postgres-exporter/Dockerfile }
           - { image: blackbox-exporter, context: infra/images/blackbox-exporter, file: infra/images/blackbox-exporter/Dockerfile }
           - { image: caddy, context: infra/images/caddy, file: infra/images/caddy/Dockerfile }
+          - { image: prometheus, context: infra/images/prometheus, file: infra/images/prometheus/Dockerfile }
           - { image: alertmanager, context: infra/images/alertmanager, file: infra/images/alertmanager/Dockerfile }
           - { image: sandboxd, context: ., file: infra/images/sandboxd/Dockerfile }
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: ${{ matrix.image == 'prometheus' && 45 || 15 }}
     permissions:
       contents: read
       packages: write

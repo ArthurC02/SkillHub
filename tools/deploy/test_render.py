@@ -38,6 +38,7 @@ def test_a_control_plane_release_pins_every_image_by_tag_and_digest():
     assert env["SKILLHUB_RELEASE"] == RELEASE
     assert env["SKILLHUB_REPOSITORY"] == "https://github.com/ArthurC02/SkillHub"
     pinned_images = {
+        "SKILLHUB_PROMETHEUS_IMAGE": "ghcr.io/arthurc02/skillhub-prometheus:%s@%s" % (RELEASE, DIGEST),
         "SKILLHUB_ALERTMANAGER_IMAGE": "ghcr.io/arthurc02/skillhub-alertmanager:%s@%s" % (RELEASE, DIGEST),
         "SKILLHUB_CADDY_IMAGE": "ghcr.io/arthurc02/skillhub-caddy:%s@%s" % (RELEASE, DIGEST),
         "SKILLHUB_WEB_IMAGE": "ghcr.io/arthurc02/skillhub-web:%s@%s" % (RELEASE, DIGEST),
@@ -59,7 +60,7 @@ def test_an_image_the_release_never_published_refuses_the_render():
 
 
 def test_an_unpublished_or_invalid_deployment_image_refuses_the_render():
-    for exporter in ("skillhub-alertmanager", "skillhub-caddy", "skillhub-postgres-exporter", "skillhub-blackbox-exporter"):
+    for exporter in ("skillhub-prometheus", "skillhub-alertmanager", "skillhub-caddy", "skillhub-postgres-exporter", "skillhub-blackbox-exporter"):
         for unavailable in ("", "sha256:bad"):
             def exporter_missing(repository, tag, value=unavailable, missing=exporter):
                 return value if repository == missing else DIGEST

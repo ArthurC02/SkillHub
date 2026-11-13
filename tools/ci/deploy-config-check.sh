@@ -5,7 +5,8 @@ CADDY="skillhub-ci/caddy:deploy-$RANDOM-$RANDOM-$RANDOM"
 CADDY_BUILT=0
 ALERTMANAGER="skillhub-ci/alertmanager:deploy-$RANDOM-$RANDOM-$RANDOM"
 ALERTMANAGER_BUILT=0
-PROMETHEUS=prom/prometheus:v3.16.0@sha256:e04987641b57704f408e31f6373ba4138ecf27cb4a165d24aabb6c38fddd0f06
+PROMETHEUS="skillhub-ci/prometheus:deploy-$RANDOM-$RANDOM-$RANDOM"
+PROMETHEUS_BUILT=0
 SHELLCHECK=koalaman/shellcheck:v0.11.0@sha256:61862eba1fcf09a484ebcc6feea46f1782532571a34ed51fedf90dd25f925a8d
 UBUNTU=ubuntu:24.04@sha256:69cecf4bbf72d2d44a9eef1b71fb98c7fb973d78af11399deccef19beb008ad9
 
@@ -15,6 +16,7 @@ GIT_COMMON_DIRECTORY="$(git -C "$ROOT" rev-parse --path-format=absolute --git-co
 CP="$ROOT/infra/deploy/control-plane"
 WORK="$(mktemp -d)"
 cleanup() {
+  if [ "$PROMETHEUS_BUILT" = 1 ]; then docker image rm "$PROMETHEUS" >/dev/null; fi
   if [ "$ALERTMANAGER_BUILT" = 1 ]; then docker image rm "$ALERTMANAGER" >/dev/null; fi
   if [ "$CADDY_BUILT" = 1 ]; then docker image rm "$CADDY" >/dev/null; fi
   rm -rf "$WORK"
@@ -77,7 +79,7 @@ PY
     sh /repo/infra/deploy/control-plane/bin/skillhub-preflight
     digest=$(printf "%064d" 0)
     invalid=$(printf "%064d" 0 | tr 0 g)
-    for name in SKILLHUB_ALERTMANAGER_IMAGE SKILLHUB_CADDY_IMAGE SKILLHUB_POSTGRES_EXPORTER_IMAGE SKILLHUB_BLACKBOX_EXPORTER_IMAGE; do
+    for name in SKILLHUB_PROMETHEUS_IMAGE SKILLHUB_ALERTMANAGER_IMAGE SKILLHUB_CADDY_IMAGE SKILLHUB_POSTGRES_EXPORTER_IMAGE SKILLHUB_BLACKBOX_EXPORTER_IMAGE; do
       for ref in "" "ghcr.io/o/exporter:release" "ghcr.io/o/exporter@sha256:${digest%?}" "ghcr.io/o/exporter@sha256:$invalid"; do
         if env "$name=$ref" sh /repo/infra/deploy/control-plane/bin/skillhub-preflight >/work/preflight-error 2>&1; then
           echo "unpinned deployment image was accepted: $name=$ref"; exit 1
@@ -201,6 +203,9 @@ docker run --rm --entrypoint amtool -v "$WORK_HOST/alertmanager.yml:/etc/alertma
   "$ALERTMANAGER" check-config /etc/alertmanager/alertmanager.yml
 
 step "Prometheus configuration and alert rules"
+if docker image inspect "$PROMETHEUS" >/dev/null 2>&1; then echo "test image tag already exists: $PROMETHEUS"; exit 1; fi
+docker build --progress=plain -t "$PROMETHEUS" "$ROOT/infra/images/prometheus"
+PROMETHEUS_BUILT=1
 docker run --rm --entrypoint promtool \
   -v "$CP/prometheus.yml:/etc/prometheus/prometheus.yml:ro" \
   -v "$ROOT/infra/observability/alerts.yml:/etc/prometheus/alerts.yml:ro" \

@@ -114,6 +114,7 @@ updates:
       - /infra/images/postgres-exporter
       - /infra/images/blackbox-exporter
       - /infra/images/caddy
+      - /infra/images/prometheus
       - /infra/images/alertmanager
       - /infra/images/sandboxd
       - /infra/images/web

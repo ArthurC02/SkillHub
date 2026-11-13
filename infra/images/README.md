@@ -559,6 +559,14 @@ Dockerfile 與 `infra/compose/docker-compose.yml` 新 `app` profile 的說明。
 
 完整上游測試在獨立副本執行；SNI 案例預先產生涵蓋兩個測試名稱的憑證，消除背景簽發的競態，保留原斷言。路徑授權案例另用獨立程序執行，避免前例尚在關閉的共用伺服器接走請求；其餘案例維持原流程，全數仍各執行一次。出貨碼仍來自通過 checksum 與 `go mod verify` 的原始模組。CI 驗證代理本文、identity／gzip／zstd、已路由回應的安全標頭、404 與上游不可用的 502；部署設定檢查也建置同一 Dockerfile。發佈與 digest 解析沿用同一 release 的服務映像流程，缺少釘定映像就拒絕啟動，每次掃描阻擋可修 Critical／High。這些不代替正式 TLS 與部署驗收。
 
+### Prometheus
+
+[`prometheus/`](prometheus/) 核對產品版本與 Go 模組版本指向的同一來源 commit、模組 checksum 及同一官方 release 的 UI archive；以現行 Go 和修補後的網路套件重建服務與 `promtool`，保留上游非 root 身分、資料目錄與預設設定。使用上游腳本產生內嵌 UI；測試後移除模組快取中的生成物並重新驗證，不覆寫掃描元件版本。
+
+建置執行發行模組內的全部 Go 測試，以結構化結果回報通過、略過、無測試套件及原始 exit code，失敗時拒絕建置；完整事件保留在 builder stage。未包含發行模組以外的子模組與 JavaScript 測試，上游選擇性或自行略過的案例不算通過。CI 以隔離資料卷驗證上游映像寫入的資料可由重建版讀取，另檢查新指標、錯誤查詢、規則通知、相同 UI 資產及 remote-read 長度邊界。這些不代替正式通知、長期資料升級與節點部署驗收。
+
+正式環境使用同一 release 的自建映像與 digest，未發佈就拒絕 render 或啟動；開發環境的 observability profile 直接建置相同 Dockerfile。部署設定以相同映像的 `promtool` 驗證，每次 Image Scan 阻擋可修 Critical／High。
+
 ### Alertmanager
 
 [`alertmanager/`](alertmanager/) 核對目前釘定穩定版的來源 commit 與模組 checksum，以現行 Go 和修補後的既有相依套件重建 `alertmanager` 與 `amtool`。UI 使用同一官方 release 的 checksum 釘定產物；生成 UI 與驗收測試所需的執行檔只暫放在模組快取，測試後移除並重新驗證模組。最終映像保留上游的非 root 設定、入口、儲存路徑與 UI，不帶編譯工具。
