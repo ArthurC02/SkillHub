@@ -559,6 +559,12 @@ Dockerfile 與 `infra/compose/docker-compose.yml` 新 `app` profile 的說明。
 
 完整上游測試在獨立副本執行；SNI 案例預先產生涵蓋兩個測試名稱的憑證，消除背景簽發的競態，保留原斷言。路徑授權案例另用獨立程序執行，避免前例尚在關閉的共用伺服器接走請求；其餘案例維持原流程，全數仍各執行一次。出貨碼仍來自通過 checksum 與 `go mod verify` 的原始模組。CI 驗證代理本文、identity／gzip／zstd、已路由回應的安全標頭、404 與上游不可用的 502；部署設定檢查也建置同一 Dockerfile。發佈與 digest 解析沿用同一 release 的服務映像流程，缺少釘定映像就拒絕啟動，每次掃描阻擋可修 Critical／High。這些不代替正式 TLS 與部署驗收。
 
+### Alertmanager
+
+[`alertmanager/`](alertmanager/) 核對目前釘定穩定版的來源 commit 與模組 checksum，以現行 Go 和修補後的既有相依套件重建 `alertmanager` 與 `amtool`。UI 使用同一官方 release 的 checksum 釘定產物；生成 UI 與驗收測試所需的執行檔只暫放在模組快取，測試後移除並重新驗證模組。最終映像保留上游的非 root 設定、入口、儲存路徑與 UI，不帶編譯工具。
+
+完整上游測試涵蓋 CLI、叢集、API 與 UI；上游未設定郵件測試配置及自行略過的案例需獨立回報，不能當作正式 SMTP 證據。CI 另以隔離網路驗證 UI／gzip、錯誤 JSON、告警查詢與本機 webhook 的觸發／解除；部署設定檢查使用同一自建映像的 `amtool` 驗證正式模板。發佈、release digest 解析、啟動檢查與每次漏洞掃描沿用其他自建服務的流程；正式 SMTP／TLS 與節點驗收仍需實際環境證據。
+
 ### `web` 的反向代理：為什麼不是 `location /api/`
 
 `core/api/client.ts` 的 `API_BASE_URL` 預設空字串（同源），這在 clean test mode（`cmd/api`

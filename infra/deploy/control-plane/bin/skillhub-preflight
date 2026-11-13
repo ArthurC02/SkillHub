@@ -3,7 +3,7 @@ set -eu
 secrets="${SKILLHUB_SECRETS_DIR:-/etc/skillhub/secrets}"
 status=0
 
-for name in SKILLHUB_CADDY_IMAGE SKILLHUB_WEB_IMAGE SKILLHUB_PLATFORM_IMAGE SKILLHUB_LLM_IMAGE SKILLHUB_POSTGRES_IMAGE SKILLHUB_POSTGRES_EXPORTER_IMAGE SKILLHUB_BLACKBOX_EXPORTER_IMAGE; do
+for name in SKILLHUB_ALERTMANAGER_IMAGE SKILLHUB_CADDY_IMAGE SKILLHUB_WEB_IMAGE SKILLHUB_PLATFORM_IMAGE SKILLHUB_LLM_IMAGE SKILLHUB_POSTGRES_IMAGE SKILLHUB_POSTGRES_EXPORTER_IMAGE SKILLHUB_BLACKBOX_EXPORTER_IMAGE; do
     ref="$(printenv "$name" || true)"
     if ! printf '%s' "$ref" | grep -Eq '@sha256:[0-9a-f]{64}$'; then
         echo "preflight: $name='$ref' is not pinned by digest; a tag can move under a running deployment" >&2

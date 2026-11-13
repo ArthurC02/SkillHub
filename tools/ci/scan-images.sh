@@ -67,7 +67,7 @@ EOF
 
 build_and_scan() {
   local name="$1" context="$2" dockerfile="$3"
-  docker build -q -t "skillhub-scan/$name:local" -f "$ROOT/$dockerfile" "$ROOT/$context" >/dev/null
+  docker build --progress=plain -t "skillhub-scan/$name:local" -f "$ROOT/$dockerfile" "$ROOT/$context" >/dev/null
   scan "$name" "skillhub-scan/$name:local" "$4"
 }
 
@@ -78,6 +78,7 @@ build_and_scan postgres infra/images/postgres infra/images/postgres/Dockerfile d
 build_and_scan postgres-exporter infra/images/postgres-exporter infra/images/postgres-exporter/Dockerfile deployed
 build_and_scan blackbox-exporter infra/images/blackbox-exporter infra/images/blackbox-exporter/Dockerfile deployed
 build_and_scan caddy infra/images/caddy infra/images/caddy/Dockerfile deployed
+build_and_scan alertmanager infra/images/alertmanager infra/images/alertmanager/Dockerfile deployed
 build_and_scan sandboxd . infra/images/sandboxd/Dockerfile deployed
 build_and_scan devtools infra/images/devtools infra/images/devtools/Dockerfile dev-only
 

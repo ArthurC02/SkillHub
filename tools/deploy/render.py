@@ -28,6 +28,7 @@ ROLES = {
             "SKILLHUB_SMTP_SMARTHOST", "SKILLHUB_SMTP_FROM", "SKILLHUB_SMTP_USERNAME", "SKILLHUB_GATEWAY_URL",
         ],
         "images": {
+            "SKILLHUB_ALERTMANAGER_IMAGE": "skillhub-alertmanager",
             "SKILLHUB_CADDY_IMAGE": "skillhub-caddy",
             "SKILLHUB_WEB_IMAGE": "skillhub-web",
             "SKILLHUB_PLATFORM_IMAGE": "skillhub-platform",

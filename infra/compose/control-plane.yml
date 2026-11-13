@@ -178,7 +178,7 @@ services:
     restart: unless-stopped
 
   alertmanager:
-    image: prom/alertmanager:v0.34.2@sha256:39d8bb3966c694a124428a3a88fbcffd40bd069129ecd47c059f8a3f17c55f3b
+    image: ${SKILLHUB_ALERTMANAGER_IMAGE:?set SKILLHUB_ALERTMANAGER_IMAGE in release.env}
     cpus: "0.25"
     mem_limit: 128m
     restart: unless-stopped
