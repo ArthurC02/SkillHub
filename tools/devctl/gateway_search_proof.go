@@ -21,6 +21,7 @@ type searchProof struct {
 	containers                            []string
 	out                                   io.Writer
 	networkCreated                        bool
+	postgresTag                           string
 	sourceHashes                          map[string]string
 }
 
@@ -93,8 +94,7 @@ func (p *searchProof) prepare() error {
 	if err != nil {
 		return err
 	}
-	p.postgres, err = searchProofImage(p.root, "infra/compose/docker-compose.yml", "pgvector/pgvector")
-	if err != nil {
+	if err := p.preparePostgres(); err != nil {
 		return err
 	}
 	config, err := os.ReadFile(filepath.Join(p.root, "infra/compose/litellm-config.yaml"))
@@ -125,6 +125,30 @@ func (p *searchProof) prepare() error {
 	}
 	_, err = p.command("gateway-proof-build", buildEnv, "go", "-C", "apps/platform", "test", "-c", "-o", filepath.Join(p.dir, "gateway-search-proof.test"), "./internal/trial/execution")
 	return err
+}
+
+func (p *searchProof) preparePostgres() error {
+	tag := "skillhub-search-proof/postgres:" + filepath.Base(p.dir)
+	data, err := p.command("postgres-tag-check", nil, "docker", "image", "ls", "-q", "--filter", "reference="+tag)
+	if err != nil {
+		return err
+	}
+	if len(bytes.TrimSpace(data)) != 0 {
+		return fmt.Errorf("test image tag already exists: %s", tag)
+	}
+	p.postgresTag = tag
+	if _, err := p.command("postgres-build", nil, "docker", "build", "--progress=plain", "-t", tag, filepath.Join(p.root, "infra/images/postgres")); err != nil {
+		return err
+	}
+	data, err = p.command("postgres-image-id", nil, "docker", "image", "inspect", "--format", "{{.Id}}", tag)
+	if err != nil {
+		return err
+	}
+	p.postgres = strings.TrimSpace(string(data))
+	if !regexp.MustCompile(`^sha256:[0-9a-f]{64}$`).MatchString(p.postgres) {
+		return errors.New("rebuilt Postgres image has no valid immutable identity")
+	}
+	return nil
 }
 
 func searchProofConfig(data []byte) ([]byte, []byte, error) {
@@ -226,7 +250,7 @@ func (p *searchProof) execute() error {
 	if err != nil {
 		return err
 	}
-	if err := p.wait("postgres-ready", time.Minute, "docker", "exec", pg, "pg_isready", "-U", "proof", "-d", "litellm"); err != nil {
+	if err := p.wait("postgres-ready", time.Minute, "docker", "exec", pg, "pg_isready", "-h", "127.0.0.1", "-U", "proof", "-d", "litellm"); err != nil {
 		return err
 	}
 	mock, err := p.start("mock", "--mount", p.mount(), "--entrypoint", "sh", p.gateway, "-c", "cp /proof/search-proof-provider /tmp/search-proof-provider && chmod +x /tmp/search-proof-provider && exec /tmp/search-proof-provider")
@@ -314,7 +338,7 @@ func checkSearchProofModels(calls []searchProofModelObservation) error {
 
 func (p *searchProof) snapshotSources() error {
 	p.sourceHashes = make(map[string]string)
-	for _, name := range []string{"apps/platform/internal/trial/execution/gateway.go", "apps/platform/internal/trial/execution/provider.go", "apps/platform/internal/trial/execution/gateway_search_integration_test.go", "apps/sandbox/internal/sandbox/contract.go", "contracts/openapi/sandbox-provider.yaml", "tools/devctl/main.go", "tools/devctl/gateway_search_proof.go", "tools/devctl/searchproof/main.go", "infra/compose/litellm-config.yaml"} {
+	for _, name := range []string{"apps/platform/internal/trial/execution/gateway.go", "apps/platform/internal/trial/execution/provider.go", "apps/platform/internal/trial/execution/gateway_search_integration_test.go", "apps/sandbox/internal/sandbox/contract.go", "contracts/openapi/sandbox-provider.yaml", "tools/devctl/main.go", "tools/devctl/gateway_search_proof.go", "tools/devctl/searchproof/main.go", "infra/compose/litellm-config.yaml", "infra/compose/gateway.yml", "infra/compose/docker-compose.yml", "infra/images/postgres/Dockerfile", "infra/images/postgres/skillhub-backup", "infra/images/postgres/skillhub-restore-drill"} {
 		data, err := os.ReadFile(filepath.Join(p.root, name))
 		if err != nil {
 			return err
@@ -348,6 +372,16 @@ func (p *searchProof) clean() (resultErr error) {
 		_, _ = p.command(name+"-tail", nil, "docker", "logs", "--tail", "80", name)
 		_, err := p.command(name+"-cleanup", nil, "docker", "rm", "-f", "-v", name)
 		resultErr = errors.Join(resultErr, err)
+	}
+	if p.postgresTag != "" {
+		data, err := p.command("postgres-cleanup-check", nil, "docker", "image", "ls", "-q", "--filter", "reference="+p.postgresTag)
+		if err == nil && len(bytes.TrimSpace(data)) != 0 {
+			_, err = p.command("postgres-image-cleanup", nil, "docker", "image", "rm", p.postgresTag)
+		}
+		resultErr = errors.Join(resultErr, err)
+		if err == nil {
+			p.postgresTag = ""
+		}
 	}
 	if p.networkCreated {
 		_, err := p.command("network-cleanup", nil, "docker", "network", "rm", p.network)

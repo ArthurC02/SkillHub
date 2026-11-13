@@ -402,7 +402,7 @@ docker run --rm --network container:skillhub-postgres-1 \
 - `web` 與瀏覽器分片的依賴安裝使用 `npm ci --no-audit`，避免每個安裝步驟重複查詢漏洞；獨立的 `dependency-audit` 仍執行完整的既定稽核並在失敗時擋下交付。
 - 每次都跑、沒有 path filter 的有三個並行 job：`devctl`（devctl 自己的 vet／race 測試、`automation-check`、`agent-sync`）、`contracts-drift`（`gen --check` 與 `contracts/` 的各項檢查）與 `dependency-audit`（見下一條）。純文件 commit 的等待時間由三者中最慢的那個決定，不再是相加。
 - `contracts-drift` 把三個 codegen 映像以 `docker save` 存進 Actions cache，鍵是 `tools/codegen/` 下 git 追蹤檔案與 `tools/toolchain.yaml` 三行 `*_codegen` 映像標籤的雜湊（其他工具釘版不影響它）；命中時先 `docker load`，再以 `SKILLHUB_CODEGEN_IMAGES_PREBUILT=true` 跑 `gen --check`，devctl 看到本機已有同標籤映像就不重建。來源一改鍵就變、照常重建；本機不設這個變數，所以改 codegen 來源照樣重建。
-- **搜尋閘道協定**：`gateway-search` 在平台或服務映像範圍變更時執行 `go -C tools/devctl run . gateway-search-proof`。它從 Compose 取釘住的映像，在獨立內部網路以本機搜尋／模型替身驗證真正的 Go 金鑰簽發器、逐層授權、原生搜尋攔截、撤銷與費用紀錄；不呼叫付費供應商，結束只清除自己建立的資源。證據保留 7 天，操作與尚未完成的範圍見[執行時搜尋](runtime-web-search.md)。
+- **搜尋閘道協定**：`gateway-search` 在平台或服務映像範圍變更時執行 `go -C tools/devctl run . gateway-search-proof`。它從 Compose 取釘住的閘道映像，PostgreSQL 則從與開發環境相同的 Dockerfile 建置專屬映像、核對不可變 ID；在獨立內部網路以本機搜尋／模型替身驗證真正的 Go 金鑰簽發器、逐層授權、原生搜尋攔截、撤銷與費用紀錄；不呼叫付費供應商，結束只清除自己建立的資源。證據保留 7 天，操作與尚未完成的範圍見[執行時搜尋](runtime-web-search.md)。
 - **依賴漏洞**（見[開發自動化與依賴治理](../adr/README.md#開發自動化與依賴治理)）：push／PR 跑 `devctl dep-audit`，只看會出貨的四個專案——`apps/web` 的 production 依賴（high 以上）、`apps/platform`／`apps/sandbox` 程式呼叫得到的漏洞、`apps/llm` 的非 dev 依賴——而且**只擋有修補版的**，沒有修補版的印成 `NOTE`。每週排程與 `workflow_dispatch` 改跑 `--full`：每個有 lockfile 的專案連 dev 依賴、npm 取 moderate 以上、Go 連沒呼叫到的模組也算，紅了就是那一週的報告；`--full` 另把 `tools/toolchain.yaml` 裡 Dependabot 看不到的工具對照最新版，過了 7 天冷卻還沒跟上的印成 `NOTE`（查不到也印 `NOTE`，不擋）。`images-push` 等它綠了才推。本機 `task deps:audit`（加 `-- --full` 全掃）；同一條命令也擋出貨依賴的授權與 workflow 的 zizmor 稽核（用法見〈依賴的准入、更新與閘門〉）；job 帶 `GH_TOKEN`，zizmor 連網的稽核項目只在 CI 跑。工具版本在 `tools/toolchain.yaml` 的 `govulncheck`／`pip_audit`／`go_licenses`／`zizmor`。
 - `golangci-lint` 由 [`.github/actions/golangci-lint`](../../.github/actions/golangci-lint/action.yml) 安裝：版本讀 `tools/toolchain.yaml` 的 `golangci_lint`，編好的 binary 以「版本＋OS＋Go 版本」為鍵另外快取。不能指望 `setup-go` 的快取帶著它——那份快取的鍵只有 `go.sum` 的雜湊，第一次存下之後內容就不再更新，`go.sum` 沒動過的模組會一直拿到那天的舊內容。
 - `sandbox` 的 filter 只看 `infra/images/runtime-agent-sdk/**`：其他服務映像與 `infra/images/` 下的說明文件不影響 sandbox 的任何測試。`infra/nodes/gvisor-baseline.txt` 與 `infra/deploy/sandbox/daemon.json` 也在 filter 裡：Suite 1 安裝的就是基準檔指名的 release、註冊 runsc 用的就是那份 runtimeArgs，換基準不跑 sandbox 等於沒驗新版。
@@ -416,6 +416,8 @@ docker run --rm --network container:skillhub-postgres-1 \
 決策與理由在[開發自動化與依賴治理](../adr/README.md#開發自動化與依賴治理)（漏洞與其餘依賴治理規則）；這裡只放動手時要知道的事。
 
 **新增一個直接依賴之前**，回答五個問題，答案寫進 commit message：標準庫、平台或已經裝的依賴做得到嗎（做得到就不加）；授權在允許清單上嗎；還有人維護嗎（最近一年有發佈、安全問題有回應）；會多拉進幾個傳遞依賴；需要 install script 嗎（`ignore-scripts=true` 會讓它失效，需要就寫 ADR）。`apps/web` 的執行期依賴另外要一份 ADR（理由見[設計系統、信任訊號與畫面用語](../adr/README.md#設計系統信任訊號與畫面用語)的最小依賴面，前例見[營運後台](../adr/README.md#營運後台)）。
+
+開發 PostgreSQL 使用與正式環境相同的自建來源；CI 的原版資料庫 fixture 仍須與該 Dockerfile 的上游基底 tag／digest 同步，由 `dependency-policy` 比對。
 
 **這些版本要一起動**。Dependabot 會提出升級，但通常只改到其中一處；名冊（`tools/devctl/toolchain_versions.go`）上的工具由 `dependency-policy` 比對每個位置，不一致就 FAIL 並列出各位置的值（見[開發自動化與依賴治理](../adr/README.md#開發自動化與依賴治理)）：
 

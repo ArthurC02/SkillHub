@@ -1191,6 +1191,7 @@
         "tools/devctl/embedding_dims_test.go",
         "tools/devctl/env_declared_test.go",
         "tools/devctl/fix_proof_test.go",
+        "tools/devctl/gateway_search_postgres_test.go",
         "tools/devctl/gateway_search_proof_test.go",
         "tools/devctl/generate_characterization_test.go",
         "tools/devctl/generate_openapi_test.go",

@@ -187,6 +187,62 @@ func TestTheRealTreeFollowsTheDependencyPolicy(t *testing.T) {
 	}
 }
 
+func TestOwnedPostgresBaseRemainsTheCIFixturePin(t *testing.T) {
+	t.Parallel()
+	digest := "@sha256:" + strings.Repeat("a", 64)
+	for _, test := range []struct {
+		name, image string
+		drift       bool
+	}{
+		{"same with registry", "docker.io/pgvector/pgvector:pg18" + digest, false},
+		{"different tag", "pgvector/pgvector:pg17" + digest, true},
+		{"different digest", "pgvector/pgvector:pg18@sha256:" + strings.Repeat("b", 64), true},
+		{"other fixture", "redis:7" + digest, false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			files := map[string]string{
+				".github/dependabot.yml":           "updates:\n  - package-ecosystem: docker-compose\n    directory: /infra/compose\n  - package-ecosystem: docker\n    directory: /infra/images/postgres\n",
+				"infra/compose/docker-compose.yml": "services:\n  postgres:\n    build: ../images/postgres\n    pull_policy: build\n",
+				"infra/images/postgres/Dockerfile": "FROM pgvector/pgvector:pg18" + digest + "\n",
+				".github/workflows/ci.yml":         "jobs:\n  test:\n    services:\n      db:\n        image: " + test.image + "\n",
+			}
+			var paths []string
+			for name, content := range files {
+				full := filepath.Join(root, filepath.FromSlash(name))
+				if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(full, []byte(content), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				paths = append(paths, name)
+			}
+			for _, args := range [][]string{{"init", "-q"}, append([]string{"add", "--"}, paths...)} {
+				if output, err := exec.Command("git", append([]string{"-C", root}, args...)...).CombinedOutput(); err != nil {
+					t.Fatalf("git %v: %v: %s", args, err, output)
+				}
+			}
+			var drift []string
+			for _, problem := range dependencyPolicyProblems(root) {
+				if strings.HasPrefix(problem, ".github/workflows/ci.yml:") && strings.Contains(problem, " differs from ") {
+					drift = append(drift, problem)
+				}
+			}
+			if !test.drift {
+				if len(drift) != 0 {
+					t.Fatalf("unexpected drift: %v", drift)
+				}
+				return
+			}
+			if len(drift) != 1 || !strings.Contains(drift[0], "infra/images/postgres/Dockerfile's pgvector/pgvector:pg18"+digest) {
+				t.Fatalf("expected one drift naming the owned image's base: %v", drift)
+			}
+		})
+	}
+}
+
 func TestADeployTimeComposeImageMustBeOneAPreflightRefusesUnpinned(t *testing.T) {
 	t.Parallel()
 	digest := "@sha256:" + strings.Repeat("a", 64)
