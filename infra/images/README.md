@@ -547,6 +547,14 @@ Dockerfile 與 `infra/compose/docker-compose.yml` 新 `app` profile 的說明。
 
 開發 Compose 與搜尋閘道協定驗證都建置 [`postgres/`](postgres/)，沿用正式服務已採用的系統套件及執行檔修補。開發 Compose 仍只啟動既有核心服務，保留資料卷與連線設定；首次啟動需要建置映像。搜尋驗證使用專屬標籤與不可變 image ID，結束只回收本次建立的標籤。CI 原版資料庫 fixture 的 tag／digest 以同一 Dockerfile 的上游基底為準，與真正執行的自建映像分別紀錄；不以 fixture 的版本取代自建映像掃描。
 
+### SeaweedFS
+
+[`seaweedfs/`](seaweedfs/) 核對釘定穩定版的來源 commit 與模組 checksum，以現行 Go 和修補後的既有網路、序列化相依套件重編預設執行檔，並升級穩定系統套件庫的 zlib。保留上游入口、使用者切換、設定、資料目錄與 Rust 輔助程式；編譯工具、Redis fixture 與測試產物不進正式映像。
+
+Go 測試在經完整性驗證的獨立副本執行，採用官方 `weed` 套件範圍、可選後端 tags 與 Redis fixture；沿用 Prometheus 建置的 Go 結果彙整器，保存原始 exit code 與完整事件，再由出貨 stage 拒絕失敗或空跑結果。上游自行停用、需要外部服務或略過的案例，不算實際後端驗收；根目錄的其他整合套件不在此範圍。
+
+開發 Compose、平台授權測試、stack smoke 與備份演練共用同一 Dockerfile。兩支演練腳本要求明確提供自建的 `SEAWEEDFS_IMAGE`，CI 在啟動前建置並以 commit SHA 作 tag；同一來源納入發佈與每次漏洞掃描的阻擋層。這些不代替真實節點的 TLS、既有實例升級與備份驗收。
+
 ### Postgres Exporter
 
 [`postgres-exporter/`](postgres-exporter/) 從釘定的上游穩定版 commit 重建相同版本，使用 Repo 的 Go 工具鏈與修補後的既有 Go 相依套件。最終層保留上游的非 root 使用者、入口與 9187 埠，只替換執行檔，不帶編譯工具。
@@ -689,7 +697,7 @@ digest 由 `docker pull` 後 `docker inspect --format '{{index .RepoDigests 0}}'
 **Tag 慣例：commit SHA，絕不用 `latest`**——理由與 `runtime-agent-sdk` 那條一致
 （見[Repo 結構、CI 與驗證層](../../docs/adr/README.md#repo-結構ci-與驗證層) job 5 原文、本檔「Digest 更新程序」一節）：部署與回滾都要能指向明確的
 commit，`latest` 是會動的標的。`.github/workflows/ci.yml` 的 `images` job 以
-commit SHA 為 tag 建置這三個映像，先跑 `tools/ci/stack-smoke.sh`；`images-push`
+commit SHA 為 tag 建置應用服務與 SeaweedFS，先跑 `tools/ci/stack-smoke.sh`；`images-push`
 只在 main 的 push 且其餘閘門全綠時把同一組 tag 推上 GHCR。本機建置用 `:local`
 tag 驗證。
 

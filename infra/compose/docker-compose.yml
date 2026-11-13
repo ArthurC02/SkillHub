@@ -21,7 +21,10 @@ services:
   # Probes 127.0.0.1, not localhost: this container listens on IPv4 only, and
   # localhost can resolve to ::1 first.
   seaweedfs:
-    image: chrislusf/seaweedfs:4.52@sha256:57877e32bb90073b37dc109b438ba66e84fd5ed9ced5f5c04f56444ef243ce59
+    build:
+      context: ../..
+      dockerfile: infra/images/seaweedfs/Dockerfile
+    pull_policy: build
     command: server -s3 -s3.config=/etc/seaweedfs/s3.json -dir=/data
     ports:
       - "127.0.0.1:8333:8333"
