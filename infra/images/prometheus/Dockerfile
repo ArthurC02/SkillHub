@@ -39,7 +39,7 @@ RUN --mount=type=cache,target=/go/pkg/mod,sharing=locked \
     && chmod -R u+w /tmp/prometheus-tests \
     && (cd /tmp/prometheus-tests \
         && go get golang.org/x/net@v0.62.0 \
-        && { status=0; go test -mod=mod -tags=netgo,builtinassets -json -count=1 -p 2 ./... >/tmp/test-results.jsonl 2>/tmp/test-stderr.log || status=$?; \
+        && { status=0; env -u OTEL_EXPORTER_OTLP_TRACES_ENDPOINT go test -mod=mod -tags=netgo,builtinassets -json -count=1 -p 2 ./... >/tmp/test-results.jsonl 2>/tmp/test-stderr.log || status=$?; \
             cat /tmp/test-stderr.log >&2; python3 /tmp/summarize-tests.py /tmp/test-results.jsonl "$status"; }) \
     && rm "$source_dir/web/ui/embed.go" \
     && rm -rf "$source_dir/web/ui/static" \
