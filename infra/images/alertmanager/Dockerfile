@@ -7,6 +7,7 @@ ARG ALERTMANAGER_COMMIT=e8349048265ccc0871c3d0d668b05eacc68baf50
 ARG ALERTMANAGER_SUM=h1:4oOnHs4J41X9n+7MucFjA3I5i5MtasjWTnIY27q5Qkw=
 ARG ALERTMANAGER_UI_SHA=3d6b13c5af094724e0bed8f757399e08af44d40d6c6cd87392a1f8ee6ed1e457
 WORKDIR /build
+COPY prepare-tests.py /fixture/
 RUN --mount=type=cache,target=/go/pkg/mod,sharing=locked \
     go mod init skillhub.internal/alertmanager-build \
     && go get github.com/prometheus/alertmanager@v$ALERTMANAGER_VERSION \
@@ -31,7 +32,14 @@ RUN --mount=type=cache,target=/go/pkg/mod,sharing=locked \
         -o /out/amtool github.com/prometheus/alertmanager/cmd/amtool \
     && ln -s /out/alertmanager "$source_dir/alertmanager" \
     && ln -s /out/amtool "$source_dir/amtool" \
+    && cp -a "$source_dir" /tmp/alertmanager-tests \
+    && chmod -R u+w /tmp/alertmanager-tests \
+    && python3 /fixture/prepare-tests.py --self-test \
+    && python3 /fixture/prepare-tests.py \
+    && gofmt -w /tmp/alertmanager-tests/provider/mem/mem_test.go \
+    && go mod edit -replace github.com/prometheus/alertmanager=/tmp/alertmanager-tests \
     && go test -mod=mod -v -count=1 -p 2 github.com/prometheus/alertmanager/... \
+    && go mod edit -dropreplace github.com/prometheus/alertmanager \
     && rm "$source_dir/alertmanager" "$source_dir/amtool" \
     && rm -rf "$source_dir/ui/app/dist" \
     && trap - EXIT \
