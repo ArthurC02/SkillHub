@@ -86,7 +86,7 @@ type Service struct {
 	AppliedSuggestions func(ctx context.Context, workspaceID, versionID pgtype.UUID) ([]AppliedSuggestion, error)
 	SourceLineage      func(ctx context.Context, sourceID pgtype.UUID) (LineageSource, error)
 
-	CuratedSource     func(ctx context.Context, skillID pgtype.UUID) (CuratedSource, bool, error)
+	CuratedSource     func(ctx context.Context, workspaceID, skillID pgtype.UUID) (CuratedSource, bool, error)
 	ReadSkill         func(ctx context.Context, workspaceID, skillID pgtype.UUID) (SkillFacts, bool, error)
 	ReadVersion       func(ctx context.Context, workspaceID, versionID pgtype.UUID) (VersionFacts, bool, error)
 	ReadCompatibility func(context.Context, pgtype.UUID) (RuntimeCompatibility, bool, error)

@@ -1,0 +1,121 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "run-cost-observation",
+  "proposer": "agent:codex",
+  "requirement_id": "GEN-028",
+  "status": "submitted",
+  "change_classification": "material",
+  "submitted_at": "2026-11-12T19:11:00.202590Z",
+  "verified_at": null,
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "5c77ab099af460e2fd0d800efa7edf75c66bd11b",
+    "registry_digest": "sha256:6b00661653d4bf9afb0e009812d1fbc31e79f7906569be75780541e31c955d5c",
+    "committed_digest": "sha256:6b00661653d4bf9afb0e009812d1fbc31e79f7906569be75780541e31c955d5c"
+  },
+  "affected_contexts": [
+    "run",
+    "credit"
+  ],
+  "rule_ids": [
+    "usage-with-unknown-cost-is-recorded-but-never-debited",
+    "a-charge-is-debited-once-per-idempotency-key",
+    "a-run-whose-spend-was-unreadable-is-read-again-for-a-day"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "run",
+    "invariant": "Run 擁有觀察批次與生命週期；Credit 擁有已記錄費用與其來源。觀察不接管費用完整性的真相、不改結算或扣款，沒有完整性證據就不能發布為完整費用。",
+    "evidence": [
+      {
+        "path": "apps/platform/internal/trial/execution/doc.go",
+        "lines": {
+          "start": 1,
+          "end": 2
+        }
+      },
+      {
+        "path": "apps/platform/internal/creator/credit/doc.go",
+        "lines": {
+          "start": 1,
+          "end": 3
+        }
+      }
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "擴充既有 credit-run-ledger 同步協作：composition root 注入批次、唯讀的已記錄費用事實，沒有新 Context 依賴或反向匯入。Run 不讀 Credit 資料表，Credit 不讀 Run 資料表；現有清理與財務交易保持各自 owner。",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [
+      "generated row、資料庫 transaction 與 ledger 內部物件不跨 owner。",
+      "監控不觸發扣款、清理、Run 派送、費用補報或模型／閘道呼叫。",
+      "Worker 不繞過兩個 owner 直接聯表，監控不變成預算或帳務輸入。"
+    ],
+    "evidence": [
+      {
+        "path": "apps/platform/internal/entrypoint/wiring/credit.go",
+        "lines": {
+          "start": 153,
+          "end": 153
+        }
+      }
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "費用標記與已記錄資料由不同 owner 擁有，只有布林或估價不足以形成完整費用。",
+      "缺席的 cost event 不能讓 Run 消失於分母；未知與實際零必須可分辨。",
+      "cost_settled_at 與 gateway 來源不能單獨證明歷史資料完整；頁數截斷可能只留下部分加總。",
+      "背景刷新必須有界且唯讀，副本重讀不能重扣或累加同一批 Run。",
+      "資料可能在兩次 owner 讀取之間完成結算，不能把混合的觀察說成某個歷史時間點的完整費用。"
+    ],
+    "decision": "不新增 Aggregate 或統計儲存。Run 沿用既有 gauge refresh 選取固定的最近 24 小時 Run 批次，以既有同步 owner 協作批次取得 Credit 的費用事實及其完整性證據，再發布固定 coverage 與 known 組金額。未知或無法共同確認的資料採保守分類，錯誤撤下所有該次觀察。完整性來源與跨 owner 一致性方案尚待審查，不能以估價、部分加總或歷史標記替代。",
+    "invariants_preserved": [
+      "Run 仍擁有永久識別、狀態與清理，Credit 仍擁有費用與帳本。",
+      "價格未知不扣點；真實價格到齊後只依既有冪等交易結算一次。",
+      "監控不改保存與去識別化規則，不讀問題、答案、Skill 或 Trace 本文。"
+    ],
+    "rejected_alternatives": [
+      "直接從 cost_events 當分母會漏掉沒有事件的 Run，也會把 unknown 與後續 actual 兩筆算成兩場。",
+      "只以 cost_settled_at 或 source=gateway 當完整性，會把舊的截斷加總誤報成完整。",
+      "從近期估價推算每場費用、把未知記零或只報金額，都會隱藏涵蓋缺口。",
+      "逐 Run 重打閘道既造成 N+1 負載，也不能保證歷史 log 仍在。",
+      "跨 Context 聯表或用監控回補／重扣款，會破壞既有 owner 邊界。"
+    ],
+    "proof_obligations": [
+      "run-cohort",
+      "owner-facts",
+      "cost-coverage",
+      "amounts",
+      "failed-read",
+      "private-observation",
+      "readonly-replay"
+    ],
+    "counterfactual_check": "分別移除時間界線、忽略無事件 Run、將 nil／未知當零、把 settled marker 當完整、將估價或部分加總混入 known、保留失敗後舊數字、加入動態識別標籤、改成逐筆讀取或在觀察時寫帳；每條焦點測試須變紅，還原後再綠。"
+  },
+  "event_change": null,
+  "contract_change": {
+    "producer": "credit",
+    "consumers": [
+      "run"
+    ],
+    "version": "proposed-private-batch-cost-facts-v1",
+    "compatibility_policy": "既有同步協作上的新增內部唯讀操作，現有結算、估價、是否已記帳及 public/event 契約保持原義；不能以此提案為依據先改 Port。",
+    "data_classification": "internal Run identifiers and cost facts; no content or credentials; only aggregate metrics leave the observation",
+    "breaking_change": false,
+    "timeout_retry_behavior": "沿用既有背景刷新期限，取消與失敗直接撤下該次觀察；不額外重試模型、結算或費用事件。"
+  },
+  "registry_updates": [],
+  "risk_flags": [
+    "cross_context",
+    "sensitive_data"
+  ],
+  "open_questions": [
+    "須由 developer 審查 Credit → Run 的批次事實操作與 coverage 判準，不能以既有估價或布林的「已記帳」作為完整金額。",
+    "舊的 Run 清理路徑在 spend log 超過讀取頁數上限時可把部分加總當結清，且現有費用資料沒有獨立完整性欄位。須確認可驗證的完整性來源、舊記錄的辨識與必要遷移；無法證明的舊記錄維持 unknown，不補造歷史價格或重扣款。",
+    "跨 owner 的兩次讀取不是共同歷史快照；介面須提供足以避免把尚未共同提交的費用誤判為 known 的證據，或採保守的 unknown／unsettled。實際採用的一致性方式須先經審查。"
+  ],
+  "approvals": []
+}

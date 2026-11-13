@@ -9,6 +9,35 @@ import (
 	"testing"
 )
 
+func TestCreationCaseClassificationsCrossThePrivateHTTPBoundary(t *testing.T) {
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Cases []map[string]any `json:"challenge_cases"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Error(err)
+			http.Error(w, "invalid request", http.StatusBadRequest)
+			return
+		}
+		if len(body.Cases) != 2 || body.Cases[0]["expected_interaction"] != "question" || body.Cases[1]["expected_interaction"] != "direct_answer" {
+			t.Errorf("request classifications = %+v, want question and direct_answer", body.Cases)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"outcome":"confirm_brief","message":"confirm","challenge_cases":[{"name":"ask","prompt":"Summarize.","criteria":["Ask for text."],"expected_interaction":"question"},{"name":"answer","prompt":"Summarize: ships tomorrow.","criteria":["State the shipment."],"expected_interaction":"direct_answer"}]}`))
+	}))
+	t.Cleanup(s.Close)
+	got, err := (&Client{BaseURL: s.URL}).CreationStep(context.Background(), CreationStepRequest{GatewayKey: "key", ChallengeCases: []CreationChallengeCase{
+		{Name: "ask", Prompt: "Summarize.", Criteria: []string{"Ask for text."}, ExpectedInteraction: "question"},
+		{Name: "answer", Prompt: "Summarize: ships tomorrow.", Criteria: []string{"State the shipment."}, ExpectedInteraction: "direct_answer"},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.ChallengeCases) != 2 || got.ChallengeCases[0].ExpectedInteraction != "question" || got.ChallengeCases[1].ExpectedInteraction != "direct_answer" {
+		t.Fatalf("response classifications = %+v, want both retained", got.ChallengeCases)
+	}
+}
+
 func TestCreationStepSendsBothCredentials(t *testing.T) {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if got := r.Header.Get("Authorization"); got != "Bearer service" {

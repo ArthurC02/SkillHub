@@ -251,15 +251,17 @@ type Snapshot struct {
 	ModelChanged *ModelChange `json:"model_changed,omitempty"`
 }
 type envelope struct {
-	Snapshot        Snapshot    `json:"snapshot"`
-	Limits          Limits      `json:"limits"`
-	StartHash       string      `json:"start_hash"`
-	Deadline        time.Time   `json:"deadline"`
-	ActiveReceipt   pgtype.UUID `json:"active_receipt"`
-	ActiveDeadline  time.Time   `json:"active_deadline"`
-	ExistingSkillID string      `json:"existing_skill_id,omitempty"`
-	PreviousDraft   *Draft      `json:"previous_draft,omitempty"`
-	BriefRetries    int         `json:"brief_retries,omitempty"`
+	Snapshot          Snapshot    `json:"snapshot"`
+	Limits            Limits      `json:"limits"`
+	StartHash         string      `json:"start_hash"`
+	Deadline          time.Time   `json:"deadline"`
+	ActiveReceipt     pgtype.UUID `json:"active_receipt"`
+	ActiveDeadline    time.Time   `json:"active_deadline"`
+	ExistingSkillID   string      `json:"existing_skill_id,omitempty"`
+	PreviousDraft     *Draft      `json:"previous_draft,omitempty"`
+	BriefRetries      int         `json:"brief_retries,omitempty"`
+	SourceCheckedHash string      `json:"source_checked_hash,omitempty"`
+	sourceMessages    []Message
 }
 type View struct {
 	ID        string    `json:"id"`
@@ -337,6 +339,7 @@ func ParseID(v string) (pgtype.UUID, error) {
 func decode(row gen.CreationSession) (envelope, error) {
 	var e envelope
 	err := json.Unmarshal(row.Snapshot, &e)
+	e.Snapshot.Messages = withoutFetchedText(e.Snapshot.Messages)
 	return e, err
 }
 func view(row gen.CreationSession) (View, error) {

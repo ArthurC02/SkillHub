@@ -343,7 +343,7 @@ func (s *Service) permissionSummaryFor(
 		return PermissionSummary{}, err
 	}
 
-	snap := defaultPolicy(s.Deployment)
+	snap := versionPolicy(s.Deployment, version)
 	var live liveFacts
 	if held != nil {
 		live = held.live
@@ -360,7 +360,7 @@ func (s *Service) permissionSummaryFor(
 		DatasetTotalBytes: draft.DatasetTotalBytes,
 		Scripts:           scriptSummaryOf(scan),
 
-		Tools: []string{"sandbox filesystem (/work, /out)", "sandbox shell"},
+		Tools: snap.disclosedTools(),
 
 		MCPServers:      []string{},
 		Network:         NetworkSummary{Mode: snap.Egress.Mode, Allow: egressAllowLines(snap.Egress.Allow)},
@@ -403,6 +403,14 @@ func (s *Service) permissionSummaryFor(
 		Blocked:        blocked,
 		Notes:          notes,
 	}, nil
+}
+
+func (p policySnapshot) disclosedTools() []string {
+	tools := []string{"sandbox filesystem (/work, /out)", "sandbox shell"}
+	if p.WebSearch {
+		tools = append(tools, "公開資料搜尋（查詢送至搜尋供應商；查詢、來源網址與費用記入私人 Trace；計入本次 Run 預算）")
+	}
+	return tools
 }
 
 func (s *Service) testCaseDraftFor(
@@ -468,7 +476,7 @@ var permissionSummaryNotes = []string{
 	"預估成本是區間估計值,不是報價;實際費用以模型閘道記錄的實付金額為準。",
 
 	"Token 上限可跑的輪數取決於每輪的工具呼叫次數(每次工具結果都會重送整個前綴):純對話約 15 輪,每輪 1 次工具呼叫約 7.7 輪,每輪 2 次約 5 輪。",
-	"MVP 不支援 MCP Server,因此工具清單只有 Sandbox 內建的檔案與 Shell 存取。",
+	"外部 MCP Server 不會連線;可用的工具以上方清單為準。",
 	"Secrets 只顯示注入項目的名稱;實際值是每個 Run 專屬的短效憑證,不會出現在任何畫面、Log 或 Trace。",
 	"網路為預設封鎖,允許清單為空表示 Sandbox 不能連出任何位址。",
 	"以上任何一項變更(例如換一份 Dataset)都會產生新的摘要,必須重新確認才能開始 Run。",

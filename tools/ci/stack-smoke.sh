@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 # Starts the platform/web/llm images this build produced as real containers
 # and asserts they answer, then drives a real browser against them.
-# Usage: PLATFORM_IMAGE=... WEB_IMAGE=... LLM_IMAGE=... bash tools/ci/stack-smoke.sh
+# Usage: PLATFORM_IMAGE=... WEB_IMAGE=... LLM_IMAGE=... SEAWEEDFS_IMAGE=... bash tools/ci/stack-smoke.sh
 set -euo pipefail
 
 : "${PLATFORM_IMAGE:?PLATFORM_IMAGE must name the built platform image}"
 : "${WEB_IMAGE:?WEB_IMAGE must name the built web image}"
 : "${LLM_IMAGE:?LLM_IMAGE must name the built llm image}"
 
-PG_IMAGE="docker.io/pgvector/pgvector:pg18@sha256:2358fcba361ed2233a5ed81b5fe4ca779ccb304120ce531a3bf51c0ed7e2bc11"
-S3_IMAGE="docker.io/chrislusf/seaweedfs:4.48@sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d"
+PG_IMAGE="docker.io/pgvector/pgvector:pg18@sha256:c29f30688a9ad961691bdf0ec1650717cc132a5814619d80f80463d6e4c42e47"
+S3_IMAGE="${SEAWEEDFS_IMAGE:?SEAWEEDFS_IMAGE must name the built object-store image}"
 # Runs every check from inside the docker network rather than through a
 # published host port, which also exercises the DNS name nginx.conf dials.
 CURL_IMAGE="docker.io/curlimages/curl@sha256:c1fe1679c34d9784c1b0d1e5f62ac0a79fca01fb6377cdd33e90473c6f9f9a69"

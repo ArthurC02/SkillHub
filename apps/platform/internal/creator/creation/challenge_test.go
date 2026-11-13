@@ -13,7 +13,14 @@ import (
 )
 
 func aChallengeCase() ChallengeCase {
-	return ChallengeCase{Name: "日期不存在", Prompt: "請算 2 月 30 日入住的房價", Criteria: []string{"指出 2 月 30 日不存在"}}
+	return ChallengeCase{Name: "日期不存在", Prompt: "請算 2 月 30 日入住的房價", Criteria: []string{"指出 2 月 30 日不存在"}, ExpectedInteraction: "question"}
+}
+
+func pairedEvaluationCases() []ChallengeCase {
+	return []ChallengeCase{
+		{Name: "缺少輸入", Prompt: "請整理摘要。", Criteria: []string{"詢問要整理的原文。"}, ExpectedInteraction: "question"},
+		{Name: "完整輸入", Prompt: "請整理摘要：會議決定明天出貨。", Criteria: []string{"直接列出明天出貨的決議。"}, ExpectedInteraction: "direct_answer"},
+	}
 }
 
 func challengeCasesWith(n int) []ChallengeCase {
@@ -121,8 +128,8 @@ func TestMaterializingCreatesOneTestCasePerChallengeCaseAfterTheAcceptanceOne(t 
 
 	want := []createdTestCase{
 		{"創作驗收條件", "兩晚", []string{"列出總價"}},
-		{"刁難試跑：日期不存在", "請算 2 月 30 日入住的房價", []string{"指出 2 月 30 日不存在"}},
-		{"刁難試跑：改寫說法", "住兩個晚上多少錢", []string{"總價同兩晚"}},
+		{"評估案例：日期不存在", "請算 2 月 30 日入住的房價", []string{"指出 2 月 30 日不存在"}},
+		{"評估案例：改寫說法", "住兩個晚上多少錢", []string{"總價同兩晚"}},
 	}
 	if !reflect.DeepEqual(created, want) {
 		t.Fatalf("created test cases = %+v, want %+v", created, want)
@@ -135,7 +142,7 @@ func TestMaterializingCreatesOneTestCasePerChallengeCaseAfterTheAcceptanceOne(t 
 func TestAFailedChallengeTestCaseFailsTheMaterialize(t *testing.T) {
 	refused := errors.New("refused")
 	s := &Service{CreateAcceptanceTestCase: func(_ context.Context, _ pgx.Tx, _ identity.Workspace, _, name, _ string, _ []string) (string, error) {
-		if strings.HasPrefix(name, "刁難試跑") {
+		if strings.HasPrefix(name, "評估案例") {
 			return "", refused
 		}
 		return "tc", nil
@@ -151,7 +158,7 @@ func TestAFailedChallengeTestCaseFailsTheMaterialize(t *testing.T) {
 
 func TestChallengeCasesCrossTheWireBothWays(t *testing.T) {
 	var sent llmclient.CreationStepRequest
-	wire := []llmclient.CreationChallengeCase{{Name: "日期不存在", Prompt: "請算 2 月 30 日入住的房價", Criteria: []string{"指出 2 月 30 日不存在"}}}
+	wire := []llmclient.CreationChallengeCase{{Name: "日期不存在", Prompt: "請算 2 月 30 日入住的房價", Criteria: []string{"指出 2 月 30 日不存在"}, ExpectedInteraction: "question"}}
 	model := stepOverAWire(t, &sent, llmclient.CreationStepResponse{Outcome: "confirm_brief", ChallengeCases: wire})
 	req := aStepRequest()
 	req.ChallengeCases = []ChallengeCase{aChallengeCase()}

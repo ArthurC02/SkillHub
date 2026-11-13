@@ -218,13 +218,7 @@ func TestCleanModeCanAdvanceCreationOnOneConnection(t *testing.T) {
 			http.NotFound(w, r)
 			return
 		}
-		cost := 0.01
-		_ = json.NewEncoder(w).Encode(llmclient.CreationStepResponse{
-			Outcome: "confirm_brief", Message: "請確認任務與成功條件。",
-			Brief: "整理輸入資料，依指定格式輸出摘要。",
-			Model: "fixture-model", PromptVersion: "creation-test/v1",
-			Usage: &llmclient.GatewayUsage{CostUSD: &cost, CostSource: llmclient.CostSourceGateway},
-		})
+		_ = json.NewEncoder(w).Encode(creationModelAnswer(llmclient.CreationStepRequest{}))
 	}))
 	t.Cleanup(model.Close)
 	set, err := worker.BuildWorkers(pool, worker.Deps{

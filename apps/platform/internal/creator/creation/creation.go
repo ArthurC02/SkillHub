@@ -140,6 +140,7 @@ func replay(ctx context.Context, tx pgx.Tx, ws, id pgtype.UUID, c Command) (View
 	}
 	var v View
 	err = json.Unmarshal(r.Result, &v)
+	v.Snapshot.Messages = withoutFetchedText(v.Snapshot.Messages)
 	return v, true, err
 }
 func record(ctx context.Context, tx pgx.Tx, session gen.CreationSession, c Command, v View) error {
@@ -362,7 +363,7 @@ func (s *Service) apply(ctx context.Context, tx pgx.Tx, ws identity.Workspace, r
 	case commandRaiseBudget:
 		return raiseBudget(p, e.Limits, State(row.State), c.BudgetUSD)
 	case commandMaterialize, commandFinalize, commandConfirmDuplicate:
-		return s.save(ctx, ws, p, c)
+		return s.save(ctx, ws, e, c)
 	}
 	return commandOutcome{}, ErrInvalidCommand
 }
@@ -447,10 +448,20 @@ func confirmBrief(p *Snapshot) (commandOutcome, error) {
 	if p.PendingAction != PendingBriefConfirmation || strings.TrimSpace(p.Brief) == "" {
 		return commandOutcome{}, ErrInvalidCommand
 	}
+	if !completeEvaluationCases(p.ChallengeCases) {
+		return requestEvaluationCases(p), nil
+	}
 	p.BriefConfirmed = true
 	p.PendingAction = NothingPending
 	p.ModelChanged = nil
 	return stepQueued(), nil
+}
+
+func requestEvaluationCases(p *Snapshot) commandOutcome {
+	p.BriefConfirmed = false
+	p.PendingAction = NothingPending
+	p.appendMessage("assistant", reasonSentences[reasonEvaluationCasesMissing])
+	return stepQueued()
 }
 
 func confirmDiagramDescription(p *Snapshot) (commandOutcome, error) {

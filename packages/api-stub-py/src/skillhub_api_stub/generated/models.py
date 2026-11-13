@@ -798,6 +798,40 @@ class AllowedTool(Enum):
     fetch_url = 'fetch_url'
 
 
+class CreationSourceRule(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    rule: constr(min_length=1, max_length=2000)
+    source_message_index: conint(ge=0, le=99) | None = Field(
+        None,
+        description="Zero-based index in the request's messages. A source must be an author's message or a successful fetched-page observation; an assistant message or a search listing is not a source. Null may instead cite the human-confirmed diagram's description, nodes, conditions, branches or answered uncertainties.",
+    )
+    quote: constr(max_length=2000) | None = Field(
+        None,
+        description='Exact supporting text from the author message or the fetched page text, never a model paraphrase.',
+    )
+    path: constr(max_length=256) | None = Field(
+        None,
+        description='Existing references/ or assets/ file carrying this rule, linked by the submitted Skill body. Source-check metadata stays private and is not itself a generated file.',
+    )
+    question: constr(max_length=2000) | None = Field(
+        None,
+        description='Question for the author when this rule has no source. In that case the source index, quote and path are absent. Go refuses the proposed draft and asks these questions.',
+    )
+
+
+class CreationSourceAssessment(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    rules: list[CreationSourceRule] = Field(
+        ...,
+        description="Inventory of every task-defining rule, formula, rate, threshold, lookup table and decision criterion needed by the draft. Empty only when the task needs none. Go checks the inventory's evidence and files; semantic completeness still requires model-quality evaluation.",
+        max_length=64,
+    )
+
+
 class Outcome(Enum):
     clarification = 'clarification'
     confirm_brief = 'confirm_brief'
@@ -811,6 +845,11 @@ class Reason(Enum):
     diagram_incomplete = 'diagram_incomplete'
 
 
+class ExpectedInteraction(Enum):
+    question = 'question'
+    direct_answer = 'direct_answer'
+
+
 class Criterion(RootModel[constr(min_length=1, max_length=500)]):
     root: constr(min_length=1, max_length=500)
 
@@ -818,6 +857,10 @@ class Criterion(RootModel[constr(min_length=1, max_length=500)]):
 class CreationChallengeCase(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
+    )
+    expected_interaction: ExpectedInteraction | None = Field(
+        None,
+        description="The provider's claimed interaction kind. Go retains it privately and requires both kinds before confirming or accepting a new draft or candidate. Missing legacy classifications require generation and re-confirmation; classification alone does not prove semantic correctness.",
     )
     name: constr(min_length=1, max_length=60)
     prompt: constr(min_length=1, max_length=4000)
@@ -1125,7 +1168,7 @@ class CreationStepResponse(BaseModel):
     )
     challenge_cases: list[CreationChallengeCase] | None = Field(
         None,
-        description='Inputs written by a second call that sees only the brief, the criteria and the sample, each aimed at a condition the sample does not exercise. Present only with confirm_brief; empty means none.',
+        description='Evaluation inputs written by a second call that sees only the brief, criteria and sample. The provider requires a classified question case and direct-answer case with different inputs before returning the set. Present only with confirm_brief; an empty or incomplete set cannot confirm a new proposal in Go.',
         max_length=3,
     )
     diagram_understanding: constr(max_length=20000) = Field(
@@ -1136,6 +1179,10 @@ class CreationStepResponse(BaseModel):
     diagram_interpretation: CreationDiagramDecomposition | None = None
     tool_intent: CreationToolIntent | None = None
     draft: GeneratedSkill | None = None
+    source_assessment: CreationSourceAssessment | None = Field(
+        None,
+        description='Provider assessment for a submitted or revalidated draft. Go refuses new drafts without a verifiable inventory; a missing field is supported for older providers but never means the sources were checked.',
+    )
     model: str
     prompt_version: str
     usage: GatewayUsage | None = None

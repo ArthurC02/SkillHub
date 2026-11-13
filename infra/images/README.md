@@ -7,7 +7,7 @@
 | [`devtools/`](devtools/) | 跨電腦開發環境，見[開發自動化與依賴治理](../../docs/adr/README.md#開發自動化與依賴治理)；供 Dev Container、codegen 與本機檢查使用 | **不可**；它有編譯器、套件管理器與 Docker CLI |
 | [`runtime-agent-sdk/`](runtime-agent-sdk/) | Sandbox 內真正執行 Skill 的受限 Runtime Image | 可以，但只能經[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)的隔離層 |
 
-`devtools` 的 base 使用不可變 digest，語言與工具版本來自 `.node-version`、各 `go.mod`／`.python-version` 與 `tools/toolchain.yaml`。它內含 Docker daemon／iptables，供 Dev Container以 privileged DinD建立跨平台一致的 nested-generation namespace；其安全邊界見 `.devcontainer/README.md`。它不是部署產物，也不得被 `SKILLHUB_SANDBOX_IMAGE` 引用。
+`devtools` 的 base 使用不可變 digest，語言與工具版本來自 `.node-version`、各 `go.mod`／`.python-version` 與 `tools/toolchain.yaml`。它內含 Docker daemon／iptables，供 Dev Container以 privileged DinD建立跨平台一致的 nested-generation namespace；其安全邊界見 `.devcontainer/README.md`。Python 原始碼依賴所需的 Rust toolchain 與 TypeScript codegen、LLM builder 使用同一個既有釘選映像，Python codegen 另提供 C／C++，正式 LLM 映像不帶編譯工具。它不是部署產物，也不得被 `SKILLHUB_SANDBOX_IMAGE` 引用。
 
 ## Runtime Image 審核流水線（SBX-002）
 
@@ -191,6 +191,8 @@ digest**、重掃、重新 attest `scanned_at`，並對可修的 Critical／High
 `gh attestation verify` 也不必先裝東西。cosign 的價值在「簽章發生在 GitHub Actions 以外」或
 「registry 不是 GHCR」，而[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)選 GHCR 的理由正是 CI 本來就在這裡。哪天這兩件事變了，
 `cosign attach` 產出的 referrer 形狀相同，要搬的是驗證流程不是儲存格式。
+
+Suite 1 的映像稽核把實際 bundle 交給 `gh attestation verify`，固定來源 repository 與簽署 workflow，分別核對 SBOM 和漏洞 predicate，再使用驗證後的 statement 比對 subject digest 與掃描結果。未能驗證時不採信 bundle 內文；這個唯讀稽核不取代 Sandbox 新 Run 的准入接線。
 
 ### 為什麼是 syft ＋ grype，不是 trivy
 
@@ -538,8 +540,60 @@ Dockerfile 與 `infra/compose/docker-compose.yml` 新 `app` profile 的說明。
 | 映像 | 來源 | 內容 | 執行 |
 | --- | --- | --- | --- |
 | [`platform/`](platform/) | `apps/platform`（單一 Go module） | build stage 用 `golang:1.27.4-bookworm`（與 `devtools/Dockerfile` 同一 digest）靜態編譯 `api`／`worker`／`maintenance`／`reindex` 四個指令；runtime stage 是 `gcr.io/distroless/static-debian12:nonroot`（無 shell、無套件管理器——這是鐵律 1 要保護的控制平面，能少一樣東西可用就少一樣），另外把 `contracts/packaging/profiles` 複製進去供 `PACKAGING_PROFILES_DIR` 使用 | 無 `ENTRYPOINT`，靠 distroless 內建的 `PATH` 解析：`CMD ["api"]` 是預設，`docker run <image> worker\|maintenance\|reindex ...` 換另外三個 |
-| [`llm/`](llm/) | `apps/llm`（FastAPI＋uv，build context 是 `apps/llm` 本身，不是 repo root——`packages/api-stub-py` 那個本機路徑依賴只在 `dev` dependency group，`--no-dev` sync 用不到） | build stage 裝 `uv`（版本與 sha256 installer 校驗值取自 `tools/toolchain.yaml`，做法與 `devtools/Dockerfile` 相同），`uv sync --frozen --no-dev --no-editable` 到 `/opt/venv`——**`--no-editable` 是必要的**：預設的 editable 安裝是一個指回 build stage `/src/src` 的 `.pth` 檔，runtime stage 只複製 `/opt/venv` 的話 `import skillhub_llm` 會找不到套件（本批實測撞過這個） | `uvicorn skillhub_llm.app:app --host 0.0.0.0 --port 8000`，match `contracts/openapi/llm-internal.yaml` 的 `servers[0]`；`/healthz` 不需要 `LLM_SERVICE_TOKEN`，掛了 `HEALTHCHECK` |
+| [`llm/`](llm/) | `apps/llm`（FastAPI＋uv，build context 是 `apps/llm` 本身，不是 repo root——`packages/api-stub-py` 那個本機路徑依賴只在 `dev` dependency group，`--no-dev` sync 用不到） | build stage 從與 Python codegen 相同的釘選映像複製 `uv`，版本由工具鏈檢查與 `tools/toolchain.yaml` 對帳，`uv sync --frozen --no-dev --no-editable` 到 `/opt/venv`——**`--no-editable` 是必要的**：預設的 editable 安裝是一個指回 build stage `/src/src` 的 `.pth` 檔，runtime stage 只複製 `/opt/venv` 的話 `import skillhub_llm` 會找不到套件（本批實測撞過這個） | `uvicorn skillhub_llm.app:app --host 0.0.0.0 --port 8000`，match `contracts/openapi/llm-internal.yaml` 的 `servers[0]`；`/healthz` 不需要 `LLM_SERVICE_TOKEN`，掛了 `HEALTHCHECK` |
 | [`web/`](web/) | `apps/web` ＋ `packages/api-client-ts`（build context 是 repo root，因為 `apps/web` 的 `file:../../packages/api-client-ts` 依賴需要兩棵樹都在） | build stage 依序 `npm ci`＋`npm run build`（先 client 套件再 web，與 `Taskfile.yml` 的 `build:web`／`build:api-client` 一致；`npm run build` 本身會跑 `check-bundle-origins.mjs`，建置失敗代表 bundle 裡出現了預期外的絕對網址）；runtime stage 是 `nginx:1.31-alpine-slim`，只放編譯好的 `dist/` 與 [`nginx.conf`](web/nginx.conf) | 見下一節 |
+
+### 模型閘道
+
+[`gateway/`](gateway/) 從釘定的 LiteLLM 穩定映像修補既有 `filelock`、`oauthlib` 與同族 glibc 套件，保留上游核心版本、入口、設定、使用者及資料路徑。Python 修補只安裝具 checksum 的 wheel，不解析其他 runtime 相依；原版既有的管理 MCP 相依衝突仍列印並保留，新增或改變的衝突會拒絕建置。安全更新依[依賴治理](../../docs/adr/README.md#開發自動化與依賴治理)不受一般冷卻期限制。
+
+建置在隔離測試層執行兩個 Python 套件的完整上游測試，使用雜湊鎖定的測試依賴並核對既有 runtime 版本。另以真正載入的 libc 驗證合法訊息目錄、fallback 與四種路徑穿越；額外 locale、測試工具、來源與報告不進出貨層。出貨層核對與測試基底相同的 Python 套件及 APK 資料，再接受測試報告；略過案例需依原始輸出獨立回報。
+
+開發 Compose 直接建置相同來源；正式 Compose 只接受同一 release 的已發佈 digest。免費協定驗證自行建置並使用不可變 ID，驗證 Go 的授權、預算、撤銷、搜尋攔截與費用紀錄；映像發佈必須等該 job 成功。每次 Image Scan 都阻擋自建映像可修的 Critical／High；不因供應商回補尚未被掃描資料庫辨認而刪除原始 finding。這些不代替正式供應商、TLS 或真實節點驗收。
+
+測試依賴的直接版本在 `test-requirements.in`，雜湊鎖檔為 `test-requirements.txt`。更新前先從同一 Dockerfile 的 `patched` stage 輸出 `importlib.metadata` 的套件版本作 constraint，再用釘定 uv 的 `pip compile --python-version 3.13 --python-platform x86_64-unknown-linux-gnu --exclude-newer '7 days' --generate-hashes --no-header --no-annotate --only-binary :all:` 重產，避免測試安裝改動被測 runtime。
+
+### PostgreSQL
+
+開發 Compose 與搜尋閘道協定驗證都建置 [`postgres/`](postgres/)，沿用正式服務已採用的系統套件及執行檔修補。開發 Compose 仍只啟動既有核心服務，保留資料卷與連線設定；首次啟動需要建置映像。搜尋驗證使用專屬標籤與不可變 image ID，結束只回收本次建立的標籤。CI 原版資料庫 fixture 的 tag／digest 以同一 Dockerfile 的上游基底為準，與真正執行的自建映像分別紀錄；不以 fixture 的版本取代自建映像掃描。
+
+### SeaweedFS
+
+[`seaweedfs/`](seaweedfs/) 核對釘定穩定版的來源 commit 與模組 checksum，以現行 Go 和修補後的既有網路、序列化相依套件重編預設執行檔，並升級穩定系統套件庫的 zlib。保留上游入口、使用者切換、設定、資料目錄與 Rust 輔助程式；編譯工具、Redis fixture 與測試產物不進正式映像。
+
+Go 測試在經完整性驗證的獨立副本執行，採用官方 `weed` 套件範圍、可選後端 tags 與 Redis fixture；沿用 Prometheus 建置的 Go 結果彙整器，保存原始 exit code 與完整事件，再由出貨 stage 拒絕失敗或空跑結果。上游自行停用、需要外部服務或略過的案例，不算實際後端驗收；根目錄的其他整合套件不在此範圍。
+
+開發 Compose、平台授權測試、stack smoke 與備份演練共用同一 Dockerfile。兩支演練腳本要求明確提供自建的 `SEAWEEDFS_IMAGE`，CI 在啟動前建置並以 commit SHA 作 tag；同一來源納入發佈與每次漏洞掃描的阻擋層。這些不代替真實節點的 TLS、既有實例升級與備份驗收。
+
+### Postgres Exporter
+
+[`postgres-exporter/`](postgres-exporter/) 從釘定的上游穩定版 commit 重建相同版本，使用 Repo 的 Go 工具鏈與修補後的既有 Go 相依套件。最終層保留上游的非 root 使用者、入口與 9187 埠，只替換執行檔，不帶編譯工具。
+
+`images-postgres-sandboxd` 建置後以隔離的真實 Postgres 驗證指標與錯誤密碼；`images-push` 沿用 main 全部閘門通過才發佈、commit SHA 作 tag 的規則。控制平面的 renderer 取得同一 release 的 `SKILLHUB_POSTGRES_EXPORTER_IMAGE` 與 digest，缺少已發佈映像就拒絕，不退回上游舊映像。`Image Scan` 對重建後的實際映像套用部署層的可修 Critical／High 阻擋。
+
+### Blackbox Exporter
+
+[`blackbox-exporter/`](blackbox-exporter/) 重建目前釘定的穩定版，保留原本的系統層、預設設定與 9115 埠，只替換以現行 Go 及已修補相依套件編譯的執行檔。CI 以隔離的 HTTP 與 TCP 端點驗證成功及失敗探測，發佈與 digest 解析沿用 Postgres Exporter 的同一 release 流程。部署前缺少釘定映像就拒絕啟動；實際自建映像在每次 `Image Scan` 阻擋可修 Critical／High，不只在上游排程報告。
+
+### Caddy
+
+[`caddy/`](caddy/) 核對穩定版的來源 commit 與模組 checksum，採用官方 `main.go` 的依賴式建置，保留正確版本與預設模組。修補既有 Go 相依套件與穩定系統套件庫的 zlib；編譯工具與測試憑證不進最終映像。
+
+完整上游測試在獨立副本執行；SNI 與 TLS 協定案例共用預先產生、涵蓋兩個測試名稱的憑證，消除背景簽發的競態，保留原斷言與協定組合。輪替權限案例先關閉 writer、等待背景壓縮收尾，再檢查唯一壓縮備份與目前檔案的原始權限預期。共用測試 helper 在載入設定後等待舊 HTTP listener 關閉，避免前例的伺服器接走新請求；不等待既有請求排空，保留案例內的 graceful reload 與程序內憑證快取。全部案例在同一流程各執行一次，沒有個別案例的程序隔離。出貨碼仍來自通過 checksum 與 `go mod verify` 的原始模組，測試 helper 不進正式執行檔。CI 驗證代理本文、identity／gzip／zstd、已路由回應的安全標頭、404 與上游不可用的 502；部署設定檢查也建置同一 Dockerfile。發佈與 digest 解析沿用同一 release 的服務映像流程，缺少釘定映像就拒絕啟動，每次掃描阻擋可修 Critical／High。這些不代替正式 TLS 與部署驗收。
+
+### Prometheus
+
+[`prometheus/`](prometheus/) 核對產品版本與 Go 模組版本指向的同一來源 commit、模組 checksum 及同一官方 release 的 UI archive；以現行 Go 和修補後的網路套件重建服務與 `promtool`，保留上游非 root 身分、資料目錄與預設設定。使用上游腳本產生內嵌 UI；測試後移除模組快取中的生成物並重新驗證，不覆寫掃描元件版本。
+
+建置執行發行模組內的全部 Go 測試，以結構化結果回報通過、略過、無測試套件及原始 exit code，失敗時拒絕建置；完整事件保留在 builder stage。測試命令清除建置器注入的 OTEL traces endpoint，讓 tracing 案例只受自己的顯式端點設定控制；SDK 與 TLS 驗證仍執行，出貨環境不受影響。未包含發行模組以外的子模組與 JavaScript 測試，上游選擇性或自行略過的案例不算通過。CI 以隔離資料卷驗證上游映像寫入的資料可由重建版讀取，另檢查新指標、錯誤查詢、規則通知、相同 UI 資產及 remote-read 長度邊界。這些不代替正式通知、長期資料升級與節點部署驗收。
+
+正式環境使用同一 release 的自建映像與 digest，未發佈就拒絕 render 或啟動；開發環境的 observability profile 直接建置相同 Dockerfile。部署設定以相同映像的 `promtool` 驗證，每次 Image Scan 阻擋可修 Critical／High。
+
+### Alertmanager
+
+[`alertmanager/`](alertmanager/) 核對目前釘定穩定版的來源 commit 與模組 checksum，以現行 Go 和修補後的既有相依套件重建 `alertmanager` 與 `amtool`。UI 使用同一官方 release 的 checksum 釘定產物；生成 UI 與驗收測試所需的執行檔只暫放在模組快取，測試後移除並重新驗證模組。最終映像保留上游的非 root 設定、入口、儲存路徑與 UI，不帶編譯工具。
+
+完整上游測試在獨立來源副本執行，涵蓋 CLI、叢集、API 與 UI。並行回收案例同時等待儲存區清空、刪除回呼與回收回呼完成，保留原逾時及最終計數斷言；出貨執行檔仍從未修改的上游程式編譯。上游未設定郵件測試配置及自行略過的案例需獨立回報，不能當作正式 SMTP 證據。CI 另以隔離網路驗證 UI／gzip、錯誤 JSON、告警查詢與本機 webhook 的觸發／解除；部署設定檢查使用同一自建映像的 `amtool` 驗證正式模板。發佈、release digest 解析、啟動檢查與每次漏洞掃描沿用其他自建服務的流程；正式 SMTP／TLS 與節點驗收仍需實際環境證據。
 
 ### `web` 的反向代理：為什麼不是 `location /api/`
 
@@ -653,7 +707,7 @@ digest 由 `docker pull` 後 `docker inspect --format '{{index .RepoDigests 0}}'
 **Tag 慣例：commit SHA，絕不用 `latest`**——理由與 `runtime-agent-sdk` 那條一致
 （見[Repo 結構、CI 與驗證層](../../docs/adr/README.md#repo-結構ci-與驗證層) job 5 原文、本檔「Digest 更新程序」一節）：部署與回滾都要能指向明確的
 commit，`latest` 是會動的標的。`.github/workflows/ci.yml` 的 `images` job 以
-commit SHA 為 tag 建置這三個映像，先跑 `tools/ci/stack-smoke.sh`；`images-push`
+commit SHA 為 tag 建置應用服務與 SeaweedFS，先跑 `tools/ci/stack-smoke.sh`；`images-push`
 只在 main 的 push 且其餘閘門全綠時把同一組 tag 推上 GHCR。本機建置用 `:local`
 tag 驗證。
 

@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: read
+  packages: read
   issues: write
 
 jobs:
@@ -49,7 +50,7 @@ jobs:
         run: |
           set -euo pipefail
           TITLE="Runtime image scan is expiring or failing (SBX-002 I-04)"
-          BODY=$(printf 'Nodes admit a runtime image only while its scan attestation is under 30 days old; after that no new run may use the digest.\n\n%s\n\nRe-run the rescan job of the Runtime Image workflow (workflow_dispatch) and check why the weekly run did not refresh it.\n' "$PROBLEM")
+          BODY=$(printf 'A runtime image must have a verified scan attestation under 30 days old. Keep this digest unavailable to new runs until its verified scan is refreshed.\n\n%s\n\nRe-run the rescan job of the Runtime Image workflow (workflow_dispatch) and check why the weekly run did not refresh it.\n' "$PROBLEM")
           if gh issue list --state open --search "in:title \"$TITLE\"" --json title --jq '.[].title' | grep -qxF "$TITLE"; then
             echo "::notice::issue already open, not duplicating"
           else

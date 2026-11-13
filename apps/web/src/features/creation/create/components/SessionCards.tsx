@@ -85,10 +85,38 @@ export function BriefCard({
           </pre>
         </>
       )}
+      {p.challenge_cases?.length ? (
+        <section aria-label="評估案例">
+          <h5>評估案例</h5>
+          <p id="creation-evaluation-case-note">確認也包含以下案例的輸入與驗收條件。</p>
+          <ol>
+            {p.challenge_cases.map((item, index) => (
+              <li key={index}>
+                <p>
+                  <strong>{item.name}</strong>
+                </p>
+                <pre className="skill-md">
+                  <Reveal text={item.prompt} />
+                </pre>
+                <ul aria-label={`${item.name}的驗收條件`}>
+                  {item.criteria.map((criterion, criterionIndex) => (
+                    <li key={criterionIndex}>{criterion}</li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : (
+        <p>這份會話未提供評估案例。</p>
+      )}
       {p.pending_action === "confirm_brief" && (
         <div className="card-actions">
           <button
             className="card-primary"
+            aria-describedby={
+              p.challenge_cases?.length ? "creation-evaluation-case-note" : undefined
+            }
             disabled={locked}
             onClick={() => void perform("confirm_brief")}
           >

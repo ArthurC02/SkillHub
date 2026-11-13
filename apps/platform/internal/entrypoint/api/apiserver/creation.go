@@ -6,6 +6,7 @@ import (
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/creation/revisionwatch"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/creator/credit"
 	identity "github.com/ArthurC02/skillhub/apps/platform/internal/creator/workspace"
+	"github.com/ArthurC02/skillhub/apps/platform/internal/entrypoint/api/gen"
 	"github.com/ArthurC02/skillhub/apps/platform/internal/foundation/runtime/httpx"
 	ingest "github.com/ArthurC02/skillhub/apps/platform/internal/skill/admission"
 	registry "github.com/ArthurC02/skillhub/apps/platform/internal/skill/library"
@@ -41,9 +42,10 @@ type withheld struct{}
 
 type publicCreationSnapshot struct {
 	creation.Snapshot
-	BudgetUSD   *withheld `json:"budget_usd,omitempty"`
-	ReservedUSD *withheld `json:"reserved_usd,omitempty"`
-	SpentUSD    *withheld `json:"spent_usd,omitempty"`
+	ChallengeCases []publicapi.CreationChallengeCase `json:"challenge_cases,omitempty"`
+	BudgetUSD      *withheld                         `json:"budget_usd,omitempty"`
+	ReservedUSD    *withheld                         `json:"reserved_usd,omitempty"`
+	SpentUSD       *withheld                         `json:"spent_usd,omitempty"`
 
 	BudgetCredits   int64  `json:"budget_credits"`
 	ReservedCredits int64  `json:"reserved_credits"`
@@ -62,6 +64,9 @@ func publicSnapshot(snapshot creation.Snapshot, creditsForUSD func(float64) (int
 		return credits, nil
 	}
 	out := publicCreationSnapshot{Snapshot: snapshot}
+	for _, c := range snapshot.ChallengeCases {
+		out.ChallengeCases = append(out.ChallengeCases, publicapi.CreationChallengeCase{Name: c.Name, Prompt: c.Prompt, Criteria: append([]string(nil), c.Criteria...)})
+	}
 	var err error
 	if out.BudgetCredits, err = inCredits(snapshot.BudgetUSD); err != nil {
 		return publicCreationSnapshot{}, err

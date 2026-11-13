@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -113,6 +114,37 @@ func mustPublicSnapshot(t *testing.T, snapshot creation.Snapshot) publicCreation
 		t.Fatal(err)
 	}
 	return out
+}
+
+func TestPublicCreationCasesKeepTheirContentAndWithholdClassifications(t *testing.T) {
+	stored := creation.Snapshot{ChallengeCases: []creation.ChallengeCase{
+		{Name: "missing data", Prompt: "Summarize.", Criteria: []string{"Ask for the text."}, ExpectedInteraction: "question"},
+		{Name: "complete data", Prompt: "Summarize: ships tomorrow.", Criteria: []string{"State tomorrow's shipment."}, ExpectedInteraction: "direct_answer"},
+	}}
+	encoded, err := json.Marshal(mustPublicSnapshot(t, stored))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var body struct {
+		Cases []map[string]any `json:"challenge_cases"`
+	}
+	if err := json.Unmarshal(encoded, &body); err != nil {
+		t.Fatal(err)
+	}
+	var want []map[string]any
+	if err := json.Unmarshal([]byte(`[{
+        "name":"missing data","prompt":"Summarize.","criteria":["Ask for the text."]
+    },{
+        "name":"complete data","prompt":"Summarize: ships tomorrow.","criteria":["State tomorrow's shipment."]
+    }]`), &want); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(body.Cases, want) {
+		t.Fatalf("public cases = %s, want content preserved and classifications withheld", encoded)
+	}
+	if stored.ChallengeCases[0].ExpectedInteraction != "question" || stored.ChallengeCases[1].ExpectedInteraction != "direct_answer" {
+		t.Fatalf("projection erased stored classifications: %+v", stored.ChallengeCases)
+	}
 }
 
 func TestALimitRefusalCarriesTheSentenceThatNamesWhichLimitWasReached(t *testing.T) {

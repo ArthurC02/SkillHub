@@ -150,7 +150,7 @@ func BuildWorkers(pool *pgxpool.Pool, deps Deps) (*Set, error) {
 		metrics.BacklogOrphanObjects: registrySvc.OldestCollectableObject,
 		metrics.BacklogSourceChecks:  creationVersions.OldestSourceCheck,
 		metrics.BacklogEnrichment:    (&catalog.EnrichmentBackfill{Pool: pool}).OldestPending,
-	})
+	}, creation.PublishCostGauges(pool))
 	addCapacityObserver(set, workers, capacity.Store{Pool: pool, Rate: deps.RestoreRate})
 	if deps.Gateway != nil {
 		addWorker(set, workers, &ModelBudgetObserveWorker{Read: deps.Gateway.PlatformBudget})
@@ -311,10 +311,10 @@ func periodicJobs(set *Set, deps Deps, outboxWorker *outbox.Worker) []*river.Per
 	return periodic
 }
 
-func addGaugePublishers(set *Set, workers *river.Workers, outboxWorker *outbox.Worker, backlogs map[string]backlogOldest) {
+func addGaugePublishers(set *Set, workers *river.Workers, outboxWorker *outbox.Worker, backlogs map[string]backlogOldest, observeCreationCost func(context.Context) error) {
 	observer := &BacklogObserveWorker{Backlogs: backlogs}
 	addWorker(set, workers, observer)
-	set.Gauges = []func(context.Context) error{set.Runs.PublishGauges, outboxWorker.PublishGauge, set.Objects.PublishGauge, observer.Observe}
+	set.Gauges = []func(context.Context) error{set.Runs.PublishGauges, outboxWorker.PublishGauge, set.Objects.PublishGauge, observer.Observe, observeCreationCost}
 }
 
 func addCapacityObserver(set *Set, workers *river.Workers, store capacity.Store) {

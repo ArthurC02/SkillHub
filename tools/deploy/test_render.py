@@ -38,10 +38,15 @@ def test_a_control_plane_release_pins_every_image_by_tag_and_digest():
     assert env["SKILLHUB_RELEASE"] == RELEASE
     assert env["SKILLHUB_REPOSITORY"] == "https://github.com/ArthurC02/SkillHub"
     pinned_images = {
+        "SKILLHUB_PROMETHEUS_IMAGE": "ghcr.io/arthurc02/skillhub-prometheus:%s@%s" % (RELEASE, DIGEST),
+        "SKILLHUB_ALERTMANAGER_IMAGE": "ghcr.io/arthurc02/skillhub-alertmanager:%s@%s" % (RELEASE, DIGEST),
+        "SKILLHUB_CADDY_IMAGE": "ghcr.io/arthurc02/skillhub-caddy:%s@%s" % (RELEASE, DIGEST),
         "SKILLHUB_WEB_IMAGE": "ghcr.io/arthurc02/skillhub-web:%s@%s" % (RELEASE, DIGEST),
         "SKILLHUB_PLATFORM_IMAGE": "ghcr.io/arthurc02/skillhub-platform:%s@%s" % (RELEASE, DIGEST),
         "SKILLHUB_LLM_IMAGE": "ghcr.io/arthurc02/skillhub-llm:%s@%s" % (RELEASE, DIGEST),
         "SKILLHUB_POSTGRES_IMAGE": "ghcr.io/arthurc02/skillhub-postgres:%s@%s" % (RELEASE, DIGEST),
+        "SKILLHUB_POSTGRES_EXPORTER_IMAGE": "ghcr.io/arthurc02/skillhub-postgres-exporter:%s@%s" % (RELEASE, DIGEST),
+        "SKILLHUB_BLACKBOX_EXPORTER_IMAGE": "ghcr.io/arthurc02/skillhub-blackbox-exporter:%s@%s" % (RELEASE, DIGEST),
     }
     assert {key: env[key] for key in env if key.endswith("_IMAGE")} == pinned_images
     assert env["SKILLHUB_DOMAIN"] == "skillhub.example"
@@ -52,6 +57,15 @@ def test_an_image_the_release_never_published_refuses_the_render():
         return "" if repository == "skillhub-platform" else DIGEST
     expect_error("skillhub-platform:%s is not published" % RELEASE, "control-plane", RELEASE, SETTINGS,
                  resolve=platform_missing)
+
+
+def test_an_unpublished_or_invalid_deployment_image_refuses_the_render():
+    for exporter in ("skillhub-prometheus", "skillhub-alertmanager", "skillhub-caddy", "skillhub-postgres-exporter", "skillhub-blackbox-exporter"):
+        for unavailable in ("", "sha256:bad"):
+            def exporter_missing(repository, tag, value=unavailable, missing=exporter):
+                return value if repository == missing else DIGEST
+            expect_error("%s:%s is not published" % (exporter, RELEASE),
+                         "control-plane", RELEASE, SETTINGS, resolve=exporter_missing)
 
 
 def test_a_short_or_symbolic_release_is_refused():
@@ -74,15 +88,26 @@ def test_a_value_a_shell_would_reinterpret_is_refused():
                  resolve=published)
 
 
-def test_a_gateway_release_carries_only_its_address_and_resolves_no_image():
-    def nothing_to_resolve(repository, tag):
-        raise AssertionError("the gateway pins its image in compose; nothing should be resolved")
+def test_a_gateway_release_pins_the_published_gateway_image():
+    calls = []
+    def resolve_gateway(repository, tag):
+        calls.append((repository, tag))
+        return DIGEST
     env = render.read_settings(render.release_env("gateway", RELEASE, {"SKILLHUB_PRIVATE_IP": "10.0.0.3"},
-                                                  resolve=nothing_to_resolve))
+                                                  resolve=resolve_gateway))
     assert env == {"SKILLHUB_ROLE": "gateway", "SKILLHUB_RELEASE": RELEASE,
-                   "SKILLHUB_REPOSITORY": render.DEFAULT_REPOSITORY, "SKILLHUB_PRIVATE_IP": "10.0.0.3"}, env
+                   "SKILLHUB_REPOSITORY": render.DEFAULT_REPOSITORY, "SKILLHUB_PRIVATE_IP": "10.0.0.3",
+                   "SKILLHUB_GATEWAY_IMAGE": "ghcr.io/arthurc02/skillhub-gateway:%s@%s" % (RELEASE, DIGEST)}, env
+    assert calls == [("skillhub-gateway", RELEASE)], calls
     expect_error("does not use SKILLHUB_DOMAIN", "gateway", RELEASE,
-                 {"SKILLHUB_PRIVATE_IP": "10.0.0.3", "SKILLHUB_DOMAIN": "x"}, resolve=nothing_to_resolve)
+                 {"SKILLHUB_PRIVATE_IP": "10.0.0.3", "SKILLHUB_DOMAIN": "x"}, resolve=resolve_gateway)
+
+
+def test_an_unpublished_or_invalid_gateway_image_refuses_the_render():
+    for digest in ("", "sha256:bad"):
+        expect_error("skillhub-gateway:%s is not published" % RELEASE,
+                     "gateway", RELEASE, {"SKILLHUB_PRIVATE_IP": "10.0.0.3"},
+                     resolve=lambda repository, tag, value=digest: value)
 
 
 SANDBOX_SETTINGS = {

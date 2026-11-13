@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strconv"
 )
 
 const (
@@ -136,16 +137,45 @@ func jsonKind(raw json.RawMessage) string {
 		return kindNull
 	}
 	if bytes.ContainsAny(trimmed, ".eE") {
-		return kindNumber
+		return jsonNumberKind(trimmed)
 	}
 	return kindInteger
 }
 
-func numeric(kind string) bool { return kind == kindInteger || kind == kindNumber }
+func jsonNumberKind(raw []byte) string {
+	var exponent []byte
+	if i := bytes.IndexAny(raw, "eE"); i >= 0 {
+		raw, exponent = raw[:i], raw[i+1:]
+	}
+	decimals := 0
+	if i := bytes.IndexByte(raw, '.'); i >= 0 {
+		decimals = len(raw) - i - 1
+	}
+	digits := bytes.TrimLeft(bytes.ReplaceAll(raw, []byte("."), nil), "-0")
+	if len(digits) == 0 {
+		return kindInteger
+	}
+	shift := int64(0)
+	if len(exponent) != 0 {
+		var err error
+		shift, err = strconv.ParseInt(string(exponent), 10, 64)
+		if err != nil {
+			if exponent[0] == '-' {
+				return kindNumber
+			}
+			return kindInteger
+		}
+	}
+	places := decimals - len(digits) + len(bytes.TrimRight(digits, "0"))
+	if shift >= int64(places) {
+		return kindInteger
+	}
+	return kindNumber
+}
 
 func kindAccepted(kind string, accepted []string) bool {
 	for _, want := range accepted {
-		if kind == want || (numeric(kind) && numeric(want)) {
+		if kind == want || (kind == kindInteger && want == kindNumber) {
 			return true
 		}
 	}

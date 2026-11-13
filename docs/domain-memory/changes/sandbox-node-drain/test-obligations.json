@@ -1,0 +1,87 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "DEPLOY-IAC-001",
+  "proposal_id": "sandbox-node-drain",
+  "obligations": [
+    {
+      "id": "placement-barrier",
+      "source_type": "acceptance-criterion",
+      "source_id": "placement-barrier",
+      "expected_outcome": "operator 宣告指定 Provider 世代進入 maintenance 後，已持久化的派送阻擋對所有 Worker 生效；與宣告競爭、已排隊或重送的工作不得跨過已確認的阻擋開始新 attempt。宣告前已開始建立的 attempt 必須可追蹤並完成對帳，不能因取樣時尚未看到容器就當作空節點。",
+      "level": "integration",
+      "status": "planned",
+      "check": "planned:sandbox-node-drain/placement-barrier"
+    },
+    {
+      "id": "existing-attempts",
+      "source_type": "acceptance-criterion",
+      "source_id": "existing-attempts",
+      "expected_outcome": "maintenance 不移除 Provider 名稱、端點或 token；既有 attempt 仍可輪詢、取消、拆除與撤銷模型金鑰。Provider 名稱在舊 handle 尚未清理前不能指向另一台主機；既有永久 Run 身分、每 attempt 冪等與一次失聯重派上限保持原義。",
+      "level": "integration",
+      "status": "planned",
+      "check": "planned:sandbox-node-drain/existing-attempts",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "a-run-survives-at-most-one-lost-provider"
+        },
+        {
+          "source_type": "rule",
+          "source_id": "each-dispatch-is-keyed-by-its-own-attempt-id"
+        }
+      ]
+    },
+    {
+      "id": "independent-holds",
+      "source_type": "acceptance-criterion",
+      "source_id": "independent-holds",
+      "expected_outcome": "maintenance 與 P1／容量 halt 分別保存：P1 仍保留現場且不被降級，解除任一來源不解除另一來源；Reconciler 的兩輪乾淨只能解除容量 halt。maintenance 本身允許清理，P1 覆蓋時不得據此宣告可撤機。",
+      "level": "integration",
+      "status": "planned",
+      "check": "planned:sandbox-node-drain/independent-holds",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "cleanup-preserves-the-scene-under-an-incident-halt"
+        },
+        {
+          "source_type": "rule",
+          "source_id": "dispatch-incident-halt-is-never-downgraded"
+        }
+      ]
+    },
+    {
+      "id": "wait-accounting",
+      "source_type": "acceptance-criterion",
+      "source_id": "wait-accounting",
+      "expected_outcome": "所有相容 Provider 都因 maintenance 無法接新工作時，排隊等待時間依既有停派送規則扣除；讀不到 maintenance 歷史就保守等待。仍有可用 Provider 時可正常派送，不能把例行維護冒充整池 P1 來停止其他模型功能。",
+      "level": "integration",
+      "status": "planned",
+      "check": "planned:sandbox-node-drain/wait-accounting",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "time-dispatch-was-paused-does-not-count-against-the-slot-wait"
+        }
+      ]
+    },
+    {
+      "id": "retirement-evidence",
+      "source_type": "acceptance-criterion",
+      "source_id": "retirement-evidence",
+      "expected_outcome": "只有派送阻擋仍有效、指定世代無未結束或建立中的 attempt、所有相關 Run 已完成資源清理、節點含停止容器的完整受管資源清單為空、金鑰／授權已按既有流程撤銷或到期、必要記錄已確認送達且無 P1 保留時，才可回報可撤下。任一讀取失敗、清單截斷、世代不符或證據不明都不得回報 ready；資源已清但價格待補報不單獨阻擋，既有延後查費仍可執行。",
+      "level": "integration",
+      "status": "planned",
+      "check": "planned:sandbox-node-drain/retirement-evidence"
+    },
+    {
+      "id": "authorized-replay",
+      "source_type": "acceptance-criterion",
+      "source_id": "authorized-replay",
+      "expected_outcome": "begin／status／release 僅 operator 可用，要求可稽核原因並綁定 Provider 與受信任的節點世代；同一操作重送、程序重啟與取消不遺失阻擋、不錯解除另一世代。狀態回應不含 token 或 workload 原文。本階段只產出人工撤機所需事實，不呼叫雲端建機、刪機或付費模型。",
+      "level": "integration",
+      "status": "planned",
+      "check": "planned:sandbox-node-drain/authorized-replay"
+    }
+  ]
+}

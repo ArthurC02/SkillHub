@@ -72,6 +72,7 @@ def test_a_rewrite_that_only_changes_whitespace_keeps_the_draft_and_claims_no_re
                 "message": "ok",
                 "body": "\n" + base.SKILL["body"] + "  \n",
                 "files": base.SKILL["files"],
+                "source_assessment": {"rules": []},
             },
             base.decision(outcome="draft", message="ok", draft=base.SKILL),
         ],
@@ -88,7 +89,15 @@ def test_a_rewrite_reply_names_the_model_the_gateway_served():
     with patch.object(creation, "served_model", lambda *_: "served-by-gateway"):
         response, calls = post(
             review_request(),
-            [{"edits": [BODY_EDIT]}, {"message": "ok", "body": "new body", "files": []}],
+            [
+                {"edits": [BODY_EDIT]},
+                {
+                    "message": "ok",
+                    "body": "new body",
+                    "files": [],
+                    "source_assessment": {"rules": []},
+                },
+            ],
         )
     assert len(calls) == 2
     assert response.json()["model"] == "served-by-gateway"
@@ -100,7 +109,12 @@ def test_a_rewrite_whose_message_is_over_the_cap_falls_back_to_the_reply_call():
         review_request(),
         [
             {"edits": [BODY_EDIT]},
-            {"message": over_cap, "body": "new body", "files": []},
+            {
+                "message": over_cap,
+                "body": "new body",
+                "files": [],
+                "source_assessment": {"rules": []},
+            },
             base.decision(outcome="draft", message="ok", draft=base.SKILL),
         ],
     )

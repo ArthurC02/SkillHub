@@ -44,7 +44,7 @@ func TestRequireOwnerReadsDoesNotInspectTestLabInternals(t *testing.T) {
 		},
 		ReadLineage: func(context.Context, pgtype.UUID) (LineageStep, bool, error) { return LineageStep{}, false, nil },
 		ReadOldest:  func(context.Context, pgtype.UUID) (OldestVersion, bool, error) { return OldestVersion{}, false, nil },
-		CuratedSource: func(context.Context, pgtype.UUID) (CuratedSource, bool, error) {
+		CuratedSource: func(context.Context, pgtype.UUID, pgtype.UUID) (CuratedSource, bool, error) {
 			return CuratedSource{}, false, nil
 		},
 	}

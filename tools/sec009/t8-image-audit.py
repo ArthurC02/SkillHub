@@ -13,11 +13,12 @@ Exit:  0 every check passed
 
 from __future__ import annotations
 
-import base64
 import json
 import os
 import re
+import subprocess
 import sys
+import tempfile
 import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
@@ -32,6 +33,9 @@ IMAGE_REPO = "arthurc02/skillhub-runtime-agent-sdk"
 
 SBOM_PREDICATE = "https://spdx.dev/Document/v2.3"
 VULN_PREDICATE = "https://in-toto.io/attestation/vulns/v0.1"
+ATTESTATION_REPO = "ArthurC02/SkillHub"
+SIGNER_WORKFLOW = ATTESTATION_REPO + "/.github/workflows/runtime-image.yml"
+VERIFICATION_LIMIT = 16 * 1024 * 1024
 
 SCAN_VALIDITY_DAYS = 30
 SCAN_WARN_DAYS = 7
@@ -78,7 +82,10 @@ def _blob(digest: str, token: str) -> dict:
     req = urllib.request.Request("https://%s/v2/%s/blobs/%s" % (REGISTRY, IMAGE_REPO, digest))
     req.add_header("Authorization", "Bearer " + token)
     with urllib.request.urlopen(req, timeout=60) as resp:
-        return json.load(resp)
+        data = resp.read(VERIFICATION_LIMIT + 1)
+    if len(data) > VERIFICATION_LIMIT:
+        raise ValueError("attestation bundle exceeds its limit")
+    return json.loads(data)
 
 
 
@@ -164,10 +171,21 @@ def grade_node_tag(node_tag: str, version: str) -> tuple[str, str]:
     return PASS, "the node's tag %s matches its checkout's IMAGE_VERSION" % node_tag
 
 
-def scan_expires_in_days(finished: str | None, now: datetime) -> int | None:
+def _scan_time(finished: object, now: datetime) -> datetime | None:
+    if not isinstance(finished, str):
+        return None
     try:
-        scanned = datetime.fromisoformat((finished or "").replace("Z", "+00:00"))
+        scanned = datetime.fromisoformat(finished.replace("Z", "+00:00"))
     except ValueError:
+        return None
+    if scanned.tzinfo is None or scanned > now:
+        return None
+    return scanned
+
+
+def scan_expires_in_days(finished: str | None, now: datetime) -> int | None:
+    scanned = _scan_time(finished, now)
+    if scanned is None:
         return None
     return (scanned + timedelta(days=SCAN_VALIDITY_DAYS) - now).days
 
@@ -177,17 +195,16 @@ def grade_scan_age(finished: str | None, now: datetime) -> tuple[str, str]:
     pulled out of audit() so --self-check can drive it offline."""
     if not finished:
         return UNKNOWN, "predicate has no scan_finished_on"
-    try:
-        scanned = datetime.fromisoformat(finished.replace("Z", "+00:00"))
-    except ValueError:
-        return UNKNOWN, "scan_finished_on is not a timestamp: %r" % finished
+    scanned = _scan_time(finished, now)
+    if scanned is None:
+        return UNKNOWN, "scan_finished_on is not a past or present timestamp with a timezone"
     age = now - scanned
     expires = scanned + timedelta(days=SCAN_VALIDITY_DAYS)
     detail = "scanned %s, %d day(s) old, expires %s" % (
         finished, age.days, expires.date().isoformat())
-    if age > timedelta(days=SCAN_VALIDITY_DAYS):
+    if age >= timedelta(days=SCAN_VALIDITY_DAYS):
         return FAIL, detail + " -- EXPIRED"
-    if age > timedelta(days=SCAN_VALIDITY_DAYS - SCAN_WARN_DAYS):
+    if age >= timedelta(days=SCAN_VALIDITY_DAYS - SCAN_WARN_DAYS):
         detail += "  [within the 7-day expiry warning window]"
     return PASS, detail
 
@@ -329,7 +346,12 @@ def _audit_attestations(rep: Report, digest: str, token: str) -> None:
     found = attestation_predicates(index)
 
     if SBOM_PREDICATE in found:
-        rep.add("I-03", "SBOM attestation", PASS, "SPDX 2.3 bundle %s" % found[SBOM_PREDICATE][:19])
+        try:
+            _verified_statement(found[SBOM_PREDICATE], token, digest, SBOM_PREDICATE)
+        except (OSError, subprocess.SubprocessError, ValueError, KeyError, TypeError, RecursionError):
+            rep.add("I-03", "SBOM attestation", UNKNOWN, "could not verify the SBOM bundle")
+        else:
+            rep.add("I-03", "SBOM attestation", PASS, "SPDX 2.3 bundle %s" % found[SBOM_PREDICATE][:19])
     else:
         rep.add("I-03", "SBOM attestation", FAIL, "no %s in the index" % SBOM_PREDICATE)
 
@@ -338,47 +360,75 @@ def _audit_attestations(rep: Report, digest: str, token: str) -> None:
         rep.add("I-06", "no fixable Critical/High", UNKNOWN, "no scan attestation to read")
         return
 
-    statement = _scan_statement(rep, found[VULN_PREDICATE], token)
+    statement = _scan_statement(rep, found[VULN_PREDICATE], token, digest)
     if statement is not None:
-        _grade_scan_statement(rep, digest, statement)
+        _grade_scan_statement(rep, statement)
 
 
-def _scan_statement(rep: Report, bundle_digest: str, token: str) -> dict | None:
-    """The decoded in-toto statement, or None once I-04 and I-06 record why not."""
+def _scan_statement(rep: Report, bundle_digest: str, token: str, digest: str) -> dict | None:
     try:
-        bundle_manifest, _ = _get("manifests/" + bundle_digest, token, MANIFEST_ACCEPT)
-        bundle = _blob(bundle_manifest["layers"][0]["digest"], token)
-        envelope = bundle.get("dsseEnvelope") or bundle.get("dsse_envelope")
-        return json.loads(base64.b64decode(envelope["payload"]))
-    except (urllib.error.HTTPError, KeyError, ValueError, TypeError) as exc:
-        rep.add("I-04", "scan attestation in date", UNKNOWN, "cannot decode the bundle: %s" % exc)
-        rep.add("I-06", "no fixable Critical/High", UNKNOWN, "cannot decode the bundle")
+        return _verified_statement(bundle_digest, token, digest, VULN_PREDICATE)
+    except (OSError, subprocess.SubprocessError, ValueError, KeyError, TypeError, RecursionError):
+        rep.add("I-04", "scan attestation in date", UNKNOWN, "could not verify the scan bundle")
+        rep.add("I-06", "no fixable Critical/High", UNKNOWN, "no verified scan statement")
         return None
 
 
-def _grade_scan_statement(rep: Report, digest: str, statement: dict) -> None:
-    subjects = {
-        "sha256:" + s.get("digest", {}).get("sha256", "")
-        for s in statement.get("subject", [])
-    }
-    if digest not in subjects:
-        rep.add("I-04", "scan attestation in date", FAIL,
-                "attestation subject %s != published digest" % (sorted(subjects) or ["<none>"])[0])
-        rep.add("I-06", "no fixable Critical/High", UNKNOWN, "attestation is about other bytes")
-        return
+def _verified_statement(bundle_digest: str, token: str, digest: str, predicate_type: str) -> dict:
+    manifest, _ = _get("manifests/" + bundle_digest, token, MANIFEST_ACCEPT)
+    bundle = _blob(manifest["layers"][0]["digest"], token)
+    with tempfile.TemporaryDirectory(prefix="skillhub-attestation-") as directory:
+        path = os.path.join(directory, "bundle.json")
+        with open(path, "w", encoding="utf-8") as output:
+            json.dump(bundle, output)
+        with tempfile.TemporaryFile() as output:
+            result = subprocess.run([
+                "gh", "attestation", "verify", "oci://%s/%s@%s" % (REGISTRY, IMAGE_REPO, digest),
+                "--bundle", path, "--repo", ATTESTATION_REPO, "--signer-workflow", SIGNER_WORKFLOW,
+                "--predicate-type", predicate_type, "--format", "json",
+            ], stdout=output, stderr=subprocess.DEVNULL, timeout=60, check=False)
+            if result.returncode != 0:
+                raise ValueError("attestation verification failed")
+            output.seek(0)
+            data = output.read(VERIFICATION_LIMIT + 1)
+    if len(data) > VERIFICATION_LIMIT:
+        raise ValueError("verification output exceeds its limit")
+    results = json.loads(data)
+    if not isinstance(results, list) or len(results) != 1:
+        raise ValueError("expected one verified statement")
+    statement = results[0]["verificationResult"]["statement"]
+    if not isinstance(statement, dict) or statement.get("predicateType") != predicate_type:
+        raise ValueError("verified predicate does not match")
+    if not isinstance(statement.get("predicate"), dict):
+        raise ValueError("verified predicate is not an object")
+    subjects = statement.get("subject")
+    if not isinstance(subjects, list) or not any(
+        isinstance(subject, dict) and isinstance(subject.get("digest"), dict)
+        and subject["digest"].get("sha256") == digest.removeprefix("sha256:")
+        for subject in subjects
+    ):
+        raise ValueError("verified subject does not match")
+    return statement
 
+
+def _grade_scan_statement(rep: Report, statement: dict) -> None:
     predicate = statement.get("predicate", {})
-    finished = (predicate.get("metadata") or {}).get("scan_finished_on")
+    metadata = predicate.get("metadata")
+    finished = metadata.get("scan_finished_on") if isinstance(metadata, dict) else None
     now = datetime.now(timezone.utc)
     rep.add("I-04", "scan attestation in date", *grade_scan_age(finished, now))
     rep.rows[-1]["expires_in_days"] = scan_expires_in_days(finished, now)
 
-    summary = predicate.get("summary") or {}
+    summary = predicate.get("summary")
+    summary = summary if isinstance(summary, dict) else {}
     fixable = summary.get("fixable_critical_high")
     if fixable is None:
         rep.add("I-06", "no fixable Critical/High", UNKNOWN, "predicate has no summary.fixable_critical_high")
+    elif type(fixable) is not int or fixable < 0:
+        rep.add("I-06", "no fixable Critical/High", UNKNOWN, "summary.fixable_critical_high is not a nonnegative integer")
     else:
-        by_sev = summary.get("by_severity") or {}
+        by_sev = summary.get("by_severity")
+        by_sev = by_sev if isinstance(by_sev, dict) else {}
         detail = "fixable Critical/High = %s (of %s findings: %s)" % (
             fixable, summary.get("total"),
             ", ".join("%s %s" % (v, k) for k, v in sorted(by_sev.items())))

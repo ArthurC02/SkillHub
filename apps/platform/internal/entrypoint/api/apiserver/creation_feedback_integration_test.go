@@ -132,6 +132,6 @@ func (e *revisionEvidence) revisingModel(t *testing.T) http.HandlerFunc {
 		draft.Body += "\nVerify that duplicate rows were removed; report missing artifacts honestly.\n"
 		cost := .01
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(llmclient.CreationStepResponse{Outcome: "draft", Message: "Revised using verified evidence", Brief: req.Brief, Draft: &draft, Model: "fixture", PromptVersion: "test/v1", Usage: &llmclient.GatewayUsage{CostUSD: &cost, CostSource: llmclient.CostSourceGateway}})
+		_ = json.NewEncoder(w).Encode(llmclient.CreationStepResponse{Outcome: "draft", Message: "Revised using verified evidence", Brief: req.Brief, Draft: &draft, SourceAssessment: &llmclient.CreationSourceAssessment{Rules: []llmclient.CreationSourceRule{}}, Model: "fixture", PromptVersion: "test/v1", Usage: &llmclient.GatewayUsage{CostUSD: &cost, CostSource: llmclient.CostSourceGateway}})
 	}
 }

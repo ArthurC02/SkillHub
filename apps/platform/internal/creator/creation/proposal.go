@@ -10,14 +10,16 @@ import (
 )
 
 var reasonSentences = map[string]string{
-	"tool_unavailable":      "目前無法使用這項工具，請補充需求或選擇可用的參考。",
-	"confirm_diagram_first": "請先確認流程圖的理解；確認後再依它建立草稿。",
-	"confirm_brief_first":   "請先確認這份需求與驗收條件，再建立草稿。",
-	"diagram_incomplete":    "請補充流程圖的節點、條件、分支與不確定處，或重新上傳流程圖。",
-	"search_query_missing":  "請告訴我要在目錄中搜尋什麼關鍵字。",
-	"fetch_url_missing":     "模型想連網取得資料，但沒有給出網址；請告訴它要看哪個網頁。",
-	"brief_missing":         "模型這一步沒有整理出需求；已自動再試一次。",
-	"draft_missing":         "模型這一步說要交草稿卻沒有交出來；請補一句需求，或直接請它再試一次。",
+	"sources_missing":          "草稿還缺少可核對的規則來源；請補充規則或提供來源，確認後再起草。",
+	"tool_unavailable":         "目前無法使用這項工具，請補充需求或選擇可用的參考。",
+	"confirm_diagram_first":    "請先確認流程圖的理解；確認後再依它建立草稿。",
+	"confirm_brief_first":      "請先確認這份需求與驗收條件，再建立草稿。",
+	"diagram_incomplete":       "請補充流程圖的節點、條件、分支與不確定處，或重新上傳流程圖。",
+	"search_query_missing":     "請告訴我要在目錄中搜尋什麼關鍵字。",
+	"fetch_url_missing":        "模型想連網取得資料，但沒有給出網址；請告訴它要看哪個網頁。",
+	"brief_missing":            "模型這一步沒有整理出需求；已自動再試一次。",
+	"draft_missing":            "模型這一步說要交草稿卻沒有交出來；請補一句需求，或直接請它再試一次。",
+	"evaluation_cases_missing": "模型尚未提供完整且不同輸入的評估案例；請它補上應追問與應直接回答的案例，再確認需求。",
 }
 
 func reasonSentence(code string) (string, error) {
@@ -49,6 +51,9 @@ func validateChallengeCases(cases []ChallengeCase) error {
 		return rejectedReply(fmt.Sprintf("has %d challenge cases, more than %d", len(cases), MaxChallengeCases))
 	}
 	for _, c := range cases {
+		if c.ExpectedInteraction != "" && caseInteraction(c.ExpectedInteraction) == "" {
+			return rejectedReply("has an unknown evaluation interaction")
+		}
 		if strings.TrimSpace(c.Name) == "" || utf8.RuneCountInString(c.Name) > MaxChallengeNameRunes ||
 			strings.TrimSpace(c.Prompt) == "" || utf8.RuneCountInString(c.Prompt) > MaxSampleInputRunes {
 			return rejectedReply("has a challenge case with an empty or over-long name or prompt")
@@ -61,6 +66,23 @@ func validateChallengeCases(cases []ChallengeCase) error {
 		}
 	}
 	return nil
+}
+
+func completeEvaluationCases(cases []ChallengeCase) bool {
+	if validateChallengeCases(cases) != nil {
+		return false
+	}
+	seen := make(map[string]bool, len(cases))
+	interactions := make(map[string]bool)
+	for _, c := range cases {
+		prompt := strings.TrimSpace(c.Prompt)
+		if seen[prompt] || c.ExpectedInteraction == "" {
+			return false
+		}
+		seen[prompt] = true
+		interactions[c.ExpectedInteraction] = true
+	}
+	return interactions["question"] && interactions["direct_answer"]
 }
 
 func (s *Service) proposal(ctx context.Context, revision int64, e *envelope, r *StepResult, found *searchAnswer) (State, bool, error) {
@@ -102,6 +124,8 @@ func (s *Service) proposal(ctx context.Context, revision int64, e *envelope, r *
 		p.PendingAction = NothingPending
 		return StateWaitingInput, false, nil
 	case outcomeConfirmBrief:
+		p.ChallengeCases = r.ChallengeCases
+		p.BriefConfirmed = false
 		return askToConfirmBrief(p)
 	case outcomeConfirmDiagram, outcomeConfirmDiagramDescription, outcomeConfirmDiagramInterpretation:
 		return "", false, rejectedReply("asks to confirm a diagram it did not describe or interpret")
@@ -307,6 +331,7 @@ func (s *Service) acceptDraft(ctx context.Context, revision int64, e *envelope, 
 	forgetTrialOfReplacedDraft(p, hash)
 	repeated := blocked && p.Draft != nil && p.Draft.Blocked && p.Draft.Validation == report
 	storeDraft(p, &Draft{revision, hash, *r.Draft, report, blocked})
+	e.SourceCheckedHash = sourceDraftHash(*p, *r.Draft)
 	if repeated {
 		p.BlockedRepeats++
 	} else {

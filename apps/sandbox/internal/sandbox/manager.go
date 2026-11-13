@@ -170,7 +170,7 @@ func (m *Manager) Capability(ctx context.Context) ProviderCapability {
 	}
 	return ProviderCapability{
 		Provider:               m.cfg.Provider,
-		Runtimes:               m.cfg.Runtimes,
+		Runtimes:               m.runtimeCapabilities(ctx),
 		MaxResources:           m.cfg.MaxResources,
 		MaxResourcesUnenforced: m.cfg.MaxResourcesUnenforced,
 		Injects:                m.drv.InjectsFromGrant(),
@@ -301,16 +301,21 @@ func (m *Manager) Create(ctx context.Context, req RunRequest) (run ProviderRun, 
 	if err := validate(req); err != nil {
 		return ProviderRun{}, false, err
 	}
-	if re := m.cfg.accept(req); re != nil {
+	hash, key := HashRequest(req), req.RunID+"|"+fmt.Sprint(req.Attempt)
+	if replay, exists, err := m.replay(key, hash); exists || err != nil {
+		return replay, false, err
+	}
+	cfg := m.cfg
+	if req.ModelGateway != nil && req.ModelGateway.SearchTool != "" {
+		cfg.Runtimes = m.runtimeCapabilities(ctx)
+	}
+	if re := cfg.accept(req); re != nil {
 		return ProviderRun{}, false, re
 	}
 
 	if err := m.p02Refusal(); err != nil {
 		return ProviderRun{}, false, err
 	}
-	hash := HashRequest(req)
-	key := req.RunID + "|" + fmt.Sprint(req.Attempt)
-
 	m.mu.Lock()
 	if id, ok := m.byKey[key]; ok {
 		e := m.runs[id]
@@ -365,6 +370,24 @@ func (m *Manager) Create(ctx context.Context, req RunRequest) (run ProviderRun, 
 		return m.startFailed(id, err)
 	}
 	return m.enterRunning(id, req.ResourceLimits)
+}
+
+func (m *Manager) replay(key, hash string) (ProviderRun, bool, error) {
+	m.mu.Lock()
+	id, exists := m.byKey[key]
+	previous := m.runs[id]
+	m.mu.Unlock()
+	if !exists {
+		return ProviderRun{}, false, nil
+	}
+	if previous == nil {
+		return ProviderRun{}, true, ErrNotFound
+	}
+	if previous.hash != hash {
+		return ProviderRun{}, true, ErrConflict
+	}
+	run, _, err := m.snapshot(id)
+	return run, true, err
 }
 
 func (m *Manager) enterRunning(id string, limits ResourceLimits) (ProviderRun, bool, error) {
@@ -724,7 +747,11 @@ func validate(req RunRequest) error {
 }
 
 func (c Config) accept(req RunRequest) *RunError {
-	if re := c.acceptRuntime(req.Runtime); re != nil {
+	wantsSearch := req.ModelGateway != nil && req.ModelGateway.SearchTool != ""
+	if wantsSearch && req.ModelGateway.SearchTool != "skillhub-web-search" {
+		return capabilityMismatch("search tool %s is not supported here", req.ModelGateway.SearchTool)
+	}
+	if re := c.acceptRuntime(req); re != nil {
 		return re
 	}
 	if re := c.acceptResourceLimits(req.ResourceLimits); re != nil {
@@ -743,24 +770,42 @@ func capabilityMismatch(format string, args ...any) *RunError {
 	return &RunError{Class: ClassCapabilityMismatch, Message: fmt.Sprintf(format, args...), Retryable: false}
 }
 
-func (c Config) acceptRuntime(want RuntimeProfile) *RunError {
-	versionAvailable := false
+func (c Config) acceptRuntime(req RunRequest) *RunError {
+	want := req.Runtime
+	wantsSearch := req.ModelGateway != nil && req.ModelGateway.SearchTool != ""
+	runtimeAvailable, versionAvailable, integrationAvailable, searchUnavailable := false, false, false, false
 	for _, rt := range c.Runtimes {
 		if rt.Runtime != want.Runtime {
 			continue
 		}
-		versionAvailable = versionAvailable || slices.Contains(rt.Versions, want.RuntimeVersion)
-		if !versionAvailable {
-			return capabilityMismatch("runtime %s version %s is not available here", want.Runtime, want.RuntimeVersion)
+		runtimeAvailable = true
+		if !slices.Contains(rt.Versions, want.RuntimeVersion) {
+			continue
 		}
+		versionAvailable = true
 		if want.AgentIntegration != "" && !slices.Contains(rt.AgentIntegration, want.AgentIntegration) {
-			return capabilityMismatch("agent integration %s is not supported here", want.AgentIntegration)
+			continue
 		}
+		integrationAvailable = true
+		if wantsSearch && rt.WebSearch != "supported" {
+			searchUnavailable = searchUnavailable || (rt.WebSearch != "" && rt.WebSearch != "unsupported")
+			continue
+		}
+		return nil
 	}
-	if !versionAvailable {
+	if !runtimeAvailable {
 		return capabilityMismatch("runtime %s is not available here", want.Runtime)
 	}
-	return nil
+	if !versionAvailable {
+		return capabilityMismatch("runtime %s version %s is not available here", want.Runtime, want.RuntimeVersion)
+	}
+	if !integrationAvailable {
+		return capabilityMismatch("agent integration %s is not supported here", want.AgentIntegration)
+	}
+	if searchUnavailable {
+		return &RunError{Class: ClassProvision, Message: "runtime web search capability is temporarily unavailable", Retryable: true}
+	}
+	return capabilityMismatch("runtime %s version %s does not support web search", want.Runtime, want.RuntimeVersion)
 }
 
 func missingCeiling(l ResourceLimits) bool {

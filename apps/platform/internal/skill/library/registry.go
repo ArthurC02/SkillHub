@@ -66,26 +66,11 @@ func (s *Service) requireProjection() error {
 	return nil
 }
 
-func (s *Service) catalogWorkspaceIDs(ctx context.Context, db gen.DBTX) ([]pgtype.UUID, error) {
-	if s.CatalogWorkspaces == nil {
-		return nil, errors.New("registry: catalog workspace read not injected")
-	}
-	return s.CatalogWorkspaces(ctx, db)
-}
-
-func (s *Service) catalogSkillIn(ctx context.Context, db gen.DBTX, skillID pgtype.UUID) (gen.Skill, error) {
-	catalogs, err := s.catalogWorkspaceIDs(ctx, db)
-	if err != nil {
-		return gen.Skill{}, err
-	}
-	return gen.New(db).GetCatalogSkill(ctx, gen.GetCatalogSkillParams{ID: skillID, CatalogWorkspaceIds: catalogs})
-}
-
 func (s *Service) forkSource(ctx context.Context, tx pgx.Tx, ws identity.Workspace, skillID pgtype.UUID) (gen.Skill, gen.SkillVersion, error) {
 	q := gen.New(tx)
 	src, err := q.GetSkill(ctx, gen.GetSkillParams{ID: skillID, WorkspaceID: ws.ID})
 	if errors.Is(err, pgx.ErrNoRows) {
-		src, err = s.catalogSkillIn(ctx, tx, skillID)
+		src, err = s.CatalogReads().skillIn(ctx, tx, skillID)
 	}
 	if err == nil {
 		src, err = q.LockSkillForFork(ctx, gen.LockSkillForForkParams{ID: src.ID, WorkspaceID: src.WorkspaceID})

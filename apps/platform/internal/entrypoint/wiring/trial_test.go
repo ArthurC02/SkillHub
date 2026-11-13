@@ -57,9 +57,10 @@ func TestRunReceivesTheVersionFactsTheRegistryRecorded(t *testing.T) {
 	version := registry.Version{
 		ID: pgtype.UUID{Bytes: [16]byte{1}, Valid: true}, SkillID: pgtype.UUID{Bytes: [16]byte{2}, Valid: true},
 		ContentHash: "sha256:abc", PackageObjectKey: "packages/abc.zip", SourcePath: "skills/report",
+		Compatibility: "Linux\nskillhub-web-search",
 	}
 	want := run.VersionFacts{ID: version.ID, SkillID: version.SkillID, ContentHash: "sha256:abc",
-		PackageObjectKey: "packages/abc.zip", SourcePath: "skills/report"}
+		PackageObjectKey: "packages/abc.zip", SourcePath: "skills/report", Compatibility: "Linux\nskillhub-web-search"}
 	if got := runVersionFacts(version); !reflect.DeepEqual(got, want) {
 		t.Errorf("run facts for a version = %+v, want %+v", got, want)
 	}

@@ -856,6 +856,14 @@ components:
           type: number
           description: Spend brake, budgeted at cold-cache prices (PDM-005 5.2a-5).
         tpm_limit: { type: integer, description: "Rate brake, independent of spend flush." }
+        search_tool:
+          type: string
+          enum: [skillhub-web-search]
+          description: |
+            Optional gateway search alias granted only for a declared and
+            confirmed Run. Omission grants no search access. The same
+            short-lived key, budget and expiry cover model and search calls;
+            no search-provider credential or extra egress route is exposed.
         expires_at: { type: string, format: date-time }
 
     TracePolicy:
@@ -997,6 +1005,16 @@ components:
             properties:
               runtime: { type: string }
               versions: { type: array, items: { type: string } }
+              web_search:
+                type: string
+                enum: [supported, unsupported, unavailable]
+                default: unsupported
+                description: |
+                  Supported only when the selected workload runtime supports
+                  the platform search tool through the granted model gateway.
+                  Must hold for every version in this entry. An absent value
+                  is unsupported, including for older runtime images. Unavailable
+                  means that runtime evidence could not be read; retry later.
               agent_integration:
                 type: array
                 items: { type: string, enum: [in_sandbox_sdk, provider_hosted_agent] }

@@ -45,8 +45,37 @@ Catalog 參考畫面列出選定不可變版本的描述、相容性與工具需
 
 Clean mode 由同一程序內的 Go Worker 服務接收瞬時圖像，仍不讓 API 呼叫 Python。此模式的設定與曝光規則相同。
 
+## 接續鏈的品質觀察
+
+Run owner 在既有 Worker gauge 更新流程中，從同一次資料庫讀取取得最近 24 小時建立的初始 Run，以及觀察時間之前已保存的接續關係。初始 Run 建立時間的下界包含、上界不包含；接續的 Run 與關係都必須早於觀察時間。鏈以初始 Run 計一次，中間的接續 Run 不另算一條；初始 Run 本身是零輪，每個已保存的接續關係增加一輪。較早開始的鏈即使最近有人回答，也不進這一批初始 Run 的統計。
+
+skillhub_continuation_chains 是這批鏈數，skillhub_continuation_rounds 是它們的接續輪數總和，skillhub_continuation_longest_rounds 是其中最長輪數。平均輪數只能在鏈數大於零時以總輪數除以鏈數；空集合的三個數字都是零，不表示已完成一場零輪對話。統計包含所有狀態、一般試跑、評估與不載入 Skill 的對照，不是只看已結束對話，也不是只看真人。未回答或仍在執行的鏈可能繼續變長。
+
+skillhub_continuation_observation_success 表示讀取成功，skillhub_continuation_observed_at_seconds 是時間上界。讀取失敗時撤下鏈數、輪數與時間，成功值改為 0；恢復後重讀資料。各 Worker 副本獨立觀察，不可相加；先確認觀察成功，再選最近仍新鮮的副本。新鮮門檻依部署的 gauge 更新與 scrape 週期設定。這些指標沒有個人、Workspace、Run、問題或答案標籤，不另存對話歷史，也不作告警、派送或授權依據。帳號清除依現行規則保留去識別的永久 Run 與接續關係，因此結構統計不承諾隨帳號清除歸零；問答原文的保存由既有歷史輸入與清除規則負責，這些指標不讀取原文。
+
+初始 Run 的建立時間索引涵蓋所有狀態；正式資料量下的查詢與 migration 建索引耗時尚未量測。追問率的可信分母、Run 費用的完整觀察與人工分歧率仍待補齊。
+
+Run 清理只在所有 attempt 的費用都完整且有效時結算；頁數上限造成的未讀完資料、缺少價格、負數或非有限價格，以及單頁、跨頁或跨 attempt 的加總溢位都保留為未知。已讀到的有效 token 與價格片段仍可作觀察，但不成為最終扣款或改派可用預算。完整價格恢復後沿用既有冪等結算，不自動回補或改寫歷史帳目；舊費用資料的完整性不能僅從結算標記推論。
+
+## 創作會話費用的品質觀察
+
+Creation owner 在既有 Worker gauge 更新流程中，讀取最近 24 小時建立、觀察時尚未到期且仍保留的會話。建立時間下界包含、上界不包含；到期時間必須嚴格晚於觀察時間。所有會話狀態都納入，包括仍在工作、已保存、取消與失敗的會話。這是一批會話的目前快照，不是當日帳單，也不是只含真人或已完成創作的統計。
+
+查詢只取 SpentUSD、ReservedUSD 與 UsageUnknown 的 JSON 數字及旗標，不讀訊息、草稿、參考全文或身分欄位。Go 將會話分為三組，透過 skillhub_creation_cost_sessions 的固定 coverage 標籤提供各組數量：
+
+- known：已知支出與預留額都有明確、非負且可表示的數值，UsageUnknown 明確為 false，而且預留額為零。新會話明確保存的零支出也屬此組；正在進行的會話之後仍可能增加支出。
+- unsettled：上述資料有效，但預留額大於零。預留額不當成已花費，也不將此組的局部已知支出混入 known 組。
+- unknown：用量曾標為未知，或必要欄位缺席、為 null、型別不符、為負數、超出數值範圍或小到會失真為零。即使仍有預留額，資料未知仍優先列入這一組，不補成已知的零。
+
+skillhub_creation_known_spend_usd 與 skillhub_creation_max_known_session_cost_usd 分別是 known 組的已知費用總和與最大值。沒有 known 會話時撤下兩個金額；有一場明確零支出的 known 會話才顯示金額零。平均只能在 known 數量大於零時以總和除以該組數量，不能推算未知或待結算會話的費用。三組數量之和是這批會話的分母；分母為零時不能算涵蓋比率。金額是浮點觀察，不是 Credit 帳本或扣款輸入。
+
+skillhub_creation_cost_observation_success 表示最近一次觀察是否有效，skillhub_creation_cost_observed_at_seconds 記錄會話批次的時間上界。一次查詢的快照一致，但費用取讀取當下的最新快照，不冒充該時間上界的歷史結算。資料庫讀取失敗或合計溢位時撤下三組數量、金額與時間，成功值為 0；成功讀到空集合才顯示三組數量都是零。重讀、重啟與多個 Worker 副本不累加；副本不可相加，先確認成功與新鮮度，再選最近的觀察。
+
+到期或帳號清除後，下一次觀察反映仍可用的會話，不另存費用歷史，不改變永久 Credit 紀錄、預算核准或扣款政策。除固定的三種 coverage 外，不新增個人、Workspace、會話、查詢或網址標籤。讀取沿用現有到期索引；大量保留會話下的查詢延遲與投影列記憶體用量尚未量測。這份局部費用證據不能勾選整項監控工作，其他 Run 費用、追問率、人工分歧與抽樣仍待完成。
+
 ## 可重現的免費證據
 
+- Python `test_creation_context.py` 與 Go `creation_python_context_integration_test.go`：必要規則不足優先回問、混合修法不進入重寫、問題順序與單次診斷用量；Go 測試走真正 FastAPI／LangGraph 與本機模型替身，只證明傳輸及能力回應，不證明會話持久化或真模型品質。
 - Python `apps/llm/tests/test_creation.py`：多輪與工具 observation、需求更正、圖像只傳一次、strict schema、截斷、未知費用、關閉 LangSmith tracing、取消傳至模型 await。
 - Go `creation_integration_test.go`：真實 PostgreSQL、正式 API／Worker composition root、HTTP 模型替身；驗證需求確認 → 草稿驗證 → 私人候選 → 保存同一版本，以及圖像不落地、命令重播、過期 revision、跨 Workspace、參考重新授權、取消與刪除競態、預算耗盡不再排程、重啟保留未知費用且不重播。
 - Web `creation.test.tsx`：三種素材的實際 API payload、會話恢復、確認動作、未知費用、409 保留輸入、網路重試沿用識別碼、曝光關閉不掛載。
@@ -71,13 +100,31 @@ Go 資料庫測試只可指定 localhost 且名稱結尾為 `_test` 的可拋棄
 - `raise_budget`：額度被拒的會話可提高預算後從 `waiting_input` 繼續，區間由 `/creation-sessions/limits` 公布，超出回 422 並寫出區間。
 - 拒絕與退回的判定在 Go；Python 只回輸出形狀的 `reason` 碼（`diagram_incomplete`），句子一律由 Go 出；`creation.py` 裡沒有中文。
 
-**review 相最多三次呼叫**：有未達成評估時，`ReviewDiagnosis` 先判 `target`（body／criteria／sample_input）；body 的修法另做純文字重寫，再產生結構化決策，重寫結果覆蓋 `draft` 或 `validate_draft` 工具意圖中的本文。非 body 的修法不重寫本文，回 `confirm_brief` 讓人重新確認。判斷採最近一次評估，略過其後的靜態驗證等工具訊息；更新的達成結果不會被更早的失敗覆蓋。
+**review 相最多三次呼叫**：有未達成評估時，`ReviewDiagnosis` 先判 `target`（context／body／files／criteria／sample_input）。缺少作者或指定來源才能提供的必要規則時，context 優先回 `clarification`，保留問題順序，只回報這一次診斷的用量，不進入重寫或另一個決策呼叫；Go 仍擁有會話狀態與排程。body／files 的修法另做重寫，再產生結構化決策；criteria／sample_input 的修法回 `confirm_brief` 讓人重新確認。判斷採最近一次評估，略過其後的靜態驗證等工具訊息；更新的達成結果不會被更早的失敗覆蓋。
+
+**必要資料不足可以再問**：提示不限制只能澄清一次，也不以通用費率或自行假設補上作者尚未給的規則。作者已提供的規則與資料保留在 `references/`／`assets/`，可重現計算放進 `scripts/`。評估案例同時要求「缺必要資訊時詢問」與「資訊完整或可推導時直接完成」；分類與不同輸入已有結構檢查，仍未證明案例的語意正確。
+
+**評估案例的完整性**：案例生成器的結構要求 `expected_interaction` 為 question 或 direct_answer；有效且輸入不同的兩類都存在才回傳整組，最多三題。分類經內部契約傳給 Go，保存在私人會話快照，後續請求也保留。Go 在確認需求、接納 draft／validate_draft 與建立新候選前，檢查所有案例的有效分類、至少一題該追問與一題直接回答，以及不同的輸入。缺少分類、類別不齊或案例不完整的舊會話先補齊並重新確認，不以舊確認沿用新的案例；不支援的舊分類在服務請求中視為未知，保留案例內容，避免反覆被請求 schema 拒絕。選定已存在的不可變候選不重建版本。案例寫入沿既有 Test Case hook 與候選共用交易；缺少 writer 或任一題寫入失敗都不留下部分候選。補齊工作仍受既有期限、預算與步數限制。
+
+這些是模型分類主張與結構檢查；分類及驗收條件的語意正確性、實際品質仍須量測，不能以欄位或案例數量冒充已驗證。對外的單筆、清單、動作回覆與 SSE 都沿用同一份投影，只提供原有的案例名稱、輸入及條件，分類欄位不進 public API，也不修改歷史 Test Case 或版本。
+
+**起草前的來源盤點**：模型在既有起草與重寫呼叫中提供 `source_assessment.rules`，列出任務需要的規則、公式、級距、對照表與判準。Go 在接納 draft／validate_draft 前核對引文：來源須為作者訊息、已同意且成功抓取的網頁本文，或真人已確認的流程圖；模型自己的文字、搜尋列表與網頁 metadata 不算來源。規則還須指向草稿實際附上的 `references/` 或 `assets/` 檔案，本文也須提及該路徑。缺來源就先問作者，不保存新草稿、不替換已確認需求；多個問題以完整句子分批詢問。缺少盤點欄位不視為已查核，只有明示空清單才主張任務不需要這類規則。
+
+查核摘要綁定草稿及來源輸入，僅保存在私人 envelope；草稿、作者回答或抓取來源變動時要重查。舊草稿在建立新候選前重新核對；已存在的不可變候選仍可直接選取。盤點沿用既有起草／重寫呼叫，不另加專用模型呼叫；不把原始對話包進 Skill，也不新增公開欄位，補問仍受既有步數、期限與預算限制。這只證明提供的引文與檔案能核對，模型是否漏列規則、引文是否支持該規則、檔案內容與分類的語意正確性仍須量測。
+
+**確認前看得到評估案例**：需求摘要卡列出每個案例名稱、完整輸入與全部驗收條件，確認按鈕說明範圍包含這些案例。舊會話缺少案例時明示未提供；確認仍只送 revision 命令，由 Go 使用已保存的快照。新建 Test Case 使用「評估案例：」名稱，既有 Test Case 不改名。
 
 **回合時間線保留決策因果**：試跑判定、系統追問、使用者回答與模型建議依訊息順序串接。追問保留具體條件與原因；中間的工具訊息不切斷回答與修訂建議，新試跑則結束上一輪的待答關係。時間線不代表已保存；保存仍是使用者的明確動作。
 
 ## 工具：連網、檢索與 Re-Use
 
 **`fetch_url`（[`05` R-47](../plans/05-pending-rulings.md)）連網前一定問人**：`proposal` 的 `fetch_url` 分支只設 `PendingFetchURL` 並回 `confirm_fetch`，抓取發生在 Worker 的 job 裡、在呼叫模型之前，結果以 JSON 觀察追加。`creation/webfetch` 的 `webfetch.New` 在 dial 時擋私有／loopback／link-local，redirect ≤ 3、15 秒、256 KB、只收 `text/*`、去標籤後 8000 字；4xx 與被拒連線是 blocked **不重試**，DNS／逾時／5xx 重試一次。`allowedTools` 只在 Worker（`s.Fetch != nil`）給這個工具。
+
+**網頁內文只供當次使用**：工作中與結束後的會話快照、命令收據只保留抓取紀錄。Go 為當次模型請求複製訊息，再放入遮罩後的內文；來源核對也只使用這份當次資料，不把內文寫回快照。下一步僅有紀錄，不能沿用先前內文或未經再次同意自動重抓。成功、模型失敗與取消都遵守相同保存邊界。
+
+舊會話的讀取與命令重播會清掉抓取工具訊息中的內文，保留作者訊息、其他工具內容及其餘 metadata。資料清理 migration 對快照與收據做相同移除，可重複執行，保留狀態、revision 與其他欄位，也涵蓋已刪除帳號。部署時先停止舊版 Worker，套用 migration 並換上新版 API／Worker後再恢復工作，避免舊程序重新寫入內文；migration 不改寫既有備份，備份依既有復原與清除程序處理。
+
+免費證據由 `fetch_context_test.go` 與 `creation_fetch_privacy_integration_test.go` 提供：當次遮罩與來源核對、訊息副本隔離、後續步驟不重抓、模型失敗與取消、舊資料讀取及重播，以及含 NUL 內文的冪等清理。literal escape、未知 metadata、作者內容與其他欄位保留，這些回歸測試不替代真實部署驗收。
 
 **檢索一律走 `discovery.CreationKnowledgeIDs`**，它就是公開的 hybrid 搜尋（SQL `ListHybridSearchCandidates` 取三條候選腿，Go `fuseHybridCandidates`／`rankHybridDocuments` 融合、截斷與排序）去掉沒有向量的列：向量命中依距離排序，加上一筆全覆蓋的詞彙命中；沒有 embedding 時詞彙獨答並標記 degraded。詞彙腿是 `search_documents.bigram`（拉丁字詞＋中文字元 bigram），**覆蓋列不受截斷、排在向量命中之前**。意圖與改寫過的 `queries` 各自排名後以 RRF（`FuseRanked`）合併。兩個距離常數不同用途：`CreationMaxDistance`（＝ `MaxCosineDistance` 0.75）給創作搜尋與首則訊息的目錄查詢，`CreationDuplicateDistance`（0.55）給保存前的查重守門。`MaxSearchRounds` ＝ 2，空手兩回就撤掉搜尋工具。費用計入會話的 `SpentUSD`。
 

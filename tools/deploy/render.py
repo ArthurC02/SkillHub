@@ -28,15 +28,20 @@ ROLES = {
             "SKILLHUB_SMTP_SMARTHOST", "SKILLHUB_SMTP_FROM", "SKILLHUB_SMTP_USERNAME", "SKILLHUB_GATEWAY_URL",
         ],
         "images": {
+            "SKILLHUB_PROMETHEUS_IMAGE": "skillhub-prometheus",
+            "SKILLHUB_ALERTMANAGER_IMAGE": "skillhub-alertmanager",
+            "SKILLHUB_CADDY_IMAGE": "skillhub-caddy",
             "SKILLHUB_WEB_IMAGE": "skillhub-web",
             "SKILLHUB_PLATFORM_IMAGE": "skillhub-platform",
             "SKILLHUB_LLM_IMAGE": "skillhub-llm",
             "SKILLHUB_POSTGRES_IMAGE": "skillhub-postgres",
+            "SKILLHUB_POSTGRES_EXPORTER_IMAGE": "skillhub-postgres-exporter",
+            "SKILLHUB_BLACKBOX_EXPORTER_IMAGE": "skillhub-blackbox-exporter",
         },
     },
     "gateway": {
         "settings": ["SKILLHUB_PRIVATE_IP"],
-        "images": {},
+        "images": {"SKILLHUB_GATEWAY_IMAGE": "skillhub-gateway"},
     },
     "sandbox": {
         "settings": ["SKILLHUB_PRIVATE_IP", "SKILLHUB_CONTROL_PLANE_IP", "SKILLHUB_SANDBOX_SLOTS"],

@@ -48,6 +48,11 @@ jobs:
               - '.github/workflows/ci.yml'
             platform:
               - 'apps/platform/**'
+              - 'infra/images/seaweedfs/**'
+              - 'infra/images/prometheus/summarize-tests.py'
+              - 'tools/devctl/gateway_search_proof*'
+              - 'tools/devctl/searchproof/**'
+              - 'tools/devctl/main.go'
               - 'db/**'
               - 'contracts/**'
               - 'apps/llm/**'
@@ -95,7 +100,14 @@ jobs:
               - 'infra/images/platform/**'
               - 'infra/images/web/**'
               - 'infra/images/llm/**'
+              - 'infra/images/gateway/**'
               - 'infra/images/postgres/**'
+              - 'infra/images/seaweedfs/**'
+              - 'infra/images/postgres-exporter/**'
+              - 'infra/images/blackbox-exporter/**'
+              - 'infra/images/caddy/**'
+              - 'infra/images/prometheus/**'
+              - 'infra/images/alertmanager/**'
               - 'apps/sandbox/**'
               - 'infra/images/sandboxd/**'
               - 'infra/compose/**'
@@ -105,6 +117,10 @@ jobs:
               - '.dockerignore'
               - '.github/workflows/ci.yml'
             deploy:
+              - 'infra/images/gateway/**'
+              - 'infra/images/caddy/**'
+              - 'infra/images/prometheus/**'
+              - 'infra/images/alertmanager/**'
               - 'infra/deploy/**'
               - 'infra/compose/control-plane.yml'
               - 'infra/compose/gateway.yml'
@@ -119,6 +135,28 @@ jobs:
               - 'tools/deploy/**'
               - 'tools/ci/deploy-config-check.sh'
               - '.github/workflows/ci.yml'
+
+  gateway-search:
+    needs: changes
+    if: needs.changes.outputs.platform == 'true' || needs.changes.outputs.images == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: apps/platform/go.mod
+          cache-dependency-path: apps/platform/go.sum
+      - name: Verify search permissions with the rebuilt gateway and local providers
+        run: go -C tools/devctl run . gateway-search-proof
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: gateway-search-proof
+          path: .devctl/scratchpad/gateway-search-proof-*/
+          retention-days: 7
 
   web:
     needs: changes
@@ -295,20 +333,20 @@ jobs:
     needs: changes
     if: needs.changes.outputs.platform == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
     defaults:
       run:
         working-directory: apps/platform
     services:
       postgres:
-        image: docker.io/pgvector/pgvector:pg18@sha256:2358fcba361ed2233a5ed81b5fe4ca779ccb304120ce531a3bf51c0ed7e2bc11
+        image: docker.io/pgvector/pgvector:pg18@sha256:c29f30688a9ad961691bdf0ec1650717cc132a5814619d80f80463d6e4c42e47
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: skillhub_test
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U postgres"
+          --health-cmd "pg_isready -h 127.0.0.1 -U postgres"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -323,11 +361,23 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build the SeaweedFS image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: infra/images/seaweedfs/Dockerfile
+          tags: skillhub-ci/seaweedfs:${{ github.sha }}
+          load: true
+          push: false
+          provenance: false
+          cache-from: type=gha,scope=seaweedfs
+          cache-to: type=gha,mode=max,scope=seaweedfs
       - name: Start SeaweedFS (credentialed S3, for the SBX-008 grant tests)
         run: |
           docker run -d --name seaweedfs --network host \
             -v "$GITHUB_WORKSPACE/infra/compose/seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro" \
-            docker.io/chrislusf/seaweedfs:4.48@sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d \
+            skillhub-ci/seaweedfs:${{ github.sha }} \
             server -s3 -s3.config=/etc/seaweedfs/s3.json -dir=/data
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
@@ -342,13 +392,13 @@ jobs:
         run: uv sync --frozen
       - name: Check database-only immutability constraints
         env:
-          PSQL: docker run --rm -i --network host docker.io/pgvector/pgvector:pg18@sha256:2358fcba361ed2233a5ed81b5fe4ca779ccb304120ce531a3bf51c0ed7e2bc11 psql
+          PSQL: docker run --rm -i --network host docker.io/pgvector/pgvector:pg18@sha256:c29f30688a9ad961691bdf0ec1650717cc132a5814619d80f80463d6e4c42e47 psql
         run: |
           bash "$GITHUB_WORKSPACE/tools/ci/apply-sql.sh" "$GITHUB_WORKSPACE"/db/migrations/*.sql -- $PSQL "$SKILLHUB_TEST_DATABASE_URL"
           $PSQL "$SKILLHUB_TEST_DATABASE_URL" -v ON_ERROR_STOP=1 --single-transaction <"$GITHUB_WORKSPACE/db/tests/immutability_test.sql"
       - name: Apply new migrations to a database that already holds data
         env:
-          PSQL: docker run --rm -i --network host docker.io/pgvector/pgvector:pg18@sha256:2358fcba361ed2233a5ed81b5fe4ca779ccb304120ce531a3bf51c0ed7e2bc11 psql
+          PSQL: docker run --rm -i --network host docker.io/pgvector/pgvector:pg18@sha256:c29f30688a9ad961691bdf0ec1650717cc132a5814619d80f80463d6e4c42e47 psql
         run: |
           $PSQL postgres://postgres:postgres@localhost:5432/postgres -c 'CREATE DATABASE skillhub_upgrade'
           bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Upgrade with data' \
@@ -591,7 +641,11 @@ jobs:
     needs: changes
     if: needs.changes.outputs.llm == 'true'
     timeout-minutes: 15
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     defaults:
       run:
         working-directory: apps/llm
@@ -819,7 +873,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.deploy == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -831,7 +885,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.images == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 45
     env:
       REGISTRY: ghcr.io/arthurc02
     steps:
@@ -846,6 +900,7 @@ jobs:
           file: infra/images/platform/Dockerfile
           tags: ${{ env.REGISTRY }}/skillhub-platform:${{ github.sha }}
           load: true
+          push: false
           provenance: false
           cache-from: type=gha,scope=platform
           cache-to: type=gha,mode=max,scope=platform
@@ -856,6 +911,7 @@ jobs:
           file: infra/images/web/Dockerfile
           tags: ${{ env.REGISTRY }}/skillhub-web:${{ github.sha }}
           load: true
+          push: false
           provenance: false
           cache-from: type=gha,scope=web
           cache-to: type=gha,mode=max,scope=web
@@ -866,21 +922,34 @@ jobs:
           file: infra/images/llm/Dockerfile
           tags: ${{ env.REGISTRY }}/skillhub-llm:${{ github.sha }}
           load: true
+          push: false
           provenance: false
           cache-from: type=gha,scope=llm
           cache-to: type=gha,mode=max,scope=llm
+      - name: Build the SeaweedFS image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: infra/images/seaweedfs/Dockerfile
+          tags: ${{ env.REGISTRY }}/skillhub-seaweedfs:${{ github.sha }}
+          load: true
+          push: false
+          provenance: false
+          cache-from: type=gha,scope=seaweedfs
+          cache-to: type=gha,mode=max,scope=seaweedfs
       - name: Smoke the images before pushing them
         env:
           PLATFORM_IMAGE: ${{ env.REGISTRY }}/skillhub-platform:${{ github.sha }}
           WEB_IMAGE: ${{ env.REGISTRY }}/skillhub-web:${{ github.sha }}
           LLM_IMAGE: ${{ env.REGISTRY }}/skillhub-llm:${{ github.sha }}
+          SEAWEEDFS_IMAGE: ${{ env.REGISTRY }}/skillhub-seaweedfs:${{ github.sha }}
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Stack smoke' bash tools/ci/stack-smoke.sh
 
   images-postgres-sandboxd:
     needs: changes
     if: needs.changes.outputs.images == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 45
     env:
       REGISTRY: ghcr.io/arthurc02
     steps:
@@ -894,13 +963,86 @@ jobs:
           context: infra/images/postgres
           tags: ${{ env.REGISTRY }}/skillhub-postgres:${{ github.sha }}
           load: true
+          push: false
           provenance: false
           cache-from: type=gha,scope=postgres
           cache-to: type=gha,mode=max,scope=postgres
+      - name: Build the SeaweedFS image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: infra/images/seaweedfs/Dockerfile
+          tags: ${{ env.REGISTRY }}/skillhub-seaweedfs:${{ github.sha }}
+          load: true
+          push: false
+          provenance: false
+          cache-from: type=gha,scope=seaweedfs
+          cache-to: type=gha,mode=max,scope=seaweedfs
       - name: Back up, restore and compare before pushing it
         env:
           POSTGRES_IMAGE: ${{ env.REGISTRY }}/skillhub-postgres:${{ github.sha }}
+          SEAWEEDFS_IMAGE: ${{ env.REGISTRY }}/skillhub-seaweedfs:${{ github.sha }}
         run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Backup drill' bash tools/ci/backup-drill.sh
+      - name: Build the postgres-exporter image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: infra/images/postgres-exporter
+          tags: ${{ env.REGISTRY }}/skillhub-postgres-exporter:${{ github.sha }}
+          load: true
+          push: false
+          provenance: false
+          cache-from: type=gha,scope=postgres-exporter
+          cache-to: type=gha,mode=max,scope=postgres-exporter
+      - name: Collect real database metrics and reject invalid credentials
+        env:
+          POSTGRES_IMAGE: ${{ env.REGISTRY }}/skillhub-postgres:${{ github.sha }}
+          POSTGRES_EXPORTER_IMAGE: ${{ env.REGISTRY }}/skillhub-postgres-exporter:${{ github.sha }}
+        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Postgres exporter smoke' bash tools/ci/postgres-exporter-smoke.sh
+      - name: Build the blackbox-exporter image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: infra/images/blackbox-exporter
+          tags: ${{ env.REGISTRY }}/skillhub-blackbox-exporter:${{ github.sha }}
+          load: true
+          push: false
+          provenance: false
+          cache-from: type=gha,scope=blackbox-exporter
+          cache-to: type=gha,mode=max,scope=blackbox-exporter
+      - name: Distinguish healthy and failed HTTP and TCP probes
+        env:
+          BLACKBOX_EXPORTER_IMAGE: ${{ env.REGISTRY }}/skillhub-blackbox-exporter:${{ github.sha }}
+          PROBE_TARGET_IMAGE: python:3.15.2-slim-bookworm@sha256:96599df822d0e1c6bb700014a05c7f3c8cabc6e0f7ff3c4f9f69cee033b4b5d9
+        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Blackbox exporter smoke' bash tools/ci/blackbox-exporter-smoke.sh
+      - name: Build the caddy image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: infra/images/caddy
+          tags: ${{ env.REGISTRY }}/skillhub-caddy:${{ github.sha }}
+          load: true
+          push: false
+          provenance: false
+          cache-from: type=gha,scope=caddy
+          cache-to: type=gha,mode=max,scope=caddy
+      - name: Verify proxy compression, security headers and failure status
+        env:
+          CADDY_IMAGE: ${{ env.REGISTRY }}/skillhub-caddy:${{ github.sha }}
+          PROBE_TARGET_IMAGE: python:3.15.2-slim-bookworm@sha256:96599df822d0e1c6bb700014a05c7f3c8cabc6e0f7ff3c4f9f69cee033b4b5d9
+        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Caddy smoke' bash tools/ci/caddy-smoke.sh
+      - name: Build the alertmanager image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: infra/images/alertmanager
+          tags: ${{ env.REGISTRY }}/skillhub-alertmanager:${{ github.sha }}
+          load: true
+          push: false
+          provenance: false
+          cache-from: type=gha,scope=alertmanager
+          cache-to: type=gha,mode=max,scope=alertmanager
+      - name: Verify alert lifecycle, local notifications and UI
+        env:
+          ALERTMANAGER_IMAGE: ${{ env.REGISTRY }}/skillhub-alertmanager:${{ github.sha }}
+          PROBE_TARGET_IMAGE: python:3.15.2-slim-bookworm@sha256:96599df822d0e1c6bb700014a05c7f3c8cabc6e0f7ff3c4f9f69cee033b4b5d9
+        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Alertmanager smoke' bash tools/ci/alertmanager-smoke.sh
       - name: Build the sandboxd image
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
@@ -908,6 +1050,7 @@ jobs:
           file: infra/images/sandboxd/Dockerfile
           tags: ${{ env.REGISTRY }}/skillhub-sandboxd:${{ github.sha }}
           load: true
+          push: false
           provenance: false
           cache-from: type=gha,scope=sandboxd
           cache-to: type=gha,mode=max,scope=sandboxd
@@ -920,6 +1063,34 @@ jobs:
           output=$(docker run --rm "$SANDBOXD_IMAGE" 2>&1) || status=$?
           echo "$output"
           [ "$status" = 1 ] && grep -q 'SKILLHUB_SANDBOX_TOKEN is required' <<<"$output"
+
+  images-prometheus:
+    needs: changes
+    if: needs.changes.outputs.images == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      REGISTRY: ghcr.io/arthurc02
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build the prometheus image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: infra/images/prometheus
+          tags: ${{ env.REGISTRY }}/skillhub-prometheus:${{ github.sha }}
+          load: true
+          push: false
+          provenance: false
+          cache-from: type=gha,scope=prometheus
+          cache-to: type=gha,mode=max,scope=prometheus
+      - name: Verify preserved data, queries, rules, UI and remote-read limits
+        env:
+          PROMETHEUS_IMAGE: ${{ env.REGISTRY }}/skillhub-prometheus:${{ github.sha }}
+          PROBE_TARGET_IMAGE: python:3.15.2-slim-bookworm@sha256:96599df822d0e1c6bb700014a05c7f3c8cabc6e0f7ff3c4f9f69cee033b4b5d9
+        run: bash "$GITHUB_WORKSPACE/tools/ci/report-failure.sh" 'Prometheus smoke' bash tools/ci/prometheus-smoke.sh
 
   devtools-image:
     needs: changes
@@ -939,8 +1110,8 @@ jobs:
           push: false
 
   images-push:
-    needs: [images, images-postgres-sandboxd, web, web-browser, platform, platform-lint, platform-race, llm, sandbox, devctl, contracts-drift, dependency-audit]
-    if: ${{ !failure() && !cancelled() && needs.images.result == 'success' && needs.images-postgres-sandboxd.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    needs: [images, images-postgres-sandboxd, images-prometheus, gateway-search, web, web-browser, platform, platform-lint, platform-race, llm, sandbox, devctl, contracts-drift, dependency-audit]
+    if: ${{ !failure() && !cancelled() && needs.images.result == 'success' && needs.images-postgres-sandboxd.result == 'success' && needs.images-prometheus.result == 'success' && needs.gateway-search.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     strategy:
       fail-fast: false
       matrix:
@@ -948,10 +1119,17 @@ jobs:
           - { image: platform, context: ., file: infra/images/platform/Dockerfile }
           - { image: web, context: ., file: infra/images/web/Dockerfile }
           - { image: llm, context: apps/llm, file: infra/images/llm/Dockerfile }
+          - { image: gateway, context: infra/images/gateway, file: infra/images/gateway/Dockerfile }
           - { image: postgres, context: infra/images/postgres, file: infra/images/postgres/Dockerfile }
+          - { image: seaweedfs, context: ., file: infra/images/seaweedfs/Dockerfile }
+          - { image: postgres-exporter, context: infra/images/postgres-exporter, file: infra/images/postgres-exporter/Dockerfile }
+          - { image: blackbox-exporter, context: infra/images/blackbox-exporter, file: infra/images/blackbox-exporter/Dockerfile }
+          - { image: caddy, context: infra/images/caddy, file: infra/images/caddy/Dockerfile }
+          - { image: prometheus, context: infra/images/prometheus, file: infra/images/prometheus/Dockerfile }
+          - { image: alertmanager, context: infra/images/alertmanager, file: infra/images/alertmanager/Dockerfile }
           - { image: sandboxd, context: ., file: infra/images/sandboxd/Dockerfile }
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: ${{ (matrix.image == 'prometheus' || matrix.image == 'seaweedfs') && 45 || matrix.image == 'gateway' && 30 || 15 }}
     permissions:
       contents: read
       packages: write

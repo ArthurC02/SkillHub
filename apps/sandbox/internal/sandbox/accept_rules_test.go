@@ -145,3 +145,61 @@ func TestAcceptTellsAMalformedDestinationApartFromAnUnroutedOne(t *testing.T) {
 		})
 	}
 }
+
+func TestSearchIsAcceptedOnlyByTheRequestedRuntimeVersion(t *testing.T) {
+	for _, tc := range []struct {
+		name, version, tool, want string
+	}{
+		{"ordinary old runtime", "1", "", ""},
+		{"search on old runtime", "1", "skillhub-web-search", "runtime claude_agent_sdk version 1 does not support web search"},
+		{"search on supporting runtime", "2", "skillhub-web-search", ""},
+		{"unregistered search tool", "2", "other-search", "search tool other-search is not supported here"},
+		{"unavailable version", "3", "skillhub-web-search", "runtime claude_agent_sdk version 3 is not available here"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cfg := integratedConfig()
+			current := cfg.Runtimes[0]
+			current.Versions, current.WebSearch = []string{"2"}, "supported"
+			cfg.Runtimes = append(cfg.Runtimes, current)
+			req := boundedRequest()
+			req.Runtime.RuntimeVersion = tc.version
+			if tc.tool != "" {
+				req.ModelGateway = &ModelGatewayGrant{SearchTool: tc.tool}
+			}
+			assertAcceptVerdict(t, cfg.accept(req), tc.want)
+		})
+	}
+}
+
+func TestSearchRuntimeEvidenceCanBeUnavailableWithoutBlockingOrdinaryRuns(t *testing.T) {
+	for _, tc := range []struct {
+		state     string
+		class     string
+		retryable bool
+	}{
+		{"", ClassCapabilityMismatch, false},
+		{"unsupported", ClassCapabilityMismatch, false},
+		{"unavailable", ClassProvision, true},
+		{"unexpected", ClassProvision, true},
+		{"supported", "", false},
+	} {
+		t.Run(tc.state, func(t *testing.T) {
+			cfg := integratedConfig()
+			cfg.Runtimes[0].WebSearch = tc.state
+			req := boundedRequest()
+			req.ModelGateway = &ModelGatewayGrant{SearchTool: "skillhub-web-search"}
+			got := cfg.accept(req)
+			if tc.class == "" {
+				if got != nil {
+					t.Fatalf("supported search was refused: %+v", got)
+				}
+			} else if got == nil || got.Class != tc.class || got.Retryable != tc.retryable {
+				t.Fatalf("search state %q verdict = %+v, want %s retryable=%v", tc.state, got, tc.class, tc.retryable)
+			}
+			req.ModelGateway = nil
+			if got := cfg.accept(req); got != nil {
+				t.Fatalf("ordinary request depended on search evidence: %+v", got)
+			}
+		})
+	}
+}

@@ -34,6 +34,9 @@ files:
   workspaces.sql: identity
 
 queries:
+  GetCuratedAncestor: registry
+  ListCreationCostObservations: creation
+  SummarizeContinuationChains: run
   CountQuotaRuns: run
   RunInWorkspace: run
   RunIDsInWorkspace: run
@@ -283,6 +286,8 @@ queries:
   CountTraceMaskingInWindow: trace
 
 scope:
+  ListCreationCostObservations: worker
+  SummarizeContinuationChains: worker
   TakeRateLimitToken: platform-wide
   SweepRateLimitBuckets: platform-wide
   RecordDatabaseSize: platform-wide

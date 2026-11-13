@@ -5,17 +5,17 @@ model_list:
       api_key: os.environ/OPENAI_API_KEY
       # This route does not honor drop_params/additional_drop_params globally,
       # so unsupported params must be dropped per model here.
-      additional_drop_params: ["reasoning_effort", "thinking"]
+      additional_drop_params: ["reasoning_effort", "thinking", "web_search_options"]
   - model_name: gpt-6-sol
     litellm_params: &sol
       model: openai/gpt-6-sol
       api_key: os.environ/OPENAI_API_KEY
-      additional_drop_params: ["thinking", "temperature"]
+      additional_drop_params: ["thinking", "temperature", "web_search_options"]
   - model_name: gpt-6-luna
     litellm_params: &luna
       model: openai/gpt-6-luna
       api_key: os.environ/OPENAI_API_KEY
-      additional_drop_params: ["thinking", "temperature"]
+      additional_drop_params: ["thinking", "temperature", "web_search_options"]
   - model_name: text-embedding-3-small
     litellm_params:
       model: openai/text-embedding-3-small
@@ -39,7 +39,7 @@ model_list:
     litellm_params:
       <<: *luna
       reasoning_effort: none
-      additional_drop_params: ["thinking"]
+      additional_drop_params: ["thinking", "web_search_options"]
   - model_name: skillhub-suggest-criteria
     litellm_params: *luna
   - model_name: skillhub-suggest-test-cases
@@ -53,18 +53,20 @@ model_list:
       <<: *luna
       # Function calling on this route is only served with reasoning off.
       reasoning_effort: none
-      additional_drop_params: ["thinking"]
+      additional_drop_params: ["thinking", "web_search_options"]
   - model_name: skillhub-content-review
     litellm_params:
       model: openai/gpt-5.6-terra
       api_key: os.environ/OPENAI_API_KEY
+      additional_drop_params: ["web_search_options"]
   - model_name: skillhub-ops-report
     litellm_params:
       <<: *luna
       reasoning_effort: none
-      additional_drop_params: ["thinking"]
+      additional_drop_params: ["thinking", "web_search_options"]
 
 general_settings:
+  search_tool_deny_by_default: true
   master_key: os.environ/LITELLM_MASTER_KEY
   database_url: os.environ/DATABASE_URL
   proxy_batch_write_at: 1
@@ -74,6 +76,11 @@ general_settings:
   disable_budget_reservation: true
 
 litellm_settings:
+  callbacks: [websearch_interception]
+  websearch_interception_params:
+    enabled: true
+    enabled_providers: [openai]
+    search_tool_name: skillhub-web-search
   drop_params: true
   max_budget: 50
   budget_duration: 1d

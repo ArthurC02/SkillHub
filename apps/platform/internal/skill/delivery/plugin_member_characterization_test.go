@@ -109,7 +109,9 @@ func planTestPlugin(f pluginFixture) (*PluginPlan, error) {
 	}
 	s.ReadLineage = func(context.Context, pgtype.UUID) (LineageStep, bool, error) { return LineageStep{}, false, nil }
 	s.ReadOldest = func(context.Context, pgtype.UUID) (OldestVersion, bool, error) { return OldestVersion{}, false, nil }
-	s.CuratedSource = func(context.Context, pgtype.UUID) (CuratedSource, bool, error) { return CuratedSource{}, false, nil }
+	s.CuratedSource = func(context.Context, pgtype.UUID, pgtype.UUID) (CuratedSource, bool, error) {
+		return CuratedSource{}, false, nil
+	}
 	s.ReadVersionSummaries = func(context.Context, []pgtype.UUID) (map[pgtype.UUID]VersionSummary, error) { return nil, nil }
 
 	spec := f.spec

@@ -146,7 +146,11 @@ func creationLangGraphGateway(t *testing.T, calls *atomic.Int32, script creation
 		if !ok {
 			return
 		}
-		var decision any = map[string]any{"cases": []any{}}
+		cases := creationFixtureEvaluationCases()
+		var decision any = map[string]any{"cases": []any{
+			map[string]any{"expected_interaction": "question", "name": cases[0].Name, "prompt": cases[0].Prompt, "criteria": cases[0].Criteria},
+			map[string]any{"expected_interaction": "direct_answer", "name": cases[1].Name, "prompt": cases[1].Prompt, "criteria": cases[1].Criteria},
+		}}
 		if schema != "challenge_cases" {
 			var problem string
 			decision, problem = script.respond(calls.Add(1), system, prompt)
@@ -216,6 +220,7 @@ func creationDecision(outcome, message string, brief *string, draft map[string]a
 		"acceptance_criteria": nil, "sample_input": nil, "diagram_understanding": nil,
 		"diagram_description": nil, "diagram_interpretation": nil,
 		"tool_intent": nil, "draft": draft,
+		"source_assessment": map[string]any{"rules": []any{}},
 	}
 }
 
@@ -272,7 +277,7 @@ func startCreationPython(t *testing.T, python, gatewayURL string) string {
 	root := creationRepoRoot(t)
 	port := freeLoopbackPort(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	cmd := exec.CommandContext(ctx, python, "-m", "uvicorn", "skillhub_llm.app:app", "--host", "127.0.0.1", "--port", port, "--log-level", "error", "--no-access-log")
+	cmd := exec.CommandContext(ctx, python, "-m", "uvicorn", "skillhub_llm.app:app", "--host", "127.0.0.1", "--port", port, "--log-level", "info", "--no-access-log")
 	cmd.Dir = root
 	cmd.Stdout = io.Discard
 

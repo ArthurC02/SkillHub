@@ -1,0 +1,73 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "SBX-002",
+  "status": "draft",
+  "intent": "阻止過期、未驗證或不符合既定漏洞政策的 Runtime 映像接到新的生產 Run attempt，同時保留既有 Run 的輪詢、取消、清理與重送語意。",
+  "actor": "派送 Run 的 Go 控制平面與承接 attempt 的 Sandbox Provider",
+  "observable_outcome": "只有有效且綁定實際啟動映像的證據能使新容器啟動；證據失效回可識別的暫時拒絕，已接受資源仍能管理。",
+  "acceptance_criteria": [
+    {
+      "id": "verified-image",
+      "statement": "生產 Docker／runsc 的新 attempt 只使用已驗證的確切 OCI digest：SBOM 與漏洞 bundle 均須通過既定 repository、簽署 workflow、predicate 及 subject 綁定，Docker 建立使用同一映像的不可變 ID；缺失、錯誤或讀不到證據一律不啟動。"
+    },
+    {
+      "id": "scan-expiry",
+      "statement": "以可信 UTC 時鐘判定 signed scan 的有效期限；到期瞬間及之後均拒絕新 attempt。缺少、畸形或未來的掃描時間不能放行；有效證據尚未到期可放行。驗證等待或名額保留期間跨過到期點時，在建立容器前再次拒絕。"
+    },
+    {
+      "id": "vulnerability-policy",
+      "statement": "可修 Critical／High 非零一律拒絕，沒有豁免；不可修者只有具名且仍在首次豁免加 90 天內的核准資料才有效，缺漏、來源讀不到或到期均拒絕。不從未簽章原文或未知數量推導安全。"
+    },
+    {
+      "id": "replay-and-live-runs",
+      "statement": "相同 (run_id, attempt) 與相同內容重送，無論證據後來是否失效，都回既有資源且不再開容器；同鍵異內容維持 409。新 attempt 重新檢查，已執行的 Run 不因掃描到期被中斷；取消、輪詢、清理與重啟收養仍可用。"
+    },
+    {
+      "id": "refusal-and-cleanup",
+      "statement": "缺少有效准入證據時回既有 503 RunError（provision、retryable true），不回 201 或 422，不留下容器、物件搬運、Trace／Artifact 工作或占用名額。若最後檢查才拒絕，撤銷暫存紀錄；相同請求待證據恢復後可重新准入。平台仍依既有重試上限、總等待及清理政策決定後續。"
+    },
+    {
+      "id": "bounded-verification",
+      "statement": "證據讀取與簽章驗證遵守請求取消及既有派送時間預算，限制 bundle／輸出大小，錯誤不洩漏 token、金鑰、URL 憑證或驗證器原始 stderr；逾時與驗證不可用仍拒絕啟動。"
+    },
+    {
+      "id": "production-coverage",
+      "statement": "生產啟動設定不能關掉此檢查；一般 Run、搜尋 Run、沒有 model_gateway 的 Run 與建立前拉取的映像都不能繞過。local／mxc 的弱隔離開發路徑不被宣稱為生產准入證據，既有 API 認證與 Workspace 邊界不變。"
+    }
+  ],
+  "candidate_terms": [
+    "Run",
+    "Sandbox",
+    "Runtime Image",
+    "scan attestation"
+  ],
+  "open_questions": [
+    "Registry 已審查 Run 的生命週期所有權，尚無獨立、已審查的映像准入事實或 Sandbox Context；本包不據此創造 Context。須由 developer 確認這個既有 Provider 協作上的准入決策與 503 相容行為。",
+    "須由 developer 確認驗證材料的取得與刷新方式（GHCR 連線或可信本機材料）、驗證器的節點供應及請求時間預算；任何本機材料仍須驗簽，不以可編輯的 JSON PASS 收據取代驗證。",
+    "不可修漏洞的核准豁免清單由產品負責人批准；實作須能核對已批准版本與首次豁免時間，未取得或未核准的材料保持拒絕，不由 Agent 補簽。"
+  ],
+  "risk_flags": [
+    "public_contract"
+  ],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    {
+      "path": "docs/plans/02-specifications-and-acceptance-criteria.md",
+      "reference": "SBX-002; I-03/I-04/I-06"
+    },
+    {
+      "path": "docs/adr/ADR-004-sandbox-isolation-and-execution-security.md",
+      "reference": "執行映像的供應鏈治理"
+    },
+    {
+      "path": "contracts/openapi/sandbox-provider.yaml",
+      "reference": "POST /runs; 200/409/503; RunError"
+    },
+    {
+      "path": "docs/plans/04-backlog-and-handoffs.md",
+      "reference": "甲-4"
+    }
+  ]
+}

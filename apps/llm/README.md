@@ -10,6 +10,11 @@ uv run ruff check .
 task dev:llm
 ```
 
+Python 版本以 `.python-version` 為準，先安裝 `tools/toolchain.yaml` 釘選的 uv。
+目前部分依賴需要從原始碼建置：Linux 需要 C／C++ 與 Rust toolchain，Windows
+需要 Visual Studio C++ Build Tools 與 Windows SDK；缺少編譯工具時 `uv sync`
+會失敗。Dev Container 已提供 Linux 編譯工具，正式服務映像僅在 builder 安裝。
+
 本機服務請從 repo 根目錄以 `task dev:llm` 啟動；它透過
 `tools/cleanmode/with-service-key.mjs` 提供 `LLM_SERVICE_TOKEN`。直接執行
 `uvicorn` 不會建立這個服務對服務驗證，僅適用於明確測試應用程式本身的情境。

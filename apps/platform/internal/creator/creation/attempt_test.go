@@ -265,7 +265,7 @@ func TestAModelCallThatBringsBackNothingSettlesAsUnknownCost(t *testing.T) {
 	}
 }
 
-func TestAFetchedPageIsAttachedAndReportedMasked(t *testing.T) {
+func TestAFetchedPageAttachesOnlyItsMetadataToTheSession(t *testing.T) {
 	s := &Service{
 		Fetch: func(context.Context, string) (Fetch, string) { return Fetch{}, "" },
 		Mask:  func(v string) string { return strings.ReplaceAll(v, "secret", "***") },
@@ -275,7 +275,7 @@ func TestAFetchedPageIsAttachedAndReportedMasked(t *testing.T) {
 	if p.PendingFetchURL != "" || len(p.Fetches) != 1 {
 		t.Fatalf("snapshot = %+v", p)
 	}
-	if want := webfetch.Observation(p.Fetches[0], "*** page"); len(p.Messages) != 1 || p.Messages[0].Role != "tool" || p.Messages[0].Content != want {
+	if want := webfetch.Observation(p.Fetches[0], ""); len(p.Messages) != 1 || p.Messages[0].Role != "tool" || p.Messages[0].Content != want {
 		t.Fatalf("messages = %+v", p.Messages)
 	}
 }
@@ -359,8 +359,8 @@ func TestAUsableResponseIsJudgedAtTheNextRevision(t *testing.T) {
 	s := &Service{Drafts: DraftRules{Validate: func(context.Context, GeneratedSkill) (string, string, bool, error) {
 		return "h", "{}", false, nil
 	}}}
-	e := &envelope{Deadline: time.Now().Add(time.Hour), Limits: testLimits(), Snapshot: Snapshot{Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1}}
-	response := &StepResult{Outcome: "draft", Message: "draft", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "body"}}
+	e := &envelope{Deadline: time.Now().Add(time.Hour), Limits: testLimits(), Snapshot: Snapshot{ChallengeCases: pairedEvaluationCases(), Messages: []Message{}, Brief: "b", BriefConfirmed: true, BudgetUSD: 1}}
+	response := &StepResult{Outcome: "draft", Message: "draft", Brief: "b", Draft: &GeneratedSkill{Name: "x", Body: "body"}, SourceAssessment: &SourceAssessment{Rules: []SourceRule{}}}
 	state, next, err := s.attemptOutcome(context.Background(), liveRow(6), e, stepCall{reply: response})
 	if err != nil || state != StateDraftReady || next || e.Snapshot.Draft == nil || e.Snapshot.Draft.Revision != 7 {
 		t.Fatalf("state = %s, next = %v, draft = %+v, err = %v", state, next, e.Snapshot.Draft, err)

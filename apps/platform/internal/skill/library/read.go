@@ -49,6 +49,7 @@ type Version struct {
 	CreatedAt         pgtype.Timestamptz
 	LicenseSource     *string
 	AllowedTools      []string
+	Compatibility     string
 	Description       string
 	HeldForEvaluation bool
 }
@@ -113,7 +114,7 @@ const (
 func (s *Service) Listing(
 	ctx context.Context, workspaceID pgtype.UUID, page SkillListingPage,
 ) (SkillListing, error) {
-	catalogs, err := s.catalogWorkspaceIDs(ctx, s.Pool)
+	catalogs, err := s.CatalogReads().workspaceIDs(ctx, s.Pool)
 	if err != nil {
 		return SkillListing{}, err
 	}
@@ -218,18 +219,6 @@ func LatestVersionIn(ctx context.Context, tx pgx.Tx, workspaceID, skillID pgtype
 		return Version{}, false, err
 	}
 	return versionDTO(row), true, nil
-}
-
-func (s *Service) CatalogSkill(ctx context.Context, skillID pgtype.UUID) (Skill, bool, error) {
-	row, err := s.catalogSkillIn(ctx, s.Pool, skillID)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return Skill{}, false, nil
-	}
-	if err != nil {
-		return Skill{}, false, err
-	}
-	skill, err := withLineage(ctx, s.Pool, skillDTO(row))
-	return skill, err == nil, err
 }
 
 func (s *Service) WorkspaceSkill(ctx context.Context, workspaceID, skillID pgtype.UUID) (Skill, bool, error) {
@@ -495,13 +484,14 @@ func skillDTO(row gen.Skill) Skill {
 }
 
 func versionDTO(row gen.SkillVersion) Version {
+	manifest := declaredManifest(row.Manifest)
 	return Version{
 		ID: row.ID, WorkspaceID: row.WorkspaceID, SkillID: row.SkillID, SourceID: row.SourceID,
 		VersionNumber: row.VersionNumber, ContentHash: row.ContentHash,
 		PackageObjectKey: row.PackageObjectKey, SourcePath: row.SourcePath,
 		LicenseExpression: pgconv.Clone(row.LicenseExpression),
 		CreatedAt:         row.CreatedAt, LicenseSource: pgconv.Clone(row.LicenseSource),
-		AllowedTools: declaredTools(row.Manifest), Description: declaredDescription(row.Manifest),
+		AllowedTools: manifest.AllowedTools, Compatibility: manifest.Compatibility, Description: manifest.Description,
 		HeldForEvaluation: row.HeldForEvaluation,
 	}
 }
@@ -517,20 +507,12 @@ func (v Version) licenseClaim() LicenseClaim {
 	return claim
 }
 
-func declaredDescription(manifest []byte) string {
+func declaredManifest(manifest []byte) skillpkg.Manifest {
 	var m skillpkg.Manifest
 	if json.Unmarshal(manifest, &m) != nil {
-		return ""
+		return skillpkg.Manifest{}
 	}
-	return m.Description
-}
-
-func declaredTools(manifest []byte) []string {
-	var m skillpkg.Manifest
-	if json.Unmarshal(manifest, &m) != nil {
-		return nil
-	}
-	return m.AllowedTools
+	return m
 }
 
 type Governance struct {

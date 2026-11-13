@@ -48,7 +48,7 @@ const BROWSER_ONLY_SPECS = [
   "workspace-pagination-focus.spec.ts",
 ];
 
-const MAX_TEST_CALLS = 178;
+const MAX_TEST_CALLS = 179;
 
 const specs = () => readdirSync(e2e).filter((f) => f.endsWith(".spec.ts"));
 

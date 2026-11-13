@@ -1,0 +1,28 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "GEN-028",
+  "proposal_id": "run-cost-observation",
+  "registry_revision": {
+    "observed_commit": "5c77ab099af460e2fd0d800efa7edf75c66bd11b",
+    "registry_digest": "sha256:6b00661653d4bf9afb0e009812d1fbc31e79f7906569be75780541e31c955d5c",
+    "committed_digest": "sha256:6b00661653d4bf9afb0e009812d1fbc31e79f7906569be75780541e31c955d5c"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": {
+    "status": "planned",
+    "description": "分別移除時間界線、忽略無事件 Run、將 nil／未知當零、把 settled marker 當完整、將估價或部分加總混入 known、保留失敗後舊數字、加入動態識別標籤、改成逐筆讀取或在觀察時寫帳；每條焦點測試須變紅，還原後再綠。"
+  },
+  "sources": [],
+  "test_results": [],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": [
+    "提案只含尚未執行的測試義務，沒有新增監控、批次 Port、資料表、遷移或已通過實作驗證的宣稱。",
+    "須由 developer 審查 Credit → Run 的批次事實操作與 coverage 判準，不能以既有估價或布林的「已記帳」作為完整金額。",
+    "舊的 Run 清理路徑在 spend log 超過讀取頁數上限時可把部分加總當結清，且現有費用資料沒有獨立完整性欄位。須確認可驗證的完整性來源、舊記錄的辨識與必要遷移；無法證明的舊記錄維持 unknown，不補造歷史價格或重扣款。",
+    "跨 owner 的兩次讀取不是共同歷史快照；介面須提供足以避免把尚未共同提交的費用誤判為 known 的證據，或採保守的 unknown／unsettled。實際採用的一致性方式須先經審查。",
+    "Run 費用觀察只是 GEN-028 的一部分；追問率、搜尋工具及 Trace、人工分歧與定期抽樣仍各有未完成項目。"
+  ]
+}

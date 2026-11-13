@@ -19,9 +19,29 @@ const (
 )
 
 var (
-	fastBuckets  = []float64{0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10}
-	runBuckets   = []float64{1, 5, 15, 30, 60, 120, 300, 600, 900, 1800}
-	traceBuckets = []float64{0.25, 0.5, 1, 2, 3, 5, 10, 30, 60}
+	fastBuckets          = []float64{0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10}
+	runBuckets           = []float64{1, 5, 15, 30, 60, 120, 300, 600, 900, 1800}
+	traceBuckets         = []float64{0.25, 0.5, 1, 2, 3, 5, 10, 30, 60}
+	CreationCostSessions = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "skillhub_creation_cost_sessions",
+		Help: "Retained unexpired sessions created in the last 24 hours by cost coverage; known-so-far, including active sessions, not final or billed totals. Independent replicas must not be summed.",
+	}, []string{"coverage"})
+	CreationKnownSpend = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "skillhub_creation_known_spend_usd",
+		Help: "Known-so-far cost summed only across fully observed, settled session snapshots in the selected cohort; absent when no such session exists. Not a ledger or billing input.",
+	}, nil)
+	CreationMaxKnownCost = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "skillhub_creation_max_known_session_cost_usd",
+		Help: "Largest known-so-far cost among fully observed, settled session snapshots in the selected cohort; absent when none exists. Active sessions may spend more later.",
+	}, nil)
+	CreationCostObservationSuccess = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "skillhub_creation_cost_observation_success",
+		Help: "Whether the latest Creation cost snapshot was read successfully; failure withdraws counts, amounts and time.",
+	}, nil)
+	CreationCostObservedAt = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "skillhub_creation_cost_observed_at_seconds",
+		Help: "Upper exclusive root-session cohort bound of the latest successful cost observation, in Unix seconds; absent after a failed read.",
+	}, nil)
 )
 
 var (
@@ -37,6 +57,26 @@ var (
 		Name: "skillhub_run_created_total",
 		Help: "Runs accepted and queued (RUN-001).",
 	})
+	ContinuationChains = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "skillhub_continuation_chains",
+		Help: "Retained root Runs created in the last 24 hours, including unfinished and evaluation Runs. Independent replicas must not be summed.",
+	}, nil)
+	ContinuationRounds = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "skillhub_continuation_rounds",
+		Help: "Retained continuation edges observed before the snapshot upper bound across the selected root-Run cohort; an initial Run contributes zero.",
+	}, nil)
+	ContinuationLongest = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "skillhub_continuation_longest_rounds",
+		Help: "Longest observed continuation chain in the selected root-Run cohort, measured in edges; meaningful only with the cohort count.",
+	}, nil)
+	ContinuationObservationSuccess = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "skillhub_continuation_observation_success",
+		Help: "Whether the latest continuation-chain snapshot was read successfully; 0 withdraws data and timestamp.",
+	}, nil)
+	ContinuationObservedAt = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "skillhub_continuation_observed_at_seconds",
+		Help: "Upper exclusive time bound of the latest successful continuation snapshot, in Unix seconds; absent after a failed read.",
+	}, nil)
 	RunRefused = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "skillhub_run_refused_total",
 		Help: "Run requests refused before queueing, by reason (RUN-005).",

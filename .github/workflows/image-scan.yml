@@ -7,7 +7,14 @@ on:
       - 'infra/images/platform/**'
       - 'infra/images/web/**'
       - 'infra/images/llm/**'
+      - 'infra/images/gateway/**'
       - 'infra/images/postgres/**'
+      - 'infra/images/seaweedfs/**'
+      - 'infra/images/postgres-exporter/**'
+      - 'infra/images/blackbox-exporter/**'
+      - 'infra/images/caddy/**'
+      - 'infra/images/prometheus/**'
+      - 'infra/images/alertmanager/**'
       - 'infra/images/sandboxd/**'
       - 'infra/images/devtools/**'
       - 'tools/ci/scan-images.sh'
@@ -19,7 +26,14 @@ on:
       - 'infra/images/platform/**'
       - 'infra/images/web/**'
       - 'infra/images/llm/**'
+      - 'infra/images/gateway/**'
       - 'infra/images/postgres/**'
+      - 'infra/images/seaweedfs/**'
+      - 'infra/images/postgres-exporter/**'
+      - 'infra/images/blackbox-exporter/**'
+      - 'infra/images/caddy/**'
+      - 'infra/images/prometheus/**'
+      - 'infra/images/alertmanager/**'
       - 'infra/images/sandboxd/**'
       - 'infra/images/devtools/**'
       - 'tools/ci/scan-images.sh'
@@ -42,7 +56,7 @@ env:
 jobs:
   scan:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

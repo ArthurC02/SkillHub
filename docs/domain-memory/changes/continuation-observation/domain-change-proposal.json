@@ -1,0 +1,123 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "continuation-observation",
+  "proposer": "agent:codex",
+  "requirement_id": "GEN-028",
+  "status": "submitted",
+  "change_classification": "routine",
+  "submitted_at": "2026-11-12T01:05:24.801808Z",
+  "verified_at": null,
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "3cce6459cc3f4407055dcffda81e425adf420b65",
+    "registry_digest": "sha256:c5ee3e2bb0a338593dee735e0c3e2614cadf4bccc6348d3b99e5f853fb34e3f9",
+    "committed_digest": "sha256:d1d0e0f050c8a5361c1380616685d7e31c473e033d65b3fce873ed0ec848d68a"
+  },
+  "affected_contexts": [
+    "run"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "run",
+    "invariant": "觀察既有 Run 與接續結構，不更動 Run 身分、狀態或既有永久歷史保存規則。",
+    "evidence": [
+      {
+        "path": "db/queries/run_continuations.sql",
+        "lines": {
+          "start": 59,
+          "end": 123
+        },
+        "content_sha256": "sha256:b2b06f36b73f4ee9b0254d04bc982a509e1b81b92ea579f85684708cc178964f",
+        "excerpt_sha256": "sha256:a5fb0e5a960b2138d418de22ac6554c3e347938b98fc20d7311a0e51ccd062df"
+      },
+      {
+        "path": "db/migrations/0152_runs_created_at_index.sql",
+        "lines": {
+          "start": 1,
+          "end": 1
+        },
+        "content_sha256": "sha256:90ebe0f888320c32bc42acd9bcc338ffce4cb24c848a91366a1664beb24527a7",
+        "excerpt_sha256": "sha256:90ebe0f888320c32bc42acd9bcc338ffce4cb24c848a91366a1664beb24527a7"
+      },
+      {
+        "path": "apps/platform/internal/trial/execution/supervisor.go",
+        "lines": {
+          "start": 207,
+          "end": 225
+        },
+        "content_sha256": "sha256:7f080bcf24ac61048c04b34e447756507b0fe944562b52aea461c08aced906b1",
+        "excerpt_sha256": "sha256:878c15cbd9b57ab8b5a1ede44292a7dcf1abc9279d3fa66a0ffd677d71b46527"
+      }
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Run owner 在既有 Worker gauge 流程讀取自己的資料；沒有新增跨 Context 協作。",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      {
+        "path": "apps/platform/internal/trial/execution/supervisor.go",
+        "lines": {
+          "start": 207,
+          "end": 225
+        },
+        "content_sha256": "sha256:7f080bcf24ac61048c04b34e447756507b0fe944562b52aea461c08aced906b1",
+        "excerpt_sha256": "sha256:878c15cbd9b57ab8b5a1ede44292a7dcf1abc9279d3fa66a0ffd677d71b46527"
+      }
+    ]
+  },
+  "implementation_design": null,
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "capabilities",
+      "record": {
+        "id": "observe-retained-continuation-chains",
+        "meaning": "觀察仍保留的 Run 接續鏈：以最近 24 小時建立的初始 Run 為同一批，計鏈數、接續輪數總和與最長輪數，包含所有狀態、評估與不載入 Skill 的對照。初始 Run 本身為零輪；中間 Run 不另計一條鏈。這是觀察當下已保存的結構，不能當成人類對話、完整對話或採用率。讀取失敗撤下數字與觀察時間，成功讀到空集合才顯示零；各 Worker 副本不可相加。不讀問答原文，不新增私人資料保存或動態標籤，亦不影響授權、派送、成本或帳號清除政策。",
+        "context": "run",
+        "evidence": [
+          {
+            "path": "db/queries/run_continuations.sql",
+            "lines": {
+              "start": 59,
+              "end": 123
+            },
+            "excerpt_sha256": "sha256:a5fb0e5a960b2138d418de22ac6554c3e347938b98fc20d7311a0e51ccd062df"
+          },
+          {
+            "path": "db/migrations/0152_runs_created_at_index.sql",
+            "lines": {
+              "start": 1,
+              "end": 1
+            },
+            "excerpt_sha256": "sha256:90ebe0f888320c32bc42acd9bcc338ffce4cb24c848a91366a1664beb24527a7"
+          },
+          {
+            "path": "apps/platform/internal/trial/execution/supervisor.go",
+            "lines": {
+              "start": 207,
+              "end": 225
+            },
+            "excerpt_sha256": "sha256:878c15cbd9b57ab8b5a1ede44292a7dcf1abc9279d3fa66a0ffd677d71b46527"
+          },
+          {
+            "path": "apps/platform/internal/entrypoint/api/apiserver/continuation_metrics_integration_test.go",
+            "lines": {
+              "start": 1,
+              "end": 265
+            },
+            "excerpt_sha256": "sha256:02d84ead0f0bf934d849725540efc203b86f1260cefeb9a24433f017a654917a"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": []
+}

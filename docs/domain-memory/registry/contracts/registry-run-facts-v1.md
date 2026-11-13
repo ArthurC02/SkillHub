@@ -10,7 +10,7 @@ verified:
     at: "2026-11-01T06:02:14.778167Z"
 sources:
   - resource: "apps/platform/internal/entrypoint/wiring/trial.go#L19-55"
-    excerpt_sha256: "sha256:e2b7d2e989a82c6bf6e8264694bc69736a6a82023c45a3162481aa32441d14fb"
+    excerpt_sha256: "sha256:b319089322ea8b36aa54bbdb679239f22c0153cb9cc823dfa6a6f71ad92ed0a9"
 ---
 # Relations
 - Producer context: [registry](/contexts/registry)

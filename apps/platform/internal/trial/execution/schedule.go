@@ -170,6 +170,7 @@ type Requirements struct {
 	EgressAllowed    int
 	MinimumIsolation IsolationStrength
 	AcceptUnenforced bool
+	WebSearch        bool
 }
 
 func requirementsFor(policyJSON []byte) (Requirements, policySnapshot, error) {
@@ -189,6 +190,7 @@ func requirementsFromPolicy(policy policySnapshot, model ...string) Requirements
 		EgressAllowed:    len(policy.Egress.Allow),
 		MinimumIsolation: policy.MinimumIsolation,
 		AcceptUnenforced: policy.CleanMode,
+		WebSearch:        policy.WebSearch,
 	}
 	if req.MinimumIsolation == "" {
 		req.MinimumIsolation = strongIsolation
@@ -366,27 +368,41 @@ func matchRuntime(name string, c ProviderCapability, req Requirements) (RuntimeP
 		AgentIntegration: req.AgentIntegration,
 		Model:            req.Model,
 	}
-	var supported bool
+	var integrationMismatch, searchUnavailable bool
 	for _, rt := range c.Runtimes {
 		if rt.Runtime != req.Runtime || len(rt.Versions) == 0 {
 			continue
 		}
 		if len(rt.AgentIntegration) > 0 && !slices.Contains(rt.AgentIntegration, req.AgentIntegration) {
-			return RuntimeProfile{}, cannotRun(
-				fmt.Sprintf("%s runs %s but not in %s mode", name, req.Runtime, req.AgentIntegration),
-				fmt.Sprintf("%s 跑得動 %s，但不支援 %s 這個接法", name, req.Runtime, req.AgentIntegration))
+			integrationMismatch = true
+			continue
+		}
+		if req.WebSearch && rt.WebSearch != "supported" {
+			searchUnavailable = searchUnavailable || (rt.WebSearch != "" && rt.WebSearch != "unsupported")
+			continue
 		}
 
 		profile.RuntimeVersion = rt.Versions[len(rt.Versions)-1]
-		supported = true
-		break
+		return profile, nil
 	}
-	if !supported {
+	if searchUnavailable {
+		return RuntimeProfile{}, notRightNow(
+			fmt.Sprintf("%s runtime web search capability is temporarily unavailable", name),
+			fmt.Sprintf("%s 暫時讀不到執行環境的公開資料搜尋能力", name))
+	}
+	if req.WebSearch {
 		return RuntimeProfile{}, cannotRun(
-			fmt.Sprintf("%s does not support the %s runtime", name, req.Runtime),
-			fmt.Sprintf("%s 不支援 %s 這個執行環境", name, req.Runtime))
+			fmt.Sprintf("%s has no %s runtime with web search support", name, req.Runtime),
+			fmt.Sprintf("%s 沒有支援公開資料搜尋的執行環境", name))
 	}
-	return profile, nil
+	if integrationMismatch {
+		return RuntimeProfile{}, cannotRun(
+			fmt.Sprintf("%s runs %s but not in %s mode", name, req.Runtime, req.AgentIntegration),
+			fmt.Sprintf("%s 跑得動 %s，但不支援 %s 這個接法", name, req.Runtime, req.AgentIntegration))
+	}
+	return RuntimeProfile{}, cannotRun(
+		fmt.Sprintf("%s does not support the %s runtime", name, req.Runtime),
+		fmt.Sprintf("%s 不支援 %s 這個執行環境", name, req.Runtime))
 }
 
 func matchResourceCeilings(name string, c ProviderCapability, req Requirements) error {
@@ -565,7 +581,10 @@ func (s *Service) buildRunRequest(ctx context.Context, run gen.Run, attempt gen.
 		})
 	}
 
-	gatewayGrant, err := issueAttemptKey(ctx, s, run, attempt, AttemptKeyTerms{TTL: ttl, BudgetUSD: budgetUSD})
+	gatewayGrant, err := issueAttemptKey(ctx, s, run, attempt, AttemptKeyTerms{
+		TTL: ttl, BudgetUSD: budgetUSD,
+		SearchAllowed: policy.searchAllowedFor(version),
+	})
 	if err != nil {
 		return RunRequest{}, err
 	}

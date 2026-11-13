@@ -5073,8 +5073,12 @@ type CreationSnapshot struct {
 	// The example input proposed with the brief and confirmed by the same confirm_brief; it is the prompt
 	// of the candidate's Test Case. Empty until proposed.
 	SampleInput OptString `json:"sample_input"`
-	// Inputs the sample does not exercise, written by a second call that sees only the brief, the criteria
-	// and the sample; confirmed by the same confirm_brief, each becomes its own Test Case at materialize.
+	// Evaluation inputs written from the brief, criteria and sample, covering necessary clarification and
+	// direct answering. The same confirm_brief confirms their inputs and criteria; each becomes its own
+	// Test Case at materialize. New proposals need at least two valid, different inputs. Legacy sessions
+	// with missing cases return to case generation before confirmation or a new candidate; selecting an
+	// existing immutable candidate does not regenerate it. Model classification is not proof that the case
+	// criteria are semantically correct.
 	ChallengeCases []CreationChallengeCase `json:"challenge_cases"`
 	BriefConfirmed bool                    `json:"brief_confirmed"`
 	ModelChanged   OptCreationModelChange  `json:"model_changed"`

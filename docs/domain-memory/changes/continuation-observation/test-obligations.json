@@ -1,0 +1,16 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "GEN-028",
+  "proposal_id": "continuation-observation",
+  "obligations": [
+    {
+      "id": "retained-chain-observation",
+      "source_type": "acceptance-criterion",
+      "source_id": "retained-chain-observation",
+      "expected_outcome": "八項真實 PostgreSQL 測試通過且零跳過，涵蓋時間與 Workspace 邊界、所有狀態、重播、副本、未知與清除規則。",
+      "level": "integration",
+      "status": "planned",
+      "check": "go -C apps/platform test -v -count=1 ./internal/entrypoint/api/apiserver -run ^TestContinuationObservation"
+    }
+  ]
+}

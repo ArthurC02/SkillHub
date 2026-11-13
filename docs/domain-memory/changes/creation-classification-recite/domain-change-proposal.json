@@ -1,0 +1,122 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "creation-classification-recite",
+  "proposer": "agent:codex",
+  "requirement_id": "GEN-013",
+  "status": "applied",
+  "change_classification": "routine",
+  "submitted_at": "2026-11-12T05:03:19.526276Z",
+  "verified_at": "2026-11-12T05:03:30.501130Z",
+  "finalized_at": "2026-11-12T05:06:17.401001Z",
+  "applied_at": "2026-11-12T05:06:33.487892Z",
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "f6cd68242be5ca2768a73b45451f8f6f9df8c305",
+    "registry_digest": "sha256:ad117977ba03092573b2bfee28ecd9df6236b46c68729e8f4dbf8e1d703558bf",
+    "committed_digest": "sha256:ad117977ba03092573b2bfee28ecd9df6236b46c68729e8f4dbf8e1d703558bf"
+  },
+  "affected_contexts": [
+    "creation"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "creation",
+    "invariant": "模型回覆超過 12 條驗收條件仍由 Creation 拒絕；本提案只更新支持此規則的引用。",
+    "evidence": [
+      {
+        "path": "apps/platform/internal/creator/creation/proposal.go",
+        "lines": {
+          "start": 34,
+          "end": 45
+        },
+        "content_sha256": "sha256:e0e349b71608912fbdfc13ec5a5a37e364e3b7d5798f1f6e72c8e9b762c7c7f9",
+        "excerpt_sha256": "sha256:4e592b8c7e6817e2b5d170d89630e63aeccaa33fc7891c16d2c9d624c69bee2b",
+        "source_kind": "implementation"
+      },
+      {
+        "path": "apps/platform/internal/creator/creation/proposal_test.go",
+        "lines": {
+          "start": 119,
+          "end": 134
+        },
+        "excerpt_sha256": "sha256:097778f802025133658739675f12d98c2daff370bb256700f673e1634ed03270"
+      }
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "既有 Creation 內部驗收條件檢查；沒有新增跨 Context 互動。",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      {
+        "path": "apps/platform/internal/creator/creation/proposal.go",
+        "lines": {
+          "start": 34,
+          "end": 45
+        },
+        "content_sha256": "sha256:e0e349b71608912fbdfc13ec5a5a37e364e3b7d5798f1f6e72c8e9b762c7c7f9",
+        "excerpt_sha256": "sha256:4e592b8c7e6817e2b5d170d89630e63aeccaa33fc7891c16d2c9d624c69bee2b",
+        "source_kind": "implementation"
+      },
+      {
+        "path": "apps/platform/internal/creator/creation/proposal_test.go",
+        "lines": {
+          "start": 119,
+          "end": 134
+        },
+        "excerpt_sha256": "sha256:097778f802025133658739675f12d98c2daff370bb256700f673e1634ed03270"
+      }
+    ]
+  },
+  "implementation_design": null,
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-proposal-holds-at-most-12-acceptance-criteria",
+        "statement": "A model reply with more than 12 acceptance criteria is rejected.",
+        "contexts": [
+          "creation"
+        ],
+        "examples": [
+          "13 criteria are rejected."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/creator/creation/proposal.go",
+            "lines": {
+              "start": 34,
+              "end": 45
+            },
+            "content_sha256": "sha256:e0e349b71608912fbdfc13ec5a5a37e364e3b7d5798f1f6e72c8e9b762c7c7f9",
+            "excerpt_sha256": "sha256:4e592b8c7e6817e2b5d170d89630e63aeccaa33fc7891c16d2c9d624c69bee2b",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/creator/creation/proposal_test.go",
+            "lines": {
+              "start": 119,
+              "end": 134
+            },
+            "excerpt_sha256": "sha256:097778f802025133658739675f12d98c2daff370bb256700f673e1634ed03270"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [],
+  "supersedes": [
+    "creation-screen-recite-2026-10-26"
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "06a15906f896bc3dd5aab0ebd4344109ad947e11",
+    "registry_digest": "sha256:0ee5449d3f9d34fbe4be91d5d46f696ee44ecb87a1629b3cecff6ee4500c57a3"
+  }
+}

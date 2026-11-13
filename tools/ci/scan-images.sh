@@ -67,14 +67,21 @@ EOF
 
 build_and_scan() {
   local name="$1" context="$2" dockerfile="$3"
-  docker build -q -t "skillhub-scan/$name:local" -f "$ROOT/$dockerfile" "$ROOT/$context" >/dev/null
+  docker build --progress=plain -t "skillhub-scan/$name:local" -f "$ROOT/$dockerfile" "$ROOT/$context" >/dev/null
   scan "$name" "skillhub-scan/$name:local" "$4"
 }
 
 build_and_scan platform . infra/images/platform/Dockerfile deployed
 build_and_scan web . infra/images/web/Dockerfile deployed
 build_and_scan llm apps/llm infra/images/llm/Dockerfile deployed
+build_and_scan gateway infra/images/gateway infra/images/gateway/Dockerfile deployed
 build_and_scan postgres infra/images/postgres infra/images/postgres/Dockerfile deployed
+build_and_scan seaweedfs . infra/images/seaweedfs/Dockerfile deployed
+build_and_scan postgres-exporter infra/images/postgres-exporter infra/images/postgres-exporter/Dockerfile deployed
+build_and_scan blackbox-exporter infra/images/blackbox-exporter infra/images/blackbox-exporter/Dockerfile deployed
+build_and_scan caddy infra/images/caddy infra/images/caddy/Dockerfile deployed
+build_and_scan prometheus infra/images/prometheus infra/images/prometheus/Dockerfile deployed
+build_and_scan alertmanager infra/images/alertmanager infra/images/alertmanager/Dockerfile deployed
 build_and_scan sandboxd . infra/images/sandboxd/Dockerfile deployed
 build_and_scan devtools infra/images/devtools infra/images/devtools/Dockerfile dev-only
 

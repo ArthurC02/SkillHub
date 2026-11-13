@@ -1,11 +1,12 @@
 # syntax=docker/dockerfile:1.7
+FROM rust:1.95-bookworm@sha256:6258907abe69656e41cd992e0b705cdcfabcbbe3db374f92ed2d47121282d4a1 AS rust
 FROM golang:1.27.4-bookworm@sha256:4fa7c968ba93f1635670522dbb01a2c78150443e1385746924566079f36570ea
 
 ARG NODE_VERSION=24.21.0
 ARG TASK_VERSION=3.54.0
-ARG UV_VERSION=0.13.5
-ARG UV_X86_64_UNKNOWN_LINUX_GNU_SHA256=f68d291c75783122dad58ab77def0e13f3233f358731db5d6d7e8715603b928f
-ARG UV_AARCH64_UNKNOWN_LINUX_GNU_SHA256=4bb69cf95ed13f23713bb7bc09f241896ea0c75b7c557e615a20604b82f9c403
+ARG UV_VERSION=0.13.7
+ARG UV_X86_64_UNKNOWN_LINUX_GNU_SHA256=c5221ff41b7892bfc223543883600125f6a47fe845093e0f5bdff4f359196d83
+ARG UV_AARCH64_UNKNOWN_LINUX_GNU_SHA256=71279f8d3c67241e807b9d8db872d1bf541579fb9f08b7d1eb1682196d1e57dc
 ARG GOLANGCI_LINT_VERSION=2.15.0
 ARG DOCKER_VERSION=29.9.2
 ARG COMPOSE_VERSION=5.6.1
@@ -17,7 +18,13 @@ ENV DEBIAN_FRONTEND=noninteractive \
     GOBIN=/usr/local/bin \
     UV_INSTALL_DIR=/usr/local/bin \
     UV_LINK_MODE=copy \
-    UV_PYTHON_INSTALL_DIR=/opt/uv/python
+    UV_PYTHON_INSTALL_DIR=/opt/uv/python \
+    RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/home/${USERNAME}/.cargo \
+    PATH=/usr/local/cargo/bin:$PATH
+
+COPY --from=rust /usr/local/rustup /usr/local/rustup
+COPY --from=rust /usr/local/cargo/bin /usr/local/cargo/bin
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl git iptables sudo xz-utils \
@@ -50,14 +57,14 @@ RUN apt-get update \
     && install -m 0755 "/tmp/uv-${uv_arch}-unknown-linux-gnu/uv" /usr/local/bin/uv \
     && install -m 0755 "/tmp/uv-${uv_arch}-unknown-linux-gnu/uvx" /usr/local/bin/uvx \
     && rm -rf /tmp/uv.tar.gz "/tmp/uv-${uv_arch}-unknown-linux-gnu" \
-    && uv python install 3.14 \
+    && uv python install 3.15 \
     && groupadd --gid "${USER_GID}" "${USERNAME}" \
     && useradd --uid "${USER_UID}" --gid "${USER_GID}" -m -s /bin/bash "${USERNAME}" \
     && groupadd --force docker \
     && usermod -aG docker "${USERNAME}" \
     && echo "${USERNAME} ALL=(root) NOPASSWD:ALL" > "/etc/sudoers.d/${USERNAME}" \
     && chmod 0440 "/etc/sudoers.d/${USERNAME}" \
-    && printf '%s\n' 'export PATH=/usr/local/go/bin:/usr/local/bin:$PATH' > /etc/profile.d/skillhub-path.sh \
+    && printf '%s\n' 'export PATH=/usr/local/go/bin:/usr/local/cargo/bin:/usr/local/bin:$PATH' > /etc/profile.d/skillhub-path.sh \
     && mkdir -p /workspace /go/pkg/mod /home/${USERNAME}/.cache \
     && chown -R "${USERNAME}:${USERNAME}" /workspace /go /opt/uv /home/${USERNAME}
 

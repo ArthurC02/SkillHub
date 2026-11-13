@@ -39,6 +39,7 @@ func saveableSnapshot() Snapshot {
 		Messages:       []Message{},
 		Brief:          "b",
 		BriefConfirmed: true,
+		ChallengeCases: pairedEvaluationCases(),
 		Draft:          &Draft{ContentHash: "h", Skill: GeneratedSkill{Name: "summary", Description: "d", Body: "body"}},
 	}
 }
@@ -173,7 +174,7 @@ func TestConfirmingTheBriefNeedsTheQuestionAndABrief(t *testing.T) {
 			t.Errorf("%s: err = %v, want ErrInvalidCommand", name, err)
 		}
 	}
-	p := Snapshot{PendingAction: "confirm_brief", Brief: "b", ModelChanged: &ModelChange{Brief: "a"}}
+	p := Snapshot{PendingAction: "confirm_brief", Brief: "b", ModelChanged: &ModelChange{Brief: "a"}, ChallengeCases: pairedEvaluationCases()}
 	got, err := confirmBrief(&p)
 	if err != nil || !got.queueStep || !p.BriefConfirmed || p.PendingAction != "" || p.ModelChanged != nil {
 		t.Fatalf("outcome = %+v, snapshot = %+v, err = %v", got, p, err)
@@ -562,7 +563,7 @@ func TestSavingNeedsAConfirmedUnblockedDraftWithTheSameHash(t *testing.T) {
 			p := saveableSnapshot()
 			change(&p)
 			s := &Service{Materialize: materializer()}
-			if _, err := s.save(context.Background(), identity.Workspace{}, &p, Command{Kind: "materialize", ContentHash: "h"}); !errors.Is(err, ErrInvalidCommand) {
+			if _, err := s.saveWithCheckedSources(context.Background(), identity.Workspace{}, &p, Command{Kind: "materialize", ContentHash: "h"}); !errors.Is(err, ErrInvalidCommand) {
 				t.Fatalf("err = %v, want ErrInvalidCommand", err)
 			}
 		})
@@ -573,7 +574,7 @@ func TestADiagramSessionWithEveryUncertaintyAnsweredIsSaveable(t *testing.T) {
 	p := saveableSnapshot()
 	attachConfirmedDiagram(&p)
 
-	got, err := (&Service{Materialize: materializer()}).save(
+	got, err := (&Service{Materialize: materializer()}).saveWithCheckedSources(
 		context.Background(), identity.Workspace{}, &p, Command{Kind: "materialize", ContentHash: "h"})
 
 	if err != nil || got.materialize != "materialize" {
@@ -584,13 +585,13 @@ func TestADiagramSessionWithEveryUncertaintyAnsweredIsSaveable(t *testing.T) {
 func TestSavingNeedsEveryReferenceToStillResolve(t *testing.T) {
 	p := saveableSnapshot()
 	p.References = []Reference{{SkillID: "a", Confirmed: true, Available: true}}
-	if _, err := (&Service{Materialize: materializer()}).save(context.Background(), identity.Workspace{}, &p, Command{Kind: "materialize", ContentHash: "h"}); !errors.Is(err, ErrUnavailable) {
+	if _, err := (&Service{Materialize: materializer()}).saveWithCheckedSources(context.Background(), identity.Workspace{}, &p, Command{Kind: "materialize", ContentHash: "h"}); !errors.Is(err, ErrUnavailable) {
 		t.Fatalf("no resolver: err = %v, want ErrUnavailable", err)
 	}
 	s := &Service{Materialize: materializer(), ResolveReference: func(context.Context, identity.Workspace, string, string) (Reference, ReferenceSkill, error) {
 		return Reference{}, ReferenceSkill{}, fmt.Errorf("%w: gone", ErrNotFound)
 	}}
-	if _, err := s.save(context.Background(), identity.Workspace{}, &p, Command{Kind: "materialize", ContentHash: "h"}); !errors.Is(err, ErrNotFound) {
+	if _, err := s.saveWithCheckedSources(context.Background(), identity.Workspace{}, &p, Command{Kind: "materialize", ContentHash: "h"}); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("a reference that no longer resolves: err = %v, want ErrNotFound", err)
 	}
 }
@@ -599,7 +600,7 @@ func TestAnExistingCandidateIsSavedWithoutMaterializingAgain(t *testing.T) {
 	for kind, want := range map[string]State{"materialize": StateCandidateReady, "finalize": StateSaved} {
 		p := saveableSnapshot()
 		p.Candidate = &Candidate{SkillID: "s"}
-		got, err := (&Service{}).save(context.Background(), identity.Workspace{}, &p, Command{Kind: kind, ContentHash: "h"})
+		got, err := (&Service{}).saveWithCheckedSources(context.Background(), identity.Workspace{}, &p, Command{Kind: kind, ContentHash: "h"})
 		if err != nil || got.state != want || got.materialize != "" || got.queueStep {
 			t.Errorf("%s: outcome = %+v, err = %v", kind, got, err)
 		}
@@ -608,7 +609,7 @@ func TestAnExistingCandidateIsSavedWithoutMaterializingAgain(t *testing.T) {
 
 func TestWithoutAMaterializerANewCandidateCannotBeSaved(t *testing.T) {
 	p := saveableSnapshot()
-	if _, err := (&Service{}).save(context.Background(), identity.Workspace{}, &p, Command{Kind: "materialize", ContentHash: "h"}); !errors.Is(err, ErrUnavailable) {
+	if _, err := (&Service{}).saveWithCheckedSources(context.Background(), identity.Workspace{}, &p, Command{Kind: "materialize", ContentHash: "h"}); !errors.Is(err, ErrUnavailable) {
 		t.Fatalf("err = %v, want ErrUnavailable", err)
 	}
 }
@@ -622,7 +623,7 @@ func TestDuplicatesHoldTheSaveForThePerson(t *testing.T) {
 	p := saveableSnapshot()
 	zero := 0.0
 	p.SpentUSD = &zero
-	got, err := s.save(context.Background(), identity.Workspace{}, &p, Command{Kind: "finalize", ContentHash: "h"})
+	got, err := s.saveWithCheckedSources(context.Background(), identity.Workspace{}, &p, Command{Kind: "finalize", ContentHash: "h"})
 	if err != nil || got.state != StateWaitingConfirmation || got.materialize != "" {
 		t.Fatalf("outcome = %+v, err = %v", got, err)
 	}
@@ -640,7 +641,7 @@ func TestTheDuplicateCheckDecidesWhetherTheSaveCountsAsAcknowledged(t *testing.T
 			return nil, 0, c.err
 		}}
 		p := saveableSnapshot()
-		got, err := s.save(context.Background(), identity.Workspace{}, &p, Command{Kind: "materialize", ContentHash: "h"})
+		got, err := s.saveWithCheckedSources(context.Background(), identity.Workspace{}, &p, Command{Kind: "materialize", ContentHash: "h"})
 		if err != nil || got.materialize != "materialize" || p.DuplicateAcknowledged != c.want {
 			t.Errorf("%s: outcome = %+v, acknowledged = %v, err = %v", name, got, p.DuplicateAcknowledged, err)
 		}
@@ -654,7 +655,7 @@ func TestAnAcknowledgedDuplicateIsNotCheckedAgain(t *testing.T) {
 	}}
 	p := saveableSnapshot()
 	p.DuplicateAcknowledged = true
-	if got, err := s.save(context.Background(), identity.Workspace{}, &p, Command{Kind: "materialize", ContentHash: "h"}); err != nil || got.materialize != "materialize" {
+	if got, err := s.saveWithCheckedSources(context.Background(), identity.Workspace{}, &p, Command{Kind: "materialize", ContentHash: "h"}); err != nil || got.materialize != "materialize" {
 		t.Fatalf("outcome = %+v, err = %v", got, err)
 	}
 }
@@ -663,7 +664,7 @@ func TestConfirmingADuplicateSavesThePendingKind(t *testing.T) {
 	p := saveableSnapshot()
 	p.PendingAction, p.PendingMaterialize = "confirm_duplicate", "finalize"
 	p.Duplicates = []Reference{{Name: "someone else's"}}
-	got, err := (&Service{Materialize: materializer()}).save(context.Background(), identity.Workspace{}, &p, Command{Kind: "confirm_duplicate", ContentHash: "h"})
+	got, err := (&Service{Materialize: materializer()}).saveWithCheckedSources(context.Background(), identity.Workspace{}, &p, Command{Kind: "confirm_duplicate", ContentHash: "h"})
 	if err != nil || got.materialize != "finalize" || !p.DuplicateAcknowledged || p.PendingAction != "" || p.PendingMaterialize != "" {
 		t.Fatalf("outcome = %+v, snapshot = %+v, err = %v", got, p, err)
 	}
@@ -673,7 +674,7 @@ func TestConfirmingADuplicateWithTheSameNameAsksTheModelToRename(t *testing.T) {
 	p := saveableSnapshot()
 	p.PendingAction, p.PendingMaterialize = "confirm_duplicate", "materialize"
 	p.Duplicates = []Reference{{Name: "Summary"}}
-	got, err := (&Service{Materialize: materializer()}).save(context.Background(), identity.Workspace{}, &p, Command{Kind: "confirm_duplicate", ContentHash: "h"})
+	got, err := (&Service{Materialize: materializer()}).saveWithCheckedSources(context.Background(), identity.Workspace{}, &p, Command{Kind: "confirm_duplicate", ContentHash: "h"})
 	if err != nil || !got.queueStep || got.materialize != "" {
 		t.Fatalf("outcome = %+v, err = %v", got, err)
 	}
@@ -686,7 +687,7 @@ func TestConfirmingADuplicateNeedsTheQuestion(t *testing.T) {
 	for name, pending := range map[string][2]string{"nobody asked": {"", "materialize"}, "nothing to save": {"confirm_duplicate", ""}} {
 		p := saveableSnapshot()
 		p.PendingAction, p.PendingMaterialize = PendingAction(pending[0]), pending[1]
-		if _, err := (&Service{Materialize: materializer()}).save(context.Background(), identity.Workspace{}, &p, Command{Kind: "confirm_duplicate", ContentHash: "h"}); !errors.Is(err, ErrInvalidCommand) {
+		if _, err := (&Service{Materialize: materializer()}).saveWithCheckedSources(context.Background(), identity.Workspace{}, &p, Command{Kind: "confirm_duplicate", ContentHash: "h"}); !errors.Is(err, ErrInvalidCommand) {
 			t.Errorf("%s: err = %v", name, err)
 		}
 	}
@@ -694,7 +695,7 @@ func TestConfirmingADuplicateNeedsTheQuestion(t *testing.T) {
 
 func TestConfirmingADuplicateWithNoDraftIsRefused(t *testing.T) {
 	p := Snapshot{PendingAction: "confirm_duplicate", PendingMaterialize: "finalize", Duplicates: []Reference{{SkillID: "dup"}}}
-	if _, err := (&Service{Materialize: materializer()}).save(context.Background(), identity.Workspace{}, &p, Command{Kind: "confirm_duplicate", ContentHash: "h"}); !errors.Is(err, ErrInvalidCommand) {
+	if _, err := (&Service{Materialize: materializer()}).saveWithCheckedSources(context.Background(), identity.Workspace{}, &p, Command{Kind: "confirm_duplicate", ContentHash: "h"}); !errors.Is(err, ErrInvalidCommand) {
 		t.Fatalf("err = %v, want ErrInvalidCommand", err)
 	}
 }

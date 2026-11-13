@@ -1,0 +1,78 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "GEN-028",
+  "status": "draft",
+  "intent": "補齊 Run 費用觀察的可信分母與完整性，讓未觀察到的價格、仍待結算的 Run 及實際零費用可被分別看見。",
+  "actor": "監看 Run 與互動創作成本的維運者",
+  "observable_outcome": "同一個 Run 批次有已知、待結算、未知的涵蓋數量；金額只反映已證實完整的 known 組，錯誤時撤下觀察。",
+  "acceptance_criteria": [
+    {
+      "id": "run-cohort",
+      "statement": "以固定 UTC 上界及其前 24 小時的 [since, until) 選取仍保留的每一個 Run，包含所有狀態、評估與接續 Run；觀察單位是 Run 而非 attempt、對話鏈或 cost event，未產生成本事件的 Run 也保留在分母。"
+    },
+    {
+      "id": "owner-facts",
+      "statement": "Run 只讀自己的批次與結算標記，Credit 以批次唯讀介面提供指定 Run 的已記錄費用、來源與完整性證據，明確區分缺席、已記錄但未知、已確認完整的零與非零費用。不跨 owner 直接查表、不重新呼叫模型或逐 Run 打閘道查詢。"
+    },
+    {
+      "id": "cost-coverage",
+      "statement": "known 僅包含已結算且 Credit 證實完整費用的 Run；明示價格未知、完整性未證明、無效數量或已結算卻無費用事實的 Run 屬 unknown。其餘仍待結算的 Run 屬 unsettled，任何組都不以缺資料推導零費用。舊資料僅有 gateway 來源或 cost_settled_at 不足以證明完整性。"
+    },
+    {
+      "id": "amounts",
+      "statement": "只從 known 組計算已記錄美元費用的總和、最大值及可推導的平均；無 known 組時金額系列不存在，有完整的明確零時才顯示零。浮點觀察的解析度與美元微單位來源明示，無效或溢位不發布貌似完整的金額。"
+    },
+    {
+      "id": "failed-read",
+      "statement": "任一 owner 讀取失敗、取消、缺少必要 reader 或無法聚合時撤下數量、金額與時間，成功值為 0；成功讀到空批次才發布三組零數量。恢復後重新讀取，不能保留舊數字並更新成新時間。"
+    },
+    {
+      "id": "private-observation",
+      "statement": "只發布固定 coverage 三組及無標籤的金額、成功與時間，不把 Run、attempt、Workspace、使用者、問題、網址、模型金鑰或動態來源寫成標籤；多個 Worker 副本是獨立快照，不能相加。"
+    },
+    {
+      "id": "readonly-replay",
+      "statement": "既有 Worker gauge refresh 的實際路徑取得兩個 owner 的事實，空批次可省略費用查詢，非空批次不隨 Run 數增加逐筆查詢。反覆刷新、重啟及第二個 Worker 不改 Run 狀態、結算標記、保留期限、成本事件、Credit 分錄、模型金鑰或 outbox。"
+    }
+  ],
+  "candidate_terms": [
+    "Run",
+    "Credit Ledger",
+    "Cost event",
+    "Run cost observation"
+  ],
+  "open_questions": [
+    "須由 developer 審查 Credit → Run 的批次事實操作與 coverage 判準，不能以既有估價或布林的「已記帳」作為完整金額。",
+    "舊的 Run 清理路徑在 spend log 超過讀取頁數上限時可把部分加總當結清，且現有費用資料沒有獨立完整性欄位。須確認可驗證的完整性來源、舊記錄的辨識與必要遷移；無法證明的舊記錄維持 unknown，不補造歷史價格或重扣款。",
+    "跨 owner 的兩次讀取不是共同歷史快照；介面須提供足以避免把尚未共同提交的費用誤判為 known 的證據，或採保守的 unknown／unsettled。實際採用的一致性方式須先經審查。"
+  ],
+  "risk_flags": [
+    "cross_context",
+    "sensitive_data"
+  ],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    {
+      "path": "docs/plans/03-work-items.md",
+      "reference": "GEN-028"
+    },
+    {
+      "path": "docs/plans/04-backlog-and-handoffs.md",
+      "reference": "丙-175"
+    },
+    {
+      "path": "apps/platform/internal/trial/execution/credit.go",
+      "reference": "reportedSpend; markCostSettled"
+    },
+    {
+      "path": "apps/platform/internal/entrypoint/wiring/credit.go",
+      "reference": "runCreditLedger; runCostKey"
+    },
+    {
+      "path": "docs/domain-memory/registry/interactions/credit-run-ledger.md",
+      "reference": "reviewed synchronous composition-root hook"
+    }
+  ]
+}

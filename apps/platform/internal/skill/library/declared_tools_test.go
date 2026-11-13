@@ -25,3 +25,19 @@ func TestAVersionCarriesTheToolsItsManifestDeclares(t *testing.T) {
 		})
 	}
 }
+
+func TestAVersionCarriesOnlyItsRecordedCompatibility(t *testing.T) {
+	for _, tc := range []struct{ name, manifest, want string }{
+		{"declared environment", `{"compatibility":"Linux\nskillhub-web-search","allowed_tools":["Read"]}`, "Linux\nskillhub-web-search"},
+		{"absent declaration", `{"name":"report"}`, ""},
+		{"erased manifest", `{}`, ""},
+		{"unreadable manifest", `not json`, ""},
+		{"wrong field type", `{"compatibility":"skillhub-web-search","allowed_tools":123}`, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := versionDTO(gen.SkillVersion{Manifest: []byte(tc.manifest)}).Compatibility; got != tc.want {
+				t.Fatalf("Compatibility = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}

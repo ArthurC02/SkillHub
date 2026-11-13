@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CADDY=caddy:2.11.4@sha256:13ba145cba2f3e28fa801994876e4c086d1b95d5aa2a520a734765ffb6b12017
-ALERTMANAGER=prom/alertmanager:v0.34.1@sha256:e9733bafb1bdef9b00e25a21f8f99dc26a22224bf16641ad754d1649f4c3357a
-PROMETHEUS=prom/prometheus:v3.15.0@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e
+CADDY="skillhub-ci/caddy:deploy-$RANDOM-$RANDOM-$RANDOM"
+CADDY_BUILT=0
+ALERTMANAGER="skillhub-ci/alertmanager:deploy-$RANDOM-$RANDOM-$RANDOM"
+ALERTMANAGER_BUILT=0
+PROMETHEUS="skillhub-ci/prometheus:deploy-$RANDOM-$RANDOM-$RANDOM"
+PROMETHEUS_BUILT=0
 SHELLCHECK=koalaman/shellcheck:v0.11.0@sha256:61862eba1fcf09a484ebcc6feea46f1782532571a34ed51fedf90dd25f925a8d
 UBUNTU=ubuntu:24.04@sha256:69cecf4bbf72d2d44a9eef1b71fb98c7fb973d78af11399deccef19beb008ad9
 
@@ -12,7 +15,13 @@ GIT_DIRECTORY="$(git -C "$ROOT" rev-parse --absolute-git-dir)"
 GIT_COMMON_DIRECTORY="$(git -C "$ROOT" rev-parse --path-format=absolute --git-common-dir)"
 CP="$ROOT/infra/deploy/control-plane"
 WORK="$(mktemp -d)"
-trap 'rm -rf "$WORK"' EXIT
+cleanup() {
+  if [ "$PROMETHEUS_BUILT" = 1 ]; then docker image rm "$PROMETHEUS" >/dev/null; fi
+  if [ "$ALERTMANAGER_BUILT" = 1 ]; then docker image rm "$ALERTMANAGER" >/dev/null; fi
+  if [ "$CADDY_BUILT" = 1 ]; then docker image rm "$CADDY" >/dev/null; fi
+  rm -rf "$WORK"
+}
+trap cleanup EXIT
 WORK_HOST="$(cd "$WORK" && (pwd -W 2>/dev/null || pwd))"
 export MSYS_NO_PATHCONV=1
 OWNER="$(id -u):$(id -g)"
@@ -57,6 +66,50 @@ for role, values in settings.items():
     open("/work/%s-release.env" % role, "w").write(env)
     open("/work/%s-user-data.yaml" % role, "w").write(render.cloud_init(env))
 PY
+  (
+    set -a
+    . /work/control-plane-release.env
+    set +a
+    export SKILLHUB_SECRETS_DIR=/work/preflight-secrets
+    mkdir -p "$SKILLHUB_SECRETS_DIR"
+    for file in platform.env llm.env postgres.env postgres-exporter.env smtp-password; do
+      echo smoke-only >"$SKILLHUB_SECRETS_DIR/$file"
+      chmod 600 "$SKILLHUB_SECRETS_DIR/$file"
+    done
+    sh /repo/infra/deploy/control-plane/bin/skillhub-preflight
+    digest=$(printf "%064d" 0)
+    invalid=$(printf "%064d" 0 | tr 0 g)
+    for name in SKILLHUB_PROMETHEUS_IMAGE SKILLHUB_ALERTMANAGER_IMAGE SKILLHUB_CADDY_IMAGE SKILLHUB_POSTGRES_EXPORTER_IMAGE SKILLHUB_BLACKBOX_EXPORTER_IMAGE; do
+      for ref in "" "ghcr.io/o/exporter:release" "ghcr.io/o/exporter@sha256:${digest%?}" "ghcr.io/o/exporter@sha256:$invalid"; do
+        if env "$name=$ref" sh /repo/infra/deploy/control-plane/bin/skillhub-preflight >/work/preflight-error 2>&1; then
+          echo "unpinned deployment image was accepted: $name=$ref"; exit 1
+        fi
+        grep -Fq "$name=" /work/preflight-error
+        grep -Fq "is not pinned by digest" /work/preflight-error
+      done
+      echo "control-plane preflight: pinned release passes; four unpinned values refused for $name"
+    done
+  )
+  (
+    set -a
+    . /work/gateway-release.env
+    set +a
+    export SKILLHUB_SECRETS_DIR=/work/gateway-preflight-secrets
+    mkdir -p "$SKILLHUB_SECRETS_DIR"
+    printf "%s\n" "LITELLM_MASTER_KEY=local-only" "OPENAI_API_KEY=local-only" "DATABASE_URL=local-only" >"$SKILLHUB_SECRETS_DIR/litellm.env"
+    chmod 600 "$SKILLHUB_SECRETS_DIR/litellm.env"
+    sh /repo/infra/deploy/gateway/bin/skillhub-preflight
+    digest=$(printf "%064d" 0)
+    invalid=$(printf "%064d" 0 | tr 0 g)
+    for ref in "" "ghcr.io/o/gateway:release" "ghcr.io/o/gateway@sha256:${digest%?}" "ghcr.io/o/gateway@sha256:$invalid"; do
+      if env "SKILLHUB_GATEWAY_IMAGE=$ref" sh /repo/infra/deploy/gateway/bin/skillhub-preflight >/work/gateway-preflight-error 2>&1; then
+        echo "unpinned gateway image was accepted: $ref"; exit 1
+      fi
+      grep -Fq "SKILLHUB_GATEWAY_IMAGE=" /work/gateway-preflight-error
+      grep -Fq "is not pinned by digest" /work/gateway-preflight-error
+    done
+    echo "gateway preflight: pinned release passes; four unpinned values refused"
+  )
   for role in control-plane gateway sandbox; do
     cloud-init schema --config-file "/work/$role-user-data.yaml"
     python3 checkout.py "$role" --stage "/work/checkout-$role"
@@ -140,6 +193,9 @@ docker compose --env-file "$WORK_HOST/control-plane-release.env" -f "$ROOT/infra
 docker compose --env-file "$WORK_HOST/gateway-release.env" -f "$ROOT/infra/compose/gateway.yml" config --format json >"$WORK/gateway-compose.json"
 
 step "Caddyfile"
+if docker image inspect "$CADDY" >/dev/null 2>&1; then echo "test image tag already exists: $CADDY"; exit 1; fi
+docker build --progress=plain -t "$CADDY" "$ROOT/infra/images/caddy"
+CADDY_BUILT=1
 docker run --rm -e SKILLHUB_DOMAIN=skillhub.example -e SKILLHUB_ACME_EMAIL=owner@skillhub.example \
   -v "$CP/Caddyfile:/etc/caddy/Caddyfile:ro" "$CADDY" caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 
@@ -160,10 +216,16 @@ docker run --rm -e OWNER="$OWNER" --env-file "$WORK_HOST/control-plane-release.e
   cat /work/prometheus-targets/gateway.yml
   chown -R "$OWNER" /work
 '
+if docker image inspect "$ALERTMANAGER" >/dev/null 2>&1; then echo "test image tag already exists: $ALERTMANAGER"; exit 1; fi
+docker build --progress=plain -t "$ALERTMANAGER" "$ROOT/infra/images/alertmanager"
+ALERTMANAGER_BUILT=1
 docker run --rm --entrypoint amtool -v "$WORK_HOST/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro" \
   "$ALERTMANAGER" check-config /etc/alertmanager/alertmanager.yml
 
 step "Prometheus configuration and alert rules"
+if docker image inspect "$PROMETHEUS" >/dev/null 2>&1; then echo "test image tag already exists: $PROMETHEUS"; exit 1; fi
+docker build --progress=plain -t "$PROMETHEUS" "$ROOT/infra/images/prometheus"
+PROMETHEUS_BUILT=1
 docker run --rm --entrypoint promtool \
   -v "$CP/prometheus.yml:/etc/prometheus/prometheus.yml:ro" \
   -v "$ROOT/infra/observability/alerts.yml:/etc/prometheus/alerts.yml:ro" \

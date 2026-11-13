@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -59,5 +60,64 @@ func TestEveryToolThatMovesTogetherHasMoreThanOneSite(t *testing.T) {
 		if !tools[tool] {
 			t.Errorf("%s is no longer checked for version agreement", tool)
 		}
+	}
+}
+
+func TestUVVersionSitesReadImageStagesAndArguments(t *testing.T) {
+	t.Parallel()
+	groups := slices.Clone(versionsThatMoveTogether)
+	groups = slices.DeleteFunc(groups, func(group versionGroup) bool {
+		return group.tool != "uv"
+	})
+	if len(groups) != 1 {
+		t.Fatalf("got %d uv groups, want one", len(groups))
+	}
+	digest := "@sha256:" + strings.Repeat("a", 64)
+	image := "FROM ghcr.io/astral-sh/uv:0.12.3" + digest + " AS uv\n"
+	cases := []struct {
+		name, path, content, want string
+	}{
+		{"all installation sites agree", "", "", ""},
+		{"the LLM image cannot move alone", "infra/images/llm/Dockerfile", strings.ReplaceAll(image, "0.12.3", "0.12.4"), "infra/images/llm/Dockerfile=0.12.4"},
+		{"the gateway image cannot move alone", "infra/images/gateway/Dockerfile", strings.ReplaceAll(image, "0.12.3", "0.12.4"), "infra/images/gateway/Dockerfile=0.12.4"},
+		{"the codegen image cannot move alone", "tools/codegen/python/Dockerfile", strings.ReplaceAll(image, "0.12.3", "0.12.4"), "tools/codegen/python/Dockerfile=0.12.4"},
+		{"the devtools archive cannot move alone", devtoolsDockerfile, "ARG UV_VERSION=0.12.4\n", devtoolsDockerfile + "=0.12.4"},
+		{"the manifest cannot move alone", toolchainYAML, "tools:\n  uv: \"0.12.4\"\n", toolchainYAML + "=0.12.4"},
+		{"an obsolete LLM argument is not an image stage", "infra/images/llm/Dockerfile", "ARG UV_VERSION=0.12.3\n", "infra/images/llm/Dockerfile: no uv version found"},
+		{"a comment is not an LLM image stage", "infra/images/llm/Dockerfile", "# " + image, "infra/images/llm/Dockerfile: no uv version found"},
+		{"a comment is not a gateway image stage", "infra/images/gateway/Dockerfile", "# " + image, "infra/images/gateway/Dockerfile: no uv version found"},
+		{"a comment is not a codegen image stage", "tools/codegen/python/Dockerfile", "# " + image, "tools/codegen/python/Dockerfile: no uv version found"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			t.Parallel()
+			files := map[string]string{
+				toolchainYAML:                     "tools:\n  uv: \"0.12.3\"\n",
+				"infra/images/llm/Dockerfile":     image,
+				"infra/images/gateway/Dockerfile": image,
+				devtoolsDockerfile:                "ARG UV_VERSION=0.12.3\n",
+				"tools/codegen/python/Dockerfile": image,
+			}
+			if c.path != "" {
+				files[c.path] = c.content
+			}
+			read := func(path string) (string, error) {
+				value, ok := files[path]
+				if !ok {
+					return "", errors.New("missing")
+				}
+				return value, nil
+			}
+			problems := versionAgreementProblems(groups, read)
+			if c.want == "" {
+				if len(problems) != 0 {
+					t.Fatalf("got %v, want no version disagreement", problems)
+				}
+				return
+			}
+			if len(problems) != 1 || !strings.Contains(problems[0], c.want) {
+				t.Fatalf("got %v, want one problem containing %q", problems, c.want)
+			}
+		})
 	}
 }

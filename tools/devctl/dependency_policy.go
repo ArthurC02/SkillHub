@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"path"
 	"path/filepath"
@@ -54,7 +55,11 @@ func dependencyPolicyProblems(root string) []string {
 		}
 	}
 	problems = append(problems, versionAgreementProblems(versionsThatMoveTogether, read)...)
-	return append(problems, composeAndWorkflowImageDrift(survey.composeFiles, survey.ciFiles)...)
+	baselines := maps.Clone(survey.composeFiles)
+	if survey.postgresBase != "" {
+		baselines["infra/images/postgres/Dockerfile"] = survey.postgresBase
+	}
+	return append(problems, composeAndWorkflowImageDrift(baselines, survey.ciFiles)...)
 }
 
 type dependencyFileSurvey struct {
@@ -64,6 +69,7 @@ type dependencyFileSurvey struct {
 	composeFiles map[string]string
 	ciFiles      map[string]string
 	preflights   strings.Builder
+	postgresBase string
 }
 
 func (s *dependencyFileSurvey) record(file string) {
@@ -104,6 +110,9 @@ func (s *dependencyFileSurvey) recordDockerfile(dir, file string) {
 	s.updated[dir] = true
 	if content, ok := s.readTracked(file); ok {
 		s.problems = append(s.problems, dockerfilePinProblems(file, content)...)
+		if file == "infra/images/postgres/Dockerfile" {
+			s.postgresBase = content
+		}
 	}
 }
 
@@ -237,7 +246,7 @@ func composeAndWorkflowImageDrift(composeFiles, ciFiles map[string]string) []str
 	for file, content := range ciFiles {
 		for _, ref := range pinnedImageRef.FindAllString(content, -1) {
 			if want, shared := compose[imageRepository(ref)]; shared && canonicalImage(ref) != want {
-				problems = append(problems, fmt.Sprintf("%s: %s differs from infra/compose's %s; bump both together", file, ref, want))
+				problems = append(problems, fmt.Sprintf("%s: %s differs from %s's %s; bump both together", file, ref, declaredIn[imageRepository(ref)], want))
 			}
 		}
 	}

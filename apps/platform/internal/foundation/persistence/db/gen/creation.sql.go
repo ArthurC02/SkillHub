@@ -376,6 +376,46 @@ func (q *Queries) ListCreationActivityFacts(ctx context.Context, workspaceID pgt
 	return items, nil
 }
 
+const listCreationCostObservations = `-- name: ListCreationCostObservations :many
+SELECT (snapshot #> '{snapshot,spent_usd}')::jsonb AS spent_usd,
+       (snapshot #> '{snapshot,reserved_usd}')::jsonb AS reserved_usd,
+       (snapshot #> '{snapshot,usage_unknown}')::jsonb AS usage_unknown
+FROM creation_sessions
+WHERE created_at >= $1::timestamptz AND created_at < $2::timestamptz
+  AND expires_at > $2::timestamptz
+`
+
+type ListCreationCostObservationsParams struct {
+	Since pgtype.Timestamptz
+	Until pgtype.Timestamptz
+}
+
+type ListCreationCostObservationsRow struct {
+	SpentUsd     []byte
+	ReservedUsd  []byte
+	UsageUnknown []byte
+}
+
+func (q *Queries) ListCreationCostObservations(ctx context.Context, arg ListCreationCostObservationsParams) ([]ListCreationCostObservationsRow, error) {
+	rows, err := q.db.Query(ctx, listCreationCostObservations, arg.Since, arg.Until)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCreationCostObservationsRow
+	for rows.Next() {
+		var i ListCreationCostObservationsRow
+		if err := rows.Scan(&i.SpentUsd, &i.ReservedUsd, &i.UsageUnknown); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listCreationSessions = `-- name: ListCreationSessions :many
 SELECT id, workspace_id, state, revision, snapshot, created_at, updated_at, expires_at FROM creation_sessions WHERE workspace_id = $1 AND expires_at > now()
 ORDER BY updated_at DESC LIMIT $2

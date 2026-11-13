@@ -1,0 +1,75 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "DEPLOY-IAC-001",
+  "status": "draft",
+  "intent": "在撤下沙箱節點前停止新派送，同時保留既有 Run 的執行追蹤與資源清理；修正先移除 Provider 所造成的遺失路由風險。",
+  "actor": "負責節點維護的 operator",
+  "observable_outcome": "可區分維護中的節點、仍需保留的資源與有證據可撤下的節點，不把安全事故或未知當作已 drain。",
+  "acceptance_criteria": [
+    {
+      "id": "placement-barrier",
+      "statement": "operator 宣告指定 Provider 世代進入 maintenance 後，已持久化的派送阻擋對所有 Worker 生效；與宣告競爭、已排隊或重送的工作不得跨過已確認的阻擋開始新 attempt。宣告前已開始建立的 attempt 必須可追蹤並完成對帳，不能因取樣時尚未看到容器就當作空節點。"
+    },
+    {
+      "id": "existing-attempts",
+      "statement": "maintenance 不移除 Provider 名稱、端點或 token；既有 attempt 仍可輪詢、取消、拆除與撤銷模型金鑰。Provider 名稱在舊 handle 尚未清理前不能指向另一台主機；既有永久 Run 身分、每 attempt 冪等與一次失聯重派上限保持原義。"
+    },
+    {
+      "id": "independent-holds",
+      "statement": "maintenance 與 P1／容量 halt 分別保存：P1 仍保留現場且不被降級，解除任一來源不解除另一來源；Reconciler 的兩輪乾淨只能解除容量 halt。maintenance 本身允許清理，P1 覆蓋時不得據此宣告可撤機。"
+    },
+    {
+      "id": "wait-accounting",
+      "statement": "所有相容 Provider 都因 maintenance 無法接新工作時，排隊等待時間依既有停派送規則扣除；讀不到 maintenance 歷史就保守等待。仍有可用 Provider 時可正常派送，不能把例行維護冒充整池 P1 來停止其他模型功能。"
+    },
+    {
+      "id": "retirement-evidence",
+      "statement": "只有派送阻擋仍有效、指定世代無未結束或建立中的 attempt、所有相關 Run 已完成資源清理、節點含停止容器的完整受管資源清單為空、金鑰／授權已按既有流程撤銷或到期、必要記錄已確認送達且無 P1 保留時，才可回報可撤下。任一讀取失敗、清單截斷、世代不符或證據不明都不得回報 ready；資源已清但價格待補報不單獨阻擋，既有延後查費仍可執行。"
+    },
+    {
+      "id": "authorized-replay",
+      "statement": "begin／status／release 僅 operator 可用，要求可稽核原因並綁定 Provider 與受信任的節點世代；同一操作重送、程序重啟與取消不遺失阻擋、不錯解除另一世代。狀態回應不含 token 或 workload 原文。本階段只產出人工撤機所需事實，不呼叫雲端建機、刪機或付費模型。"
+    }
+  ],
+  "candidate_terms": [
+    "Run",
+    "Provider",
+    "sandbox node",
+    "maintenance"
+  ],
+  "open_questions": [
+    "Run 已審查擁有派送、輪詢與清理，但 maintenance 意圖、受信任節點世代與庫存事實的 owner 尚未審查；Provider 與 sandbox node 未解析到可依賴的同名領域術語。須由 developer 確認，不依 Operations 的名字推定它擁有雲端生命週期。",
+    "須審查維護宣告與外部建立 attempt 的競爭窗口、重啟後的持久化與可觀察確認語義，以及新 operator API 的相容性；回應成功不能僅表示單一 Worker 快取已更新。",
+    "既有節點資源清單、Run 資源清理與遠端 journal 沒有共同交易；須確認完整性、世代綁定、記錄送達與停止後最後核對的證據來源，不能以一次 docker ps 或最後三行 journal 代替。",
+    "7 天及事件觸發的完整換新排程仍需後續設計；雲端資產生命週期 owner、刪機授權、預算及新舊並存成本尚未確認，本包不新增雲端 API／自動刪機。安全事故沿既有 P1 程序保留現場。"
+  ],
+  "risk_flags": [
+    "public_contract",
+    "irreversible_change"
+  ],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    {
+      "path": "docs/plans/04-backlog-and-handoffs.md",
+      "reference": "甲-5"
+    },
+    {
+      "path": "docs/runbooks/sandbox-node.md",
+      "reference": "§6"
+    },
+    {
+      "path": "apps/platform/internal/trial/execution/job.go",
+      "reference": "driver.follow"
+    },
+    {
+      "path": "apps/platform/internal/trial/execution/cleanup.go",
+      "reference": "CleanRun; releaseAttempt; settleLateSpend"
+    },
+    {
+      "path": "apps/platform/internal/trial/execution/provider.go",
+      "reference": "Registry.Lookup"
+    }
+  ]
+}

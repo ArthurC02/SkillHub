@@ -181,6 +181,44 @@ func (q *Queries) GetCatalogSkill(ctx context.Context, arg GetCatalogSkillParams
 	return i, err
 }
 
+const getCuratedAncestor = `-- name: GetCuratedAncestor :one
+WITH RECURSIVE lineage AS (
+    SELECT s.forked_from_skill_id AS ancestor_id, ARRAY[s.id] AS visited
+    FROM skills s
+    WHERE s.id = $2 AND s.workspace_id = $3 AND s.deleted_at IS NULL
+    UNION ALL
+    SELECT a.forked_from_skill_id, l.visited || a.id
+    FROM lineage l
+    JOIN skills a ON a.id = l.ancestor_id
+    WHERE NOT a.id = ANY(l.visited) AND a.forked_from_skill_id IS NOT NULL
+)
+SELECT a.id, a.workspace_id
+FROM lineage l
+JOIN skills a ON a.id = l.ancestor_id
+WHERE a.workspace_id = ANY($1::uuid[]) AND a.deleted_at IS NULL
+  AND NOT a.id = ANY(l.visited)
+ORDER BY cardinality(l.visited)
+LIMIT 1
+`
+
+type GetCuratedAncestorParams struct {
+	CatalogWorkspaceIds []pgtype.UUID
+	SkillID             pgtype.UUID
+	WorkspaceID         pgtype.UUID
+}
+
+type GetCuratedAncestorRow struct {
+	ID          pgtype.UUID
+	WorkspaceID pgtype.UUID
+}
+
+func (q *Queries) GetCuratedAncestor(ctx context.Context, arg GetCuratedAncestorParams) (GetCuratedAncestorRow, error) {
+	row := q.db.QueryRow(ctx, getCuratedAncestor, arg.CatalogWorkspaceIds, arg.SkillID, arg.WorkspaceID)
+	var i GetCuratedAncestorRow
+	err := row.Scan(&i.ID, &i.WorkspaceID)
+	return i, err
+}
+
 const getLiveSkillListingFacts = `-- name: GetLiveSkillListingFacts :one
 SELECT sk.redistribution, sk.category, sk.category_source, sk.curation_tier, sk.curated_version_id,
        ver.id AS latest_version_id, ver.created_at AS verified_at,

@@ -13,7 +13,7 @@ import (
 )
 
 func (s *Service) saveCommand(ctx context.Context, ws identity.Workspace, old gen.CreationSession, admitted admittedCommand) (View, *JobArgs, error) {
-	outcome, err := s.save(ctx, ws, &admitted.envelope.Snapshot, admitted.command)
+	outcome, err := s.save(ctx, ws, &admitted.envelope, admitted.command)
 	if err != nil {
 		return View{}, nil, err
 	}
@@ -63,7 +63,8 @@ func (s *Service) commitPreparedCommand(ctx context.Context, ws identity.Workspa
 	return s.commitCommand(ctx, tx, row, admitted, outcome)
 }
 
-func (s *Service) save(ctx context.Context, ws identity.Workspace, p *Snapshot, c Command) (commandOutcome, error) {
+func (s *Service) save(ctx context.Context, ws identity.Workspace, e *envelope, c Command) (commandOutcome, error) {
+	p := &e.Snapshot
 	kind := c.Kind
 	if c.Kind == commandConfirmDuplicate {
 		if p.PendingAction != PendingDuplicateAcknowledgement || p.PendingMaterialize == "" {
@@ -89,6 +90,14 @@ func (s *Service) save(ctx context.Context, ws identity.Workspace, p *Snapshot, 
 	}
 	if s.Materialize == nil {
 		return commandOutcome{}, ErrUnavailable
+	}
+	if !completeEvaluationCases(p.ChallengeCases) {
+		return requestEvaluationCases(p), nil
+	}
+	if !sourcesChecked(*e) {
+		p.PendingAction = NothingPending
+		p.appendMessage("assistant", "保存前會先核對草稿的規則來源；若資料不足，會請你補充。")
+		return stepQueued(), nil
 	}
 	if !p.DuplicateAcknowledged && s.DuplicateCheck != nil && s.holdForDuplicates(ctx, ws, p, kind) {
 		return settledIn(StateWaitingConfirmation), nil
@@ -210,20 +219,22 @@ func lockMaterializable(ctx context.Context, tx pgx.Tx, ws identity.Workspace, o
 }
 
 func (s *Service) attachAcceptanceTestCase(ctx context.Context, tx pgx.Tx, ws identity.Workspace, p Snapshot, candidate *Candidate) error {
-	if s.CreateAcceptanceTestCase == nil || len(p.AcceptanceCriteria) == 0 {
-		return nil
+	if s.CreateAcceptanceTestCase == nil {
+		return ErrUnavailable
 	}
-	prompt := p.SampleInput
-	if strings.TrimSpace(prompt) == "" {
-		prompt = p.Brief
+	if len(p.AcceptanceCriteria) > 0 {
+		prompt := p.SampleInput
+		if strings.TrimSpace(prompt) == "" {
+			prompt = p.Brief
+		}
+		id, err := s.CreateAcceptanceTestCase(ctx, tx, ws, candidate.SkillID, "創作驗收條件", prompt, p.AcceptanceCriteria)
+		if err != nil {
+			return err
+		}
+		candidate.TestCaseID = id
 	}
-	id, err := s.CreateAcceptanceTestCase(ctx, tx, ws, candidate.SkillID, "創作驗收條件", prompt, p.AcceptanceCriteria)
-	if err != nil {
-		return err
-	}
-	candidate.TestCaseID = id
 	for _, c := range p.ChallengeCases {
-		id, err := s.CreateAcceptanceTestCase(ctx, tx, ws, candidate.SkillID, challengeTestCaseName(c), c.Prompt, c.Criteria)
+		id, err := s.CreateAcceptanceTestCase(ctx, tx, ws, candidate.SkillID, evaluationTestCaseName(c), c.Prompt, c.Criteria)
 		if err != nil {
 			return err
 		}
@@ -232,8 +243,8 @@ func (s *Service) attachAcceptanceTestCase(ctx context.Context, tx pgx.Tx, ws id
 	return nil
 }
 
-func challengeTestCaseName(c ChallengeCase) string {
-	return "刁難試跑：" + c.Name
+func evaluationTestCaseName(c ChallengeCase) string {
+	return "評估案例：" + c.Name
 }
 
 func adoptCandidate(current *envelope, p Snapshot, candidate Candidate) {

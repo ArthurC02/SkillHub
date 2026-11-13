@@ -23,6 +23,7 @@ var (
 	pythonBaseImage = regexp.MustCompile(`(?m)^FROM python:(\d+\.\d+)[.-]`)
 	pythonFloor     = regexp.MustCompile(`(?m)^requires-python = ">=(\d+\.\d+)"`)
 	uvArg           = regexp.MustCompile(`(?m)^ARG UV_VERSION=(\S+)`)
+	uvBaseImage     = regexp.MustCompile(`(?m)^FROM ghcr\.io/astral-sh/uv:([^@\s]+)@`)
 )
 
 func toolchainPin(key string) *regexp.Regexp {
@@ -65,9 +66,10 @@ var versionsThatMoveTogether = []versionGroup{
 	}},
 	{"uv", []versionSite{
 		{toolchainYAML, toolchainPin("uv")},
-		{"infra/images/llm/Dockerfile", uvArg},
+		{"infra/images/llm/Dockerfile", uvBaseImage},
+		{"infra/images/gateway/Dockerfile", uvBaseImage},
 		{devtoolsDockerfile, uvArg},
-		{"tools/codegen/python/Dockerfile", regexp.MustCompile(`astral-sh/uv:([^@\s]+)@`)},
+		{"tools/codegen/python/Dockerfile", uvBaseImage},
 	}},
 	{"task", []versionSite{
 		{toolchainYAML, toolchainPin("task")},

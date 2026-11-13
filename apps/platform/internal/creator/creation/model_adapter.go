@@ -66,7 +66,22 @@ func (a stepOverHTTP) CreationStep(ctx context.Context, req StepRequest) (*StepR
 		Model:                 resp.Model,
 		PromptVersion:         resp.PromptVersion,
 		Usage:                 usageFromWire(resp.Usage),
+		SourceAssessment:      sourceAssessmentFromWire(resp.SourceAssessment),
 	}, nil
+}
+
+func sourceAssessmentFromWire(value *llmclient.CreationSourceAssessment) *SourceAssessment {
+	if value == nil {
+		return nil
+	}
+	result := &SourceAssessment{}
+	if value.Rules != nil {
+		result.Rules = make([]SourceRule, len(value.Rules))
+		for i, rule := range value.Rules {
+			result.Rules[i] = SourceRule{rule.Rule, rule.SourceMessageIndex, rule.Quote, rule.Path, rule.Question}
+		}
+	}
+	return result
 }
 
 func wireDiagramInterpretation(value *DiagramInterpretation) *llmclient.DiagramInterpretation {
@@ -92,7 +107,7 @@ func diagramDecompositionFromWire(value *llmclient.DiagramDecomposition) *Diagra
 func wireChallengeCases(cases []ChallengeCase) []llmclient.CreationChallengeCase {
 	var out []llmclient.CreationChallengeCase
 	for _, c := range cases {
-		out = append(out, llmclient.CreationChallengeCase{Name: c.Name, Prompt: c.Prompt, Criteria: append([]string(nil), c.Criteria...)})
+		out = append(out, llmclient.CreationChallengeCase{Name: c.Name, Prompt: c.Prompt, Criteria: append([]string(nil), c.Criteria...), ExpectedInteraction: caseInteraction(c.ExpectedInteraction)})
 	}
 	return out
 }
@@ -100,7 +115,7 @@ func wireChallengeCases(cases []ChallengeCase) []llmclient.CreationChallengeCase
 func challengeCasesFromWire(cases []llmclient.CreationChallengeCase) []ChallengeCase {
 	var out []ChallengeCase
 	for _, c := range cases {
-		out = append(out, ChallengeCase{Name: c.Name, Prompt: c.Prompt, Criteria: append([]string(nil), c.Criteria...)})
+		out = append(out, ChallengeCase{Name: c.Name, Prompt: c.Prompt, Criteria: append([]string(nil), c.Criteria...), ExpectedInteraction: c.ExpectedInteraction})
 	}
 	return out
 }

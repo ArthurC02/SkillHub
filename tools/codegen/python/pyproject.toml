@@ -1,9 +1,9 @@
 [project]
 name = "skillhub-python-codegen"
 version = "0.0.0"
-requires-python = "==3.14.*"
+requires-python = "==3.15.*"
 dependencies = [
-    "datamodel-code-generator==0.81.0",
+    "datamodel-code-generator==0.85.0",
 ]
 
 [tool.uv]

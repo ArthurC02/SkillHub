@@ -31,6 +31,7 @@ Usage:
   devctl comment-advice file  read {"old","new"} text of an edit on stdin and warn on added comments that read like decision records (skillhub-guards runs it)
   devctl ci-status [ref | --sha ref] [--wait] [--timing]  every workflow run for a commit (--timing lists each job's duration, longest first); exit 0 green, 1 red, 2 GitHub unreadable, 3 pending, 4 no runs
   devctl dep-audit [--full]  fail on fixable vulnerabilities, disallowed licenses and workflow findings (--full: vulnerabilities in every project, dev dependencies too)
+  devctl gateway-search-proof  prove search authorization, budgets and native interception with isolated local providers
 `
 
 func main() {
@@ -73,7 +74,7 @@ func runCommand(root, command string, args []string) (int, error) {
 		return runSetupCommand(root, command, args)
 	case cmdGen, "agent-sync", "automation-check", "comment-lint", cmdDomainMemoryInstall:
 		return runRepoCheckCommand(root, command, args)
-	case "test-report", "seed-clean", "image-gate", cmdPreflight, "ci-status", "dep-audit", "fix-proof", "comment-advice":
+	case "test-report", "seed-clean", "image-gate", cmdPreflight, "ci-status", "dep-audit", "fix-proof", "comment-advice", "gateway-search-proof":
 		return runPipelineCommand(root, command, args)
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command %q\n\n%s", command, usage)
@@ -131,6 +132,8 @@ func runPipelineCommand(root, command string, args []string) (int, error) {
 		return 0, fixProof(root, args, os.Stdout)
 	case "comment-advice":
 		return 0, commentAdvice(root, args, os.Stdin, os.Stdout)
+	case "gateway-search-proof":
+		return 0, gatewaySearchProof(root, args, os.Stdout)
 	default:
 		return 0, depAudit(root, args, os.Stdout)
 	}

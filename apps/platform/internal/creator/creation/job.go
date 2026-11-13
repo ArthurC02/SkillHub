@@ -140,11 +140,12 @@ func (s *Service) Step(ctx context.Context, a JobArgs, diagram *Diagram) error {
 	watching := s.cancelWhenSessionMoves(callCtx, cancel, a)
 	req := s.stepRequest(a, started.revision, e, diagram)
 	req.MCPTools = mcpTools
+	req.Messages = fetchedMessages(req.Messages, fetched, s.masked)
 	response, usage, callErr := s.callModel(callCtx, a, e, req, callDeadline)
 	cancel()
 	<-watching
 	s.revokeAttemptKey(a.ReceiptID)
-	call := stepCall{carriedDiagram: diagram != nil, reply: response, usage: usage, callErr: callErr}
+	call := stepCall{carriedDiagram: diagram != nil, reply: response, usage: usage, callErr: callErr, sourceMessages: req.Messages}
 	if callErr == nil {
 		call.found = s.searchAhead(ctx, identity.Workspace{ID: a.WorkspaceID}, response)
 	}
@@ -162,11 +163,16 @@ const (
 func (s *Service) settle(a JobArgs, call stepCall) error {
 	ctx, cancel := context.WithTimeout(context.Background(), s.Billing.settleDeadline())
 	defer cancel()
+	var lastErr error
 	for {
 		err := s.finish(ctx, a, call)
 		if err == nil {
 			return nil
 		}
+		if ctx.Err() != nil {
+			return errors.Join(lastErr, err)
+		}
+		lastErr = err
 		slog.Warn("creation: a finished model call could not be settled yet; trying again",
 			"receipt_id", UUID(a.ReceiptID), "error", err)
 		select {
@@ -192,6 +198,7 @@ type stepCall struct {
 	usage          *ModelUsage
 	callErr        error
 	found          *searchAnswer
+	sourceMessages []Message
 }
 
 func (s *Service) startAttempt(ctx context.Context, a JobArgs, diagram *Diagram, fetched *fetchedPage) (*attempt, error) {
@@ -356,7 +363,7 @@ func (s *Service) attachFetched(p *Snapshot, fetched *fetchedPage) {
 	}
 	p.PendingFetchURL, p.ApprovedFetchURL = "", ""
 	p.Fetches = append(p.Fetches, fetched.record)
-	p.appendMessage("tool", webfetch.Observation(fetched.record, s.masked(fetched.text)))
+	p.appendMessage("tool", webfetch.Observation(fetched.record, ""))
 }
 
 func (s *Service) cancelWhenSessionMoves(ctx context.Context, cancel context.CancelFunc, a JobArgs) <-chan struct{} {
@@ -607,6 +614,7 @@ func (s *Service) attemptOutcome(ctx context.Context, row gen.CreationSession, e
 	if call.carriedDiagram && !validDiagramText(call.reply.DiagramDescription) {
 		return "", false, rejectedReply("carries no valid description of the uploaded diagram")
 	}
+	e.sourceMessages = call.sourceMessages
 	return s.proposal(ctx, row.Revision+1, e, call.reply, call.found)
 }
 

@@ -40,6 +40,8 @@ const dbURLEnv = "SKILLHUB_TEST_DATABASE_URL"
 
 var testPool *pgxpool.Pool
 
+var originalAPIDatabaseURL = os.Getenv(dbURLEnv)
+
 func TestMain(m *testing.M) {
 	if os.Getenv("SKILLHUB_MODEL_GATEWAY_KEY") == "" {
 		os.Setenv("SKILLHUB_MODEL_GATEWAY_URL", "http://model-gateway.test")
@@ -121,6 +123,25 @@ func requireDB(t *testing.T) *pgxpool.Pool {
 		t.Skipf("%s not set; skipping database-backed authorization test", dbURLEnv)
 	}
 	return testPool
+}
+
+func isolatedAPIPool(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+	requireDB(t)
+	dsn, drop, err := testschema.Prepare(context.Background(), originalAPIDatabaseURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(drop)
+	pool, err := pgxpool.New(context.Background(), dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	if err := queue.EnsureSchema(context.Background(), pool); err != nil {
+		t.Fatal(err)
+	}
+	return pool
 }
 
 type api struct {

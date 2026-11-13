@@ -1,0 +1,84 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "GEN-028",
+  "proposal_id": "run-cost-observation",
+  "obligations": [
+    {
+      "id": "run-cohort",
+      "source_type": "acceptance-criterion",
+      "source_id": "run-cohort",
+      "expected_outcome": "以固定 UTC 上界及其前 24 小時的 [since, until) 選取仍保留的每一個 Run，包含所有狀態、評估與接續 Run；觀察單位是 Run 而非 attempt、對話鏈或 cost event，未產生成本事件的 Run 也保留在分母。",
+      "level": "integration",
+      "status": "planned",
+      "check": "planned:run-cost-observation/run-cohort"
+    },
+    {
+      "id": "owner-facts",
+      "source_type": "acceptance-criterion",
+      "source_id": "owner-facts",
+      "expected_outcome": "Run 只讀自己的批次與結算標記，Credit 以批次唯讀介面提供指定 Run 的已記錄費用、來源與完整性證據，明確區分缺席、已記錄但未知、已確認完整的零與非零費用。不跨 owner 直接查表、不重新呼叫模型或逐 Run 打閘道查詢。",
+      "level": "integration",
+      "status": "planned",
+      "check": "planned:run-cost-observation/owner-facts"
+    },
+    {
+      "id": "cost-coverage",
+      "source_type": "acceptance-criterion",
+      "source_id": "cost-coverage",
+      "expected_outcome": "known 僅包含已結算且 Credit 證實完整費用的 Run；明示價格未知、完整性未證明、無效數量或已結算卻無費用事實的 Run 屬 unknown。其餘仍待結算的 Run 屬 unsettled，任何組都不以缺資料推導零費用。舊資料僅有 gateway 來源或 cost_settled_at 不足以證明完整性。",
+      "level": "integration",
+      "status": "planned",
+      "check": "planned:run-cost-observation/cost-coverage"
+    },
+    {
+      "id": "amounts",
+      "source_type": "acceptance-criterion",
+      "source_id": "amounts",
+      "expected_outcome": "只從 known 組計算已記錄美元費用的總和、最大值及可推導的平均；無 known 組時金額系列不存在，有完整的明確零時才顯示零。浮點觀察的解析度與美元微單位來源明示，無效或溢位不發布貌似完整的金額。",
+      "level": "integration",
+      "status": "planned",
+      "check": "planned:run-cost-observation/amounts"
+    },
+    {
+      "id": "failed-read",
+      "source_type": "acceptance-criterion",
+      "source_id": "failed-read",
+      "expected_outcome": "任一 owner 讀取失敗、取消、缺少必要 reader 或無法聚合時撤下數量、金額與時間，成功值為 0；成功讀到空批次才發布三組零數量。恢復後重新讀取，不能保留舊數字並更新成新時間。",
+      "level": "integration",
+      "status": "planned",
+      "check": "planned:run-cost-observation/failed-read"
+    },
+    {
+      "id": "private-observation",
+      "source_type": "acceptance-criterion",
+      "source_id": "private-observation",
+      "expected_outcome": "只發布固定 coverage 三組及無標籤的金額、成功與時間，不把 Run、attempt、Workspace、使用者、問題、網址、模型金鑰或動態來源寫成標籤；多個 Worker 副本是獨立快照，不能相加。",
+      "level": "security",
+      "status": "planned",
+      "check": "planned:run-cost-observation/private-observation"
+    },
+    {
+      "id": "readonly-replay",
+      "source_type": "acceptance-criterion",
+      "source_id": "readonly-replay",
+      "expected_outcome": "既有 Worker gauge refresh 的實際路徑取得兩個 owner 的事實，空批次可省略費用查詢，非空批次不隨 Run 數增加逐筆查詢。反覆刷新、重啟及第二個 Worker 不改 Run 狀態、結算標記、保留期限、成本事件、Credit 分錄、模型金鑰或 outbox。",
+      "level": "integration",
+      "status": "planned",
+      "check": "planned:run-cost-observation/readonly-replay",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "usage-with-unknown-cost-is-recorded-but-never-debited"
+        },
+        {
+          "source_type": "rule",
+          "source_id": "a-charge-is-debited-once-per-idempotency-key"
+        },
+        {
+          "source_type": "rule",
+          "source_id": "a-run-whose-spend-was-unreadable-is-read-again-for-a-day"
+        }
+      ]
+    }
+  ]
+}

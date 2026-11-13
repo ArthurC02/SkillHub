@@ -31,6 +31,8 @@ from skillhub_llm.app import app
         "CreationMessage",
         "CreationToolIntent",
         "CreationDraftValidation",
+        "CreationSourceRule",
+        "CreationSourceAssessment",
         "CreationStepRequest",
         "CreationStepResponse",
         "AgentStepRequest",

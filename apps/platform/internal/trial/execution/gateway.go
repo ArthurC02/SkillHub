@@ -42,6 +42,8 @@ func GatewayOrNone(g *Gateway) ModelGateway {
 
 const modelGatewayPurpose = "model_gateway"
 
+const RunSearchToolName = "skillhub-web-search"
+
 var ErrNoModelGateway = errors.New("this deployment has no model gateway, so a run has no way to reach a model")
 
 var ErrModelGatewayUnavailable = errors.New("the model gateway is not answering right now")
@@ -127,15 +129,16 @@ func NewGateway(c GatewayConfig) *Gateway {
 func keyAlias(runAttemptID string) string { return "skillhub-attempt-" + runAttemptID }
 
 type AttemptKeyTerms struct {
-	TTL       time.Duration
-	BudgetUSD float64
-	TPMLimit  int
+	TTL           time.Duration
+	BudgetUSD     float64
+	TPMLimit      int
+	SearchAllowed bool
 }
 
 func (g *Gateway) Issue(ctx context.Context, runID, runAttemptID string, terms AttemptKeyTerms) (*ModelGatewayGrant, error) {
 	return g.issue(ctx, virtualKeyTerms{
 		attemptID: runAttemptID, ttl: terms.TTL, maxBudgetUSD: terms.BudgetUSD, tpmLimit: terms.TPMLimit, model: g.model, team: runTeam,
-		metadata: map[string]string{"run_id": runID, "run_attempt_id": runAttemptID},
+		metadata: map[string]string{"run_id": runID, "run_attempt_id": runAttemptID}, searchAllowed: terms.SearchAllowed,
 	})
 }
 
@@ -160,13 +163,14 @@ func (g *Gateway) IssueAgentRun(ctx context.Context, runID string, terms Creatio
 }
 
 type virtualKeyTerms struct {
-	attemptID    string
-	ttl          time.Duration
-	maxBudgetUSD float64
-	tpmLimit     int
-	model        string
-	team         gatewayTeam
-	metadata     map[string]string
+	attemptID     string
+	ttl           time.Duration
+	maxBudgetUSD  float64
+	tpmLimit      int
+	model         string
+	team          gatewayTeam
+	metadata      map[string]string
+	searchAllowed bool
 }
 
 type gatewayTeam string
@@ -178,16 +182,25 @@ const (
 )
 
 type teamCreationRequest struct {
-	TeamID         string `json:"team_id"`
-	TeamAlias      string `json:"team_alias"`
-	BudgetDuration string `json:"budget_duration"`
+	TeamID           string                   `json:"team_id"`
+	TeamAlias        string                   `json:"team_alias"`
+	BudgetDuration   string                   `json:"budget_duration"`
+	ObjectPermission *gatewayObjectPermission `json:"object_permission,omitempty"`
+}
+
+type gatewayObjectPermission struct {
+	SearchTools []string `json:"search_tools"`
 }
 
 func (g *Gateway) teamFor(ctx context.Context, team gatewayTeam) string {
 	if _, ready := g.readyTeams.Load(team); ready {
 		return string(team)
 	}
-	err := g.post(ctx, "/team/new", teamCreationRequest{TeamID: string(team), TeamAlias: string(team), BudgetDuration: "1d"}, nil)
+	body := teamCreationRequest{TeamID: string(team), TeamAlias: string(team), BudgetDuration: "1d"}
+	if team == runTeam {
+		body.ObjectPermission = &gatewayObjectPermission{SearchTools: []string{RunSearchToolName}}
+	}
+	err := g.post(ctx, "/team/new", body, nil)
 	if ge, ok := errors.AsType[*gatewayError](err); err != nil && (!ok || !ge.alreadyExists()) {
 		slog.WarnContext(ctx, "model gateway team unavailable; the key is issued outside it", "team", team, "err", err)
 		return ""
@@ -197,13 +210,14 @@ func (g *Gateway) teamFor(ctx context.Context, team gatewayTeam) string {
 }
 
 type keyGenerationRequest struct {
-	KeyAlias  string            `json:"key_alias"`
-	Duration  string            `json:"duration"`
-	MaxBudget float64           `json:"max_budget"`
-	TPMLimit  int               `json:"tpm_limit"`
-	Metadata  map[string]string `json:"metadata"`
-	Models    []string          `json:"models,omitempty"`
-	TeamID    string            `json:"team_id,omitempty"`
+	KeyAlias         string                  `json:"key_alias"`
+	Duration         string                  `json:"duration"`
+	MaxBudget        float64                 `json:"max_budget"`
+	TPMLimit         int                     `json:"tpm_limit"`
+	Metadata         map[string]string       `json:"metadata"`
+	Models           []string                `json:"models,omitempty"`
+	TeamID           string                  `json:"team_id,omitempty"`
+	ObjectPermission gatewayObjectPermission `json:"object_permission"`
 }
 
 type keyDeletionRequest struct {
@@ -223,12 +237,16 @@ func (g *Gateway) issue(ctx context.Context, terms virtualKeyTerms) (*ModelGatew
 		tpmLimit = g.tpmLimit
 	}
 	body := keyGenerationRequest{
-		KeyAlias:  keyAlias(runAttemptID),
-		Duration:  strconv.Itoa(int(ttl.Seconds())) + "s",
-		MaxBudget: maxBudgetUSD,
-		TPMLimit:  tpmLimit,
-		Metadata:  metadata,
-		TeamID:    g.teamFor(ctx, terms.team),
+		KeyAlias:         keyAlias(runAttemptID),
+		Duration:         strconv.Itoa(int(ttl.Seconds())) + "s",
+		MaxBudget:        maxBudgetUSD,
+		TPMLimit:         tpmLimit,
+		Metadata:         metadata,
+		TeamID:           g.teamFor(ctx, terms.team),
+		ObjectPermission: gatewayObjectPermission{SearchTools: []string{}},
+	}
+	if terms.searchAllowed {
+		body.ObjectPermission.SearchTools = []string{RunSearchToolName}
 	}
 	if model != "" {
 		body.Models = []string{model}
@@ -245,13 +263,17 @@ func (g *Gateway) issue(ctx context.Context, terms virtualKeyTerms) (*ModelGatew
 	if out.Key == "" {
 		return nil, errors.New("mint virtual key: gateway returned no key")
 	}
-	return &ModelGatewayGrant{
+	grant := &ModelGatewayGrant{
 		BaseURL:      g.sandboxBaseURL,
 		VirtualKey:   out.Key,
 		MaxBudgetUSD: maxBudgetUSD,
 		TPMLimit:     tpmLimit,
 		ExpiresAt:    time.Now().UTC().Add(ttl),
-	}, nil
+	}
+	if terms.searchAllowed {
+		grant.SearchTool = RunSearchToolName
+	}
+	return grant, nil
 }
 
 func (g *Gateway) Revoke(ctx context.Context, runAttemptID string) error {
@@ -268,8 +290,18 @@ type AttemptUsage struct {
 
 	ModelCostUSD float64
 
-	CostReported bool
-	Incomplete   bool
+	CostReported   bool
+	CostIncomplete bool
+	Incomplete     bool
+}
+
+func (u *AttemptUsage) addCost(usd float64) {
+	total := u.ModelCostUSD + usd
+	if usd < 0 || math.IsNaN(total) || math.IsInf(total, 0) {
+		u.CostIncomplete = true
+		return
+	}
+	u.ModelCostUSD = total
 }
 
 const (
@@ -314,16 +346,21 @@ func (g *Gateway) Usage(ctx context.Context, runAttemptID string, since time.Tim
 		for _, row := range out.Data {
 			total.InputTokens += row.PromptTokens
 			total.OutputTokens += row.CompletionTokens
-			if row.Spend != nil {
-				total.ModelCostUSD += *row.Spend
-				total.CostReported = true
+			if row.Spend == nil {
+				total.CostIncomplete = true
+				continue
 			}
+			total.addCost(*row.Spend)
+			total.CostReported = true
 		}
+		total.CostReported = total.CostReported && !total.CostIncomplete
 		if len(out.Data) == 0 || page >= out.TotalPages {
 			return total, nil
 		}
 		if page == maxUsagePages {
 			total.Incomplete = true
+			total.CostIncomplete = true
+			total.CostReported = false
 			return total, nil
 		}
 	}

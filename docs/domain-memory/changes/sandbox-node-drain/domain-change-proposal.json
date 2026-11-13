@@ -1,0 +1,120 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "sandbox-node-drain",
+  "proposer": "agent:codex",
+  "requirement_id": "DEPLOY-IAC-001",
+  "status": "submitted",
+  "change_classification": "material",
+  "submitted_at": "2026-11-12T20:03:27.074344Z",
+  "verified_at": null,
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "e6b326e89ef8f352cef2222bb76dc25403320c26",
+    "registry_digest": "sha256:6b00661653d4bf9afb0e009812d1fbc31e79f7906569be75780541e31c955d5c",
+    "committed_digest": "sha256:6b00661653d4bf9afb0e009812d1fbc31e79f7906569be75780541e31c955d5c"
+  },
+  "affected_contexts": [
+    "run"
+  ],
+  "rule_ids": [
+    "cleanup-preserves-the-scene-under-an-incident-halt",
+    "dispatch-incident-halt-is-never-downgraded",
+    "time-dispatch-was-paused-does-not-count-against-the-slot-wait",
+    "a-run-survives-at-most-one-lost-provider",
+    "each-dispatch-is-keyed-by-its-own-attempt-id"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "run",
+    "invariant": "Run 保有派送、輪詢與清理的決策；節點仍有既有 attempt／資源時，不能以移除路由假裝完成維護。新增 maintenance 與世代事實的 owner 尚待審查。",
+    "evidence": [
+      {
+        "path": "apps/platform/internal/trial/execution/doc.go",
+        "lines": {
+          "start": 1,
+          "end": 2
+        }
+      }
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "提議由 Run 的 operator 操作保存 maintenance 意圖並在派送與撤下判定讀取；端點保留供既有 attempt 使用。世代及節點庫存透過待審查的事實邊界取得，不直接存取另一 owner 的資料。",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [
+      "沙箱不讀核心資料庫，不保存雲端憑證。",
+      "maintenance 不修改 P1 保留政策、Run 永久 ID、成本結算或失聯重派次數。",
+      "本包不指派未知的雲端 owner，不新增雲端副作用或假造已核准節點。"
+    ],
+    "evidence": [
+      {
+        "path": "apps/platform/internal/trial/execution/provider.go",
+        "lines": {
+          "start": 534,
+          "end": 541
+        }
+      },
+      {
+        "path": "apps/platform/internal/trial/execution/cleanup.go",
+        "lines": {
+          "start": 129,
+          "end": 140
+        }
+      }
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "Provider 移出設定後舊 attempt 無法再輪詢或拆除；停止新派送與保留路由是不同決策。",
+      "P1 必須保留現場，容量 halt 會自動恢復，兩者都不能充當持久的例行維護意圖。",
+      "多 Worker、快取、已派送請求與外部建立結果有競爭；節點與資料庫的空集合無法由單次取樣共同證明。",
+      "節點名稱不是不可變世代，誤指向新主機可能拆錯資源；雲端刪除不可逆。"
+    ],
+    "decision": "先審查最小的持久化 per-Provider maintenance 意圖與 operator 操作，不新增 Run Aggregate 或雲端編排框架。派送屏障與確認語義在 Run owner 內協調，保留端點完成既有工作；綜合完整、同世代的清理與庫存事實才提供撤下判定。此包只定義待審查行為，不先實作 API、狀態或刪機。",
+    "invariants_preserved": [
+      "P1 保留現場且不降級；maintenance 不解除任何 P1。",
+      "Run 生命週期與每 attempt 冪等身分仍由 Go／Postgres 控制。",
+      "排隊停派時間依既有規則處理；清理後補報費用不依賴節點端點。"
+    ],
+    "rejected_alternatives": [
+      "先從 Provider 清單移除會讓 follow 與 cleanup 找不到原節點。",
+      "使用 P1 停派送會同時保留資源，無法完成例行清理；偽造 orphan_threshold 則可能被自動解除。",
+      "只看執行中容器為零會漏掉停止容器、正在建立的 attempt 與尚未清理的金鑰／授權。",
+      "只加排程直接刪除超齡節點缺少可靠 drain 與世代確認，無法保護既有 Run。"
+    ],
+    "proof_obligations": [
+      "placement-barrier",
+      "existing-attempts",
+      "independent-holds",
+      "wait-accounting",
+      "retirement-evidence",
+      "authorized-replay"
+    ],
+    "counterfactual_check": "移除派送屏障、提前移除 Provider、把 maintenance 當 P1、讓容量恢復解除 maintenance、忽略停派時間、將未知庫存當空、接受錯誤世代或未授權解除；對應焦點測試須各自失敗並精確還原。"
+  },
+  "event_change": null,
+  "contract_change": {
+    "producer": "run",
+    "consumers": [
+      "operator"
+    ],
+    "version": "proposed-node-maintenance-v1",
+    "compatibility_policy": "提議新增 operator-only begin／status／release；既有 P1、容量 halt、Provider 執行契約與 public Run 回應維持原義。正式 OpenAPI 須先完成必要審查再修改並產生程式。",
+    "data_classification": "internal provider and trusted node generation, audit actor and reason; no tokens or workload content",
+    "breaking_change": false,
+    "timeout_retry_behavior": "操作以明確的目標世代及冪等識別重送；逾時與狀態未知保持阻擋並重新讀取，不能推定已解除或可撤下。"
+  },
+  "registry_updates": [],
+  "risk_flags": [
+    "public_contract",
+    "irreversible_change"
+  ],
+  "open_questions": [
+    "Run 已審查擁有派送、輪詢與清理，但 maintenance 意圖、受信任節點世代與庫存事實的 owner 尚未審查；Provider 與 sandbox node 未解析到可依賴的同名領域術語。須由 developer 確認，不依 Operations 的名字推定它擁有雲端生命週期。",
+    "須審查維護宣告與外部建立 attempt 的競爭窗口、重啟後的持久化與可觀察確認語義，以及新 operator API 的相容性；回應成功不能僅表示單一 Worker 快取已更新。",
+    "既有節點資源清單、Run 資源清理與遠端 journal 沒有共同交易；須確認完整性、世代綁定、記錄送達與停止後最後核對的證據來源，不能以一次 docker ps 或最後三行 journal 代替。",
+    "7 天及事件觸發的完整換新排程仍需後續設計；雲端資產生命週期 owner、刪機授權、預算及新舊並存成本尚未確認，本包不新增雲端 API／自動刪機。安全事故沿既有 P1 程序保留現場。"
+  ],
+  "approvals": []
+}

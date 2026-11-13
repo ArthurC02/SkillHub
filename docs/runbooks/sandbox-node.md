@@ -66,7 +66,7 @@ sudo systemctl start skillhub-serving
 此時控制平面還不知道這台節點，沒有 Run 會進來。四件事都在**這一台**上做，換一台機器就換了受測物：
 
 1. **節點准入探針**：`sudo python3 /opt/skillhub/tools/sec009/t8-node-probe.py`，exit 0 才繼續。它讀 `node.json`、容器清單、`runsc` 版本、`docker info`，並掃描行程環境與 `/etc/skillhub`、`/opt/skillhub` 裡有沒有資料庫憑證。
-2. **這台跑的 Runtime Image 有有效的 SBOM 與掃描**：`sudo sh -c 'set -a; . /etc/skillhub/release.env; set +a; python3 /opt/skillhub/tools/sec009/t8-image-audit.py'`，exit 0 才繼續。帶著 `SKILLHUB_SANDBOX_IMAGE` 時它查的是這台釘的 digest，不是標籤今天指向的那一個；掃描超過 30 天、有可修的 Critical／High、或 `pinned_ip` 還是 `unset` 都會失敗。
+2. **這台跑的 Runtime Image 有有效的 SBOM 與掃描**：管理者先準備可由 root 執行的 GitHub CLI，以 `sudo gh attestation verify --help` 確認支援驗證，並在管理者環境設定具有該 GHCR 映像唯讀權限的 `GH_TOKEN`；bootstrap 不會安裝 CLI 或供應這份憑證。執行 `sudo --preserve-env=GH_TOKEN sh -c 'set -a; . /etc/skillhub/release.env; set +a; python3 /opt/skillhub/tools/sec009/t8-image-audit.py'`，exit 0 才繼續。token 只供這次管理者稽核，不放入 `release.env`、`sandboxd.env` 或工作負載。帶著 `SKILLHUB_SANDBOX_IMAGE` 時它查的是這台釘的 digest；無法驗證簽章、掃描已達 30 天、時間在未來、有可修的 Critical／High、或 `pinned_ip` 還是 `unset` 都不通過。
 3. **SEC-009 Suite 1 與 Suite 2**：照 [`tools/sec009/README.md`](../../tools/sec009/README.md) 的測項，在暫存目錄另取一份完整 checkout（同一個 commit）來跑，證據落 `docs/plans/mvp/m4/sec-009-acceptance/<日期>-<節點>/`。跑完刪掉暫存 checkout 與測試用的映像。
 4. **再跑一次第 1 步**：測試留下的容器或檔案會讓它失敗，失敗就先清乾淨。
 
@@ -91,10 +91,14 @@ sudo systemctl start skillhub-serving
 
 節點不升級、不修，到期或有下列事件就換一台新的：`gvisor-baseline.txt` 變了、允許清單變了、有逃逸疑慮、清理連續失敗。
 
-1. 照 §1～§4 建一台新的（`--release` 用最新已通過團隊選定驗證、且可解析為釘定映像的 commit；本專案目前以 CI green 為證據），接入 §5，兩台並存。
-2. 從 `SKILLHUB_SANDBOX_PROVIDERS` 拿掉舊的那台，重啟控制平面。
-3. 等舊節點上沒有執行中的 Run：`sudo docker ps --filter label=skillhub.sandbox.managed` 是空的。
-4. 在舊節點 `sudo systemctl stop skillhub-sandboxd`，然後在控制平面確認這台的記錄推完了：`sudo journalctl --directory=/var/log/journal/remote -u skillhub-sandboxd.service _HOSTNAME=<舊節點主機名> -n 3` 裡有剛才的 `Stopped Skill Hub sandbox provider`。
-5. 刪掉舊主機。
+**目前缺少安全的 maintenance／drain 操作，不能把移除 Provider 當成停止新派送。** 控制平面以設定中的 Provider 名稱解析既有 attempt；先拿掉舊節點並重啟，會使輪詢失敗，也讓清理找不到拆除端點。舊 Run 與資源清完前，保留原名稱、端點與 token，不把同名 Provider 改指另一台主機。
 
-有逃逸疑慮時不走這個順序：先照 [P1 停派送 runbook](p1-dispatch-halt.md) 停掉全部派送，再換整個池。
+例行換新需要以下順序與證據；其中 maintenance 屏障及撤下判定尚未實作，待審查的行為見[節點維護提案](../domain-memory/changes/sandbox-node-drain/draft-pr.md)。目前不能依此段宣稱已有可執行的滾動換新自動化。
+
+1. 照 §1～§4 建立並驗收新節點，依 §5 以另一個 Provider 名稱接入，保留舊節點路由。新舊並存須符合部署授權及預算。
+2. 先有可確認、跨 Worker 生效的舊節點停派送屏障，才開始等待既有 attempt 收尾。現有 `/admin/dispatch/halt` 宣告的是 P1，會同時保留現場、阻擋清理；`orphan_threshold` 又會自動解除，兩者不能替代例行 maintenance。
+3. 確認無未結束或建立中的 attempt、相關 Run 已完成資源清理，並核對節點上**包含停止容器**的受管資源清單、模型金鑰及物件授權。`sudo docker ps -a --filter label=skillhub.sandbox.managed` 只能協助查看容器，不能單獨證明已 drain；讀取失敗或資料不完整都不是空集合。資源已清但價格仍待補報時，既有延後查費不依賴舊節點端點，不必只為價格保留主機。
+4. 停派送屏障仍有效且資源已清，才停止舊節點 `skillhub-sandboxd`；在控制平面確認該節點的必要記錄已送達並保存。最後三行 journal 或一筆停止訊息不足以證明記錄完整送達。
+5. 再從 `SKILLHUB_SANDBOX_PROVIDERS` 移除舊節點及其 token，確認設定生效與目標主機身分後，由具授權的部署負責人撤下該主機。尚有 P1 保留、資源未清或證據未知時不執行撤機。
+
+有逃逸疑慮時先照 [P1 停派送 runbook](p1-dispatch-halt.md) 停派送並保留現場；調查、證據保存與負責人確認完成前，不用例行換新程序清除或刪掉事故節點。

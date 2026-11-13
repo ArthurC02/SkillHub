@@ -1,0 +1,39 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "GEN-013",
+  "proposal_id": "creation-classification-recite",
+  "registry_revision": {
+    "observed_commit": "f6cd68242be5ca2768a73b45451f8f6f9df8c305",
+    "registry_digest": "sha256:ad117977ba03092573b2bfee28ecd9df6236b46c68729e8f4dbf8e1d703558bf",
+    "committed_digest": "sha256:ad117977ba03092573b2bfee28ecd9df6236b46c68729e8f4dbf8e1d703558bf"
+  },
+  "approvals": [],
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "06a15906f896bc3dd5aab0ebd4344109ad947e11",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "f6cd68242be5ca2768a73b45451f8f6f9df8c305",
+      "registry_digest": "sha256:ad117977ba03092573b2bfee28ecd9df6236b46c68729e8f4dbf8e1d703558bf",
+      "committed_digest": "sha256:ad117977ba03092573b2bfee28ecd9df6236b46c68729e8f4dbf8e1d703558bf"
+    }
+  },
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": ".domain-memory/domain-memory.exe verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/creation-classification-recite --path apps/platform/internal/creator/creation/proposal.go --path apps/platform/internal/creator/creation/proposal_test.go",
+      "command_profile": "architecture",
+      "exit_code": 0,
+      "output_sha256": "sha256:18a58a5cf140545513034d3e61725299e07f328b49214feb609b9eebec3f576f",
+      "finished_at": "2026-11-12T05:03:21.890955Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

@@ -2096,6 +2096,71 @@ test("acceptance criteria render under the brief and the confirm button names bo
   expect(box.textContent).toContain("字數不超過 200 字");
   expect(box.textContent).toContain("確認需求摘要與驗收條件");
 });
+
+test("brief confirmation reveals both evaluation inputs and their criteria before accepting them", async () => {
+  const v = sample({ state: "waiting_confirmation" });
+  v.snapshot.brief = "依入住日期計算住宿費用，缺少日期就詢問。";
+  v.snapshot.acceptance_criteria = ["依作者提供的日期與每晚費率計算總價。"];
+  v.snapshot.pending_action = "confirm_brief";
+  v.snapshot.challenge_cases = [
+    {
+      name: "缺少入住日期",
+      prompt: "請算住宿兩晚的房價。",
+      criteria: ["詢問入住日期，因為週末加價取決於日期。", "不自行假設入住日或總價。"],
+    },
+    {
+      name: "平日資料完整",
+      prompt: "週一入住兩晚，每晚 100 元，請算總價。",
+      criteria: ["直接回答總價 200 元，不再追問。"],
+    },
+  ];
+  const writes: Record<string, unknown>[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string, init?: RequestInit) => {
+      if (init?.method === "POST") {
+        writes.push(JSON.parse(String(init.body)));
+        return creationReceipt(v, url, init);
+      }
+      return routeGet(url, [v], v);
+    }),
+  );
+  await render();
+  await resume();
+  const cases = box.querySelector('[aria-label="評估案例"]');
+  expect(cases?.textContent).toContain("確認也包含以下案例的輸入與驗收條件。");
+  expect(cases?.textContent).toContain("缺少入住日期");
+  expect(cases?.textContent).toContain("請算住宿兩晚的房價。");
+  expect(cases?.textContent).toContain("詢問入住日期，因為週末加價取決於日期。");
+  expect(cases?.textContent).toContain("不自行假設入住日或總價。");
+  expect(cases?.textContent).toContain("平日資料完整");
+  expect(cases?.textContent).toContain("週一入住兩晚，每晚 100 元，請算總價。");
+  expect(cases?.textContent).toContain("直接回答總價 200 元，不再追問。");
+  expect(cases?.querySelector("details")).toBeNull();
+  expect(writes).toEqual([]);
+  await click("確認需求摘要與驗收條件");
+  await waitFor(() => writes.length === 1);
+  expect(writes[0]).toMatchObject({ kind: "confirm_brief", expected_revision: 7 });
+  expect(writes[0]).not.toHaveProperty("challenge_cases");
+});
+
+test.each([undefined, []])(
+  "a legacy brief with cases %j does not imply a paired evaluation exists",
+  async (cases) => {
+    const v = sample({ state: "waiting_confirmation" });
+    v.snapshot.pending_action = "confirm_brief";
+    v.snapshot.challenge_cases = cases;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((url: string) => routeGet(url, [v], v)),
+    );
+    await render();
+    await resume();
+    expect(box.textContent).toContain("這份會話未提供評估案例。");
+    expect(box.querySelector('[aria-label="評估案例"]')).toBeNull();
+    expect(box.textContent).toContain("確認需求摘要與驗收條件");
+  },
+);
 test("a model-overwritten brief shows both the new and the confirmed-away text (05 R-54 #4)", async () => {
   const v = sample({ state: "waiting_confirmation" });
   v.snapshot.pending_action = "confirm_brief";

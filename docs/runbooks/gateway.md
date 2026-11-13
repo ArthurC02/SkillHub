@@ -6,6 +6,8 @@
 
 先建控制平面（[控制平面 runbook](control-plane.md)），再建這台。
 
+閘道使用 [`gateway` 自建映像](../../infra/images/README.md#模型閘道)，與開發及免費協定驗證共用同一 Dockerfile。Release renderer 必須解析到該 commit 已發佈的 `skillhub-gateway` digest，才會輸出 `SKILLHUB_GATEWAY_IMAGE`；尚未發佈或查證失敗就拒絕 render。
+
 ## 1. 在控制平面上準備資料庫
 
 ```bash
@@ -43,7 +45,7 @@ sudo systemctl start skillhub
 
 `LITELLM_MASTER_KEY` 是閘道的管理員憑證：只放在這台，以及平台簽發每個 Run 的短效 key 時用的 `SKILLHUB_MODEL_GATEWAY_KEY`。apps/llm 拿的是由它簽發、帶 `max_budget` 的 Virtual Key（release-checklist §2.3）。
 
-`skillhub-preflight` 在每次啟動前檢查 `litellm.env` 是 600 且三個變數都有值。
+`skillhub-preflight` 在每次啟動前檢查 `litellm.env` 是 600、三個變數都有值，且 `SKILLHUB_GATEWAY_IMAGE` 已釘定 digest。
 
 驗：
 - `docker compose --env-file /etc/skillhub/release.env -f /opt/skillhub/infra/compose/gateway.yml ps` 的 litellm 是 `healthy`。

@@ -51,7 +51,7 @@ func runStandIns(tools []mcptools.Tool) []run.MCPToolStandIn {
 
 func runVersionFacts(version registry.Version) run.VersionFacts {
 	return run.VersionFacts{ID: version.ID, SkillID: version.SkillID, ContentHash: version.ContentHash,
-		PackageObjectKey: version.PackageObjectKey, SourcePath: version.SourcePath}
+		PackageObjectKey: version.PackageObjectKey, SourcePath: version.SourcePath, Compatibility: version.Compatibility}
 }
 
 func (r runRegistryReader) VersionSummaries(
@@ -79,7 +79,7 @@ func (r runRegistryReader) ContentSource(
 	if err != nil || !found {
 		return run.ContentSource{}, found, err
 	}
-	_, inCatalogue, err := r.service.CatalogSkill(ctx, version.SkillID)
+	_, inCatalogue, err := r.service.CatalogReads().Skill(ctx, version.SkillID)
 	if err != nil {
 		return run.ContentSource{}, false, err
 	}
