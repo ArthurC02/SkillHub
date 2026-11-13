@@ -100,6 +100,7 @@ jobs:
               - 'infra/images/platform/**'
               - 'infra/images/web/**'
               - 'infra/images/llm/**'
+              - 'infra/images/gateway/**'
               - 'infra/images/postgres/**'
               - 'infra/images/seaweedfs/**'
               - 'infra/images/postgres-exporter/**'
@@ -116,6 +117,7 @@ jobs:
               - '.dockerignore'
               - '.github/workflows/ci.yml'
             deploy:
+              - 'infra/images/gateway/**'
               - 'infra/images/caddy/**'
               - 'infra/images/prometheus/**'
               - 'infra/images/alertmanager/**'
@@ -138,7 +140,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.platform == 'true' || needs.changes.outputs.images == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -147,7 +149,7 @@ jobs:
         with:
           go-version-file: apps/platform/go.mod
           cache-dependency-path: apps/platform/go.sum
-      - name: Verify search permissions with the pinned gateway and local providers
+      - name: Verify search permissions with the rebuilt gateway and local providers
         run: go -C tools/devctl run . gateway-search-proof
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
@@ -1108,8 +1110,8 @@ jobs:
           push: false
 
   images-push:
-    needs: [images, images-postgres-sandboxd, images-prometheus, web, web-browser, platform, platform-lint, platform-race, llm, sandbox, devctl, contracts-drift, dependency-audit]
-    if: ${{ !failure() && !cancelled() && needs.images.result == 'success' && needs.images-postgres-sandboxd.result == 'success' && needs.images-prometheus.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    needs: [images, images-postgres-sandboxd, images-prometheus, gateway-search, web, web-browser, platform, platform-lint, platform-race, llm, sandbox, devctl, contracts-drift, dependency-audit]
+    if: ${{ !failure() && !cancelled() && needs.images.result == 'success' && needs.images-postgres-sandboxd.result == 'success' && needs.images-prometheus.result == 'success' && needs.gateway-search.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     strategy:
       fail-fast: false
       matrix:
@@ -1117,6 +1119,7 @@ jobs:
           - { image: platform, context: ., file: infra/images/platform/Dockerfile }
           - { image: web, context: ., file: infra/images/web/Dockerfile }
           - { image: llm, context: apps/llm, file: infra/images/llm/Dockerfile }
+          - { image: gateway, context: infra/images/gateway, file: infra/images/gateway/Dockerfile }
           - { image: postgres, context: infra/images/postgres, file: infra/images/postgres/Dockerfile }
           - { image: seaweedfs, context: ., file: infra/images/seaweedfs/Dockerfile }
           - { image: postgres-exporter, context: infra/images/postgres-exporter, file: infra/images/postgres-exporter/Dockerfile }
@@ -1126,7 +1129,7 @@ jobs:
           - { image: alertmanager, context: infra/images/alertmanager, file: infra/images/alertmanager/Dockerfile }
           - { image: sandboxd, context: ., file: infra/images/sandboxd/Dockerfile }
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ (matrix.image == 'prometheus' || matrix.image == 'seaweedfs') && 45 || 15 }}
+    timeout-minutes: ${{ (matrix.image == 'prometheus' || matrix.image == 'seaweedfs') && 45 || matrix.image == 'gateway' && 30 || 15 }}
     permissions:
       contents: read
       packages: write

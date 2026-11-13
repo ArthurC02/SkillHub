@@ -41,7 +41,7 @@ ROLES = {
     },
     "gateway": {
         "settings": ["SKILLHUB_PRIVATE_IP"],
-        "images": {},
+        "images": {"SKILLHUB_GATEWAY_IMAGE": "skillhub-gateway"},
     },
     "sandbox": {
         "settings": ["SKILLHUB_PRIVATE_IP", "SKILLHUB_CONTROL_PLANE_IP", "SKILLHUB_SANDBOX_SLOTS"],

@@ -79,11 +79,13 @@ func TestUVVersionSitesReadImageStagesAndArguments(t *testing.T) {
 	}{
 		{"all installation sites agree", "", "", ""},
 		{"the LLM image cannot move alone", "infra/images/llm/Dockerfile", strings.ReplaceAll(image, "0.12.3", "0.12.4"), "infra/images/llm/Dockerfile=0.12.4"},
+		{"the gateway image cannot move alone", "infra/images/gateway/Dockerfile", strings.ReplaceAll(image, "0.12.3", "0.12.4"), "infra/images/gateway/Dockerfile=0.12.4"},
 		{"the codegen image cannot move alone", "tools/codegen/python/Dockerfile", strings.ReplaceAll(image, "0.12.3", "0.12.4"), "tools/codegen/python/Dockerfile=0.12.4"},
 		{"the devtools archive cannot move alone", devtoolsDockerfile, "ARG UV_VERSION=0.12.4\n", devtoolsDockerfile + "=0.12.4"},
 		{"the manifest cannot move alone", toolchainYAML, "tools:\n  uv: \"0.12.4\"\n", toolchainYAML + "=0.12.4"},
 		{"an obsolete LLM argument is not an image stage", "infra/images/llm/Dockerfile", "ARG UV_VERSION=0.12.3\n", "infra/images/llm/Dockerfile: no uv version found"},
 		{"a comment is not an LLM image stage", "infra/images/llm/Dockerfile", "# " + image, "infra/images/llm/Dockerfile: no uv version found"},
+		{"a comment is not a gateway image stage", "infra/images/gateway/Dockerfile", "# " + image, "infra/images/gateway/Dockerfile: no uv version found"},
 		{"a comment is not a codegen image stage", "tools/codegen/python/Dockerfile", "# " + image, "tools/codegen/python/Dockerfile: no uv version found"},
 	}
 	for _, c := range cases {
@@ -92,6 +94,7 @@ func TestUVVersionSitesReadImageStagesAndArguments(t *testing.T) {
 			files := map[string]string{
 				toolchainYAML:                     "tools:\n  uv: \"0.12.3\"\n",
 				"infra/images/llm/Dockerfile":     image,
+				"infra/images/gateway/Dockerfile": image,
 				devtoolsDockerfile:                "ARG UV_VERSION=0.12.3\n",
 				"tools/codegen/python/Dockerfile": image,
 			}

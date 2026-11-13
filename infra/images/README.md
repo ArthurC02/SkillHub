@@ -543,6 +543,16 @@ Dockerfile 與 `infra/compose/docker-compose.yml` 新 `app` profile 的說明。
 | [`llm/`](llm/) | `apps/llm`（FastAPI＋uv，build context 是 `apps/llm` 本身，不是 repo root——`packages/api-stub-py` 那個本機路徑依賴只在 `dev` dependency group，`--no-dev` sync 用不到） | build stage 從與 Python codegen 相同的釘選映像複製 `uv`，版本由工具鏈檢查與 `tools/toolchain.yaml` 對帳，`uv sync --frozen --no-dev --no-editable` 到 `/opt/venv`——**`--no-editable` 是必要的**：預設的 editable 安裝是一個指回 build stage `/src/src` 的 `.pth` 檔，runtime stage 只複製 `/opt/venv` 的話 `import skillhub_llm` 會找不到套件（本批實測撞過這個） | `uvicorn skillhub_llm.app:app --host 0.0.0.0 --port 8000`，match `contracts/openapi/llm-internal.yaml` 的 `servers[0]`；`/healthz` 不需要 `LLM_SERVICE_TOKEN`，掛了 `HEALTHCHECK` |
 | [`web/`](web/) | `apps/web` ＋ `packages/api-client-ts`（build context 是 repo root，因為 `apps/web` 的 `file:../../packages/api-client-ts` 依賴需要兩棵樹都在） | build stage 依序 `npm ci`＋`npm run build`（先 client 套件再 web，與 `Taskfile.yml` 的 `build:web`／`build:api-client` 一致；`npm run build` 本身會跑 `check-bundle-origins.mjs`，建置失敗代表 bundle 裡出現了預期外的絕對網址）；runtime stage 是 `nginx:1.31-alpine-slim`，只放編譯好的 `dist/` 與 [`nginx.conf`](web/nginx.conf) | 見下一節 |
 
+### 模型閘道
+
+[`gateway/`](gateway/) 從釘定的 LiteLLM 穩定映像修補既有 `filelock`、`oauthlib` 與同族 glibc 套件，保留上游核心版本、入口、設定、使用者及資料路徑。Python 修補只安裝具 checksum 的 wheel，不解析其他 runtime 相依；原版既有的管理 MCP 相依衝突仍列印並保留，新增或改變的衝突會拒絕建置。安全更新依[依賴治理](../../docs/adr/README.md#開發自動化與依賴治理)不受一般冷卻期限制。
+
+建置在隔離測試層執行兩個 Python 套件的完整上游測試，使用雜湊鎖定的測試依賴並核對既有 runtime 版本。另以真正載入的 libc 驗證合法訊息目錄、fallback 與四種路徑穿越；額外 locale、測試工具、來源與報告不進出貨層。出貨層核對與測試基底相同的 Python 套件及 APK 資料，再接受測試報告；略過案例需依原始輸出獨立回報。
+
+開發 Compose 直接建置相同來源；正式 Compose 只接受同一 release 的已發佈 digest。免費協定驗證自行建置並使用不可變 ID，驗證 Go 的授權、預算、撤銷、搜尋攔截與費用紀錄；映像發佈必須等該 job 成功。每次 Image Scan 都阻擋自建映像可修的 Critical／High；不因供應商回補尚未被掃描資料庫辨認而刪除原始 finding。這些不代替正式供應商、TLS 或真實節點驗收。
+
+測試依賴的直接版本在 `test-requirements.in`，雜湊鎖檔為 `test-requirements.txt`。更新前先從同一 Dockerfile 的 `patched` stage 輸出 `importlib.metadata` 的套件版本作 constraint，再用釘定 uv 的 `pip compile --python-version 3.13 --python-platform x86_64-unknown-linux-gnu --exclude-newer '7 days' --generate-hashes --no-header --no-annotate --only-binary :all:` 重產，避免測試安裝改動被測 runtime。
+
 ### PostgreSQL
 
 開發 Compose 與搜尋閘道協定驗證都建置 [`postgres/`](postgres/)，沿用正式服務已採用的系統套件及執行檔修補。開發 Compose 仍只啟動既有核心服務，保留資料卷與連線設定；首次啟動需要建置映像。搜尋驗證使用專屬標籤與不可變 image ID，結束只回收本次建立的標籤。CI 原版資料庫 fixture 的 tag／digest 以同一 Dockerfile 的上游基底為準，與真正執行的自建映像分別紀錄；不以 fixture 的版本取代自建映像掃描。

@@ -12,27 +12,31 @@ import (
 	"testing"
 )
 
-type postgresProofCase struct {
+type searchImageProofCase struct {
 	mode, problem string
 	builds        bool
 	cleanupFails  bool
 }
 
-func TestSearchProofOwnsOnlyItsRebuiltPostgresImage(t *testing.T) {
+func TestSearchProofOwnsOnlyItsRebuiltImages(t *testing.T) {
 	installSearchDockerFixture(t)
-	for _, test := range []postgresProofCase{
-		{"healthy", "", true, false},
-		{"existing", "already exists", false, false},
-		{"list-error", "postgres-tag-check", false, false},
-		{"build-empty-error", "postgres-build", true, false},
-		{"build-partial-error", "postgres-build", true, false},
-		{"inspect-error", "postgres-image-id", true, false},
-		{"invalid-identity", "no valid immutable identity", true, false},
-		{"cleanup-error", "", true, true},
-		{"cleanup-check-error", "", true, true},
-	} {
-		t.Run(test.mode, func(t *testing.T) {
-			test.check(t)
+	for _, image := range []string{"postgres", "gateway"} {
+		t.Run(image, func(t *testing.T) {
+			for _, test := range []searchImageProofCase{
+				{"healthy", "", true, false},
+				{"existing", "already exists", false, false},
+				{"list-error", "-tag-check", false, false},
+				{"build-empty-error", "-build", true, false},
+				{"build-partial-error", "-build", true, false},
+				{"inspect-error", "-image-id", true, false},
+				{"invalid-identity", "no valid immutable identity", true, false},
+				{"cleanup-error", "", true, true},
+				{"cleanup-check-error", "", true, true},
+			} {
+				t.Run(test.mode, func(t *testing.T) {
+					test.check(t, image)
+				})
+			}
 		})
 	}
 }
@@ -47,7 +51,11 @@ func main() {
  file, err := os.OpenFile(os.Getenv("SEARCH_DOCKER_LOG"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
  if err != nil { panic(err) }; defer file.Close()
  if err := json.NewEncoder(file).Encode(args); err != nil { panic(err) }
- mode, state := os.Getenv("SEARCH_DOCKER_MODE"), os.Getenv("SEARCH_DOCKER_STATE")
+ reference:=args[len(args)-1]
+ if args[0]=="build" { reference=args[3] }
+ repository:=strings.Split(strings.TrimPrefix(reference,"reference="),":")[0]
+ name:=repository[strings.LastIndex(repository,"/")+1:]
+ mode, state := os.Getenv("SEARCH_DOCKER_MODE"), os.Getenv("SEARCH_DOCKER_STATE")+"-"+name
  _, present := os.Stat(state)
  switch {
  case len(args)>1 && args[0]=="image" && args[1]=="ls":
@@ -83,7 +91,7 @@ func main() {
 	t.Setenv("PATH", directory+string(os.PathListSeparator)+os.Getenv("PATH"))
 }
 
-func (test postgresProofCase) check(t *testing.T) {
+func (test searchImageProofCase) check(t *testing.T, image string) {
 	t.Helper()
 	root := t.TempDir()
 	dir := filepath.Join(root, "owned-probe")
@@ -95,13 +103,13 @@ func (test postgresProofCase) check(t *testing.T) {
 	t.Setenv("SEARCH_DOCKER_STATE", state)
 	t.Setenv("SEARCH_DOCKER_MODE", test.mode)
 	p := &searchProof{root: root, dir: dir, out: io.Discard}
-	test.prepare(t, p)
+	test.prepare(t, p, image)
 	err := p.clean()
 	if (err != nil) != test.cleanupFails {
 		t.Fatalf("cleanup error = %v, want failure %v", err, test.cleanupFails)
 	}
 	if test.cleanupFails {
-		if p.postgresTag != "skillhub-search-proof/postgres:owned-probe" {
+		if p.imageTags[image] != "skillhub-search-proof/"+image+":owned-probe" {
 			t.Fatal("failed cleanup lost image ownership")
 		}
 		t.Setenv("SEARCH_DOCKER_MODE", "healthy")
@@ -109,7 +117,7 @@ func (test postgresProofCase) check(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if p.postgresTag != "" {
+	if p.imageTags[image] != "" {
 		t.Fatal("successful cleanup retained image ownership")
 	}
 	before, err := os.ReadFile(log)
@@ -123,25 +131,54 @@ func (test postgresProofCase) check(t *testing.T) {
 	if err != nil || string(before) != string(after) {
 		t.Fatal("repeated cleanup performed additional Docker operations")
 	}
-	assertSearchPostgresCommands(t, root, after, test.builds)
-	if _, err := os.Stat(state); !os.IsNotExist(err) {
+	assertSearchImageCommands(t, root, image, after, test.builds)
+	if _, err := os.Stat(state + "-" + image); !os.IsNotExist(err) {
 		t.Fatalf("owned image remains after cleanup: %v", err)
 	}
 }
 
-func (test postgresProofCase) prepare(t *testing.T, p *searchProof) {
+func TestSearchProofRetainsBothImageOwnersUntilCleanup(t *testing.T) {
+	installSearchDockerFixture(t)
+	root := t.TempDir()
+	state := filepath.Join(root, "image-state")
+	t.Setenv("SEARCH_DOCKER_LOG", filepath.Join(root, "calls.jsonl"))
+	t.Setenv("SEARCH_DOCKER_STATE", state)
+	t.Setenv("SEARCH_DOCKER_MODE", "healthy")
+	p := &searchProof{root: root, dir: t.TempDir(), out: io.Discard}
+	for _, name := range []string{"gateway", "postgres"} {
+		if identity, err := p.prepareImage(name); err != nil || identity != "sha256:"+strings.Repeat("0", 64) {
+			t.Fatalf("%s identity = %q, error %v", name, identity, err)
+		}
+	}
+	if len(p.imageTags) != 2 {
+		t.Fatalf("owned images = %v, want both gateway and postgres", p.imageTags)
+	}
+	if err := p.clean(); err != nil {
+		t.Fatal(err)
+	}
+	if len(p.imageTags) != 0 {
+		t.Fatalf("cleanup retained ownership: %v", p.imageTags)
+	}
+	for _, name := range []string{"gateway", "postgres"} {
+		if _, err := os.Stat(state + "-" + name); !os.IsNotExist(err) {
+			t.Fatalf("%s image remains after cleanup: %v", name, err)
+		}
+	}
+}
+
+func (test searchImageProofCase) prepare(t *testing.T, p *searchProof, image string) {
 	t.Helper()
-	err := p.preparePostgres()
+	identity, err := p.prepareImage(image)
 	if test.problem == "" {
-		if err != nil || p.postgres != "sha256:"+strings.Repeat("0", 64) {
-			t.Fatalf("prepared identity = %q, error %v", p.postgres, err)
+		if err != nil || identity != "sha256:"+strings.Repeat("0", 64) {
+			t.Fatalf("prepared identity = %q, error %v", identity, err)
 		}
 	} else if err == nil || !strings.Contains(err.Error(), test.problem) {
 		t.Fatalf("error = %v, want %q", err, test.problem)
 	}
 }
 
-func assertSearchPostgresCommands(t *testing.T, root string, calls []byte, wantBuild bool) {
+func assertSearchImageCommands(t *testing.T, root, image string, calls []byte, wantBuild bool) {
 	t.Helper()
 	builds, removals := 0, 0
 	for _, line := range strings.Split(strings.TrimSpace(string(calls)), "\n") {
@@ -153,16 +190,16 @@ func assertSearchPostgresCommands(t *testing.T, root string, calls []byte, wantB
 		switch args[0] {
 		case "build":
 			builds++
-			want = []string{"build", "--progress=plain", "-t", "skillhub-search-proof/postgres:owned-probe", filepath.Join(root, "infra/images/postgres")}
+			want = []string{"build", "--progress=plain", "-t", "skillhub-search-proof/" + image + ":owned-probe", filepath.Join(root, "infra/images", image)}
 		case "image":
 			switch args[1] {
 			case "ls":
-				want = []string{"image", "ls", "-q", "--filter", "reference=skillhub-search-proof/postgres:owned-probe"}
+				want = []string{"image", "ls", "-q", "--filter", "reference=skillhub-search-proof/" + image + ":owned-probe"}
 			case "inspect":
-				want = []string{"image", "inspect", "--format", "{{.Id}}", "skillhub-search-proof/postgres:owned-probe"}
+				want = []string{"image", "inspect", "--format", "{{.Id}}", "skillhub-search-proof/" + image + ":owned-probe"}
 			case "rm":
 				removals++
-				want = []string{"image", "rm", "skillhub-search-proof/postgres:owned-probe"}
+				want = []string{"image", "rm", "skillhub-search-proof/" + image + ":owned-probe"}
 			}
 		}
 		if !reflect.DeepEqual(args, want) {

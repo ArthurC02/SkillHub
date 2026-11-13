@@ -21,7 +21,7 @@ type searchProof struct {
 	containers                            []string
 	out                                   io.Writer
 	networkCreated                        bool
-	postgresTag                           string
+	imageTags                             map[string]string
 	sourceHashes                          map[string]string
 }
 
@@ -71,30 +71,17 @@ func (p *searchProof) command(label string, env []string, args ...string) ([]byt
 	return data, nil
 }
 
-func searchProofImage(root, name, repository string) (string, error) {
-	data, err := os.ReadFile(filepath.Join(root, name))
-	if err != nil {
-		return "", err
-	}
-	for line := range strings.SplitSeq(string(data), "\n") {
-		value := strings.TrimPrefix(strings.TrimSpace(line), "image: ")
-		if strings.HasPrefix(value, repository+":") && strings.Contains(value, "@sha256:") {
-			return value, nil
-		}
-	}
-	return "", fmt.Errorf("no pinned %s image in %s", repository, name)
-}
-
 func (p *searchProof) prepare() error {
 	if err := p.snapshotSources(); err != nil {
 		return err
 	}
 	var err error
-	p.gateway, err = searchProofImage(p.root, "infra/compose/gateway.yml", "ghcr.io/berriai/litellm")
+	p.gateway, err = p.prepareImage("gateway")
 	if err != nil {
 		return err
 	}
-	if err := p.preparePostgres(); err != nil {
+	p.postgres, err = p.prepareImage("postgres")
+	if err != nil {
 		return err
 	}
 	config, err := os.ReadFile(filepath.Join(p.root, "infra/compose/litellm-config.yaml"))
@@ -127,28 +114,31 @@ func (p *searchProof) prepare() error {
 	return err
 }
 
-func (p *searchProof) preparePostgres() error {
-	tag := "skillhub-search-proof/postgres:" + filepath.Base(p.dir)
-	data, err := p.command("postgres-tag-check", nil, "docker", "image", "ls", "-q", "--filter", "reference="+tag)
+func (p *searchProof) prepareImage(name string) (string, error) {
+	tag := "skillhub-search-proof/" + name + ":" + filepath.Base(p.dir)
+	data, err := p.command(name+"-tag-check", nil, "docker", "image", "ls", "-q", "--filter", "reference="+tag)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if len(bytes.TrimSpace(data)) != 0 {
-		return fmt.Errorf("test image tag already exists: %s", tag)
+		return "", fmt.Errorf("test image tag already exists: %s", tag)
 	}
-	p.postgresTag = tag
-	if _, err := p.command("postgres-build", nil, "docker", "build", "--progress=plain", "-t", tag, filepath.Join(p.root, "infra/images/postgres")); err != nil {
-		return err
+	if p.imageTags == nil {
+		p.imageTags = make(map[string]string)
 	}
-	data, err = p.command("postgres-image-id", nil, "docker", "image", "inspect", "--format", "{{.Id}}", tag)
+	p.imageTags[name] = tag
+	if _, err := p.command(name+"-build", nil, "docker", "build", "--progress=plain", "-t", tag, filepath.Join(p.root, "infra/images", name)); err != nil {
+		return "", err
+	}
+	data, err = p.command(name+"-image-id", nil, "docker", "image", "inspect", "--format", "{{.Id}}", tag)
 	if err != nil {
-		return err
+		return "", err
 	}
-	p.postgres = strings.TrimSpace(string(data))
-	if !regexp.MustCompile(`^sha256:[0-9a-f]{64}$`).MatchString(p.postgres) {
-		return errors.New("rebuilt Postgres image has no valid immutable identity")
+	identity := strings.TrimSpace(string(data))
+	if !regexp.MustCompile(`^sha256:[0-9a-f]{64}$`).MatchString(identity) {
+		return "", fmt.Errorf("rebuilt %s image has no valid immutable identity", name)
 	}
-	return nil
+	return identity, nil
 }
 
 func searchProofConfig(data []byte) ([]byte, []byte, error) {
@@ -338,7 +328,7 @@ func checkSearchProofModels(calls []searchProofModelObservation) error {
 
 func (p *searchProof) snapshotSources() error {
 	p.sourceHashes = make(map[string]string)
-	for _, name := range []string{"apps/platform/internal/trial/execution/gateway.go", "apps/platform/internal/trial/execution/provider.go", "apps/platform/internal/trial/execution/gateway_search_integration_test.go", "apps/sandbox/internal/sandbox/contract.go", "contracts/openapi/sandbox-provider.yaml", "tools/devctl/main.go", "tools/devctl/gateway_search_proof.go", "tools/devctl/searchproof/main.go", "infra/compose/litellm-config.yaml", "infra/compose/gateway.yml", "infra/compose/docker-compose.yml", "infra/images/postgres/Dockerfile", "infra/images/postgres/skillhub-backup", "infra/images/postgres/skillhub-restore-drill"} {
+	for _, name := range []string{"apps/platform/internal/trial/execution/gateway.go", "apps/platform/internal/trial/execution/provider.go", "apps/platform/internal/trial/execution/gateway_search_integration_test.go", "apps/sandbox/internal/sandbox/contract.go", "contracts/openapi/sandbox-provider.yaml", "tools/devctl/main.go", "tools/devctl/gateway_search_proof.go", "tools/devctl/searchproof/main.go", "infra/compose/litellm-config.yaml", "infra/compose/gateway.yml", "infra/compose/docker-compose.yml", "infra/images/postgres/Dockerfile", "infra/images/postgres/skillhub-backup", "infra/images/postgres/skillhub-restore-drill", "infra/images/gateway/Dockerfile", "infra/images/gateway/patch-dependencies.py", "infra/images/gateway/test-libraries.py", "infra/images/gateway/check-catalog-paths.py", "infra/images/gateway/requirements.txt", "infra/images/gateway/test-requirements.in", "infra/images/gateway/test-requirements.txt"} {
 		data, err := os.ReadFile(filepath.Join(p.root, name))
 		if err != nil {
 			return err
@@ -373,19 +363,24 @@ func (p *searchProof) clean() (resultErr error) {
 		_, err := p.command(name+"-cleanup", nil, "docker", "rm", "-f", "-v", name)
 		resultErr = errors.Join(resultErr, err)
 	}
-	if p.postgresTag != "" {
-		data, err := p.command("postgres-cleanup-check", nil, "docker", "image", "ls", "-q", "--filter", "reference="+p.postgresTag)
-		if err == nil && len(bytes.TrimSpace(data)) != 0 {
-			_, err = p.command("postgres-image-cleanup", nil, "docker", "image", "rm", p.postgresTag)
-		}
-		resultErr = errors.Join(resultErr, err)
-		if err == nil {
-			p.postgresTag = ""
-		}
+	for name := range p.imageTags {
+		resultErr = errors.Join(resultErr, p.cleanImage(name))
 	}
 	if p.networkCreated {
 		_, err := p.command("network-cleanup", nil, "docker", "network", "rm", p.network)
 		resultErr = errors.Join(resultErr, err)
 	}
 	return resultErr
+}
+
+func (p *searchProof) cleanImage(name string) error {
+	tag := p.imageTags[name]
+	data, err := p.command(name+"-cleanup-check", nil, "docker", "image", "ls", "-q", "--filter", "reference="+tag)
+	if err == nil && len(bytes.TrimSpace(data)) != 0 {
+		_, err = p.command(name+"-image-cleanup", nil, "docker", "image", "rm", tag)
+	}
+	if err == nil {
+		delete(p.imageTags, name)
+	}
+	return err
 }

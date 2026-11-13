@@ -67,6 +67,7 @@ var versionsThatMoveTogether = []versionGroup{
 	{"uv", []versionSite{
 		{toolchainYAML, toolchainPin("uv")},
 		{"infra/images/llm/Dockerfile", uvBaseImage},
+		{"infra/images/gateway/Dockerfile", uvBaseImage},
 		{devtoolsDockerfile, uvArg},
 		{"tools/codegen/python/Dockerfile", uvBaseImage},
 	}},

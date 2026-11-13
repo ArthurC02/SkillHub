@@ -119,7 +119,7 @@ func TestImagePublicationWaitsForNativeBrowserChecks(t *testing.T) {
 	for _, name := range strings.Split(line, ",") {
 		dependencies[strings.TrimSpace(name)] = true
 	}
-	expected := []string{"images", "images-postgres-sandboxd", "images-prometheus", "web", "web-browser", "platform", "platform-lint", "platform-race", "llm", "sandbox", "devctl", "contracts-drift", "dependency-audit"}
+	expected := []string{"images", "images-postgres-sandboxd", "images-prometheus", "gateway-search", "web", "web-browser", "platform", "platform-lint", "platform-race", "llm", "sandbox", "devctl", "contracts-drift", "dependency-audit"}
 	for _, name := range expected {
 		if !dependencies[name] {
 			t.Errorf("image publication must wait for %s", name)
@@ -128,7 +128,7 @@ func TestImagePublicationWaitsForNativeBrowserChecks(t *testing.T) {
 	if len(dependencies) != len(expected) {
 		t.Error("image publication must retain exactly its required validation dependencies")
 	}
-	if !strings.Contains(job, "if: ${{ !failure() && !cancelled() && needs.images.result == 'success' && needs.images-postgres-sandboxd.result == 'success' && needs.images-prometheus.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}") {
+	if !strings.Contains(job, "if: ${{ !failure() && !cancelled() && needs.images.result == 'success' && needs.images-postgres-sandboxd.result == 'success' && needs.images-prometheus.result == 'success' && needs.gateway-search.result == 'success' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}") {
 		t.Error("image publication must refuse failed or cancelled validation while allowing unrelated skipped jobs")
 	}
 }

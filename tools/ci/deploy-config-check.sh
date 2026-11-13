@@ -90,6 +90,26 @@ PY
       echo "control-plane preflight: pinned release passes; four unpinned values refused for $name"
     done
   )
+  (
+    set -a
+    . /work/gateway-release.env
+    set +a
+    export SKILLHUB_SECRETS_DIR=/work/gateway-preflight-secrets
+    mkdir -p "$SKILLHUB_SECRETS_DIR"
+    printf "%s\n" "LITELLM_MASTER_KEY=local-only" "OPENAI_API_KEY=local-only" "DATABASE_URL=local-only" >"$SKILLHUB_SECRETS_DIR/litellm.env"
+    chmod 600 "$SKILLHUB_SECRETS_DIR/litellm.env"
+    sh /repo/infra/deploy/gateway/bin/skillhub-preflight
+    digest=$(printf "%064d" 0)
+    invalid=$(printf "%064d" 0 | tr 0 g)
+    for ref in "" "ghcr.io/o/gateway:release" "ghcr.io/o/gateway@sha256:${digest%?}" "ghcr.io/o/gateway@sha256:$invalid"; do
+      if env "SKILLHUB_GATEWAY_IMAGE=$ref" sh /repo/infra/deploy/gateway/bin/skillhub-preflight >/work/gateway-preflight-error 2>&1; then
+        echo "unpinned gateway image was accepted: $ref"; exit 1
+      fi
+      grep -Fq "SKILLHUB_GATEWAY_IMAGE=" /work/gateway-preflight-error
+      grep -Fq "is not pinned by digest" /work/gateway-preflight-error
+    done
+    echo "gateway preflight: pinned release passes; four unpinned values refused"
+  )
   for role in control-plane gateway sandbox; do
     cloud-init schema --config-file "/work/$role-user-data.yaml"
     python3 checkout.py "$role" --stage "/work/checkout-$role"

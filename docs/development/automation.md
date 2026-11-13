@@ -402,7 +402,7 @@ docker run --rm --network container:skillhub-postgres-1 \
 - `web` 與瀏覽器分片的依賴安裝使用 `npm ci --no-audit`，避免每個安裝步驟重複查詢漏洞；獨立的 `dependency-audit` 仍執行完整的既定稽核並在失敗時擋下交付。
 - 每次都跑、沒有 path filter 的有三個並行 job：`devctl`（devctl 自己的 vet／race 測試、`automation-check`、`agent-sync`）、`contracts-drift`（`gen --check` 與 `contracts/` 的各項檢查）與 `dependency-audit`（見下一條）。純文件 commit 的等待時間由三者中最慢的那個決定，不再是相加。
 - `contracts-drift` 把三個 codegen 映像以 `docker save` 存進 Actions cache，鍵是 `tools/codegen/` 下 git 追蹤檔案與 `tools/toolchain.yaml` 三行 `*_codegen` 映像標籤的雜湊（其他工具釘版不影響它）；命中時先 `docker load`，再以 `SKILLHUB_CODEGEN_IMAGES_PREBUILT=true` 跑 `gen --check`，devctl 看到本機已有同標籤映像就不重建。來源一改鍵就變、照常重建；本機不設這個變數，所以改 codegen 來源照樣重建。
-- **搜尋閘道協定**：`gateway-search` 在平台或服務映像範圍變更時執行 `go -C tools/devctl run . gateway-search-proof`。它從 Compose 取釘住的閘道映像，PostgreSQL 則從與開發環境相同的 Dockerfile 建置專屬映像、核對不可變 ID；在獨立內部網路以本機搜尋／模型替身驗證真正的 Go 金鑰簽發器、逐層授權、原生搜尋攔截、撤銷與費用紀錄；不呼叫付費供應商，結束只清除自己建立的資源。證據保留 7 天，操作與尚未完成的範圍見[執行時搜尋](runtime-web-search.md)。
+- **搜尋閘道協定**：`gateway-search` 在平台或服務映像範圍變更時執行 `go -C tools/devctl run . gateway-search-proof`。閘道與 PostgreSQL 均從與開發及部署相同的 Dockerfile 建置專屬映像、核對不可變 ID；在獨立內部網路以本機搜尋／模型替身驗證真正的 Go 金鑰簽發器、逐層授權、原生搜尋攔截、撤銷與費用紀錄；不呼叫付費供應商，結束只清除自己建立的資源。證據保留 7 天，操作與尚未完成的範圍見[執行時搜尋](runtime-web-search.md)。
 - **依賴漏洞**（見[開發自動化與依賴治理](../adr/README.md#開發自動化與依賴治理)）：push／PR 跑 `devctl dep-audit`，只看會出貨的四個專案——`apps/web` 的 production 依賴（high 以上）、`apps/platform`／`apps/sandbox` 程式呼叫得到的漏洞、`apps/llm` 的非 dev 依賴——而且**只擋有修補版的**，沒有修補版的印成 `NOTE`。每週排程與 `workflow_dispatch` 改跑 `--full`：每個有 lockfile 的專案連 dev 依賴、npm 取 moderate 以上、Go 連沒呼叫到的模組也算，紅了就是那一週的報告；`--full` 另把 `tools/toolchain.yaml` 裡 Dependabot 看不到的工具對照最新版，過了 7 天冷卻還沒跟上的印成 `NOTE`（查不到也印 `NOTE`，不擋）。`images-push` 等它綠了才推。本機 `task deps:audit`（加 `-- --full` 全掃）；同一條命令也擋出貨依賴的授權與 workflow 的 zizmor 稽核（用法見〈依賴的准入、更新與閘門〉）；job 帶 `GH_TOKEN`，zizmor 連網的稽核項目只在 CI 跑。工具版本在 `tools/toolchain.yaml` 的 `govulncheck`／`pip_audit`／`go_licenses`／`zizmor`。
 - `golangci-lint` 由 [`.github/actions/golangci-lint`](../../.github/actions/golangci-lint/action.yml) 安裝：版本讀 `tools/toolchain.yaml` 的 `golangci_lint`，編好的 binary 以「版本＋OS＋Go 版本」為鍵另外快取。不能指望 `setup-go` 的快取帶著它——那份快取的鍵只有 `go.sum` 的雜湊，第一次存下之後內容就不再更新，`go.sum` 沒動過的模組會一直拿到那天的舊內容。
 - `sandbox` 的 filter 只看 `infra/images/runtime-agent-sdk/**`：其他服務映像與 `infra/images/` 下的說明文件不影響 sandbox 的任何測試。`infra/nodes/gvisor-baseline.txt` 與 `infra/deploy/sandbox/daemon.json` 也在 filter 裡：Suite 1 安裝的就是基準檔指名的 release、註冊 runsc 用的就是那份 runtimeArgs，換基準不跑 sandbox 等於沒驗新版。
@@ -423,13 +423,13 @@ docker run --rm --network container:skillhub-postgres-1 \
 
 | 版本 | 同時要改的地方 |
 | --- | --- |
-| uv | `tools/toolchain.yaml` 的 `uv`、llm 與 Python codegen 的釘選 uv 映像、devtools 的 `UV_VERSION` 與兩種架構的 archive 雜湊；`uv_build` 的上限跟著 uv 的 minor |
+| uv | `tools/toolchain.yaml` 的 `uv`、llm、gateway 與 Python codegen 的釘選 uv 映像、devtools 的 `UV_VERSION` 與兩種架構的 archive 雜湊；`uv_build` 的上限跟著 uv 的 minor |
 | Node | `.node-version`（CI 讀它）、web 映像的 node、devtools 映像的 `NODE_VERSION` |
 | Go | 每個 `go.mod` 的 `go` 行（CI 的 setup-go 讀它）、各 Dockerfile 的 golang 映像 |
 | Python | `apps/llm/.python-version`（CI 讀它）、三份 `pyproject.toml` 的 `requires-python`、llm 與 codegen 映像、devtools 映像的 `uv python install` |
 | ruff、redocly | ruff：`apps/llm/uv.lock`（Dependabot 改它）與 `ci.yml` 工具 job 的 `pip install ruff==`；redocly：toolchain.yaml 與 `ci.yml` 的 `@redocly/cli@` |
 | task、golangci-lint、docker、docker compose | toolchain.yaml 與 devtools 映像的 `ARG` |
-| 開發與 CI 的資料服務映像 | PostgreSQL 與 SeaweedFS 使用各自的自建 Dockerfile；Compose、CI 建置與掃描須使用同一來源。SeaweedFS 的 stack／backup 演練接收 CI 剛建出的 `SEAWEEDFS_IMAGE`；仍直接使用上游 PostgreSQL 的 CI fixture，須與 PostgreSQL Dockerfile 的基底 tag／digest 一致，否則 `dependency-policy` 會擋 |
+| 開發與 CI 的基礎服務映像 | PostgreSQL、SeaweedFS 與模型閘道使用各自的自建 Dockerfile；Compose、CI 建置與掃描須使用同一來源。SeaweedFS 的 stack／backup 演練接收 CI 剛建出的 `SEAWEEDFS_IMAGE`；仍直接使用上游 PostgreSQL 的 CI fixture，須與 PostgreSQL Dockerfile 的基底 tag／digest 一致，否則 `dependency-policy` 會擋 |
 | datamodel-code-generator | `tools/codegen/python/pyproject.toml`、`uv.lock`、toolchain.yaml 的版本與 `python_codegen` 映像標籤，然後 `task gen:openapi` |
 | openapi-ts（`tools/codegen/ts`） | `Cargo.toml` 的 `version`、toolchain.yaml 的 `openapi_ts` 與 `ts_codegen` 映像標籤，然後 `task gen:openapi` |
 | ogen | `tools/codegen/go/go.mod`、toolchain.yaml 的 `ogen` 與 `go_codegen` 映像標籤，然後 `task gen:openapi` |
@@ -456,7 +456,7 @@ Go 全掃仍保留模組層級 advisory。有修補版仍是 `FAIL`；沒有修�
 
 **映像不在 `dep-audit` 裡，它讀的是 lockfile**（見[開發自動化與依賴治理](../adr/README.md#開發自動化與依賴治理)）。 映像由 [`tools/ci/scan-images.sh`](../../tools/ci/scan-images.sh) 掃，掛在 `image-scan.yml`（改到 Compose 或受掃描的服務映像時跑、每週排程、可手動觸發），`runtime-agent-sdk` 仍留在自己的 `runtime-image.yml`。**清單從 compose 讀出來，不另抄一份**——抄一份就會漂，而這個缺口本來就是漂出來的。
 
-**閘門分三層，照「誰能修」與「會不會被部署」畫**：會被部署的 `platform`／`web`／`llm` 出現**有修補版的** Critical／High 就紅（修法在我們手上：換基底、升依賴，或像 `runtime-agent-sdk` 與 `llm` 那樣對單一套件 `--only-upgrade`）；Compose 直接引用的上游映像只報，**只有排程那一跑設 `FAIL_ON_UPSTREAM=1` 才紅**，所以每週有人被通知而沒有人的 PR 被擋，處置是**升那個 pin 或換 tag**，不是把閘門關掉；從釘定穩定版原始碼重建的 `postgres-exporter`、`blackbox-exporter`、`caddy`、`alertmanager` 與 `prometheus` 已由我們擁有建置與修補，與部署服務相同，在每次掃描阻擋可修 Critical／High，不能保留上游僅排程阻擋的待遇；開發容器 `devtools` **永不紅**——它不部署，而它兩萬多列的發現絕大多數住在第三方工具的編譯產物裡，擋了也沒有人做得出對應的修正。
+**閘門分三層，照「誰能修」與「會不會被部署」畫**：會被部署的 `platform`／`web`／`llm`／`gateway` 出現**有修補版的** Critical／High 就紅（修法在我們手上：換基底、升依賴，或像 `runtime-agent-sdk` 與 `llm` 那樣對單一套件 `--only-upgrade`）；Compose 直接引用的上游映像只報，**只有排程那一跑設 `FAIL_ON_UPSTREAM=1` 才紅**，所以每週有人被通知而沒有人的 PR 被擋，處置是**升那個 pin 或換 tag**，不是把閘門關掉；從釘定穩定版原始碼重建的 `postgres-exporter`、`blackbox-exporter`、`caddy`、`alertmanager` 與 `prometheus` 已由我們擁有建置與修補，與部署服務相同，在每次掃描阻擋可修 Critical／High，不能保留上游僅排程阻擋的待遇；開發容器 `devtools` **永不紅**——它不部署，而它兩萬多列的發現絕大多數住在第三方工具的編譯產物裡，擋了也沒有人做得出對應的修正。
 
 **automation-check 的 `dependency-policy`** 擋的是：FROM、compose 與 workflow 的 `image:` 沒釘 digest；`uses:` 沒釘 SHA 或少了 `# vX` 註解；npm 專案少了 `.npmrc` 的 `ignore-scripts=true`；uv 專案少了 `exclude-newer`；新目錄沒列進 `.github/dependabot.yml`；compose 與 workflow、`tools/ci/*.sh` 裡同一個映像的 tag 或 digest 不一樣；上表同一個工具在各位置的版本不一致（名冊在 `tools/devctl/toolchain_versions.go`，syft 與 grype 的 pin 也在上面，所以兩支 workflow 的掃描器版本不會各走各的）。
 

@@ -88,15 +88,26 @@ def test_a_value_a_shell_would_reinterpret_is_refused():
                  resolve=published)
 
 
-def test_a_gateway_release_carries_only_its_address_and_resolves_no_image():
-    def nothing_to_resolve(repository, tag):
-        raise AssertionError("the gateway pins its image in compose; nothing should be resolved")
+def test_a_gateway_release_pins_the_published_gateway_image():
+    calls = []
+    def resolve_gateway(repository, tag):
+        calls.append((repository, tag))
+        return DIGEST
     env = render.read_settings(render.release_env("gateway", RELEASE, {"SKILLHUB_PRIVATE_IP": "10.0.0.3"},
-                                                  resolve=nothing_to_resolve))
+                                                  resolve=resolve_gateway))
     assert env == {"SKILLHUB_ROLE": "gateway", "SKILLHUB_RELEASE": RELEASE,
-                   "SKILLHUB_REPOSITORY": render.DEFAULT_REPOSITORY, "SKILLHUB_PRIVATE_IP": "10.0.0.3"}, env
+                   "SKILLHUB_REPOSITORY": render.DEFAULT_REPOSITORY, "SKILLHUB_PRIVATE_IP": "10.0.0.3",
+                   "SKILLHUB_GATEWAY_IMAGE": "ghcr.io/arthurc02/skillhub-gateway:%s@%s" % (RELEASE, DIGEST)}, env
+    assert calls == [("skillhub-gateway", RELEASE)], calls
     expect_error("does not use SKILLHUB_DOMAIN", "gateway", RELEASE,
-                 {"SKILLHUB_PRIVATE_IP": "10.0.0.3", "SKILLHUB_DOMAIN": "x"}, resolve=nothing_to_resolve)
+                 {"SKILLHUB_PRIVATE_IP": "10.0.0.3", "SKILLHUB_DOMAIN": "x"}, resolve=resolve_gateway)
+
+
+def test_an_unpublished_or_invalid_gateway_image_refuses_the_render():
+    for digest in ("", "sha256:bad"):
+        expect_error("skillhub-gateway:%s is not published" % RELEASE,
+                     "gateway", RELEASE, {"SKILLHUB_PRIVATE_IP": "10.0.0.3"},
+                     resolve=lambda repository, tag, value=digest: value)
 
 
 SANDBOX_SETTINGS = {
