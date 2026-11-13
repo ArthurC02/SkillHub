@@ -7,13 +7,17 @@ export MSYS_NO_PATHCONV=1
 scope="skillhub.alertmanager-smoke=$RANDOM-$RANDOM-$RANDOM"
 WORK="$(mktemp -d)"
 WORK_HOST="$(cd "$WORK" && (pwd -W 2>/dev/null || pwd))"
+chmod 755 "$WORK"
 
 cleanup() {
-  local containers networks
+  local status="$?" containers networks container
   local -a owned
   containers=$(docker ps -aq --filter "label=$scope")
   if [ -n "$containers" ]; then
     mapfile -t owned <<<"$containers"
+    if [ "$status" -ne 0 ]; then
+      for container in "${owned[@]}"; do docker logs "$container" >&2 || true; done
+    fi
     docker rm -fv "${owned[@]}" >/dev/null
   fi
   networks=$(docker network ls -q --filter "label=$scope")
@@ -23,6 +27,7 @@ cleanup() {
   fi
   rm -f "$WORK/alertmanager.yml" "$WORK/payload.json" "$WORK/query.json"
   rmdir "$WORK"
+  return "$status"
 }
 trap cleanup EXIT
 
@@ -45,6 +50,7 @@ receivers:
       - url: http://sink:8000
         send_resolved: true
 YAML
+chmod 644 "$WORK/alertmanager.yml"
 network=$(docker network create --internal --label "$scope" "skillhub-alertmanager-$RANDOM-$RANDOM")
 docker run --rm -d --label "$scope" --read-only --cap-drop ALL --security-opt no-new-privileges \
   --network "$network" --network-alias sink "$PROBE_TARGET_IMAGE" python -B -u -c '
@@ -70,7 +76,7 @@ class Sink(BaseHTTPRequestHandler):
 
 HTTPServer(("0.0.0.0", 8000), Sink).serve_forever()
 ' >/dev/null
-docker run --rm -d --label "$scope" --read-only --cap-drop ALL --security-opt no-new-privileges \
+docker run -d --label "$scope" --read-only --cap-drop ALL --security-opt no-new-privileges \
   --network "$network" --network-alias alertmanager \
   --mount "type=bind,src=$WORK_HOST,dst=/fixture,readonly" \
   --tmpfs /alertmanager:rw,noexec,nosuid,size=16m,uid=65534,gid=65534 \
@@ -156,5 +162,6 @@ probe start >"$WORK/payload.json"
 docker run --rm --label "$scope" --network "$network" --read-only --cap-drop ALL \
   --entrypoint /bin/amtool "$ALERTMANAGER_IMAGE" --alertmanager.url=http://alertmanager:9093 \
   --output=json alert query alertname=OwnedImageProbe >"$WORK/query.json"
+chmod 644 "$WORK/payload.json" "$WORK/query.json"
 probe resolve
 echo 'Alertmanager smoke passed; UI/gzip, rejected JSON, active alert, amtool and firing/resolved local webhooks observed'
