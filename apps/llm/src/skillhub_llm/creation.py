@@ -973,14 +973,6 @@ def _trim_search_rewrites(decision: CreationDecision) -> None:
         ][:MAX_SEARCH_REWRITES]
 
 
-def _submits_draft(decision: CreationDecision) -> bool:
-    return decision.outcome == "draft" or (
-        decision.outcome == "tool_intent"
-        and decision.tool_intent is not None
-        and decision.tool_intent.kind == "validate_draft"
-    )
-
-
 async def _decide(
     req: CreationStepRequest,
     gateway_key: str,
