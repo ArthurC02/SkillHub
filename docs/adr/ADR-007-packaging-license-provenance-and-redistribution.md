@@ -127,8 +127,9 @@ manifest 另需記載：來源 Skill Version、Packaging Profile 及版本、打
 ### 決策 8：Agent Skills 規格的釘選、判準與「符合規格」這句話可以說到哪裡
 
 - **事實來源是公開規格站台**（機器可讀版本與參考實作原始碼各一份）；規格沒有版本號、沒有 git tag、沒有 GitHub Release，因此**釘選用 commit SHA ＋ 規格檔的 blob SHA**，兩個都記在 `contracts/spec/SOURCE.json`，程式面以 `skillpkg.SpecRevision` 常數承載。
-- **規格散文與參考實作衝突時，取參考實作為準**：一份沒有 JSON Schema 的規格，它的可執行陳述就是它的判準；偏離處寫進 ADR 而非留白。
+- **規格散文與參考實作衝突時，取參考實作為準**：一份沒有 JSON Schema 的規格，它的可執行陳述就是它的判準；偏離處寫進 ADR 而非留白。**但參考實作目前不當成自動化的對照**：它的發佈版本比我們釘的規格還舊半年以上，兩邊不一致時錯的多半是它，接進 CI 只會製造假紅；維護者也自稱那是示範用而非生產用的程式。**重開條件是它出現發佈日晚於我們釘選版本的版本**，那時照其他外部工具的做法釘版本、進工具鏈名冊、掛在依賴稽核那一層。在那之前，偵測靠規格檔本身的漂移檢查與重釘時的逐條對照。
 - **規格 frontmatter 恰好六個欄位**：`name`、`description`、`license`、`compatibility`、`metadata`、`allowed-tools`（`version` 不是 frontmatter 欄位，只是 `metadata` 範例的慣例寫法）。其中：
+  - `name` 必須與它所在的資料夾同名 → **error**，但只在來源真的帶著作者取的資料夾名時才判（plugin 的 `skills/<dir>/`、在來源樹裡被找到的資料夾）。**兩種情形程式拿不到那個名字，因此不判**：壓縮檔若只有一個外層資料夾，那一層會被當成套件根剝掉，而那個名字常是下載工具給的（`<repo>-main`），拿它比會把合規的 Skill 判成不合規；根目錄就是 `SKILL.md` 的單一 Skill 沒有父目錄。平台自己匯出的套件把檔案放在以 `name` 命名的資料夾底下，所以出去的位元組本來就滿足這條。
   - `description` 去空白後非空 → **error**（agent 決定要不要載入這個 Skill 的唯一依據）。
   - `compatibility` 1–500 字元、且能被辨識為合法環境需求宣告（不得誤報 `frontmatter-unknown-field`）→ warning。
   - `metadata` 非 string→string → warning（非字串值至少會被一個 client 丟掉）。

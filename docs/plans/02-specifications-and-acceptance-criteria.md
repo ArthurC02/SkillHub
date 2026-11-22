@@ -135,7 +135,7 @@
 
 允收準則：
 
-- 驗證至少涵蓋 `SKILL.md`、YAML frontmatter、必要欄位、名稱規則及檔案引用。
+- 驗證至少涵蓋 `SKILL.md`、YAML frontmatter、必要欄位、名稱規則及檔案引用。名稱規則含 `name` 與它所在的資料夾同名；來源沒有帶著作者取的資料夾名時（外層資料夾被當成套件根剝掉、或根目錄就是 `SKILL.md`）不判這一項。
 - 系統能分開呈現阻擋錯誤與可接受警告。
 - 系統識別 Script、可執行檔、外部 URL、可能的 Secrets 與宣告依賴。
 - 驗證檢查套件的版面，讓執行時只讀檔案開頭也不漏規則：`SKILL.md` 本文超過 500 行、只能經由另一份 reference 才連得到的 Markdown 檔、超過 100 行卻沒有在前 20 行內放目錄的 reference；也檢查跨 Agent 可攜性：`SKILL.md` 用反斜線寫進套件內資料夾的路徑、`name` 含保留字 `anthropic`／`claude`、`description` 含 XML 標籤。匯入時這些都是警告；互動創作的草稿檢查把它們升為阻擋，退回模型修正。`scripts/`、`references/` 下的程式與文件若 `SKILL.md` 和它連結的檔案都沒提到（以路徑、檔名或模組名稱，或被另一支 Script import），匯入時列為資訊（套件常附 CI 用的工具，不是給 Agent 的）；互動創作由平台自動把它列進本文，不需阻擋。
