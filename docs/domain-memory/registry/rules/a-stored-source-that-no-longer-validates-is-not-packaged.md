@@ -5,7 +5,7 @@ verified:
   - by: "human:ArthurC"
     at: "2026-10-24T10:35:00.265291Z"
 sources:
-  - resource: "apps/platform/internal/skill/delivery/packaging.go#L955-964"
+  - resource: "apps/platform/internal/skill/delivery/packaging.go#L966-975"
     excerpt_sha256: "sha256:661cdef401ae1f23569c32f6603071f7cae8f34fd9be7310382fbbd3693f4a60"
   - resource: "apps/platform/internal/skill/delivery/source_rules_test.go#L66-71"
     excerpt_sha256: "sha256:2b807a32bc2f142f984aab60d2286bc21c7e861a4521ebbe606a9865dd9ca83f"

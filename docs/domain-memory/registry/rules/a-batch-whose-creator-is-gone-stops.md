@@ -5,7 +5,7 @@ verified:
   - by: "human:ArthurC"
     at: "2026-10-24T10:35:00.265291Z"
 sources:
-  - resource: "apps/platform/internal/trial/batch/batch.go#L264-266"
+  - resource: "apps/platform/internal/trial/batch/batch.go#L271-273"
     excerpt_sha256: "sha256:ffb91cb46bacd98cfd80a1f3fb041bbfe19400dec91a6b1d8c9db961752249f0"
   - resource: "apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_integration_test.go#L440-466"
     excerpt_sha256: "sha256:d040fb142634b949d1226750c92785df9643761a1eefe0105ae21cfa9ad336b7"

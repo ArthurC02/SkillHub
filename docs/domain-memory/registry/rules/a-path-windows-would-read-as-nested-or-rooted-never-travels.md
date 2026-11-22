@@ -5,7 +5,7 @@ verified:
   - by: "human:ArthurC"
     at: "2026-11-11T17:10:17.837079Z"
 sources:
-  - resource: "apps/platform/internal/skill/delivery/export.go#L78-84"
+  - resource: "apps/platform/internal/skill/delivery/export.go#L77-83"
     excerpt_sha256: "sha256:6809fe0290eb6f6525a084edd8ba852e1267703d18d80f2bf8108af187cc0a61"
   - resource: "apps/platform/internal/skill/delivery/export_path_test.go#L9-31"
     excerpt_sha256: "sha256:f918b61117ac9ad181e028ab7bc46f393317ca5b5e13e10efaf58fc8d8ac1bf7"

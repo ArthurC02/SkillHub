@@ -5,7 +5,7 @@ verified:
   - by: "human:ArthurC"
     at: "2026-10-24T10:35:00.265291Z"
 sources:
-  - resource: "apps/platform/internal/skill/publishing/service.go#L379-382"
+  - resource: "apps/platform/internal/skill/publishing/service.go#L384-387"
     excerpt_sha256: "sha256:e197ee981b6023dafa0149a50c26fa20ab36699df6979099986488e75f20db72"
   - resource: "apps/platform/internal/entrypoint/api/apiserver/publishing_integration_test.go#L348-375"
     excerpt_sha256: "sha256:20d078f0a78ffdc40021e043e094514e80b33b410c63fac6d159093dd05b12b7"

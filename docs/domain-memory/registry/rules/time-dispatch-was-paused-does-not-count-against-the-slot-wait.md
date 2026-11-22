@@ -7,9 +7,9 @@ verified:
 sources:
   - resource: "apps/platform/internal/trial/execution/halt/paused.go#L22-41"
     excerpt_sha256: "sha256:6a494406a7a0e101d3edc8c775d18d6b95a3698ac29cde59a9c6151ad9937511"
-  - resource: "apps/platform/internal/trial/execution/job.go#L952-958"
+  - resource: "apps/platform/internal/trial/execution/job.go#L953-959"
     excerpt_sha256: "sha256:7124a1a3ceb89a3de9554dc4546c222d03838b09c22e36b26c2d2a59f6f30202"
-  - resource: "apps/platform/internal/trial/execution/job.go#L969-978"
+  - resource: "apps/platform/internal/trial/execution/job.go#L970-979"
     excerpt_sha256: "sha256:0d77c9e792b2cb23b7b852fdcd35592800d6833406652a22d80df5be13307ed7"
   - resource: "apps/platform/internal/trial/execution/halt/paused_test.go#L28-54"
     excerpt_sha256: "sha256:d5046eb497c504ce795484fd8a57591cf66fde02fcccb5e71475fb3b90442a5c"

@@ -5,7 +5,7 @@ verified:
   - by: "human:ArthurC"
     at: "2026-10-17T02:57:33.844230Z"
 sources:
-  - resource: "apps/platform/internal/skill/discovery/detail.go#L511-521"
+  - resource: "apps/platform/internal/skill/discovery/detail.go#L513-523"
     excerpt_sha256: "sha256:650151c16e16c25ddb3d0cc17117a9f81acd70b4dcf401f783e0de22fedd97ed"
   - resource: "apps/platform/internal/skill/discovery/detail_test.go#L74-88"
     excerpt_sha256: "sha256:5f0383a8472769fb8731f700e8ffbcbb05450cf992ddd7d583a60e8a4ccd4ea4"

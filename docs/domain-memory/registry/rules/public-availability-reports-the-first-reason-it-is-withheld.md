@@ -5,7 +5,7 @@ verified:
   - by: "human:ArthurC"
     at: "2026-10-24T10:35:00.265291Z"
 sources:
-  - resource: "apps/platform/internal/skill/publishing/publication.go#L130-144"
+  - resource: "apps/platform/internal/skill/publishing/publication.go#L131-145"
     excerpt_sha256: "sha256:41c189c32a7a6eec1c38be2bcf2c4876e04e5f939d4ba2e28686d3228f5aa396"
   - resource: "apps/platform/internal/skill/publishing/publication_test.go#L135-158"
     excerpt_sha256: "sha256:b0a0e2f2522e70cafbf01f0c0e40dc6bf4d2cada3782f3200a8f0c1e8452a605"

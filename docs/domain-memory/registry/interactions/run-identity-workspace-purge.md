@@ -7,7 +7,7 @@ verified:
   - by: "human:ArthurC"
     at: "2026-10-24T10:35:00.265291Z"
 sources:
-  - resource: "apps/platform/internal/entrypoint/api/apiserver/app.go#L220-220"
+  - resource: "apps/platform/internal/entrypoint/api/apiserver/app.go#L227-227"
     excerpt_sha256: "sha256:d46152cb58f3e63ae83b091a659644a71bb98edaaa9e641779d94f1cde1b0364"
   - resource: "apps/platform/internal/creator/workspace/purge.go#L63-63"
     excerpt_sha256: "sha256:03fb2d7b1d5ed909f511a3f6d350d580f7ad458bb32057023a97ca5e1b91c657"

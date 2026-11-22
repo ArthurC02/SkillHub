@@ -12,9 +12,9 @@ sources:
     excerpt_sha256: "sha256:0192f39e0005784a382c33c56fac57435579fde3cf2317a9cfd09f6bdb43a7e7"
   - resource: "db/migrations/0150_reflection_candidates.sql#L23-46"
     excerpt_sha256: "sha256:946ae8a6f18a6ed43a9921c4b8818bd04defc181424f1fac461741dc80ae4c25"
-  - resource: "apps/platform/internal/trial/improvement/reflection_store.go#L227-270"
+  - resource: "apps/platform/internal/trial/improvement/reflection_store.go#L236-279"
     excerpt_sha256: "sha256:684de5f180f181d4ce8cf6f5900357f76d237e91a21d987c181a64ae4bcf8d10"
-  - resource: "apps/platform/internal/entrypoint/api/apiserver/reflection_integration_test.go#L566-589"
+  - resource: "apps/platform/internal/entrypoint/api/apiserver/reflection_integration_test.go#L585-608"
     excerpt_sha256: "sha256:666213e4bfa3ff97d19e3da7c3419a708cb7e533405de1de115145cb00cd1382"
 ---
 # Relations

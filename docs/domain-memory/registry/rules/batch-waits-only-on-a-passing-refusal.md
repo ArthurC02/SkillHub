@@ -7,7 +7,7 @@ verified:
 sources:
   - resource: "apps/platform/internal/entrypoint/api/apiserver/evaluation_batch_integration_test.go#L332-375"
     excerpt_sha256: "sha256:97a20ef07e639edb269a472b52c57ade107f8b83f7adbc381782462397866e8b"
-  - resource: "apps/platform/internal/trial/batch/batch.go#L278-283"
+  - resource: "apps/platform/internal/trial/batch/batch.go#L285-290"
     excerpt_sha256: "sha256:9a314bdcfa0e4bf33fe6ed064481f873d11a9c462093eae2253ff570f871a157"
   - resource: "apps/platform/internal/trial/execution/batch_facts.go#L40-51"
     excerpt_sha256: "sha256:3ed0ac9bad6e46ca0157c2b48d8aa1b77a609de28b83605192dc3c59990a5de9"

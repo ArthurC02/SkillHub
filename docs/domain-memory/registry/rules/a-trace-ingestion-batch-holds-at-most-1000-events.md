@@ -5,9 +5,9 @@ verified:
   - by: "human:ArthurC"
     at: "2026-10-24T10:35:00.265291Z"
 sources:
-  - resource: "apps/platform/internal/trial/evidence/http.go#L21-21"
+  - resource: "apps/platform/internal/trial/evidence/http.go#L19-19"
     excerpt_sha256: "sha256:8cee0c16c5e75f70fdd226250a83230fccd5ffbe59745d5047859aabcbed27ff"
-  - resource: "apps/platform/internal/trial/evidence/http.go#L60-63"
+  - resource: "apps/platform/internal/trial/evidence/http.go#L58-61"
     excerpt_sha256: "sha256:81de9a87479fee0bec3492b389a487dd4cedeb005e38bdf25df8c572e0265db7"
   - resource: "apps/platform/internal/trial/evidence/http_test.go#L48-59"
     excerpt_sha256: "sha256:f172c0e4a2593829b92fc13dc0d4697666a7379caf20de448fe031ee973d44ba"

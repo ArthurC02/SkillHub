@@ -8,7 +8,7 @@ verified:
   - by: "human:ArthurC"
     at: "2026-10-24T10:35:00.265291Z"
 sources:
-  - resource: "apps/platform/internal/skill/delivery/packaging.go#L305-315"
+  - resource: "apps/platform/internal/skill/delivery/packaging.go#L310-320"
     excerpt_sha256: "sha256:c4d142e9ef53b8137e2256042130849453bfa1ca7a771920b2b0dd33e0c5b45d"
 ---
 A Skill that the platform has taken down, or whose content is held for an unresolved license question, cannot be built into a package; the refusal names taken_down or license_hold.

@@ -5,9 +5,9 @@ verified:
   - by: "human:ArthurC"
     at: "2026-10-18T10:52:30.207485Z"
 sources:
-  - resource: "apps/platform/internal/skill/library/diff.go#L47-53"
+  - resource: "apps/platform/internal/skill/library/diff.go#L46-52"
     excerpt_sha256: "sha256:999651f074567595d3fce5c551169cbe080d3afb20af1379ab1ca2469286f027"
-  - resource: "apps/platform/internal/skill/library/content_guards_test.go#L46-74"
+  - resource: "apps/platform/internal/skill/library/content_guards_test.go#L47-75"
     excerpt_sha256: "sha256:010372b1c7653f7d51585c1d038354f8a04da190d14a723c4663544c7aa11ab9"
 ---
 A version diff finds nothing when a named version belongs to another skill, even in the same Workspace.

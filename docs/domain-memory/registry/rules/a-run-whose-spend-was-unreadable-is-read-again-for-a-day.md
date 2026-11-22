@@ -7,7 +7,7 @@ verified:
 sources:
   - resource: "apps/platform/internal/trial/execution/supervisor.go#L89-107"
     excerpt_sha256: "sha256:f6a13bb325fe8454a48ace4121ae9549c114b233b3ce2559741d657e72e668a0"
-  - resource: "apps/platform/internal/entrypoint/api/apiserver/run_credit_integration_test.go#L210-267"
+  - resource: "apps/platform/internal/entrypoint/api/apiserver/run_credit_integration_test.go#L213-270"
     excerpt_sha256: "sha256:1856434a054972081409699eff0458fc8e20bfe126364c234fd2f736916b979a"
 ---
 A cleaned Run whose cost was not settled at its real spend is queued for another cleanup by supervision, at most once every 5 minutes, until a read settles it or a day has passed since it finished; a settled Run is never queued for spend again.

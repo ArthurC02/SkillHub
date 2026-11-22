@@ -7,7 +7,7 @@ verified:
   - by: "human:ArthurC"
     at: "2026-10-24T10:35:00.265291Z"
 sources:
-  - resource: "apps/platform/internal/trial/execution/http.go#L474-491"
+  - resource: "apps/platform/internal/trial/execution/http.go#L464-481"
     excerpt_sha256: "sha256:562bb58b302958352ef06f8e051bd6972094206bf5c857dc537ba861c1af5544"
 ---
 # Relations

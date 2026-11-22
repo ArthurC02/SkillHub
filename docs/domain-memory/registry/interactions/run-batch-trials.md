@@ -7,7 +7,7 @@ verified:
   - by: "human:ArthurC"
     at: "2026-10-24T10:35:00.265291Z"
 sources:
-  - resource: "apps/platform/internal/trial/batch/batch.go#L254-292"
+  - resource: "apps/platform/internal/trial/batch/batch.go#L261-299"
     excerpt_sha256: "sha256:f59f6851992723f666c594a0f96028394f3305b6ef1ef897c7ca561cf9d36999"
   - resource: "apps/platform/internal/entrypoint/wiring/evaluation_batches.go#L46-91"
     excerpt_sha256: "sha256:9f717648182cc8b8d70ff7ea41570ebaaaf9a022a738b57c03e730ee343ce676"

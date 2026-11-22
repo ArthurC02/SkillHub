@@ -7,9 +7,9 @@ verified:
 sources:
   - resource: "apps/platform/internal/trial/design/suggest_test_cases.go#L73-127"
     excerpt_sha256: "sha256:6198a1eff2c7d5ee672253540c7c36caf3d5145665eb667dc73527a83ae79fc6"
-  - resource: "apps/platform/internal/trial/design/suggest_test_cases.go#L137-155"
+  - resource: "apps/platform/internal/trial/design/suggest_test_cases.go#L140-158"
     excerpt_sha256: "sha256:8c7a821c2f3fb65025fcd242f1a8e64df4aab0eef974c4592726d1a701765593"
-  - resource: "apps/platform/internal/trial/design/suggest_test_cases.go#L127-135"
+  - resource: "apps/platform/internal/trial/design/suggest_test_cases.go#L130-138"
     excerpt_sha256: "sha256:438b7ffc12b3f96469f240a598e4c0856ead6be35b153ef20677dd1d9f18d7d2"
   - resource: "apps/platform/internal/entrypoint/api/apiserver/suggest_test_cases_integration_test.go#L71-89"
     excerpt_sha256: "sha256:2ce708d45e29c3e7330981dfc875532ee7b8bb2860d648259631ad59813c0d38"

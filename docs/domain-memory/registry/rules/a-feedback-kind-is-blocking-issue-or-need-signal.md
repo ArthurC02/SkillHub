@@ -7,7 +7,7 @@ verified:
 sources:
   - resource: "apps/platform/internal/product/learning/feedback.go#L92-95"
     excerpt_sha256: "sha256:70eb94f8e916828cc8ff788cd220269fc1405ece7f254163469e149ecc20fa0d"
-  - resource: "apps/platform/internal/entrypoint/api/apiserver/beta_integration_test.go#L727-783"
+  - resource: "apps/platform/internal/entrypoint/api/apiserver/beta_integration_test.go#L733-789"
     excerpt_sha256: "sha256:c382a294cb7c64621f66bbfb1e7622ccd4c23012efbe2a5e60d6e672be116dae"
 ---
 A feedback kind must be blocking_issue or need_signal; any other or a missing kind is refused with 400.

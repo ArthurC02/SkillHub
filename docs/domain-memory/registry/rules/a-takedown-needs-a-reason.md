@@ -5,7 +5,7 @@ verified:
   - by: "human:ArthurC"
     at: "2026-10-24T10:35:00.265291Z"
 sources:
-  - resource: "apps/platform/internal/skill/library/skill_root.go#L242-245"
+  - resource: "apps/platform/internal/skill/library/skill_root.go#L247-250"
     excerpt_sha256: "sha256:58f0db9a7890d85a5f52681fb23546ab26392416dc1dfe38b18bd70ebaf08e2f"
   - resource: "apps/platform/internal/skill/library/skill_root_test.go#L103-119"
     excerpt_sha256: "sha256:1728840bd75ad3a4d5f255ac9870184938de6da3396c9ccdad517137fa6d0e97"

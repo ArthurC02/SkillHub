@@ -7,7 +7,7 @@ verified:
 sources:
   - resource: "apps/platform/internal/trial/improvement/checks/rule_graders_test.go#L133-140"
     excerpt_sha256: "sha256:eccaa335afd7e34555eb1a95f3139756a2a49cb5f9a7dc97ddcc617cab4a8c09"
-  - resource: "apps/platform/internal/trial/improvement/facts/facts.go#L114-120"
+  - resource: "apps/platform/internal/trial/improvement/facts/facts.go#L115-121"
     excerpt_sha256: "sha256:671193b623512b1132e5af3173444c47df0aa6545012a620be869b89e91f1045"
   - resource: "apps/platform/internal/trial/improvement/checks/rule_graders.go#L17-32"
     excerpt_sha256: "sha256:eecd17f96f0890cd40fa55a08755526189a1386030e88a755653e75bd8454fe3"

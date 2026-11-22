@@ -7,7 +7,7 @@ verified:
 sources:
   - resource: "apps/platform/internal/trial/improvement/consumer.go#L64-108"
     excerpt_sha256: "sha256:33488562383e1078444b1794af7e88cb16108f61e769fdda74729aca78b62caf"
-  - resource: "db/queries/runs.sql#L394-401"
+  - resource: "db/queries/runs.sql#L406-413"
     excerpt_sha256: "sha256:dbd7b2941986772cd727383424957612fd207c197585d76a739215aef7a2e795"
   - resource: "apps/platform/internal/entrypoint/api/apiserver/unevaluated_run_sweep_integration_test.go#L35-75"
     excerpt_sha256: "sha256:f763701ea710e0f644c556b40ebd566d5714bdc41f2f6cd2179d8878231f87be"

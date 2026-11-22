@@ -5,7 +5,7 @@ verified:
   - by: "human:ArthurC"
     at: "2026-10-24T10:35:00.265291Z"
 sources:
-  - resource: "apps/platform/internal/trial/improvement/suggest.go#L224-232"
+  - resource: "apps/platform/internal/trial/improvement/suggest.go#L235-243"
     excerpt_sha256: "sha256:64284e90acc16f59b195d0fac8bf1736d25a8bcf733e58297bfaad3590e95feb"
   - resource: "apps/platform/internal/trial/improvement/suggest_test.go#L137-170"
     excerpt_sha256: "sha256:0b9735a84efbd2a96dfcaebd5ac1a0d96d3f6c45b2e6e194da60fdc95a2b2365"

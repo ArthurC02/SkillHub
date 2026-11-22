@@ -5,7 +5,7 @@ verified:
   - by: "human:ArthurC"
     at: "2026-10-18T09:26:27.855880Z"
 sources:
-  - resource: "apps/platform/internal/trial/improvement/apply.go#L434-438"
+  - resource: "apps/platform/internal/trial/improvement/apply.go#L454-458"
     excerpt_sha256: "sha256:e3edd4f60510e178b0fadaeeb3d21b925c279aa5d2ebb6acaf898e79ef43ff10"
   - resource: "apps/platform/internal/entrypoint/api/apiserver/suggestion_integration_test.go#L565-626"
     excerpt_sha256: "sha256:f6b83c3c2e5ccdddf06bfdad1f67e9c4d9eeb2dad40b5887c395522d562d532d"

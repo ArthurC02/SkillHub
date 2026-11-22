@@ -9,7 +9,7 @@ sources:
     excerpt_sha256: "sha256:edbda295ccde891102dcd00c650e45a8af90d61943bced7a5c1d5dd0c02355cb"
   - resource: "apps/platform/internal/skill/admission/promote.go#L20-62"
     excerpt_sha256: "sha256:4b702d940e7c3f8319e961270ed01dc41847f97825e81004d4fe43816a84c303"
-  - resource: "apps/platform/internal/skill/library/skill_root.go#L379-396"
+  - resource: "apps/platform/internal/skill/library/skill_root.go#L369-386"
     excerpt_sha256: "sha256:dd32260327940f219dd784801b7c578151c68d0c2e9768f1783a34a20b91bdb6"
   - resource: "apps/platform/internal/skill/library/skill_root_test.go#L529-573"
     excerpt_sha256: "sha256:7faa748ef6e24e0eaceb54158037d7b518412949703064c738e9ae9f6a72db84"

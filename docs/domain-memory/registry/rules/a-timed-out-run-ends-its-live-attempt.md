@@ -5,7 +5,7 @@ verified:
   - by: "human:ArthurC"
     at: "2026-10-24T10:35:00.265291Z"
 sources:
-  - resource: "apps/platform/internal/trial/execution/job.go#L103-109"
+  - resource: "apps/platform/internal/trial/execution/job.go#L104-110"
     excerpt_sha256: "sha256:3f1b00aec8279e0b970e2732c26c32c251d7e706385577f4ee6f04bacbe15336"
   - resource: "apps/platform/internal/trial/execution/supervisor.go#L139-144"
     excerpt_sha256: "sha256:67183cc4ca98ecbd7fc22fb4e6b0cb51cb14a9b8fd42cba7a81ae10bef96f200"

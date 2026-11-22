@@ -7,9 +7,9 @@ verified:
 sources:
   - resource: "db/migrations/0151_candidate_evaluation.sql#L49-52"
     excerpt_sha256: "sha256:7c0c917e2c93318b2dd7c99a9b622db5b2b382b451c8711f4dc95bb708227d61"
-  - resource: "apps/platform/internal/skill/library/skill_root.go#L362-377"
+  - resource: "apps/platform/internal/skill/library/skill_root.go#L352-367"
     excerpt_sha256: "sha256:12dd2195eab1c66bc2742ac9bbedaa3f025c7606aa9927b40a05dae3134ef2c4"
-  - resource: "apps/platform/internal/skill/library/skill_root.go#L398-403"
+  - resource: "apps/platform/internal/skill/library/skill_root.go#L388-393"
     excerpt_sha256: "sha256:5cecfbdc795b820e04d8710839246ad60fc1b0c9553d49e9195a5cb25c88089d"
   - resource: "apps/platform/internal/skill/admission/service.go#L432-435"
     excerpt_sha256: "sha256:6ec240c233093ce5e7c542614015c68228fe756c0ab2d8fe2280f0f077f1d4a7"

@@ -5,7 +5,7 @@ verified:
   - by: "human:ArthurC"
     at: "2026-10-24T10:35:00.265291Z"
 sources:
-  - resource: "apps/platform/internal/trial/design/snapshot.go#L249-258"
+  - resource: "apps/platform/internal/trial/design/snapshot.go#L248-257"
     excerpt_sha256: "sha256:c341a031d1d790d46c9c07526a0c76166ee436b812681f92561c7833edeb73f3"
   - resource: "apps/platform/internal/entrypoint/api/apiserver/testlab_integration_test.go#L622-682"
     excerpt_sha256: "sha256:0cb829bc302b9511b6028abe4f82563b009439633b4f58680668484fdb350944"

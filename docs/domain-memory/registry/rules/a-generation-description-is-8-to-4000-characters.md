@@ -5,7 +5,7 @@ verified:
   - by: "human:ArthurC"
     at: "2026-10-24T10:35:00.265291Z"
 sources:
-  - resource: "apps/platform/internal/skill/admission/generate.go#L74-85"
+  - resource: "apps/platform/internal/skill/admission/generate.go#L75-86"
     excerpt_sha256: "sha256:e858cbcf5fd4385f333895d17cc356675966f12b0e265bdb73e4b631f001a2e1"
   - resource: "apps/platform/internal/skill/admission/generate_test.go#L208-215"
     excerpt_sha256: "sha256:84f8a180da9f01b5196376ae8a40319289a44c24d5896a64829d5a83addb3cc0"

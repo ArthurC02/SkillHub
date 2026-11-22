@@ -7,7 +7,7 @@ verified:
 sources:
   - resource: "apps/platform/internal/product/learning/feedback.go#L160-184"
     excerpt_sha256: "sha256:8ef88772f32292ea1531fff76c56d0024661068f021cdcdd422189bac17bfe9b"
-  - resource: "apps/platform/internal/entrypoint/api/apiserver/platform_agent_proposals_integration_test.go#L710-739"
+  - resource: "apps/platform/internal/entrypoint/api/apiserver/platform_agent_proposals_integration_test.go#L706-735"
     excerpt_sha256: "sha256:364a963d8ed718922dca007e22d493f3ded277895e120bdedbe475abd5ad4c69"
 ---
 Purging feedback removes only reports created before the retention window, and the preview counts exactly what the purge removes.

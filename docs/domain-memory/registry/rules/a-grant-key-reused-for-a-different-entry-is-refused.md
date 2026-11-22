@@ -5,9 +5,9 @@ verified:
   - by: "human:ArthurC"
     at: "2026-10-24T10:35:00.265291Z"
 sources:
-  - resource: "apps/platform/internal/creator/credit/postgres.go#L160-172"
+  - resource: "apps/platform/internal/creator/credit/postgres.go#L161-173"
     excerpt_sha256: "sha256:0753543290451865f1bb118b6ea518dea7c72975ec60c5d618135db3aaa8a6be"
-  - resource: "apps/platform/internal/creator/credit/postgres_integration_test.go#L102-149"
+  - resource: "apps/platform/internal/creator/credit/postgres_integration_test.go#L115-162"
     excerpt_sha256: "sha256:201b6b104284653458199a67b657139f04029123c1d8de6df7810a1ddd8f956b"
 ---
 An idempotency key already used for an operator entry is refused with ErrGrantKeyReused when it is presented with another kind or another amount, and the balance is unchanged.

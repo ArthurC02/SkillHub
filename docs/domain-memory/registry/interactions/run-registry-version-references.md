@@ -7,7 +7,7 @@ verified:
   - by: "human:ArthurC"
     at: "2026-10-16T16:45:42.836437Z"
 sources:
-  - resource: "apps/platform/internal/entrypoint/api/apiserver/app.go#L208-208"
+  - resource: "apps/platform/internal/entrypoint/api/apiserver/app.go#L215-215"
     excerpt_sha256: "sha256:9294d276b1997a4340eca9cbaffa3d1b553e0570fa05c5f5b05ac1dacedc5b5c"
 ---
 # Relations

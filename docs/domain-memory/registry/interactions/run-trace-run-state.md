@@ -7,7 +7,7 @@ verified:
   - by: "human:ArthurC"
     at: "2026-10-24T10:35:00.265291Z"
 sources:
-  - resource: "apps/platform/internal/entrypoint/wiring/trial.go#L81-81"
+  - resource: "apps/platform/internal/entrypoint/wiring/trial.go#L99-99"
     excerpt_sha256: "sha256:bd0ca1fe0100764a858c037a25295304fb7a6cebbec3b75cc476a6b3ff072fc0"
 ---
 # Relations
