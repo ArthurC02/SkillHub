@@ -20,7 +20,7 @@ runs:
       run: |
         set -euo pipefail
         run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-        open_issue=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "in:title \"$TITLE\"" \
+        open_issue=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --limit 500 \
           --json number,title --jq '.[] | "\(.number)\t\(.title)"' | awk -F'\t' -v title="$TITLE" '$2 == title { print $1; exit }')
         if [ "$FAILED" = true ]; then
           if [ -n "$open_issue" ]; then
