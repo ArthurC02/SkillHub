@@ -86,14 +86,24 @@ const listedFailingCitations = 3
 func domainMemoryFailureReason(output string, commandErr error) string {
 	if start := strings.Index(output, "{"); start >= 0 {
 		var raw json.RawMessage
-		if json.NewDecoder(strings.NewReader(output[start:])).Decode(&raw) == nil {
-			return jsonReportFailure(raw)
+		decoder := json.NewDecoder(strings.NewReader(output[start:]))
+		if decoder.Decode(&raw) == nil {
+			reason := jsonReportFailure(raw)
+			if after := lastLine(output[start+int(decoder.InputOffset()):]); after != "" {
+				reason += "; " + after
+			}
+			return reason
 		}
 	}
 	if line := firstLine(output); line != "" {
 		return line
 	}
 	return commandErr.Error()
+}
+
+func lastLine(text string) string {
+	lines := strings.Split(strings.TrimSpace(text), "\n")
+	return strings.TrimSpace(lines[len(lines)-1])
 }
 
 func jsonReportFailure(raw json.RawMessage) string {
