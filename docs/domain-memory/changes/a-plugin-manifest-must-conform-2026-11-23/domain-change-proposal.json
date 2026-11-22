@@ -3,12 +3,12 @@
   "proposal_id": "a-plugin-manifest-must-conform-2026-11-23",
   "proposer": "agent:coding-agent",
   "requirement_id": "a-plugin-manifest-must-conform",
-  "status": "submitted",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-11-22T18:19:56.464958Z",
-  "verified_at": null,
-  "finalized_at": null,
-  "applied_at": null,
+  "verified_at": "2026-11-22T18:20:42.863927Z",
+  "finalized_at": "2026-11-22T18:20:45.855336Z",
+  "applied_at": "2026-11-22T18:21:08.515521Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "099ccc1b37c08c68d76c987f12da47ea38d78424",
@@ -132,5 +132,9 @@
         "committed_digest": "sha256:f9ef65808332e6b8835c8d6d4ed6f240daa6d5065f5d6b564a7cdb50cc5e5335"
       }
     }
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "d550bcf82ec1bba34d6d0bd34feccf6ded4cd12d",
+    "registry_digest": "sha256:8ee42d09224efcf47a6c08d38ba388a464cc22e6bcb1b5f095297e7a39d11337"
+  }
 }
