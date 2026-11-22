@@ -3,12 +3,12 @@
   "proposal_id": "ingest-fixture-recited-2026-11-23",
   "proposer": "agent:coding-agent",
   "requirement_id": "ingest-fixture-recited-2026-11-23",
-  "status": "submitted",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-11-22T17:51:23.186965Z",
-  "verified_at": null,
-  "finalized_at": null,
-  "applied_at": null,
+  "verified_at": "2026-11-22T17:51:48.607722Z",
+  "finalized_at": "2026-11-22T17:51:49.666010Z",
+  "applied_at": "2026-11-22T17:51:57.091950Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "0e849bc2f3cb2ce35fe3c3d3ab53a2c1f91a9550",
@@ -76,5 +76,9 @@
   "approvals": [],
   "supersedes": [
     "ingest-harvest-rules-2026-10-17"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "6ec9feccbf1ab872faeebbdcf7066176bd1b5b7d",
+    "registry_digest": "sha256:f9ef65808332e6b8835c8d6d4ed6f240daa6d5065f5d6b564a7cdb50cc5e5335"
+  }
 }
