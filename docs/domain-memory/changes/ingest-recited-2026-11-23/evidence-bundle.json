@@ -1,0 +1,29 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "ingest-recited-2026-11-23",
+  "proposal_id": "ingest-recited-2026-11-23",
+  "registry_revision": {
+    "observed_commit": "2cc0194c03391e73e311bbb07014dfc7864cdcbf",
+    "registry_digest": "sha256:a10d7f19ea387eb438dd4aa15d59ea6b739786a2cc454a4b545130205d70692d",
+    "committed_digest": "sha256:cae6d1ec3ff9139f440a13346ff37c9b97e4dab490333b6117b143b483868e4e"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": ".domain-memory/domain-memory.exe verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/ingest-recited-2026-11-23 --path apps/platform/internal/skill/admission/creation.go --path apps/platform/internal/skill/admission/mcp_tools.go --path apps/platform/internal/skill/admission/mcp_tools_test.go --path apps/platform/internal/skill/admission/service.go --path apps/platform/internal/skill/admission/source.go --path apps/platform/internal/skill/admission/source_test.go",
+      "command_profile": "verify-evidence",
+      "exit_code": 0,
+      "output_sha256": "sha256:a8aad88bdd6fa06f4bcaa815ec53ec0a0120e0001eed014bd7c8ac8933718f9f",
+      "finished_at": "2026-11-22T17:29:38.144221Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

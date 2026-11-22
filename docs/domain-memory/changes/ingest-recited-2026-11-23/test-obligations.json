@@ -1,0 +1,16 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "ingest-recited-2026-11-23",
+  "proposal_id": "ingest-recited-2026-11-23",
+  "obligations": [
+    {
+      "id": "evidence-current",
+      "source_type": "acceptance-criterion",
+      "source_id": "citations-current",
+      "expected_outcome": "verify-evidence reports current for every citation of the updated records.",
+      "level": "architecture",
+      "status": "planned",
+      "check": ".domain-memory/domain-memory.exe verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/ingest-recited-2026-11-23 --path apps/platform/internal/skill/admission/creation.go --path apps/platform/internal/skill/admission/mcp_tools.go --path apps/platform/internal/skill/admission/mcp_tools_test.go --path apps/platform/internal/skill/admission/service.go --path apps/platform/internal/skill/admission/source.go --path apps/platform/internal/skill/admission/source_test.go"
+    }
+  ]
+}

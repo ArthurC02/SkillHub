@@ -1,0 +1,195 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "ingest-recited-2026-11-23",
+  "proposer": "agent:coding-agent",
+  "requirement_id": "ingest-recited-2026-11-23",
+  "status": "submitted",
+  "change_classification": "routine",
+  "submitted_at": "2026-11-22T17:29:37.936690Z",
+  "verified_at": null,
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "2cc0194c03391e73e311bbb07014dfc7864cdcbf",
+    "registry_digest": "sha256:a10d7f19ea387eb438dd4aa15d59ea6b739786a2cc454a4b545130205d70692d",
+    "committed_digest": "sha256:cae6d1ec3ff9139f440a13346ff37c9b97e4dab490333b6117b143b483868e4e"
+  },
+  "affected_contexts": [
+    "ingest"
+  ],
+  "rule_ids": [],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "<context-id>",
+    "invariant": "<falsifiable-rule>",
+    "evidence": []
+  },
+  "boundary_decision": {
+    "interaction": "<existing-or-proposed-collaboration>",
+    "consistency": "<synchronous-or-eventual>",
+    "prohibited_dependencies": [],
+    "evidence": []
+  },
+  "implementation_design": null,
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-skill-inside-a-plugin-is-hashed-over-its-own-files",
+        "statement": "A Skill that is one directory of a larger package is hashed over its own files only, so the same content hashes the same wherever it sits.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "The same Skill inside two different plugins gets the same content hash, unlike the whole package's digest."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/source.go",
+            "lines": {
+              "start": 127,
+              "end": 134
+            },
+            "content_sha256": "sha256:de287e399bc5eb465a2e168f19b17c87abb6ee84715d8f9739240fa54c405f7e",
+            "excerpt_sha256": "sha256:5964aa06b37a0f4f6461c3f9a978b16f5ab6580c3c20aed29bc69d423c92d634",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/source_test.go",
+            "lines": {
+              "start": 62,
+              "end": 98
+            },
+            "excerpt_sha256": "sha256:878f12779a8feeca1fc38f859cc7ef20321765f8b83fd3f7766bb5ae67a217fd"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "one-import-admits-a-name-once",
+        "statement": "When two directories of one source declare the same Skill name, the first keeps it and the later ones are refused with a duplicate-name finding naming the first path, instead of silently becoming its next version.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "skills/alpha and skills/beta both named alpha: alpha is admitted, beta is refused."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/source.go",
+            "lines": {
+              "start": 84,
+              "end": 102
+            },
+            "excerpt_sha256": "sha256:1eed6f0e19d93b7c23c49fa1495b4f9d2131ad738f563dd3fd522d6d5b43dce4"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/source_test.go",
+            "lines": {
+              "start": 250,
+              "end": 283
+            },
+            "content_sha256": "sha256:5e946e32d13066b00c5a6d331c5a6aece7030001b369959ee61138547414038b",
+            "excerpt_sha256": "sha256:9e74865fda7a04f0a588b0989424398871fc2622213c7d69bca860f066113cf8",
+            "source_kind": "tests"
+          }
+        ],
+        "status": "reviewed"
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "an-unlisted-mcp-tool-blocks-a-created-draft-and-warns-an-import",
+        "statement": "A created draft or created version of a Skill that declares in allowed-tools an mcp__ name no mcp_tools row offers is blocked with the finding mcp-tool-not-offered naming it and listing the offered references; an imported or uploaded package gets the same finding as a warning and is not blocked.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "A created draft declaring mcp__mail__send while mcp_tools is empty is blocked and told the list is empty.",
+          "An imported zip declaring mcp__mail__send is admitted with a warning."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/mcp_tools.go",
+            "lines": {
+              "start": 13,
+              "end": 43
+            },
+            "excerpt_sha256": "sha256:0dff15123f2cc103abfe2bd0a5a7540b2416c27b6570b8d23e26da3978f12a0c"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/mcp_tools.go",
+            "lines": {
+              "start": 54,
+              "end": 65
+            },
+            "excerpt_sha256": "sha256:df93ec0b6bdce85c9b44c6c99dc719a3f139cf39d9f3285af182dfa00ff04277"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/creation.go",
+            "lines": {
+              "start": 52,
+              "end": 52
+            },
+            "excerpt_sha256": "sha256:5248e297b8dda66dcf2785374f181b041475027ace06330c3bb3db3fbf4f716c"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/creation.go",
+            "lines": {
+              "start": 208,
+              "end": 208
+            },
+            "excerpt_sha256": "sha256:5248e297b8dda66dcf2785374f181b041475027ace06330c3bb3db3fbf4f716c"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/service.go",
+            "lines": {
+              "start": 353,
+              "end": 356
+            },
+            "content_sha256": "sha256:cdff26b9deafd689d3cc5042aafccf7df689e97a1d2e18225505968e0c38cd16",
+            "excerpt_sha256": "sha256:ff216dde87d1f2c4f64ae9155021927489a240987f7fded93c24fd81f1ec976a",
+            "source_kind": "implementation"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/mcp_tools_test.go",
+            "lines": {
+              "start": 35,
+              "end": 57
+            },
+            "excerpt_sha256": "sha256:025365e193db70c470ad49a71c9016770caea2709cbab2e3ac8d07d8a8714085"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/service.go",
+            "lines": {
+              "start": 428,
+              "end": 431
+            },
+            "content_sha256": "sha256:cdff26b9deafd689d3cc5042aafccf7df689e97a1d2e18225505968e0c38cd16",
+            "excerpt_sha256": "sha256:28f1f13f18c002597fbcf99d8053402581501a1d37774934ead218de1b22dc12",
+            "source_kind": "implementation"
+          }
+        ],
+        "status": "reviewed"
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [],
+  "supersedes": [
+    "candidate-evaluation-recited-2026-11-07",
+    "ingest-fetch-and-hash-rules-2026-10-18",
+    "ingest-harvest-rules-2026-10-17"
+  ]
+}
