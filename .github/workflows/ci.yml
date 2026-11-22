@@ -978,3 +978,43 @@ jobs:
           tags: ${{ env.REGISTRY }}/skillhub-${{ matrix.image }}:${{ github.sha }}
           push: true
           cache-from: type=gha,scope=${{ matrix.image }}
+
+  report-scheduled-run:
+    needs:
+      - changes
+      - web
+      - web-browser-shards
+      - web-browser
+      - platform
+      - platform-lint
+      - platform-race
+      - sandbox
+      - sandbox-escape
+      - sandbox-nodocker
+      - sandbox-windows
+      - llm
+      - devctl
+      - dependency-audit
+      - contracts-drift
+      - qa002
+      - tools-pglite
+      - deploy-config
+      - images
+      - images-postgres-sandboxd
+      - devtools-image
+      - images-push
+    if: ${{ always() && github.event_name == 'schedule' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/actions
+      - uses: ./.github/actions/report-scheduled-run
+        with:
+          title: Scheduled CI failed on main
+          failed: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}

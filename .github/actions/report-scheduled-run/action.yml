@@ -1,0 +1,33 @@
+name: Report a scheduled run
+description: Open an issue when a scheduled run fails, comment on it when it fails again, and close it when one passes.
+
+inputs:
+  title:
+    description: Title of the issue that tracks this workflow's scheduled failures
+    required: true
+  failed:
+    description: "'true' when any job of the run failed or was cancelled"
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        TITLE: ${{ inputs.title }}
+        FAILED: ${{ inputs.failed }}
+      run: |
+        set -euo pipefail
+        run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+        open_issue=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "in:title \"$TITLE\"" \
+          --json number,title --jq '.[] | "\(.number)\t\(.title)"' | awk -F'\t' -v title="$TITLE" '$2 == title { print $1; exit }')
+        if [ "$FAILED" = true ]; then
+          if [ -n "$open_issue" ]; then
+            gh issue comment "$open_issue" --repo "$GITHUB_REPOSITORY" --body "Failed again on $GITHUB_SHA: $run_url"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$TITLE" --body "$(printf 'The scheduled run on %s failed: %s\n\nOpen the run, find the red job and fix what it names. The next scheduled run that passes closes this issue.' "$GITHUB_SHA" "$run_url")"
+          fi
+        elif [ -n "$open_issue" ]; then
+          gh issue close "$open_issue" --repo "$GITHUB_REPOSITORY" --comment "The scheduled run on $GITHUB_SHA passed: $run_url"
+        fi

@@ -250,3 +250,23 @@ jobs:
           bash tools/ci/report-failure.sh 'Fixable Critical/High (I-06)' \
             docker run --rm -v skillhub-grype-db:/db -e GRYPE_DB_CACHE_DIR=/db -v "$PWD/scan:/scan" "$GRYPE" sbom:/scan/sbom.spdx.json \
             --only-fixed --fail-on high -o table
+
+  report-scheduled-run:
+    needs:
+      - image
+      - rescan
+    if: ${{ always() && github.event_name == 'schedule' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/actions
+      - uses: ./.github/actions/report-scheduled-run
+        with:
+          title: Scheduled runtime image rescan failed on main
+          failed: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
