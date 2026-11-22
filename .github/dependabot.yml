@@ -92,6 +92,7 @@ updates:
     directories:
       - /
       - /.github/actions/golangci-lint
+      - /.github/actions/report-scheduled-run
     schedule:
       interval: monthly
       time: "06:00"
