@@ -19,7 +19,7 @@ sources:
     excerpt_sha256: "sha256:a210cb9d749a2bb04a447d71aacfb15c1e6f37e3946db16c419a030afdd5be2b"
   - resource: "apps/platform/internal/skill/admission/enrich.go#L117-119"
     excerpt_sha256: "sha256:b2e935bc0ef591576f4c3882d619298a1f09b40ebee0cd46eecc286a86e1ee35"
-  - resource: "apps/platform/internal/skill/admission/service.go#L577-579"
+  - resource: "apps/platform/internal/skill/admission/service.go#L578-580"
     excerpt_sha256: "sha256:b85be66aa7f8c261615dbffbb702ba8d542ff49022a70d7228372bf817b0ad13"
   - resource: "apps/platform/internal/skill/admission/cost_test.go#L185-215"
     excerpt_sha256: "sha256:5c9abfbf675a78c854e387133a55471ecb709d64727d5833963dcca4cc66bcc1"
