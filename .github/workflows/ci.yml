@@ -45,6 +45,7 @@ jobs:
               - 'apps/web/**'
               - 'packages/api-client-ts/**'
               - 'docs/design/**'
+              - '.node-version'
               - '.github/workflows/ci.yml'
             platform:
               - 'apps/platform/**'
@@ -70,17 +71,20 @@ jobs:
               - 'tools/sec009/**'
               - 'tools/ci/**'
               - 'tools/toolchain.yaml'
+              - '.node-version'
               - '.github/actions/golangci-lint/**'
               - '.github/workflows/ci.yml'
             qa002:
               - 'apps/platform/internal/skill/admission/**'
               - 'apps/platform/internal/shared/skillpkg/**'
+              - 'apps/platform/go.mod'
               - 'tools/qa/**'
               - 'tools/ci/**'
               - '.github/workflows/ci.yml'
             pglite:
               - 'tools/pglite/**'
               - 'tools/cleanmode/**'
+              - '.node-version'
               - '.github/workflows/ci.yml'
             devtools:
               - 'infra/images/devtools/**'
