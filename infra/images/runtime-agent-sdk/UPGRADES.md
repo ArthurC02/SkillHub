@@ -1296,3 +1296,31 @@ anchore/grype:v0.121.0 <image> --only-fixed --fail-on high → No vulnerabilitie
 ### 預設映像從 `-26` 移到 `-27`
 
 四項在 `-27` 的 digest 上跑過之後移動：`apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`（與它 `docker tag` 成的本地 tag）、`p02_docker_test.go` 的常數，以及 `automation.md` 的實跑範例。
+
+## `2026.08-27` → `2026.08-28`（2026-11-22）— **安全性修補：`hono` 與 `@hono/node-server`；四項實測隨後補入本節，預設映像仍留在 `-27`**
+
+`devctl dep-audit --full` 對 lockfile 列出 `hono`（Agent SDK → MCP SDK 的傳遞依賴）與 `@hono/node-server` 的七則 advisory，Nightly 的 `Runtime Image` 因此轉紅。`hono` 五則的首個修復版是 `4.13.16`、`@hono/node-server` 兩則是 `2.1.6`；對既有 lock 做最小變更更新落在 `hono 4.13.18`、`@hono/node-server 2.1.8`，兩者都在首個修復版之上，`npm audit` 歸零。
+
+| 套件 | 原版本 | 修正版本 | 公告 |
+| --- | --- | --- | --- |
+| `hono`（npm，Agent SDK → MCP SDK 的傳遞依賴） | `4.13.13` | `4.13.18` | GHSA-4m76-xfj5-7975、GHSA-h7mg-cq63-vhpq、GHSA-46wx-v44x-9hh2、GHSA-4h7h-rv7c-7m2v（Moderate）與 GHSA-3gg2-335m-rxc6（Low）：`mount()` 轉出的路徑繞過掛載前綴內的中介層、`RegExpRouter` 對某些路由集與帶編碼換行符的路徑略過萬用中介層、`csrf()` 不擋 `text/ping` 的超連結稽核請求、`validator('form')` 對帶額外參數的 `multipart/form-data` 略過驗證、`css` helper 對跨模板與插值切開的收尾標籤不轉義（HTML 注入）。首個修復版 `4.13.16` |
+| `@hono/node-server`（npm，同上傳遞依賴） | `2.1.5` | `2.1.8` | GHSA-qv5m-9pm6-hqp3、GHSA-jpvv-r467-5p4w（Moderate）：非同步 WebSocket 升級期間 socket 的 `ECONNRESET` 未處理會讓程序崩潰、請求路徑中的反斜線被當成路徑分隔符使反向代理的路徑存取控制被繞過。首個修復版 `2.1.6` |
+
+**暴露面**：七則全部走不到。`hono` 是 MCP SDK 的 HTTP 伺服器傳輸拉進來的，`run.mjs` 走 stdio、不監聽埠，`mount()`／`RegExpRouter`／`csrf()`／`validator`／`css` helper 這些路由與中介層路徑都不會被建立；`@hono/node-server` 的 socket 處理同理走不到。照樣收，是因為它們在 lockfile 裡，`dep-audit` 的閘門看的是 lockfile。
+
+**版本選擇**：對既有 lock 做最小變更更新（`npm update --package-lock-only`）停在 `4.13.18`／`2.1.8`——傳遞依賴只要仍滿足 `^4.11.4`／`^2.0.5` 就不動它；在無 `node_modules` 的乾淨目錄重新解析（`npm audit fix`）則落到 range 內最新 `4.13.20`／`2.1.11`。兩組都 ≥ 首個修復版、`audit` 同樣歸零。此處取前者，不加 `overrides` 把別人的傳遞依賴釘成我們的直接依賴——零安全增益、徒增維護面，下一次傳遞 bump 本就由同一道 nightly audit 接手。
+
+**冷卻期**：`hono 4.13.18` 於 2026-11-11、`@hono/node-server 2.1.8` 於 2026-11-12 發佈，都已過 7 天。
+
+| 欄位 | 值 |
+| --- | --- |
+| 變更 | `package-lock.json` 的 `hono`（`4.13.13` → `4.13.18`）與 `@hono/node-server`（`2.1.5` → `2.1.8`）；`ARG IMAGE_VERSION`。**沒有其他改動** |
+| 新增的依賴 | 無 |
+| SDK 版本 | `0.3.233`（**未變**） |
+| 基底 digest | **未變** |
+| `run.mjs` | **未變** |
+| 預設映像 | 仍是 `-27`；四項實測跑過 `-28` 發佈的 digest 之後補進本節，再移動 |
+
+### 本機驗證（2026-11-22，沒有任何模型呼叫）
+
+`npm audit`（`--omit=dev`）：原 lock 列出上表七則；換版後 `found 0 vulnerabilities`。`npm ci --omit=dev --no-audit --no-fund` 以新 lock 安裝成功（added 103 packages），容器外讀 `node_modules/hono/package.json` → `4.13.18`、`node_modules/@hono/node-server/package.json` → `2.1.8`，與 lock 一致。
