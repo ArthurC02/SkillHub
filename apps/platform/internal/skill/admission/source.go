@@ -116,6 +116,7 @@ func prepareSkillAt(fsys fs.FS, dir, objectKey, packageHash string, sourceFindin
 	p := preparedPackage{report: skillpkg.Validate(sub), objectKey: objectKey}
 	if dir != "." {
 		p.sourcePath = dir
+		p.report.RequireDirectoryName(dir)
 	}
 	if dir != "." {
 		p.report = withSourceFindings(p.report, archiveFindings(fsys), sourceFindings)

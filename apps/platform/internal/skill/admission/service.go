@@ -262,6 +262,7 @@ func readPackage(data []byte, sourcePath string) (preparedPackage, error) {
 		return preparedPackage{}, err
 	}
 	p := preparedPackage{report: skillpkg.Validate(fsys), sourcePath: sourcePath}
+	p.report.RequireDirectoryName(sourcePath)
 	if p.report.Blocked {
 		return p, nil
 	}

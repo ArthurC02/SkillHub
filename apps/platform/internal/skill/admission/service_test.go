@@ -147,3 +147,45 @@ func TestAnAbsentFetcherDoesNotReachIngestLookingPresent(t *testing.T) {
 		t.Error("a configured fetcher did not reach the service; every URL import would be refused")
 	}
 }
+
+func TestRereadingAStoredSkillJudgesItsNameAgainstTheFolderItWasFoundIn(t *testing.T) {
+	for title, c := range map[string]struct {
+		files      map[string]string
+		sourcePath string
+		refused    bool
+	}{
+		"a plugin entry whose folder carries the name": {
+			map[string]string{"plugin.json": `{"name":"p"}`, "skills/pdf-tools/SKILL.md": skillMD},
+			"skills/pdf-tools", false,
+		},
+		"a plugin entry under another folder name": {
+			map[string]string{"plugin.json": `{"name":"p"}`, "skills/pdf/SKILL.md": skillMD},
+			"skills/pdf", true,
+		},
+		"the skill is the package root": {
+			map[string]string{"SKILL.md": skillMD}, "", false,
+		},
+		"an archive wrapping the skill in one folder": {
+			map[string]string{"skills-main/SKILL.md": skillMD}, "", false,
+		},
+	} {
+		t.Run(title, func(t *testing.T) {
+			p, err := readPackage(zipBytes(t, c.files), c.sourcePath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var found []string
+			for _, f := range p.report.Findings {
+				if f.Code == "name-directory-mismatch" {
+					found = append(found, f.Code)
+				}
+			}
+			if (len(found) == 1) != c.refused {
+				t.Fatalf("findings = %+v, want refused = %v (all: %+v)", found, c.refused, p.report.Findings)
+			}
+			if c.refused && !p.report.Blocked {
+				t.Error("the report is not blocked, so the version would still be read back as conformant")
+			}
+		})
+	}
+}

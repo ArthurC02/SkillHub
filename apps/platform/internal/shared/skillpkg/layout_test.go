@@ -312,3 +312,53 @@ func TestABackslashPathIntoAShippedFolderIsFlaggedWithItsForwardSlashForm(t *tes
 		})
 	}
 }
+
+func TestANameThatIsNotTheFolderNameIsRefused(t *testing.T) {
+	const code = "name-directory-mismatch"
+	for title, c := range map[string]struct {
+		name, sourcePath string
+		refused          bool
+	}{
+		"the folder it sits in carries its name":       {"tidy-csv", "tidy-csv", false},
+		"the folder it sits in carries another name":   {"tidy-csv", "tidy-tsv", true},
+		"a plugin entry whose folder carries the name": {"tidy-csv", "skills/tidy-csv", false},
+		"a plugin entry under another folder name":     {"tidy-csv", "skills/tidy-tsv", true},
+		"the source brought no folder name":            {"tidy-csv", "", false},
+	} {
+		t.Run(title, func(t *testing.T) {
+			r := Validate(pkg("---\nname: "+c.name+"\ndescription: d\n---\nbody\n", nil))
+			r.RequireDirectoryName(c.sourcePath)
+			got := findingsWithCode(r, code)
+			if (len(got) == 1) != c.refused {
+				t.Fatalf("findings = %+v, want refused = %v", got, c.refused)
+			}
+			if !c.refused {
+				return
+			}
+			if got[0].Severity != SeverityError || !r.Blocked {
+				t.Fatalf("finding = %+v blocked = %v, want a blocking error", got[0], r.Blocked)
+			}
+			for _, want := range []string{"tidy-tsv", c.name} {
+				if !strings.Contains(got[0].Message, want) {
+					t.Errorf("the refusal does not name %q, so the author cannot tell which to change: %s",
+						want, got[0].Message)
+				}
+			}
+		})
+	}
+}
+
+func TestAPackageMissingItsNameIsNotAlsoRefusedForItsFolderName(t *testing.T) {
+	for title, skillMD := range map[string]string{
+		"frontmatter without a name": "---\ndescription: d\n---\nbody\n",
+		"no SKILL.md at all":         "",
+	} {
+		t.Run(title, func(t *testing.T) {
+			r := Validate(pkg(skillMD, nil))
+			r.RequireDirectoryName("tidy-csv")
+			if got := findingsWithCode(r, "name-directory-mismatch"); len(got) != 0 {
+				t.Fatalf("findings = %+v; a package with no name to compare was judged on it", got)
+			}
+		})
+	}
+}

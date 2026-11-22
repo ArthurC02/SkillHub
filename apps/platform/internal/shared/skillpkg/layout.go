@@ -208,3 +208,13 @@ func lineCount(s string) int {
 	}
 	return strings.Count(s, "\n") + 1
 }
+
+func (r *Report) RequireDirectoryName(sourcePath string) {
+	if sourcePath == "" || r.Manifest == nil || r.Manifest.Name == "" {
+		return
+	}
+	if dir := path.Base(sourcePath); dir != r.Manifest.Name {
+		r.add(SeverityError, "name-directory-mismatch", skillMDPath, fmt.Sprintf(
+			"name 必須與它所在的資料夾同名：資料夾是 %q，name 是 %q。", dir, r.Manifest.Name))
+	}
+}

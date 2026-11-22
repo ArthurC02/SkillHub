@@ -249,19 +249,18 @@ func TestPlanImportCarriesSourceLevelFindingsOntoEverySkillBelowTheRoot(t *testi
 
 func TestPlanImportRefusesASecondSkillClaimingANameAlreadyTaken(t *testing.T) {
 	plan := planOf(t, map[string]string{
-		"plugin.json":           pluginManifest("twins"),
-		"skills/alpha/SKILL.md": namedSkillMD("alpha"),
-		"skills/beta/SKILL.md":  namedSkillMD("alpha"),
+		"one/alpha/SKILL.md": namedSkillMD("alpha"),
+		"two/alpha/SKILL.md": namedSkillMD("alpha"),
 	})
 
-	if got := strings.Join(admittedPaths(plan), ","); got != "skills/alpha" {
+	if got := strings.Join(admittedPaths(plan), ","); got != "one/alpha" {
 		t.Fatalf("admitted = %q; a repeated name would become the first skill's version 2", got)
 	}
 	if plan.blocked() {
 		t.Error("the whole import was blocked; the first skill was fine")
 	}
-	if len(plan.refused) != 1 || plan.refused[0].path != "skills/beta" {
-		t.Fatalf("refused = %+v, want only skills/beta", plan.refused)
+	if len(plan.refused) != 1 || plan.refused[0].path != "two/alpha" {
+		t.Fatalf("refused = %+v, want only two/alpha", plan.refused)
 	}
 	report := plan.refused[0].pkg.report
 	if !report.Blocked {
@@ -276,7 +275,7 @@ func TestPlanImportRefusesASecondSkillClaimingANameAlreadyTaken(t *testing.T) {
 	if found == nil {
 		t.Fatalf("no %s finding: %+v", skillpkg.CodeDuplicateSkillName, report.Findings)
 	}
-	for _, want := range []string{"skills/alpha", "alpha"} {
+	for _, want := range []string{"one/alpha", "alpha"} {
 		if !strings.Contains(found.Message, want) {
 			t.Errorf("the refusal does not say %q, so the reader cannot find the other one: %s", want, found.Message)
 		}
@@ -325,4 +324,28 @@ func TestASkillThatIsTheWholePackageRecordsNoSubdirectory(t *testing.T) {
 	if got := plan.admitted[0].pkg.sourcePath; got != "" {
 		t.Fatalf("source path = %q, want empty; the package root is already this skill's root", got)
 	}
+}
+
+func TestPlanImportRefusesASkillWhoseNameIsNotItsFolderName(t *testing.T) {
+	plan := planOf(t, map[string]string{
+		"one/alpha/SKILL.md": namedSkillMD("alpha"),
+		"two/beta/SKILL.md":  namedSkillMD("gamma"),
+	})
+
+	if got := strings.Join(admittedPaths(plan), ","); got != "one/alpha" {
+		t.Fatalf("admitted = %q, want only the skill whose folder carries its name", got)
+	}
+	if len(plan.refused) != 1 || plan.refused[0].path != "two/beta" {
+		t.Fatalf("refused = %+v, want only two/beta", plan.refused)
+	}
+	report := plan.refused[0].pkg.report
+	if !report.Blocked {
+		t.Error("the refused skill's report is not blocked, so it would still be imported")
+	}
+	for _, f := range report.Findings {
+		if f.Code == "name-directory-mismatch" {
+			return
+		}
+	}
+	t.Fatalf("no name-directory-mismatch finding: %+v", report.Findings)
 }
