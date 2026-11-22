@@ -1327,7 +1327,7 @@ anchore/grype:v0.121.0 <image> --only-fixed --fail-on high → No vulnerabilitie
 
 `npm audit`（`--omit=dev`）：原 lock 列出上表七則；換版後 `found 0 vulnerabilities`。`npm ci --omit=dev --no-audit --no-fund` 以新 lock 安裝成功（added 103 packages），容器外讀 `node_modules/hono/package.json` → `4.13.18`、`node_modules/@hono/node-server/package.json` → `2.1.8`，與 lock 一致。
 
-## `2026.08-28` → `2026.08-29`（2026-11-22）— **安全性修補：基底映像的 Node；含 `-28` 的 `hono` 修補；四項實測隨後補入本節，預設映像仍留在 `-27`**
+## `2026.08-28` → `2026.08-29`（2026-11-22）— **安全性修補：基底映像的 Node；含 `-28` 的 `hono` 修補；四項實測通過，預設映像移到 `-29`**
 
 `-28` 的 I-06 在推送前擋下基底 Node `22.23.4` 的四則 fixable High，換基底後一起收。`-28` 從未發佈，所以這一版對 registry 而言是從 `-27` 直接升上來：lockfile 的 `hono`／`@hono/node-server` 修補（見上一節）加上本節的基底。
 
@@ -1344,8 +1344,32 @@ anchore/grype:v0.121.0 <image> --only-fixed --fail-on high → No vulnerabilitie
 | SDK 版本 | `0.3.233`（**未變**） |
 | 基底 digest | **變更**，見上 |
 | `run.mjs` | **未變** |
-| 預設映像 | 仍是 `-27`；四項在 CI 發佈的 `-29` digest 上跑過之後補進本節，再移動 |
+| 預設映像 | 移到 `-29`，見本節最後 |
 
 ### 本機驗證（2026-11-22，沒有任何模型呼叫）
 
 以 CI 釘住的 `anchore/syft:v1.55.0@sha256:4cc92b64…` 與 `anchore/grype:v0.121.0@sha256:621d56d1…` 掃描本機建置 `skillhub-runtime-agent-sdk:2026.08-29-local`，漏洞資料庫 2026-11-22 建置、`valid`，`--only-fixed --fail-on high`：No vulnerabilities found，exit 0。同一個資料庫掃舊基底 `node:22-bookworm-slim@sha256:4b150b48…`：列出上表四則 High，exit 2。同一個映像、無網路：`node --version` → `v22.23.5`，`hono` → `4.13.18`，`@hono/node-server` → `2.1.8`，SDK → `0.3.233`；`id -u` → `65532`；`command -v npm` → 無；`.Size` → 1,352,822,581 bytes；version label → `2026.08-29`。
+
+### 2026-11-22：四項測項，全部跑在 CI 發佈的 digest 上
+
+| 欄位 | 值 |
+| --- | --- |
+| 映像 digest | `sha256:f3533e250608fe1816104cb486cea41467d290650f1f529e80b9a3d861c78389`（`ghcr.io/arthurc02/skillhub-runtime-agent-sdk:2026.08-29`，於 commit `1a8a4f8d` 發佈；以 digest `docker pull`，label → `2026.08-29`） |
+| 環境 | 與 `-27` 相同：本機 LiteLLM（`skillhub-litellm-1`）＋ `skillhub_egress`；`sandboxd` 以 HEAD 交叉編譯、在 `debian:12-slim` 容器跑，`SKILLHUB_SANDBOX_IMAGE` **直接指上面那個 digest**；兩支測試二進位交叉編譯後在容器裡跑；允許清單只在暫存副本裡填 litellm 的 egress IP 與服務名，committed 的那份一字未動 |
+| 費用 | 合計 **$0.046815**（`gpt-5.4-mini`，33 筆，以閘道 `LiteLLM_SpendLogs` 加總）：端到端六次 Run $0.018795（含下面那次預言誤判的 $0.003168）；harness 兩支 $0.028022；撤銷探測與被換掉的套件 $0 |
+| 映像層 | 同一個 digest、從跑起來的容器讀：`node --version` → `v22.23.5`、`hono` → `4.13.18`、`@hono/node-server` → `2.1.8`、SDK `0.3.233`、`id -u` → `65532` |
+
+| 項次 | 狀態 | 實測輸出 / 判定 |
+| --- | --- | --- |
+| **1. Skill 載入條件** | ✅ **通過，三種形狀各跑一次** | `TestEndToEndRunCallsTheModelThroughItsOwnVirtualKey` PASS（19.70s）、`TestEndToEndRunOfASkillInsideAPluginInstallsThatDirectoryAlone` PASS（16.29s）、`TestEndToEndRunOfAPluginInsideARepositoryDirectoryInstallsItsSkill` PASS（18.49s，見下）；`TestEndToEndRunHandsAQuestionOnlyThePersonCanAnswerBackAndStops` PASS（12.33s）；`TestEndToEndRunAnswersADeclaredListedMCPToolWithAStandIn` PASS（14.27s） |
+| **2. 全數經閘道；金鑰撤銷後回 401** | ✅ **通過** | 每次 Run 的模型呼叫都在該 Run 自己的 Virtual Key 下（`skillhub-attempt-<id>` 六把，5／5／5／4／3／6 筆）。撤銷：新開一把限 `gpt-5.4-mini`、0.5 USD、6 小時的 Virtual Key 打 `/v1/models` → **200**，`/key/delete` → 200，同一把再打 → **401** |
+| **3. Prompt caching 計費欄位與對帳** | ✅ **通過，六次 Run 全數對上** | `usage_object.prompt_tokens_details.cached_tokens`：Run 的 28 筆全部帶這個欄位，其中 16 筆非零，合計 282,583。對帳：六次 Run 回報 $0.003219、$0.003248、$0.003168、$0.002728、$0.002957、$0.003475，與各自 Virtual Key 的 `LiteLLM_SpendLogs` 加總到小數第六位全部相同 |
+| **4. `usage` 事件的發出條件** | ✅ **通過** | `TestHarnessReportsUsageForACompletedTurn` PASS（15.18s，`in=18011 out=34 token_source=result`）；`TestHarnessStopsAtTheTokenCeilingAndStillReportsUsage` PASS（15.10s，撞上限仍回報 `in=18011 out=29`，provider 錯誤指向 `token_budget_exceeded`）。harness 以 master key 當 grant，`cost` 為 `null`，與 `-27` 相同 |
+
+**套件位元組核對（不在四項清單上，同批驗證）**：`TestEndToEndRunRefusesAPackageWhoseStoredBytesAreNotTheAdmittedOnes` PASS（11.24s），沒有呼叫模型。
+
+**第一次跑的一條紅，是測試預言而不是映像**：`TestEndToEndRunOfAPluginInsideARepositoryDirectoryInstallsItsSkill` 第一次 FAIL（16.27s，$0.003168）。Run 只裝了 `run-marker`、`SKILL-FILES=` 那條也對，但預言以換行切整份 tar 取值；模型寫 `check.txt` 沒留結尾換行時，tar 的 NUL 補位與下一個 header 接在同一行，取到的值帶著它們。預言改成在第一個 NUL 截斷（commit `d3207848`，`TestReadingAValueOutOfARunArchive` 以 archive 形狀直接證明，不呼叫模型）後，同一個 digest 重跑 PASS（18.49s）。
+
+### 預設映像從 `-27` 移到 `-29`
+
+四項在 `-29` 的 digest 上跑過之後移動：`apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`（與它 `docker tag` 成的本地 tag）、`p02_docker_test.go` 的常數，以及 `automation.md` 的實跑範例。
