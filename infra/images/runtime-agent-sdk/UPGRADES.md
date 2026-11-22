@@ -1297,7 +1297,9 @@ anchore/grype:v0.121.0 <image> --only-fixed --fail-on high → No vulnerabilitie
 
 四項在 `-27` 的 digest 上跑過之後移動：`apps/sandbox/cmd/sandboxd/main.go` 的 `SKILLHUB_SANDBOX_IMAGE` 預設、`ci.yml` 的 `RUNTIME_IMAGE_FOR_PROBE`（與它 `docker tag` 成的本地 tag）、`p02_docker_test.go` 的常數，以及 `automation.md` 的實跑範例。
 
-## `2026.08-27` → `2026.08-28`（2026-11-22）— **安全性修補：`hono` 與 `@hono/node-server`；四項實測隨後補入本節，預設映像仍留在 `-27`**
+## `2026.08-27` → `2026.08-28`（2026-11-22）— **安全性修補：`hono` 與 `@hono/node-server`；未發佈，內容併入 `-29`**
+
+`-28` 在 commit `f0ff7024` 宣告，`Runtime Image` 的 I-06 在推送前擋下（[run #45018569353](https://github.com/ArthurC02/SkillHub/actions/runs/45018569353)：基底 Node `22.23.4` 新增四則 fixable High），所以 registry 上沒有這個標籤。本節的 lockfile 修補原封不動帶進 `-29`，四項實測記在 `-29` 那一節。
 
 `devctl dep-audit --full` 對 lockfile 列出 `hono`（Agent SDK → MCP SDK 的傳遞依賴）與 `@hono/node-server` 的七則 advisory，Nightly 的 `Runtime Image` 因此轉紅。`hono` 五則的首個修復版是 `4.13.16`、`@hono/node-server` 兩則是 `2.1.6`；對既有 lock 做最小變更更新落在 `hono 4.13.18`、`@hono/node-server 2.1.8`，兩者都在首個修復版之上，`npm audit` 歸零。
 
@@ -1319,8 +1321,31 @@ anchore/grype:v0.121.0 <image> --only-fixed --fail-on high → No vulnerabilitie
 | SDK 版本 | `0.3.233`（**未變**） |
 | 基底 digest | **未變** |
 | `run.mjs` | **未變** |
-| 預設映像 | 仍是 `-27`；四項實測跑過 `-28` 發佈的 digest 之後補進本節，再移動 |
+| 預設映像 | 仍是 `-27`（`-28` 未發佈，見本節開頭） |
 
 ### 本機驗證（2026-11-22，沒有任何模型呼叫）
 
 `npm audit`（`--omit=dev`）：原 lock 列出上表七則；換版後 `found 0 vulnerabilities`。`npm ci --omit=dev --no-audit --no-fund` 以新 lock 安裝成功（added 103 packages），容器外讀 `node_modules/hono/package.json` → `4.13.18`、`node_modules/@hono/node-server/package.json` → `2.1.8`，與 lock 一致。
+
+## `2026.08-28` → `2026.08-29`（2026-11-22）— **安全性修補：基底映像的 Node；含 `-28` 的 `hono` 修補；四項實測隨後補入本節，預設映像仍留在 `-27`**
+
+`-28` 的 I-06 在推送前擋下基底 Node `22.23.4` 的四則 fixable High，換基底後一起收。`-28` 從未發佈，所以這一版對 registry 而言是從 `-27` 直接升上來：lockfile 的 `hono`／`@hono/node-server` 修補（見上一節）加上本節的基底。
+
+| 套件 | 原版本 | 修正版本 | 公告 |
+| --- | --- | --- | --- |
+| Node（基底 `node:22-bookworm-slim`） | `22.23.4` | `22.23.5` | CVE-2026-123864、CVE-2026-123865、CVE-2026-123866、CVE-2026-123872（High），另有 CVE-2026-123867、CVE-2026-123871、CVE-2026-123875、CVE-2026-123877 等 Medium 一併消失 |
+
+**暴露面**：Node 是 `run.mjs` 與 Agent SDK 的執行環境，每一次 Run 都在它上面跑 Skill 帶來的內容。
+
+| 欄位 | 值 |
+| --- | --- |
+| 變更 | `FROM` 的 digest（`sha256:4b150b48…` → `sha256:e9f565d3…`，即 `node:22.23.5-bookworm-slim` 的 index digest）；`ARG IMAGE_VERSION`。lockfile 沿用 `-28` |
+| 新增的依賴 | 無 |
+| SDK 版本 | `0.3.233`（**未變**） |
+| 基底 digest | **變更**，見上 |
+| `run.mjs` | **未變** |
+| 預設映像 | 仍是 `-27`；四項在 CI 發佈的 `-29` digest 上跑過之後補進本節，再移動 |
+
+### 本機驗證（2026-11-22，沒有任何模型呼叫）
+
+以 CI 釘住的 `anchore/syft:v1.55.0@sha256:4cc92b64…` 與 `anchore/grype:v0.121.0@sha256:621d56d1…` 掃描本機建置 `skillhub-runtime-agent-sdk:2026.08-29-local`，漏洞資料庫 2026-11-22 建置、`valid`，`--only-fixed --fail-on high`：No vulnerabilities found，exit 0。同一個資料庫掃舊基底 `node:22-bookworm-slim@sha256:4b150b48…`：列出上表四則 High，exit 2。同一個映像、無網路：`node --version` → `v22.23.5`，`hono` → `4.13.18`，`@hono/node-server` → `2.1.8`，SDK → `0.3.233`；`id -u` → `65532`；`command -v npm` → 無；`.Size` → 1,352,822,581 bytes；version label → `2026.08-29`。
