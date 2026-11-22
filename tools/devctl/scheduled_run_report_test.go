@@ -17,52 +17,60 @@ var (
 	neededJob       = regexp.MustCompile(`^ {6}- ([a-z0-9-]+)$`)
 )
 
+type workflowJobs struct {
+	names             []string
+	needs             map[string][]string
+	conditions        map[string]string
+	current, reporter string
+	inNeeds           bool
+}
+
+func readWorkflowJobs(workflow string) workflowJobs {
+	jobs := workflowJobs{needs: map[string][]string{}, conditions: map[string]string{}}
+	_, body, _ := strings.Cut(workflow, "\njobs:\n")
+	for _, line := range strings.Split(body, "\n") {
+		jobs.read(line)
+	}
+	return jobs
+}
+
+func (jobs *workflowJobs) read(line string) {
+	if match := ciJobHeader.FindStringSubmatch(line); match != nil {
+		jobs.current, jobs.inNeeds = match[1], false
+		jobs.names = append(jobs.names, jobs.current)
+		return
+	}
+	switch match := neededJob.FindStringSubmatch(line); {
+	case line == "    needs:":
+		jobs.inNeeds = true
+	case jobs.inNeeds && match != nil:
+		jobs.needs[jobs.current] = append(jobs.needs[jobs.current], match[1])
+	case strings.HasPrefix(line, "    "):
+		jobs.inNeeds = jobs.inNeeds && strings.HasPrefix(line, "      ")
+	}
+	if condition, ok := strings.CutPrefix(line, "    if: "); ok {
+		jobs.conditions[jobs.current] = condition
+	}
+	if strings.HasSuffix(line, scheduledRunReporter) {
+		jobs.reporter = jobs.current
+	}
+}
+
 func scheduledRunReportGaps(workflow string) []string {
 	if !scheduleTrigger.MatchString(workflow) || strings.Contains(workflow, "gh issue create") {
 		return nil
 	}
-	var jobs []string
-	needs := map[string][]string{}
-	conditions := map[string]string{}
-	inJobs, inNeeds := false, false
-	job, reporter := "", ""
-	for _, line := range strings.Split(workflow, "\n") {
-		if line == "jobs:" {
-			inJobs = true
-			continue
-		}
-		if !inJobs {
-			continue
-		}
-		if match := ciJobHeader.FindStringSubmatch(line); match != nil {
-			job, inNeeds = match[1], false
-			jobs = append(jobs, job)
-			continue
-		}
-		switch match := neededJob.FindStringSubmatch(line); {
-		case line == "    needs:":
-			inNeeds = true
-		case inNeeds && match != nil:
-			needs[job] = append(needs[job], match[1])
-		case strings.HasPrefix(line, "    "):
-			inNeeds = inNeeds && strings.HasPrefix(line, "      ")
-		}
-		if condition, ok := strings.CutPrefix(line, "    if: "); ok {
-			conditions[job] = condition
-		}
-		if strings.HasSuffix(line, scheduledRunReporter) {
-			reporter = job
-		}
-	}
+	jobs := readWorkflowJobs(workflow)
+	reporter := jobs.reporter
 	if reporter == "" {
 		return []string{"no job reports a failed scheduled run"}
 	}
 	var gaps []string
-	if !strings.Contains(conditions[reporter], "always()") {
+	if !strings.Contains(jobs.conditions[reporter], "always()") {
 		gaps = append(gaps, reporter+" is skipped whenever a job it waits for fails")
 	}
-	for _, other := range jobs {
-		if other != reporter && !slices.Contains(needs[reporter], other) {
+	for _, other := range jobs.names {
+		if other != reporter && !slices.Contains(jobs.needs[reporter], other) {
 			gaps = append(gaps, reporter+" does not wait for "+other)
 		}
 	}
