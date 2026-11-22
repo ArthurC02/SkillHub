@@ -31,7 +31,7 @@ cannot set up cgroup for root: configuring cgroup: write /sys/fs/cgroup/cgroup.s
 
 ## 下一步
 
-把[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)的 10 個測項逐條寫成腳本，在這裡 dry run。**跑得過的記成「程序可執行」，不記成測項通過**；真的驗收要一台獨立 Linux 節點。`infra/nodes/gvisor-baseline.txt` 釘選目前基線 `release-20261012.0` 與兩個架構的 sha512；節點仍須以實際安裝版本產生驗收證據。
+把[Sandbox 隔離與執行安全](../../docs/adr/README.md#sandbox-隔離與執行安全)的 10 個測項逐條寫成腳本，在這裡 dry run。**跑得過的記成「程序可執行」，不記成測項通過**；真的驗收要一台獨立 Linux 節點。`infra/nodes/gvisor-baseline.txt` 釘選目前基線 `release-20261116.0` 與兩個架構的 sha512；節點仍須以實際安裝版本產生驗收證據。
 
 ---
 
@@ -112,7 +112,7 @@ SKILLHUB_SANDBOX_IMAGE=<repo:tag@digest> python tools/sec009/t8-image-audit.py  
 | # | 現況 |
 | --- | --- |
 | ① 映像已發佈至 GHCR 且附 SBOM 與掃描 attestation | 依指定 digest 的 attestation 判定 |
-| ② `infra/nodes/gvisor-baseline.txt` 已填部署基線 | 基線為 `release-20261012.0`；節點實際版本仍須由准入探針驗證 |
+| ② `infra/nodes/gvisor-baseline.txt` 已填部署基線 | 基線為 `release-20261116.0`；節點實際版本仍須由准入探針驗證 |
 | ③ `infra/egress/allowlist.yaml` 的 `pinned_ip` 已填 | **FAIL**，仍是 `unset` |
 
 **②③ 兩項都要等第一台節點**（②是那台機器上 `runsc --version` 的值，③是閘道的沙箱面位址）。所以這支腳本的結論是一句很具體的話：**SEC-009 目前缺的不是十個測項，是一台機器**——而它同時證明了第①項不在那台機器的等待清單上。
