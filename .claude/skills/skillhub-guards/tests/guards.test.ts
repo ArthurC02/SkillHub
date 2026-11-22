@@ -263,8 +263,27 @@ for (const [command, directory] of pushedFrom) {
 const IMAGE_FILE = 'infra/images/runtime-agent-sdk/Dockerfile'
 
 test('a push from a worktree whose new commits change the runtime image is refused', async ($, on) => {
-  world(on, argv => argv.includes('diff') && argv.includes('c:/scratch/wt') && argv.includes('@{u}...HEAD') ? IMAGE_FILE : '')
+  world(on, argv => argv.includes('diff') && argv.includes('c:/scratch/wt') && argv.includes('origin/main...HEAD') ? IMAGE_FILE : '')
   const result = await $.tool.call({ tool: 'Bash', command: 'cd "c:/scratch/wt" && git push origin HEAD:main' })
+  expect(result.deny).toMatch(/runtime image tag/)
+})
+
+test('a push to main is not refused for image commits only the branch\'s own stale upstream lacks', async ($, on) => {
+  world(on, argv => argv.includes('diff') && argv.includes('@{u}...HEAD') ? IMAGE_FILE : '')
+  const result = await $.tool.call({ tool: 'Bash', command: 'git push origin HEAD:main' })
+  expect(result.deny).toBeUndefined()
+})
+
+test('a push to a branch the remote does not have yet is compared against the upstream', async ($, on) => {
+  on('session.root', () => ({ value: ROOT }))
+  on('process.run', (_, e) => {
+    const argv = e.argv.join(' ')
+    const missing = argv.includes('rev-parse') && argv.includes('origin/topic')
+    const stdout = argv.includes('diff') && argv.includes('@{u}...HEAD') ? IMAGE_FILE : ''
+    return { value: { exitCode: missing ? 1 : 0, stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+  })
+  on('tool.call', () => ({ result: 'ran' }))
+  const result = await $.tool.call({ tool: 'Bash', command: 'git push -u origin HEAD:refs/heads/topic' })
   expect(result.deny).toMatch(/runtime image tag/)
 })
 

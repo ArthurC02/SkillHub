@@ -261,9 +261,21 @@ export function pushDirectory(command: string, sessionRoot: string): string {
   return ABSOLUTE.test(path) ? path : `${sessionRoot}/${path}`
 }
 
-async function runtimeImagePushGate($: EngineInterface, root: string): Promise<Gate> {
-  const upstream = await $.process.run(['git', '-C', root, 'rev-parse', '--verify', '--quiet', '@{u}'])
-  const base = upstream.exitCode === 0 ? '@{u}' : 'origin/main'
+const PUSH_DESTINATION = new RegExp(String.raw`push(?:\s+-\S+)*\s+([\w.-]+)\s+[^\s:]*:(?:refs/heads/)?([\w./-]+)`)
+
+async function resolves($: EngineInterface, root: string, ref: string): Promise<boolean> {
+  return (await $.process.run(['git', '-C', root, 'rev-parse', '--verify', '--quiet', ref])).exitCode === 0
+}
+
+async function pushBase($: EngineInterface, root: string, command: string): Promise<string> {
+  const destination = command.match(PUSH_DESTINATION)
+  const remoteBranch = destination && `${destination[1]}/${destination[2]}`
+  if (remoteBranch && await resolves($, root, remoteBranch)) return remoteBranch
+  return await resolves($, root, '@{u}') ? '@{u}' : 'origin/main'
+}
+
+async function runtimeImagePushGate($: EngineInterface, root: string, command = ''): Promise<Gate> {
+  const base = await pushBase($, root, command)
   const changed = await $.process.run(['git', '-C', root, 'diff', '--name-only', `${base}...HEAD`, '--', RUNTIME_IMAGE])
   if (changed.stdout.trim() === '') return {}
   const imageCommit = (await $.process.run(['git', '-C', root, 'log', '-1', '--format=%H', `${base}..HEAD`, '--', RUNTIME_IMAGE]))
@@ -361,7 +373,7 @@ export const register: Register = on => {
 
     let granted: string | undefined
     if (GIT_PUSH.test(e.command)) {
-      const image = await runtimeImagePushGate($, pushDirectory(e.command, root))
+      const image = await runtimeImagePushGate($, pushDirectory(e.command, root), e.command)
       if (image.refusal) return image.refusal
       granted = image.granted
     }
