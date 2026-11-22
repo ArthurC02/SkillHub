@@ -31,11 +31,11 @@ PROBES = ["plugin.json", ".claude-plugin/plugin.json", ".claude-plugin/marketpla
 HEADERS = {"User-Agent": "skillhub-plugin-shape-survey"}
 
 
-def _get_bytes(url: str) -> tuple[int, bytes | None]:
+def _get_bytes(url: str, limit: int | None = 200_000) -> tuple[int, bytes | None]:
     request = urllib.request.Request(url, headers=dict(HEADERS, Accept="application/vnd.github+json"))
     try:
         with urllib.request.urlopen(request, timeout=30) as response:
-            return 200, response.read(200_000)
+            return 200, response.read() if limit is None else response.read(limit)
     except urllib.error.HTTPError as e:
         return e.code, None
     except Exception:
@@ -43,7 +43,7 @@ def _get_bytes(url: str) -> tuple[int, bytes | None]:
 
 
 def _get_json(url: str) -> tuple[int, dict | None]:
-    status, body = _get_bytes(url)
+    status, body = _get_bytes(url, limit=None)
     return status, (json.loads(body) if body is not None else None)
 
 
@@ -67,6 +67,19 @@ def discover() -> dict[str, dict]:
     return repos
 
 
+def author_shape(author: object) -> str:
+    if author is None:
+        return "absent"
+    if not isinstance(author, dict):
+        return "not an object"
+    extra = sorted(set(author) - {"name", "email", "url"})
+    if extra:
+        return "fields the specification does not allow: " + ", ".join(extra)
+    if any(not isinstance(value, str) for value in author.values()):
+        return "a value that is not a string"
+    return "conforming"
+
+
 def probe(repos: dict[str, dict]) -> dict[str, dict]:
     for name, row in repos.items():
         row["found"] = []
@@ -84,6 +97,7 @@ def probe(repos: dict[str, dict]) -> dict[str, dict]:
                     continue
                 row["root_schema"] = manifest.get("$schema", "(absent)")
                 row["root_fields"] = sorted(manifest)
+                row["author_shape"] = author_shape(manifest.get("author"))
         time.sleep(0.05)
     return repos
 
@@ -112,6 +126,11 @@ def summarise(repos: dict[str, dict]) -> None:
         fields.update(repos[name].get("root_fields", []))
     for field, count in fields.most_common():
         print(f"  {count:>4}/{len(conforming)}  {field}")
+
+    print(f"\nauthor among the {len(conforming)} conforming manifests")
+    for shape, count in collections.Counter(
+            repos[name].get("author_shape", "absent") for name in conforming).most_common():
+        print(f"  {count:>4}/{len(conforming)}  {shape}")
 
 
 def main() -> int:

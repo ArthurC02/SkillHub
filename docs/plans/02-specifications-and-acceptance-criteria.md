@@ -187,7 +187,8 @@
 - 匯入接受三種來源形狀並走同一條驗證管線：單一 Agent Skill、Agent Plugin（來源根目錄的 `plugin.json`）、以及沒有合規 manifest 但目錄樹含有一個以上 `SKILL.md` 的來源。
 - 只有來源**根目錄**的 `plugin.json` 被當成 plugin manifest 讀。其他路徑上的 manifest 不讀、不報錯，該來源依第三種形狀處理。
 - 一個來源被判為 Agent Plugin 的條件是 `plugin.json` 的 schema 識別字等於規格發佈的 canonical 值。宣告其他規格、沒有 schema 識別字或不是有效 JSON 者，一律為資訊層級揭露並改依第三種形狀處理，不得阻擋匯入。
-- 唯一的阻擋錯誤是宣告了公規卻不符合它：schema 識別字相符而 `name` 不為 1–64 字元、只含小寫英數與 `-`／`.`、首尾為英數、不含連續 `-` 或 `.`；訊息須指名是哪一項。
+- 唯一的阻擋錯誤是宣告了公規卻不符合它：schema 識別字相符而 `name` 不為 1–64 字元、只含小寫英數與 `-`／`.`、首尾為英數、不含連續 `-` 或 `.`，或 `author` 不是只含 `name`、`email`、`url` 三個字串欄位的物件；訊息須指名是哪一項。這兩項是規格明文判為 manifest 無效的全部欄位規則；其餘欄位（`version`、`homepage`、`repository`、`license`、`keywords`）只檢查 JSON 型別，格式不符不得拒絕。
+- `extensions` 的值一律不驗、不讀——平台不實作任何命名空間。但 `extensions` 本身不是物件時要有資訊層級揭露，不得無聲忽略。
 - Agent Plugin 的 Skill 探索位置固定為 `skills/` 的直接子目錄，每個含 `SKILL.md` 的子目錄為一個 Skill，不向更深層遞迴。
 - 找不到任何 `SKILL.md` 時，失敗訊息列出系統找過的位置；不得只回報缺少 `SKILL.md`。
 - 每個找到的 Skill 各自建立一個 Skill Version，各自有內容雜湊、授權事實與驗證報告；不建立 Plugin 實體，也不建立跨 Skill 的版本聚合。
