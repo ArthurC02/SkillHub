@@ -35,11 +35,16 @@ function coverage(pick: Locator) {
   return pick.evaluate((element) => {
     const rect = element.getBoundingClientRect();
     const top = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+    const header = document.querySelector(".app-header");
     return {
       uncovered: Boolean(top && (top === element || element.parentElement?.contains(top))),
       top: top ? `${top.tagName.toLowerCase()}.${top.className}` : null,
       rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
       viewport: { width: window.innerWidth, height: window.innerHeight, scrollY: window.scrollY },
+      clearance: getComputedStyle(document.documentElement).getPropertyValue(
+        "--app-header-clearance",
+      ),
+      headerHeight: header ? header.getBoundingClientRect().height : null,
     };
   });
 }
