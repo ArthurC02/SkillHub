@@ -1,0 +1,29 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "ingest-fixture-recited-2026-11-23",
+  "proposal_id": "ingest-fixture-recited-2026-11-23",
+  "registry_revision": {
+    "observed_commit": "0e849bc2f3cb2ce35fe3c3d3ab53a2c1f91a9550",
+    "registry_digest": "sha256:70987f7e3228024f60825120a0f0f2234b128e2fe3fb9f12961d605710e06273",
+    "committed_digest": "sha256:70987f7e3228024f60825120a0f0f2234b128e2fe3fb9f12961d605710e06273"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "evidence-current",
+      "status": "passed",
+      "evidence": ".domain-memory/domain-memory.exe verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/ingest-fixture-recited-2026-11-23 --path apps/platform/internal/entrypoint/api/apiserver/import_source_integration_test.go --path apps/platform/internal/skill/admission/source.go",
+      "command_profile": "verify-evidence",
+      "exit_code": 0,
+      "output_sha256": "sha256:3c69137e715d43a494e31967644ecee70f4a7c26396a324e28c65ea93dbcec5e",
+      "finished_at": "2026-11-22T17:51:23.479577Z"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

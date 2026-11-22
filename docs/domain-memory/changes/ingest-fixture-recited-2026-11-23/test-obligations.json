@@ -1,0 +1,16 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "ingest-fixture-recited-2026-11-23",
+  "proposal_id": "ingest-fixture-recited-2026-11-23",
+  "obligations": [
+    {
+      "id": "evidence-current",
+      "source_type": "acceptance-criterion",
+      "source_id": "citations-current",
+      "expected_outcome": "verify-evidence reports current for every citation of the updated records.",
+      "level": "architecture",
+      "status": "planned",
+      "check": ".domain-memory/domain-memory.exe verify-evidence --registry-root docs/domain-memory --repo-root . --package-root docs/domain-memory/changes/ingest-fixture-recited-2026-11-23 --path apps/platform/internal/entrypoint/api/apiserver/import_source_integration_test.go --path apps/platform/internal/skill/admission/source.go"
+    }
+  ]
+}
