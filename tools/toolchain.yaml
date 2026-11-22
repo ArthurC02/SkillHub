@@ -3,7 +3,7 @@ schema_version: 1
 tools:
   task: "3.54.0"
   uv: "0.13.5"
-  docker_cli: "29.9.2"
+  docker_cli: "29.10.0"
   docker_compose: "5.6.1"
   golangci_lint: "2.15.0"
   sqlc: "1.31.1"
@@ -14,7 +14,7 @@ tools:
   govulncheck: "1.9.0"
   pip_audit: "2.10.1"
   go_licenses: "2.0.1"
-  zizmor: "1.31.1"
+  zizmor: "1.32.0"
   pglite: "0.5.8"
   pglite_socket: "0.2.11"
   pglite_pgvector: "0.0.9"
