@@ -478,8 +478,45 @@ func assertOnlyThePluginSkillRan(t *testing.T, archive string) {
 func lineStartingWith(archive, prefix string) string {
 	for _, line := range strings.Split(archive, "\n") {
 		if i := strings.Index(line, prefix); i >= 0 {
-			return strings.TrimRight(line[i:], "\x00\r")
+			value, _, _ := strings.Cut(line[i:], "\x00")
+			return strings.TrimRight(value, "\r")
 		}
 	}
 	return "(absent)"
+}
+
+func TestReadingAValueOutOfARunArchive(t *testing.T) {
+	const nextHeader = "marker.txt\x00\x00ustar\x00\x0000000"
+	for _, c := range []struct {
+		name    string
+		archive string
+		want    string
+	}{
+		{
+			name:    "a newline ends the value",
+			archive: "prelude\nSKILLS-INSTALLED=run-marker\nrest\n",
+			want:    "SKILLS-INSTALLED=run-marker",
+		},
+		{
+			name:    "the file ended without a newline, so tar's padding and the next header share the line",
+			archive: "prelude\nSKILLS-INSTALLED=run-marker\x00\x00\x00" + nextHeader,
+			want:    "SKILLS-INSTALLED=run-marker",
+		},
+		{
+			name:    "the line carries a carriage return",
+			archive: "SKILLS-INSTALLED=run-marker\r\n",
+			want:    "SKILLS-INSTALLED=run-marker",
+		},
+		{
+			name:    "no line carries the prefix",
+			archive: "prelude\nSKILL-FILES=SKILL.md\n",
+			want:    "(absent)",
+		},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			if got := lineStartingWith(c.archive, "SKILLS-INSTALLED="); got != c.want {
+				t.Errorf("read %q, want %q", got, c.want)
+			}
+		})
+	}
 }
