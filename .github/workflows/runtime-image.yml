@@ -255,7 +255,7 @@ jobs:
     needs:
       - image
       - rescan
-    if: ${{ always() && github.event_name == 'schedule' }}
+    if: ${{ always() && github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

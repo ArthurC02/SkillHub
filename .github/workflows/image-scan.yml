@@ -50,7 +50,7 @@ jobs:
 
       - name: Scan the compose and application images
         env:
-          FAIL_ON_UPSTREAM: ${{ github.event_name == 'schedule' && '1' || '0' }}
+          FAIL_ON_UPSTREAM: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '1' || '0' }}
         run: bash tools/ci/scan-images.sh
 
       - name: Keep the SBOMs and the reports
@@ -64,7 +64,7 @@ jobs:
   report-scheduled-run:
     needs:
       - scan
-    if: ${{ always() && github.event_name == 'schedule' }}
+    if: ${{ always() && github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

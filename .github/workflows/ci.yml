@@ -1003,7 +1003,7 @@ jobs:
       - images-postgres-sandboxd
       - devtools-image
       - images-push
-    if: ${{ always() && github.event_name == 'schedule' }}
+    if: ${{ always() && github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
