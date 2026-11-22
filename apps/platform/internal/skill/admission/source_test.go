@@ -140,7 +140,7 @@ func TestTheCeilingCountsTheSkillsAnImportWouldCreateNotTheOnesItFound(t *testin
 		extra map[string]string
 	}{
 		{"one more is malformed", map[string]string{"skills/broken/SKILL.md": "no frontmatter here at all\n"}},
-		{"one more repeats a name", map[string]string{"skills/again/SKILL.md": namedSkillMD("skill-000")}},
+		{"one more sits in a folder of another name", map[string]string{"skills/again/SKILL.md": namedSkillMD("skill-000")}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			files := sourceOfValidSkills(MaxSkillsPerImport)

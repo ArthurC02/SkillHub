@@ -265,9 +265,9 @@ func TestEverySkillOfAPluginKeepsThePluginsOwnFacts(t *testing.T) {
 	owner := a.login(t, "plugin-facts")
 
 	res := importSource(t, a, pool, owner, map[string]string{
-		"plugin.json":         conformingPlugin("desk-tools"),
-		"skills/one/SKILL.md": skillNamed("facts-one"),
-		"skills/two/SKILL.md": skillNamed("facts-two"),
+		"plugin.json":               conformingPlugin("desk-tools"),
+		"skills/facts-one/SKILL.md": skillNamed("facts-one"),
+		"skills/facts-two/SKILL.md": skillNamed("facts-two"),
 	}, nil)
 	if len(res.Imported) != 2 {
 		t.Fatalf("imported %d skills, want 2", len(res.Imported))
@@ -348,23 +348,23 @@ func TestASecondPluginCannotTurnItsSkillIntoANewVersionOfAnotherPluginsSkill(t *
 	owner := a.login(t, "cross-source-name")
 
 	if code, body := postSource(t, owner, zipOf(t, map[string]string{
-		"plugin.json":            conformingPlugin("desk-tools"),
-		"skills/review/SKILL.md": skillNamed("code-review"),
+		"plugin.json":                 conformingPlugin("desk-tools"),
+		"skills/code-review/SKILL.md": skillNamed("code-review"),
 	})); code != http.StatusCreated {
 		t.Fatalf("first plugin: want 201, got %d: %v", code, body)
 	}
 
 	code, body := postSource(t, owner, zipOf(t, map[string]string{
-		"plugin.json":            conformingPlugin("team-kit"),
-		"skills/review/SKILL.md": skillNamed("code-review") + "\nA different author's text.\n",
-		"skills/lint/SKILL.md":   skillNamed("lint-rules"),
+		"plugin.json":                 conformingPlugin("team-kit"),
+		"skills/code-review/SKILL.md": skillNamed("code-review") + "\nA different author's text.\n",
+		"skills/lint-rules/SKILL.md":  skillNamed("lint-rules"),
 	}))
 	if code != http.StatusCreated {
 		t.Fatalf("second plugin with one colliding skill: want 201 for the part that came in, got %d: %v", code, body)
 	}
 	codes := refusedCodes(t, body)
-	if got := codes["skills/review"]; len(got) != 1 || got[0] != skillpkg.CodeNameHeldByAnotherSource {
-		t.Errorf("refusal codes for skills/review = %v, want [%s]; otherwise the second plugin's skill becomes a version of the first's",
+	if got := codes["skills/code-review"]; len(got) != 1 || got[0] != skillpkg.CodeNameHeldByAnotherSource {
+		t.Errorf("refusal codes for skills/code-review = %v, want [%s]; otherwise the second plugin's skill becomes a version of the first's",
 			got, skillpkg.CodeNameHeldByAnotherSource)
 	}
 	if got := len(skillsOf(t, body)); got != 1 {
@@ -387,19 +387,19 @@ func TestAPluginWhoseEverySkillCollidesIsRefusedAsAWhole(t *testing.T) {
 	owner := a.login(t, "cross-source-all")
 
 	if code, _ := postSource(t, owner, zipOf(t, map[string]string{
-		"plugin.json":            conformingPlugin("desk-tools"),
-		"skills/review/SKILL.md": skillNamed("code-review"),
+		"plugin.json":                 conformingPlugin("desk-tools"),
+		"skills/code-review/SKILL.md": skillNamed("code-review"),
 	})); code != http.StatusCreated {
 		t.Fatalf("first plugin: want 201, got %d", code)
 	}
 	code, body := postSource(t, owner, zipOf(t, map[string]string{
-		"plugin.json":            conformingPlugin("team-kit"),
-		"skills/review/SKILL.md": skillNamed("code-review") + "\nA different author's text.\n",
+		"plugin.json":                 conformingPlugin("team-kit"),
+		"skills/code-review/SKILL.md": skillNamed("code-review") + "\nA different author's text.\n",
 	}))
 	if code != http.StatusUnprocessableEntity {
 		t.Fatalf("a plugin whose only skill collides: want 422, got %d: %v", code, body)
 	}
-	if got := refusedCodes(t, body)["skills/review"]; len(got) != 1 || got[0] != skillpkg.CodeNameHeldByAnotherSource {
+	if got := refusedCodes(t, body)["skills/code-review"]; len(got) != 1 || got[0] != skillpkg.CodeNameHeldByAnotherSource {
 		t.Errorf("refusal codes = %v, want [%s]", got, skillpkg.CodeNameHeldByAnotherSource)
 	}
 	if n := workspaceSkillCount(t, pool, owner); n != 1 {
@@ -414,8 +414,8 @@ func TestReimportingTheSamePluginStillAddsANewVersion(t *testing.T) {
 
 	for i, body := range []string{skillNamed("code-review"), skillNamed("code-review") + "\nRevised.\n"} {
 		code, res := postSource(t, owner, zipOf(t, map[string]string{
-			"plugin.json":            conformingPlugin("desk-tools"),
-			"skills/review/SKILL.md": body,
+			"plugin.json":                 conformingPlugin("desk-tools"),
+			"skills/code-review/SKILL.md": body,
 		}))
 		if code != http.StatusCreated {
 			t.Fatalf("import %d of the same plugin: want 201, got %d: %v", i+1, code, res)
@@ -439,13 +439,13 @@ func TestAStandaloneUploadOnEitherSideKeepsAttachingAsANewVersion(t *testing.T) 
 	}{
 		{
 			name:   "plugin skill then a standalone upload of the same name",
-			first:  map[string]string{"plugin.json": conformingPlugin("desk-tools"), "skills/review/SKILL.md": skillNamed("code-review")},
+			first:  map[string]string{"plugin.json": conformingPlugin("desk-tools"), "skills/code-review/SKILL.md": skillNamed("code-review")},
 			second: map[string]string{"SKILL.md": skillNamed("code-review") + "\nHand-edited.\n"},
 		},
 		{
 			name:   "standalone upload then a plugin carrying the same name",
 			first:  map[string]string{"SKILL.md": skillNamed("code-review")},
-			second: map[string]string{"plugin.json": conformingPlugin("desk-tools"), "skills/review/SKILL.md": skillNamed("code-review") + "\nFrom the plugin.\n"},
+			second: map[string]string{"plugin.json": conformingPlugin("desk-tools"), "skills/code-review/SKILL.md": skillNamed("code-review") + "\nFrom the plugin.\n"},
 		},
 	}
 	for i, tc := range cases {

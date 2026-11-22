@@ -426,15 +426,15 @@ func TestSkillDetailNamesThePluginAndTheSkillsThatCameWithIt(t *testing.T) {
 	owner := a.login(t, "plugin-provenance-detail")
 
 	res := importSource(t, a, pool, owner, map[string]string{
-		"plugin.json":           conformingPlugin("desk-tools"),
-		"skills/tidy/SKILL.md":  skillNamed("tidy-notes"),
-		"skills/split/SKILL.md": skillNamed("split-csv"),
-		"skills/tag/SKILL.md":   skillNamed("tag-inbox"),
+		"plugin.json":                conformingPlugin("desk-tools"),
+		"skills/tidy-notes/SKILL.md": skillNamed("tidy-notes"),
+		"skills/split-csv/SKILL.md":  skillNamed("split-csv"),
+		"skills/tag-inbox/SKILL.md":  skillNamed("tag-inbox"),
 	}, nil)
 	if len(res.Imported) != 3 {
 		t.Fatalf("imported %d skills, want 3", len(res.Imported))
 	}
-	tidy := importedAt(t, res, "skills/tidy")
+	tidy := importedAt(t, res, "skills/tidy-notes")
 
 	var got detail
 	if code := getJSON(t, owner.Client, a.URL+"/api/skills/"+uuidText(tidy.Skill.ID), &got); code != http.StatusOK {
@@ -444,12 +444,12 @@ func TestSkillDetailNamesThePluginAndTheSkillsThatCameWithIt(t *testing.T) {
 		t.Fatal("the detail carries no source at all")
 	}
 	assertDeskToolsPluginFacts(t, got)
-	if got.Source.Path != "skills/tidy" {
-		t.Errorf("path = %q, want skills/tidy; without it the reader cannot find this skill upstream", got.Source.Path)
+	if got.Source.Path != "skills/tidy-notes" {
+		t.Errorf("path = %q, want skills/tidy-notes; without it the reader cannot find this skill upstream", got.Source.Path)
 	}
 	assertTidySiblingsAreSplitAndTag(t, got, uuidText(tidy.Skill.ID))
 
-	taken := importedAt(t, res, "skills/tag")
+	taken := importedAt(t, res, "skills/tag-inbox")
 	if _, err := pool.Exec(context.Background(),
 		"UPDATE skills SET takedown_at = now(), takedown_reason = 'test' WHERE id = $1", taken.Skill.ID); err != nil {
 		t.Fatal(err)
@@ -489,8 +489,8 @@ func assertTidySiblingsAreSplitAndTag(t *testing.T, got detail, tidyID string) {
 		}
 		names[sibling.Name] = sibling.Path
 	}
-	if len(names) != 2 || names["split-csv"] != "skills/split" || names["tag-inbox"] != "skills/tag" {
-		t.Errorf("siblings = %+v, want split-csv at skills/split and tag-inbox at skills/tag", got.Source.Siblings)
+	if len(names) != 2 || names["split-csv"] != "skills/split-csv" || names["tag-inbox"] != "skills/tag-inbox" {
+		t.Errorf("siblings = %+v, want split-csv at skills/split-csv and tag-inbox at skills/tag-inbox", got.Source.Siblings)
 	}
 }
 

@@ -575,11 +575,11 @@ func TestAnExposedSkillsDetailNamesNoPrivateSkillFromTheSamePackage(t *testing.T
 	a.auth.Operators = map[string]bool{operator.userID: true}
 	sharedName, privateName := freshName("exposed-siblings-shared"), freshName("exposed-siblings-private")
 	res := importSource(t, a, pool, author, map[string]string{
-		"plugin.json":             conformingPlugin("exposed-siblings"),
-		"skills/shared/SKILL.md":  skillNamed(sharedName),
-		"skills/private/SKILL.md": skillNamed(privateName),
+		"plugin.json":                         conformingPlugin("exposed-siblings"),
+		"skills/" + sharedName + "/SKILL.md":  skillNamed(sharedName),
+		"skills/" + privateName + "/SKILL.md": skillNamed(privateName),
 	}, nil)
-	shared := uuidText(importedAt(t, res, "skills/shared").Skill.ID)
+	shared := uuidText(importedAt(t, res, "skills/"+sharedName).Skill.ID)
 	registerPublisher(t, author, freshName("exposed-siblings"))
 	code, body := publish(t, author, shared, `{"rights_attested":true}`)
 	if code != http.StatusOK {
