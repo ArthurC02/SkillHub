@@ -1,0 +1,41 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "a-skills-name-is-its-folders-name",
+  "proposal_id": "a-skills-name-is-its-folders-name-2026-11-23",
+  "obligations": [
+    {
+      "id": "rule-a-skills-name-is-the-name-of-the-folder-it-sits-in",
+      "source_type": "acceptance-criterion",
+      "source_id": "folder-name-refused",
+      "also_covers": [
+        {
+          "source_type": "acceptance-criterion",
+          "source_id": "folder-name-not-invented"
+        },
+        {
+          "source_type": "rule",
+          "source_id": "a-skills-name-is-the-name-of-the-folder-it-sits-in"
+        }
+      ],
+      "expected_outcome": "A declared name that is not the name of the folder the Skill sits in is refused with a blocking finding naming both; a name with no author folder to compare, and a package with no name, are not judged on the folder.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run '^TestANameThatIsNotTheFolderNameIsRefused$|^TestAPackageMissingItsNameIsNotAlsoRefusedForItsFolderName$' ./internal/shared/skillpkg/"
+    },
+    {
+      "id": "rule-one-import-admits-a-name-once",
+      "source_type": "acceptance-criterion",
+      "source_id": "duplicate-rule-intact",
+      "also_covers": [
+        {
+          "source_type": "rule",
+          "source_id": "one-import-admits-a-name-once"
+        }
+      ],
+      "expected_outcome": "Of two folders of one source sharing a base name and declaring it, the first is admitted and the second refused with the duplicate-name finding; a folder whose declared name is not its own is refused for that instead.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run '^TestPlanImportRefusesASecondSkillClaimingANameAlreadyTaken$|^TestPlanImportRefusesASkillWhoseNameIsNotItsFolderName$' ./internal/skill/admission/"
+    }
+  ]
+}

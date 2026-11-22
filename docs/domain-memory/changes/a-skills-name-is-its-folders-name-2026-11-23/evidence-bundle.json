@@ -1,0 +1,40 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "a-skills-name-is-its-folders-name",
+  "proposal_id": "a-skills-name-is-its-folders-name-2026-11-23",
+  "registry_revision": {
+    "observed_commit": "d7d5a1aeca41a35d05f02afa2928e976cac7ea09",
+    "registry_digest": "sha256:38e85fc9d132a6014c4e405442aced3fc28b7608784700e304170284b76cb169",
+    "committed_digest": "sha256:38e85fc9d132a6014c4e405442aced3fc28b7608784700e304170284b76cb169"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": null,
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-skills-name-is-the-name-of-the-folder-it-sits-in",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run '^TestANameThatIsNotTheFolderNameIsRefused$|^TestAPackageMissingItsNameIsNotAlsoRefusedForItsFolderName$' ./internal/shared/skillpkg/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:cfd0d290e46776bd7c1a0286779bb9c297d7b66fa36188acb8504f15c32eb90d",
+      "finished_at": "2026-11-22T17:33:45.356093Z",
+      "working_directory": "apps/platform"
+    },
+    {
+      "obligation_id": "rule-one-import-admits-a-name-once",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run '^TestPlanImportRefusesASecondSkillClaimingANameAlreadyTaken$|^TestPlanImportRefusesASkillWhoseNameIsNotItsFolderName$' ./internal/skill/admission/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:df8dec816f12c990988238f95d22995558bdb2f355c8c990404da7050dfce630",
+      "finished_at": "2026-11-22T17:33:48.004795Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

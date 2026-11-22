@@ -1,0 +1,169 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "a-skills-name-is-its-folders-name-2026-11-23",
+  "proposer": "agent:coding-agent",
+  "requirement_id": "a-skills-name-is-its-folders-name",
+  "status": "submitted",
+  "change_classification": "material",
+  "submitted_at": "2026-11-22T17:33:42.576619Z",
+  "verified_at": null,
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "d7d5a1aeca41a35d05f02afa2928e976cac7ea09",
+    "registry_digest": "sha256:38e85fc9d132a6014c4e405442aced3fc28b7608784700e304170284b76cb169",
+    "committed_digest": "sha256:38e85fc9d132a6014c4e405442aced3fc28b7608784700e304170284b76cb169"
+  },
+  "affected_contexts": [
+    "ingest"
+  ],
+  "rule_ids": [
+    "a-skills-name-is-the-name-of-the-folder-it-sits-in",
+    "one-import-admits-a-name-once"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "ingest",
+    "invariant": "A Skill is admitted under one name only, and that name is the one the folder the author wrote it in carries.",
+    "evidence": [
+      "apps/platform/internal/shared/skillpkg/layout.go:212-220",
+      "apps/platform/internal/skill/admission/source.go:108-143"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: admission asks the package reader for a conformance report and refuses on its own findings.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/skill/admission/service.go:259-278"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A Skill has one identifier, and two places state it: the folder the author wrote it in and the name its frontmatter declares. While they could disagree, the same bytes were one Skill here and another wherever a reader goes by the folder.",
+      "Not every folder name reaches us as the author's: an archive with a single outer folder has that folder taken as the package root, and that name is usually the download tool's, so judging it would refuse packages that conform."
+    ],
+    "decision": "Judge the declared name against the folder's name where admission knows the author's folder, and nowhere else; no tactical pattern, because the check is a property of the package being read.",
+    "invariants_preserved": [
+      "A package with no name to compare is refused for the missing name, not for the folder.",
+      "A Skill exported by this platform is filed under the name its frontmatter declares, so it satisfies the rule by construction.",
+      "Two directories of one source still cannot both claim one name."
+    ],
+    "rejected_alternatives": [
+      "Comparing against the package root as well: the outer folder of a downloaded archive carries the download's name, so conformant packages would be refused.",
+      "Reporting it as a warning: the name is the only identifier a Skill has, and an admitted Skill addressed by two names is the defect itself."
+    ],
+    "proof_obligations": [
+      "rule-a-skills-name-is-the-name-of-the-folder-it-sits-in",
+      "rule-one-import-admits-a-name-once"
+    ],
+    "counterfactual_check": "Each protection is broken in turn and the focused test fails: the comparison inverted, the no-folder guard dropped, the no-name guard dropped, and each of the two call sites removed."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-skills-name-is-the-name-of-the-folder-it-sits-in",
+        "statement": "A Skill found in a folder the author named is refused when its declared name is not that folder's name, so one Skill cannot be addressed by two names; where the folder name is not the author's own, because an archive's single outer folder was taken as the package root or the Skill is the whole package, the declared name is accepted as given.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "A plugin entry at skills/tidy-csv declaring tidy-csv is admitted; the same package at skills/tidy-tsv is refused and told both names.",
+          "An archive that unpacks into one folder carrying the download's name, with SKILL.md inside it, is admitted whatever that folder is called.",
+          "A package with no name at all is refused for the missing name, not for the folder."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/shared/skillpkg/layout.go",
+            "lines": {
+              "start": 212,
+              "end": 220
+            },
+            "content_sha256": "sha256:2e173ad557489ca0076e4d3cb153a009a987a778cca97c369822e9810799427d",
+            "excerpt_sha256": "sha256:c5e8afd3b48244bda5805791b7a4cc9284b764922d0a71ea9816f2bbf8b2057e"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/service.go",
+            "lines": {
+              "start": 259,
+              "end": 278
+            },
+            "content_sha256": "sha256:cdff26b9deafd689d3cc5042aafccf7df689e97a1d2e18225505968e0c38cd16",
+            "excerpt_sha256": "sha256:f4a820e5599866674c2a02f0032f2c05f79664e1c31755a0e6ec479f80c7fb5f"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/source.go",
+            "lines": {
+              "start": 108,
+              "end": 143
+            },
+            "content_sha256": "sha256:de287e399bc5eb465a2e168f19b17c87abb6ee84715d8f9739240fa54c405f7e",
+            "excerpt_sha256": "sha256:070ea393713564d825c6f0eb3941dab473ba57a678dd50bc164414d215154ff5"
+          },
+          {
+            "path": "apps/platform/internal/shared/skillpkg/layout_test.go",
+            "lines": {
+              "start": 316,
+              "end": 349
+            },
+            "content_sha256": "sha256:a7b65cbad432ff96a0c42978bfe27846ca103601eef998c0443aefadc569213b",
+            "excerpt_sha256": "sha256:16642890f015580d55988def204d320b1549585534f56545008ba10781ec90a7"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/source_test.go",
+            "lines": {
+              "start": 329,
+              "end": 351
+            },
+            "content_sha256": "sha256:5e946e32d13066b00c5a6d331c5a6aece7030001b369959ee61138547414038b",
+            "excerpt_sha256": "sha256:8034cc6d2311cd304e4c14af024a1465b039d23633111d1eb2ed34ef021c965f"
+          }
+        ]
+      }
+    },
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "one-import-admits-a-name-once",
+        "statement": "When two directories of one source declare the same Skill name, the first keeps it and the later ones are refused with a duplicate-name finding naming the first path, instead of silently becoming its next version.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "one/alpha and two/alpha both named alpha: the first is admitted, the second refused.",
+          "Two folders cannot collide by declaring a name neither folder carries: such a package is refused for its folder name before the duplicate is reached."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/skill/admission/source.go",
+            "lines": {
+              "start": 84,
+              "end": 102
+            },
+            "excerpt_sha256": "sha256:1eed6f0e19d93b7c23c49fa1495b4f9d2131ad738f563dd3fd522d6d5b43dce4"
+          },
+          {
+            "path": "apps/platform/internal/skill/admission/source_test.go",
+            "lines": {
+              "start": 250,
+              "end": 283
+            },
+            "excerpt_sha256": "sha256:9e74865fda7a04f0a588b0989424398871fc2622213c7d69bca860f066113cf8"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [],
+  "supersedes": [
+    "ingest-recited-2026-11-23"
+  ]
+}

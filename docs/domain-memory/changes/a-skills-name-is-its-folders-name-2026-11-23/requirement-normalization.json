@@ -1,0 +1,34 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "a-skills-name-is-its-folders-name",
+  "status": "draft",
+  "intent": "A Skill is addressable by one name, so a package whose declared name is not the name of the folder its author wrote it in is refused at admission instead of being admitted under two names.",
+  "actor": "agent:coding-agent",
+  "observable_outcome": "Importing a folder whose declared name is not the folder's name is refused and told both names; a package whose folder name is not the author's own is admitted as before.",
+  "acceptance_criteria": [
+    {
+      "id": "folder-name-refused",
+      "statement": "A Skill in a folder the author named is refused when its declared name is not that folder's name, and the refusal names the folder and the declared name."
+    },
+    {
+      "id": "folder-name-not-invented",
+      "statement": "A Skill whose folder name is not the author's own, because the archive's single outer folder was taken as the package root or the Skill is the whole package, is admitted whatever that folder is called."
+    },
+    {
+      "id": "duplicate-rule-intact",
+      "statement": "Two directories of one source that share a base name and declare it still admit the first and refuse the second with the duplicate-name finding."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "apps/platform/internal/shared/skillpkg/layout.go",
+    "apps/platform/internal/skill/admission/service.go",
+    "apps/platform/internal/skill/admission/source.go",
+    "contracts/spec/SOURCE.json"
+  ]
+}
