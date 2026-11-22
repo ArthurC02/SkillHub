@@ -3,12 +3,12 @@
   "proposal_id": "a-skills-name-is-its-folders-name-2026-11-23",
   "proposer": "agent:coding-agent",
   "requirement_id": "a-skills-name-is-its-folders-name",
-  "status": "submitted",
+  "status": "applied",
   "change_classification": "material",
   "submitted_at": "2026-11-22T17:33:42.576619Z",
-  "verified_at": null,
-  "finalized_at": null,
-  "applied_at": null,
+  "verified_at": "2026-11-22T17:35:41.766054Z",
+  "finalized_at": "2026-11-22T17:35:43.336844Z",
+  "applied_at": "2026-11-22T17:35:50.585634Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "d7d5a1aeca41a35d05f02afa2928e976cac7ea09",
@@ -162,8 +162,26 @@
   ],
   "risk_flags": [],
   "open_questions": [],
-  "approvals": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-11-22T17:35:01.950480Z",
+      "scope": "the folder-name rule, the two shapes it does not judge, and the amended duplicate-name rule",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "d7d5a1aeca41a35d05f02afa2928e976cac7ea09",
+        "registry_digest": "sha256:38e85fc9d132a6014c4e405442aced3fc28b7608784700e304170284b76cb169",
+        "committed_digest": "sha256:38e85fc9d132a6014c4e405442aced3fc28b7608784700e304170284b76cb169"
+      }
+    }
+  ],
   "supersedes": [
     "ingest-recited-2026-11-23"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "bb419bc3d1766ebe8ddc0c137ee6df87e5861fd6",
+    "registry_digest": "sha256:70987f7e3228024f60825120a0f0f2234b128e2fe3fb9f12961d605710e06273"
+  }
 }

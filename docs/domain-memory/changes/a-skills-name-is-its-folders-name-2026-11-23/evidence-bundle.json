@@ -8,8 +8,24 @@
     "committed_digest": "sha256:38e85fc9d132a6014c4e405442aced3fc28b7608784700e304170284b76cb169"
   },
   "approvals": [],
-  "scm_attestation": null,
-  "counterfactual_check": null,
+  "scm_attestation": {
+    "provider": "git-signed-commit",
+    "commit": "bb419bc3d1766ebe8ddc0c137ee6df87e5861fd6",
+    "status": "approved",
+    "proposal_revision": 1,
+    "base_registry_revision": {
+      "observed_commit": "d7d5a1aeca41a35d05f02afa2928e976cac7ea09",
+      "registry_digest": "sha256:38e85fc9d132a6014c4e405442aced3fc28b7608784700e304170284b76cb169",
+      "committed_digest": "sha256:38e85fc9d132a6014c4e405442aced3fc28b7608784700e304170284b76cb169"
+    }
+  },
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "rule-a-skills-name-is-the-name-of-the-folder-it-sits-in",
+    "mutated_protection": "apps/platform/internal/shared/skillpkg/layout.go: if dir := path.Base(sourcePath); dir != r.Manifest.Name { -> if dir := path.Base(sourcePath); dir == r.Manifest.Name {",
+    "failure_evidence": "--- FAIL: TestANameThatIsNotTheFolderNameIsRefused (0.00s)\n    --- FAIL: TestANameThatIsNotTheFolderNameIsRefused/the_folder_it_sits_in_carries_its_name (0.00s)\n    --- FAIL: TestANameThatIsNotTheFolderNameIsRefused/the_folder_it_sits_in_carries_another_name (0.00s)\n    --- FAIL: TestANameThatIsNotTheFolderNameIsRefused/a_plugin_entry_whose_folder_carries_the_name (0.00s)\n    --- FAIL: TestANameThatIsNotTheFolderNameIsRefused/a_plugin_entry_under_another_folder_name (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg\t2.771s\nFAIL\n",
+    "restored": true
+  },
   "sources": [],
   "test_results": [
     {
