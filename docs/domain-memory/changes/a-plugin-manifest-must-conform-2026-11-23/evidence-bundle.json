@@ -1,0 +1,36 @@
+{
+  "format": "domain-evidence-bundle/v1",
+  "requirement_id": "a-plugin-manifest-must-conform",
+  "proposal_id": "a-plugin-manifest-must-conform-2026-11-23",
+  "registry_revision": {
+    "observed_commit": "099ccc1b37c08c68d76c987f12da47ea38d78424",
+    "registry_digest": "sha256:c6222b0cedffe608bdaf431d74c8f360c1f84a977924dadde5cef282dc7da5f6",
+    "committed_digest": "sha256:f9ef65808332e6b8835c8d6d4ed6f240daa6d5065f5d6b564a7cdb50cc5e5335"
+  },
+  "approvals": [],
+  "scm_attestation": null,
+  "counterfactual_check": {
+    "status": "passed",
+    "obligation_id": "rule-a-source-is-read-as-a-plugin-only-when-its-manifest-conforms",
+    "mutated_protection": "apps/platform/internal/shared/skillpkg/discover.go: if problem := authorProblem(manifest); problem != \"\" { -> if problem := \"\"; problem != \"\" {",
+    "failure_evidence": "--- FAIL: TestDiscoverRefusesAManifestWhoseAuthorIsNotWhatTheSpecificationAllows (0.00s)\n    --- FAIL: TestDiscoverRefusesAManifestWhoseAuthorIsNotWhatTheSpecificationAllows/one_field_the_specification_does_not_define (0.00s)\n    --- FAIL: TestDiscoverRefusesAManifestWhoseAuthorIsNotWhatTheSpecificationAllows/an_allowed_field_that_is_not_a_string (0.00s)\n    --- FAIL: TestDiscoverRefusesAManifestWhoseAuthorIsNotWhatTheSpecificationAllows/two_such_fields,_named_in_order (0.00s)\n    --- FAIL: TestDiscoverRefusesAManifestWhoseAuthorIsNotWhatTheSpecificationAllows/null (0.00s)\n    --- FAIL: TestDiscoverRefusesAManifestWhoseAuthorIsNotWhatTheSpecificationAllows/not_an_object_at_all (0.00s)\n    --- FAIL: TestDiscoverRefusesAManifestWhoseAuthorIsNotWhatTheSpecificationAllows/a_url_that_is_not_a_string (0.00s)\nFAIL\nFAIL\tgithub.com/ArthurC02/skillhub/apps/platform/internal/shared/skillpkg\t1.324s\nFAIL\n",
+    "restored": true
+  },
+  "sources": [],
+  "test_results": [
+    {
+      "obligation_id": "rule-a-source-is-read-as-a-plugin-only-when-its-manifest-conforms",
+      "status": "passed",
+      "evidence": "go test -count=1 -v -run '^TestDiscoverRefusesAManifestWhoseAuthorIsNotWhatTheSpecificationAllows$|^TestDiscoverDisclosesAnExtensionsFieldThatIsNotAnObject$|^TestDiscoverReadsAPluginOnlyWhenItDeclaresTheSharedSpecification$' ./internal/shared/skillpkg/",
+      "command_profile": "go",
+      "exit_code": 0,
+      "output_sha256": "sha256:9f4b185851f0f100f650ef50e95639055f6ce1945ddec9fa15d2158e150a3306",
+      "finished_at": "2026-11-22T18:20:04.729392Z",
+      "working_directory": "apps/platform"
+    }
+  ],
+  "contract_checks": [],
+  "architecture_checks": [],
+  "security_checks": [],
+  "residual_risks": []
+}

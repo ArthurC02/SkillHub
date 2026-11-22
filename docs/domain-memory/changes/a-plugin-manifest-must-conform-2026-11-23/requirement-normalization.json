@@ -1,0 +1,32 @@
+{
+  "format": "domain-requirement/v1",
+  "requirement_id": "a-plugin-manifest-must-conform",
+  "status": "draft",
+  "intent": "A source that names the public Agent Plugins specification is held to it, so plugin facts are recorded only for a manifest that actually conforms, and a source that names another specification is still imported.",
+  "actor": "agent:coding-agent",
+  "observable_outcome": "A manifest declaring the canonical schema and breaking any of its field rules refuses the whole source and names the field; a manifest declaring another specification is disclosed and its skills import as a directory tree.",
+  "acceptance_criteria": [
+    {
+      "id": "author-refused",
+      "statement": "A manifest declaring the canonical schema whose author is not an object of only name, email and url as strings refuses the source, names the offending field, and discovers no component."
+    },
+    {
+      "id": "extensions-disclosed",
+      "statement": "An extensions field that is not an object is disclosed at info level and ignored, and the plugin still loads its skills."
+    },
+    {
+      "id": "foreign-schema-imports",
+      "statement": "A manifest declaring another specification, none, or invalid JSON is disclosed and the source is read as a directory tree, so its skills still import."
+    }
+  ],
+  "candidate_terms": [],
+  "open_questions": [],
+  "risk_flags": [],
+  "required_approval_roles": [
+    "developer"
+  ],
+  "sources": [
+    "apps/platform/internal/shared/skillpkg/discover.go",
+    "tools/contracts/survey_plugin_shapes.py"
+  ]
+}

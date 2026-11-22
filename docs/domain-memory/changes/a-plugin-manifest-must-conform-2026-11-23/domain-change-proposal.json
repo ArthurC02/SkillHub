@@ -1,0 +1,136 @@
+{
+  "format": "domain-change-proposal/v1",
+  "proposal_id": "a-plugin-manifest-must-conform-2026-11-23",
+  "proposer": "agent:coding-agent",
+  "requirement_id": "a-plugin-manifest-must-conform",
+  "status": "submitted",
+  "change_classification": "material",
+  "submitted_at": "2026-11-22T18:19:56.464958Z",
+  "verified_at": null,
+  "finalized_at": null,
+  "applied_at": null,
+  "proposal_revision": 1,
+  "base_registry_revision": {
+    "observed_commit": "099ccc1b37c08c68d76c987f12da47ea38d78424",
+    "registry_digest": "sha256:c6222b0cedffe608bdaf431d74c8f360c1f84a977924dadde5cef282dc7da5f6",
+    "committed_digest": "sha256:f9ef65808332e6b8835c8d6d4ed6f240daa6d5065f5d6b564a7cdb50cc5e5335"
+  },
+  "affected_contexts": [
+    "ingest"
+  ],
+  "rule_ids": [
+    "a-source-is-read-as-a-plugin-only-when-its-manifest-conforms"
+  ],
+  "contract_ids": [],
+  "ownership_decision": {
+    "owner_context": "ingest",
+    "invariant": "Plugin facts are recorded for a source only when its root manifest declares the public specification and conforms to every field rule that specification calls fatal.",
+    "evidence": [
+      "apps/platform/internal/shared/skillpkg/discover.go:116-163",
+      "apps/platform/internal/shared/skillpkg/discover.go:180-207"
+    ]
+  },
+  "boundary_decision": {
+    "interaction": "Unchanged: discovery reads the source's bytes and returns a shape, and admission acts on the findings it returns.",
+    "consistency": "synchronous",
+    "prohibited_dependencies": [],
+    "evidence": [
+      "apps/platform/internal/shared/skillpkg/discover.go:116-163"
+    ]
+  },
+  "implementation_design": {
+    "domain_forces": [
+      "A source that names the public specification is asking to be read by it, and the specification names exactly three field rules that make a manifest invalid. Judging fewer records plugin facts from a manifest that did not pass the specification it named.",
+      "A source that names someone else's specification is not refused, because refusing it would favour one vendor; it falls back to the directory-tree shape and its Skills still import."
+    ],
+    "decision": "Judge the whole of what the specification calls fatal — the schema identifier, the name, and the author object — at the one place that decides the shape, and nowhere else; no tactical pattern, because the judgement is a property of the manifest being read.",
+    "invariants_preserved": [
+      "A manifest naming another specification is disclosed, never blocked, and its Skills still import.",
+      "Fields the specification says to validate only by JSON type are not judged on format.",
+      "Unknown top-level fields and an extensions field that is not an object are disclosed and the plugin still loads."
+    ],
+    "rejected_alternatives": [
+      "Treating an author violation as an unknown field and loading anyway: the specification distinguishes them, and the manifest would record plugin facts it did not earn.",
+      "Falling back to the directory-tree shape instead of refusing: it would silently drop the plugin facts a conforming source gets, and hide from the author that the manifest they published does not conform."
+    ],
+    "proof_obligations": [
+      "rule-a-source-is-read-as-a-plugin-only-when-its-manifest-conforms"
+    ],
+    "counterfactual_check": "The author judgement is short-circuited and the focused table fails on every row that expects a refusal."
+  },
+  "event_change": null,
+  "contract_change": null,
+  "registry_updates": [
+    {
+      "operation": "upsert",
+      "asset": "rules",
+      "record": {
+        "id": "a-source-is-read-as-a-plugin-only-when-its-manifest-conforms",
+        "statement": "A source is read as an Agent Plugin only when the plugin.json in its root declares the specification's canonical schema identifier and then conforms to it: a name of 1 to 64 lowercase alphanumerics, hyphens and periods whose first and last characters are alphanumeric and which holds no consecutive hyphen or period, and an author, where present, that is an object carrying only name, email and url, each a string. A manifest that declares another specification, declares none, or is not valid JSON is disclosed and the source is read as a directory tree instead; a manifest that declares this specification and breaks it refuses the whole source, names the field, and leaves its components undiscovered.",
+        "contexts": [
+          "ingest"
+        ],
+        "examples": [
+          "A manifest whose author carries twitter is refused, the refusal names twitter, and none of the skills under skills/ are discovered.",
+          "A manifest declaring another vendor's schema identifier is disclosed at info level and its skills are imported as a directory tree.",
+          "An extensions field that is not an object is disclosed and ignored, and the plugin still loads."
+        ],
+        "evidence": [
+          {
+            "path": "apps/platform/internal/shared/skillpkg/discover.go",
+            "lines": {
+              "start": 116,
+              "end": 163
+            },
+            "content_sha256": "sha256:e4ff42163edcc103bacbdeea91bd06e385e4b2ed131e30f511e422a8f5a08cc1",
+            "excerpt_sha256": "sha256:d8d50ceddffb6378abe42c450fd8e1a6bfbd5d53d382291a8ebcf2d180f51aa2"
+          },
+          {
+            "path": "apps/platform/internal/shared/skillpkg/discover.go",
+            "lines": {
+              "start": 180,
+              "end": 207
+            },
+            "content_sha256": "sha256:e4ff42163edcc103bacbdeea91bd06e385e4b2ed131e30f511e422a8f5a08cc1",
+            "excerpt_sha256": "sha256:547dcae3a0fedc01ecfb7e6bae0b57744be914240ba0921169961fff2b39c7fd"
+          },
+          {
+            "path": "apps/platform/internal/shared/skillpkg/discover_test.go",
+            "lines": {
+              "start": 274,
+              "end": 316
+            },
+            "content_sha256": "sha256:c41d1acbfe404f422bcb9592e7a2fa326a4bc1d73db83de07485078bb19b2e56",
+            "excerpt_sha256": "sha256:700f19fbd1d4256c1d8d69895665e1cc733c4f6e942252fcc8e367c8d23839dc"
+          },
+          {
+            "path": "apps/platform/internal/shared/skillpkg/discover_test.go",
+            "lines": {
+              "start": 318,
+              "end": 350
+            },
+            "content_sha256": "sha256:c41d1acbfe404f422bcb9592e7a2fa326a4bc1d73db83de07485078bb19b2e56",
+            "excerpt_sha256": "sha256:1f8cb224c9c1c4e53c70b4c91fab4206b7029f8e80a6ef74b2fcab9dd7cc3b64"
+          }
+        ]
+      }
+    }
+  ],
+  "risk_flags": [],
+  "open_questions": [],
+  "approvals": [
+    {
+      "role": "developer",
+      "reviewer": "ArthurC",
+      "decision": "approved",
+      "approved_at": "2026-11-22T18:20:04.957643Z",
+      "scope": "judging the plugin manifest's author, and disclosing a non-object extensions",
+      "proposal_revision": 1,
+      "base_registry_revision": {
+        "observed_commit": "099ccc1b37c08c68d76c987f12da47ea38d78424",
+        "registry_digest": "sha256:c6222b0cedffe608bdaf431d74c8f360c1f84a977924dadde5cef282dc7da5f6",
+        "committed_digest": "sha256:f9ef65808332e6b8835c8d6d4ed6f240daa6d5065f5d6b564a7cdb50cc5e5335"
+      }
+    }
+  ]
+}

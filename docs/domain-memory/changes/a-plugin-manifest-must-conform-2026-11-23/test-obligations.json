@@ -1,0 +1,30 @@
+{
+  "format": "domain-test-obligations/v1",
+  "requirement_id": "a-plugin-manifest-must-conform",
+  "proposal_id": "a-plugin-manifest-must-conform-2026-11-23",
+  "obligations": [
+    {
+      "id": "rule-a-source-is-read-as-a-plugin-only-when-its-manifest-conforms",
+      "source_type": "acceptance-criterion",
+      "source_id": "author-refused",
+      "also_covers": [
+        {
+          "source_type": "acceptance-criterion",
+          "source_id": "extensions-disclosed"
+        },
+        {
+          "source_type": "acceptance-criterion",
+          "source_id": "foreign-schema-imports"
+        },
+        {
+          "source_type": "rule",
+          "source_id": "a-source-is-read-as-a-plugin-only-when-its-manifest-conforms"
+        }
+      ],
+      "expected_outcome": "An author that is not an object of only name, email and url as strings refuses the source and names the field; a non-object extensions is disclosed and ignored; a manifest naming another specification is disclosed and its skills import as a tree.",
+      "level": "unit",
+      "status": "planned",
+      "check": "go test -count=1 -v -run '^TestDiscoverRefusesAManifestWhoseAuthorIsNotWhatTheSpecificationAllows$|^TestDiscoverDisclosesAnExtensionsFieldThatIsNotAnObject$|^TestDiscoverReadsAPluginOnlyWhenItDeclaresTheSharedSpecification$' ./internal/shared/skillpkg/"
+    }
+  ]
+}
