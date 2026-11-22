@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -65,11 +67,7 @@ func domainMemoryProblems(root string) []string {
 		go func() {
 			defer wg.Done()
 			if output, err := domainMemoryTool(root, args...); err != nil {
-				reason := firstLine(output)
-				if reason == "" {
-					reason = err.Error()
-				}
-				failures[i] = fmt.Sprintf("Domain Memory %s: %s", args[0], reason)
+				failures[i] = fmt.Sprintf("Domain Memory %s: %s", args[0], domainMemoryFailureReason(output, err))
 			}
 		}()
 	}
@@ -81,4 +79,68 @@ func domainMemoryProblems(root string) []string {
 		}
 	}
 	return problems
+}
+
+const listedFailingCitations = 3
+
+func domainMemoryFailureReason(output string, commandErr error) string {
+	if start := strings.Index(output, "{"); start >= 0 {
+		var raw json.RawMessage
+		if json.NewDecoder(strings.NewReader(output[start:])).Decode(&raw) == nil {
+			return jsonReportFailure(raw)
+		}
+	}
+	if line := firstLine(output); line != "" {
+		return line
+	}
+	return commandErr.Error()
+}
+
+func jsonReportFailure(raw json.RawMessage) string {
+	var report struct {
+		Status  string `json:"status"`
+		Results []struct {
+			Asset      string `json:"asset"`
+			ID         string `json:"id"`
+			Path       string `json:"path"`
+			Status     string `json:"status"`
+			CitedLines struct {
+				Start int `json:"start"`
+				End   int `json:"end"`
+			} `json:"cited_lines"`
+		} `json:"results"`
+	}
+	if json.Unmarshal(raw, &report) != nil {
+		return string(raw)
+	}
+	var parts []string
+	failing := 0
+	for _, result := range report.Results {
+		if passingEvidence[result.Status] {
+			continue
+		}
+		failing++
+		if failing > listedFailingCitations {
+			continue
+		}
+		location := result.Path
+		if result.CitedLines.Start > 0 {
+			location = fmt.Sprintf("%s:%d-%d", result.Path, result.CitedLines.Start, result.CitedLines.End)
+		}
+		parts = append(parts, fmt.Sprintf("%s/%s cites %s (%s)", result.Asset, result.ID, location, result.Status))
+	}
+	if failing > listedFailingCitations {
+		parts = append(parts, fmt.Sprintf("and %d more", failing-listedFailingCitations))
+	}
+	if len(parts) == 0 && report.Status != "" {
+		parts = append(parts, "status "+report.Status)
+	}
+	if len(parts) == 0 {
+		var compact bytes.Buffer
+		if json.Compact(&compact, raw) == nil {
+			return compact.String()
+		}
+		return string(raw)
+	}
+	return strings.Join(parts, "; ")
 }

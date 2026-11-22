@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -94,5 +95,57 @@ func TestDomainMemoryOutput(t *testing.T) {
 				t.Errorf("output = %q, want %q", got, c.want)
 			}
 		})
+	}
+}
+
+func TestDomainMemoryFailureReasonNamesWhatFailedInsideAJSONReport(t *testing.T) {
+	t.Parallel()
+	commandErr := errors.New("exit status 1")
+	staleEvidence := `{"results": [` +
+		`{"asset": "contexts", "id": "activity", "path": "a.go", "status": "current", "cited_lines": {"start": 1, "end": 2}},` +
+		`{"asset": "rules", "id": "run-budget", "path": "b.go", "status": "stale", "cited_lines": {"start": 10, "end": 14}}` +
+		`], "summary": {"current": 1, "stale": 1}}`
+	cases := []struct {
+		name, output, want string
+	}{
+		{"a failing citation among passing ones", staleEvidence, "rules/run-budget cites b.go:10-14 (stale)"},
+		{"a launcher notice before the report", "WARN launcher notice\n" + staleEvidence, "rules/run-budget cites b.go:10-14 (stale)"},
+		{"a citation without line numbers", `{"results": [{"asset": "rules", "id": "x", "path": "c.go", "status": "missing"}]}`, "rules/x cites c.go (missing)"},
+		{"more failures than are listed", `{"results": [` +
+			`{"asset": "r", "id": "a", "path": "1.go", "status": "stale"},` +
+			`{"asset": "r", "id": "b", "path": "2.go", "status": "stale"},` +
+			`{"asset": "r", "id": "c", "path": "3.go", "status": "stale"},` +
+			`{"asset": "r", "id": "d", "path": "4.go", "status": "stale"}]}`,
+			"r/a cites 1.go (stale); r/b cites 2.go (stale); r/c cites 3.go (stale); and 1 more"},
+		{"a report that carries only a status", `{"status": "broken", "events": 3}`, "status broken"},
+		{"a JSON report with no field it recognises", "{\n  \"oops\": true\n}", `{"oops":true}`},
+		{"plain text keeps its first line", "Registry is invalid.\nsecond line", "Registry is invalid."},
+		{"no output falls back to the process error", "", "exit status 1"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := domainMemoryFailureReason(c.output, commandErr); got != c.want {
+				t.Errorf("reason = %q, want %q", got, c.want)
+			}
+		})
+	}
+}
+
+func TestDomainMemoryProblemsReportsTheFailingCitationNotItsOpeningBrace(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "docs", "domain-memory"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	original := domainMemoryTool
+	t.Cleanup(func() { domainMemoryTool = original })
+	domainMemoryTool = func(_ string, args ...string) (string, error) {
+		if args[0] != "verify-evidence" {
+			return "", nil
+		}
+		return "{\n  \"results\": [{\"asset\": \"rules\", \"id\": \"run-budget\", \"path\": \"b.go\", \"status\": \"stale\"}]\n}", errors.New("exit status 1")
+	}
+	problems := domainMemoryProblems(root)
+	if len(problems) != 1 || problems[0] != "Domain Memory verify-evidence: rules/run-budget cites b.go (stale)" {
+		t.Fatalf("problems = %q, want the stale citation named", problems)
 	}
 }
