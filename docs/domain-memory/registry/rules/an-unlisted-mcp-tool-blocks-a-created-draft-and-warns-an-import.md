@@ -13,12 +13,12 @@ sources:
     excerpt_sha256: "sha256:5248e297b8dda66dcf2785374f181b041475027ace06330c3bb3db3fbf4f716c"
   - resource: "apps/platform/internal/skill/admission/creation.go#L208-208"
     excerpt_sha256: "sha256:5248e297b8dda66dcf2785374f181b041475027ace06330c3bb3db3fbf4f716c"
-  - resource: "apps/platform/internal/skill/admission/service.go#L352-352"
-    excerpt_sha256: "sha256:06b9214ed080db7e866e502be192d11fe6152c484835061148a4e929f0848258"
+  - resource: "apps/platform/internal/skill/admission/service.go#L353-356"
+    excerpt_sha256: "sha256:ff216dde87d1f2c4f64ae9155021927489a240987f7fded93c24fd81f1ec976a"
   - resource: "apps/platform/internal/skill/admission/mcp_tools_test.go#L35-57"
     excerpt_sha256: "sha256:025365e193db70c470ad49a71c9016770caea2709cbab2e3ac8d07d8a8714085"
-  - resource: "apps/platform/internal/skill/admission/service.go#L427-427"
-    excerpt_sha256: "sha256:06b9214ed080db7e866e502be192d11fe6152c484835061148a4e929f0848258"
+  - resource: "apps/platform/internal/skill/admission/service.go#L428-431"
+    excerpt_sha256: "sha256:28f1f13f18c002597fbcf99d8053402581501a1d37774934ead218de1b22dc12"
 ---
 A created draft or created version of a Skill that declares in allowed-tools an mcp__ name no mcp_tools row offers is blocked with the finding mcp-tool-not-offered naming it and listing the offered references; an imported or uploaded package gets the same finding as a warning and is not blocked.
 

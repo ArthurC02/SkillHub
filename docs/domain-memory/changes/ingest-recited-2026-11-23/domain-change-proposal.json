@@ -3,12 +3,12 @@
   "proposal_id": "ingest-recited-2026-11-23",
   "proposer": "agent:coding-agent",
   "requirement_id": "ingest-recited-2026-11-23",
-  "status": "submitted",
+  "status": "applied",
   "change_classification": "routine",
   "submitted_at": "2026-11-22T17:29:37.936690Z",
-  "verified_at": null,
-  "finalized_at": null,
-  "applied_at": null,
+  "verified_at": "2026-11-22T17:30:41.772648Z",
+  "finalized_at": "2026-11-22T17:30:48.437293Z",
+  "applied_at": "2026-11-22T17:30:52.808795Z",
   "proposal_revision": 1,
   "base_registry_revision": {
     "observed_commit": "2cc0194c03391e73e311bbb07014dfc7864cdcbf",
@@ -191,5 +191,9 @@
     "candidate-evaluation-recited-2026-11-07",
     "ingest-fetch-and-hash-rules-2026-10-18",
     "ingest-harvest-rules-2026-10-17"
-  ]
+  ],
+  "applied_registry_revision": {
+    "observed_commit": "b3346d57de389327547babafb792ed57fe5528bf",
+    "registry_digest": "sha256:38e85fc9d132a6014c4e405442aced3fc28b7608784700e304170284b76cb169"
+  }
 }
