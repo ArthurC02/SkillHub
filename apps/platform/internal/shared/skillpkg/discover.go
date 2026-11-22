@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"path"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 )
@@ -18,12 +19,13 @@ const (
 )
 
 const (
-	CodePluginComponent    = "plugin-component"
-	CodePluginManifest     = "plugin-manifest"
-	CodeForeignManifest    = "foreign-plugin-manifest"
-	CodeNoSkillFound       = "no-skill-found"
-	CodePluginUnknownField = "plugin-manifest-unknown-field"
-	CodeDuplicateSkillName = "duplicate-skill-name"
+	CodePluginComponent         = "plugin-component"
+	CodePluginManifest          = "plugin-manifest"
+	CodeForeignManifest         = "foreign-plugin-manifest"
+	CodeNoSkillFound            = "no-skill-found"
+	CodePluginUnknownField      = "plugin-manifest-unknown-field"
+	CodePluginExtensionsIgnored = "plugin-manifest-extensions-ignored"
+	CodeDuplicateSkillName      = "duplicate-skill-name"
 
 	CodeNameHeldByAnotherSource = "name-held-by-another-source"
 	CodeVersionNameMismatch     = "version-name-mismatch"
@@ -50,6 +52,8 @@ var pluginNameRule = regexp.MustCompile(`^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$`)
 // behaviour, so matching its reverse-domain shape is what keeps this file free
 // of any particular client's name.
 var reverseDomainDir = regexp.MustCompile(`^[a-z0-9]+(\.[a-z0-9][a-z0-9-]*)+$`)
+
+var authorFields = []string{"name", "email", "url"}
 
 var pluginManifestFields = []string{
 	"$schema", "name", "version", "description", "author",
@@ -133,6 +137,20 @@ func (d *Discovery) readPluginManifest(fsys fs.FS) (*PluginFacts, bool) {
 				"只含小寫英數與 - 和 .、首尾為英數，且不含連續的 -- 或 .. 。")
 		return nil, false
 	}
+	if problem := authorProblem(manifest); problem != "" {
+		d.add(SeverityError, CodePluginManifest, pluginManifestName,
+			"這份 plugin.json 宣告了 Agent Plugin 規格，但 author "+problem+
+				"；規格只允許 name、email、url 三個欄位，而且值都必須是字串。")
+		return nil, false
+	}
+	if extensions, present := manifest["extensions"]; present {
+		if _, ok := extensions.(map[string]any); !ok {
+			d.Findings = append(d.Findings, Finding{
+				Severity: SeverityInfo, Code: CodePluginExtensionsIgnored, Path: pluginManifestName,
+				Message: "plugin.json 的 extensions 不是物件，平台忽略它並繼續匯入；" +
+					"規格把它劃給各家用戶端，平台一個命名空間都不實作，所以裡面的設定在這裡不會被讀。"})
+		}
+	}
 	if unknown := unknownManifestFields(manifest); len(unknown) > 0 {
 		d.Findings = append(d.Findings, Finding{
 			Severity: SeverityInfo, Code: CodePluginUnknownField, Path: pluginManifestName,
@@ -157,6 +175,35 @@ func validPluginName(name string) bool {
 	return len(name) >= 1 && len(name) <= maxNameLen &&
 		!strings.Contains(name, "--") && !strings.Contains(name, "..") &&
 		pluginNameRule.MatchString(name)
+}
+
+func authorProblem(manifest map[string]any) string {
+	author, present := manifest["author"]
+	if !present {
+		return ""
+	}
+	fields, ok := author.(map[string]any)
+	if !ok {
+		return "不是一個物件"
+	}
+	var extra []string
+	for field := range fields {
+		if !slices.Contains(authorFields, field) {
+			extra = append(extra, field)
+		}
+	}
+	if len(extra) > 0 {
+		sort.Strings(extra)
+		return "含規格未定義的欄位 " + strings.Join(extra, "、")
+	}
+	for _, field := range authorFields {
+		if value, present := fields[field]; present {
+			if _, ok := value.(string); !ok {
+				return "的 " + field + " 不是字串"
+			}
+		}
+	}
+	return ""
 }
 
 func unknownManifestFields(manifest map[string]any) []string {

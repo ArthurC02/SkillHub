@@ -270,3 +270,91 @@ func TestAnExportedPluginIsReadFromItsRootManifestAndItsClaudeCodeCopyIsIgnored(
 		t.Fatalf("skills=%v blocked=%v, want only skills/tidy-csv and nothing blocked", d.Skills, d.Blocked)
 	}
 }
+
+func TestDiscoverRefusesAManifestWhoseAuthorIsNotWhatTheSpecificationAllows(t *testing.T) {
+	t.Parallel()
+	for title, c := range map[string]struct {
+		author  string
+		refused string
+	}{
+		"every allowed field, all strings":            {`{"name":"A","email":"a@example.invalid","url":"https://example.invalid"}`, ""},
+		"an empty object":                             {`{}`, ""},
+		"only one allowed field":                      {`{"name":"A"}`, ""},
+		"one field the specification does not define": {`{"name":"A","twitter":"@a"}`, "twitter"},
+		"two such fields, named in order":             {`{"zebra":1,"apple":2}`, "apple、zebra"},
+		"an allowed field that is not a string":       {`{"name":5}`, "name"},
+		"a url that is not a string":                  {`{"url":["https://example.invalid"]}`, "url"},
+		"not an object at all":                        {`"A"`, "不是一個物件"},
+		"null":                                        {`null`, "不是一個物件"},
+	} {
+		t.Run(title, func(t *testing.T) {
+			t.Parallel()
+			d := Discover(tree(map[string]string{
+				"plugin.json":           `{"$schema":"` + PluginSchemaID + `","name":"my-plugin","author":` + c.author + `}`,
+				"skills/alpha/SKILL.md": "---\nname: alpha\n---\n",
+			}))
+
+			if c.refused == "" {
+				if d.Blocked || d.Plugin == nil {
+					t.Fatalf("blocked = %v plugin = %+v, want a conforming author read as a plugin: %+v",
+						d.Blocked, d.Plugin, d.Findings)
+				}
+				return
+			}
+			if !d.Blocked || d.Plugin != nil {
+				t.Fatalf("blocked = %v plugin = %+v, want the source refused: %+v", d.Blocked, d.Plugin, d.Findings)
+			}
+			if len(d.Skills) != 0 {
+				t.Errorf("skills = %v; a refused manifest must not have its components discovered", d.Skills)
+			}
+			found := findingsOfCode(d, CodePluginManifest)
+			if len(found) != 1 || !strings.Contains(found[0].Message, c.refused) {
+				t.Fatalf("findings = %+v, want one %s naming %q", d.Findings, CodePluginManifest, c.refused)
+			}
+		})
+	}
+}
+
+func TestDiscoverDisclosesAnExtensionsFieldThatIsNotAnObject(t *testing.T) {
+	t.Parallel()
+	for title, c := range map[string]struct {
+		extensions string
+		disclosed  bool
+	}{
+		"an object of namespaces": {`{"com.example.client":{"hooks":true}}`, false},
+		"an empty object":         {`{}`, false},
+		"a string":                {`"com.example.client"`, true},
+		"an array":                {`["com.example.client"]`, true},
+		"null":                    {`null`, true},
+	} {
+		t.Run(title, func(t *testing.T) {
+			t.Parallel()
+			d := Discover(tree(map[string]string{
+				"plugin.json":           `{"$schema":"` + PluginSchemaID + `","name":"my-plugin","extensions":` + c.extensions + `}`,
+				"skills/alpha/SKILL.md": "---\nname: alpha\n---\n",
+			}))
+
+			if d.Blocked || d.Plugin == nil || len(d.Skills) != 1 {
+				t.Fatalf("blocked = %v plugin = %+v skills = %v; extensions never refuses a plugin: %+v",
+					d.Blocked, d.Plugin, d.Skills, d.Findings)
+			}
+			found := findingsOfCode(d, CodePluginExtensionsIgnored)
+			if (len(found) == 1) != c.disclosed {
+				t.Fatalf("findings = %+v, want disclosed = %v", d.Findings, c.disclosed)
+			}
+			if c.disclosed && found[0].Severity != SeverityInfo {
+				t.Errorf("severity = %q, want info; the setting is ignored, not rejected", found[0].Severity)
+			}
+		})
+	}
+}
+
+func findingsOfCode(d Discovery, code string) []Finding {
+	var out []Finding
+	for _, f := range d.Findings {
+		if f.Code == code {
+			out = append(out, f)
+		}
+	}
+	return out
+}
